@@ -253,9 +253,34 @@ const glyphToMask = new Map([
   ["╔", E|S], ["╗", W|S], ["╚", E|N], ["╝", W|N],
   ["╠", N|E|S], ["╣", N|W|S],
   ["╦", E|S|W], ["╩", E|N|W],
-  ["╬", N|E|S|W],
+  ["╬", N|E|S|W]
+
 ]);
 
+
+// mixed crosses
+glyphToMask.set("╪", N|E|S|W);
+glyphToMask.set("╫", N|E|S|W);
+
+// mixed tees
+glyphToMask.set("╤", E|S|W);
+glyphToMask.set("╥", E|S|W);
+glyphToMask.set("╧", E|N|W);
+glyphToMask.set("╨", E|N|W);
+glyphToMask.set("╞", N|E|S);
+glyphToMask.set("╟", N|E|S);
+glyphToMask.set("╡", N|W|S);
+glyphToMask.set("╢", N|W|S);
+
+// mixed corners
+glyphToMask.set("╒", E|S);
+glyphToMask.set("╓", E|S);
+glyphToMask.set("╕", W|S);
+glyphToMask.set("╖", W|S);
+glyphToMask.set("╘", E|N);
+glyphToMask.set("╙", E|N);
+glyphToMask.set("╛", W|N);
+glyphToMask.set("╜", W|N);
 
 // mixed crosses
 glyphToMask.set("╪", N|E|S|W);
