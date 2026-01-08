@@ -311,6 +311,7 @@ function testDoubleBusCross() {
     " ║ \n";
 
   assertGrid("double bus cross over 2 rows => ╬╬", got, exp);
+  console.log("double bus cross over 2 rows tests done.");
 }
 
 
