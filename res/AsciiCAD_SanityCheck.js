@@ -283,6 +283,37 @@ function runMixedJunctionTests() {
 }
 
 
+function testDoubleBusCross() {
+  setSmallGridFromLines([
+    "   ",
+    "   ",
+    "═══",
+    "═══",
+    "   ",
+  ]);
+
+  // simulate committing a vertical double line in middle col=1
+  for (let r = 0; r < 5; r++) ascii[r][1] = "║";
+
+  // normalize around affected area (simple: whole 5x3 here)
+  const affected = new Set();
+  for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) affected.add(r + "," + c);
+
+  const stroke = [];
+  normalizeAffected(affected, stroke);
+
+  const got = getSmallGridText(5,3);
+  const exp =
+    " ║ \n" +
+    " ║ \n" +
+    "═╬═\n" +
+    "═╬═\n" +
+    " ║ \n";
+
+  assertGrid("double bus cross over 2 rows => ╬╬", got, exp);
+}
+
+
 
 (function init() {
 stageSize = computeStageSize();
@@ -317,6 +348,7 @@ console.assert(!catalogTypes().includes(""), "catalogTypes contains empty string
 
 if (bDebug) { runJunctionTests(); wipeSelection(' '); }
 if (bDebug) { runMixedJunctionTests(); wipeSelection(' '); }
+if (bDebug) { testDoubleBusCross(); wipeSelection(' '); }
 
 updateUI();
 draw();
