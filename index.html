@@ -25,7 +25,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.86</big><br><small>Author: Freddy Vandriessche</small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.87</big><br><small>Author: Freddy Vandriessche</small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -509,64 +509,55 @@ function crossGlyph(hDouble, vDouble) {
 function recomputeWireCell(r, c) {
   const cur = ascii[r][c];
 
-  // only normalize blanks or wire glyphs (never touch symbols/text)
+  // only touch blanks or wires
   if (cur !== " " && !isWireGlyph(cur)) return cur;
 
-  // mask and per-axis style info
   let m = 0;
-  let hDouble = false; // horizontal axis (left/right) double?
-  let vDouble = false; // vertical axis (up/down) double?
+  let hDouble = false; // any double on horizontal axis
+  let vDouble = false; // any double on vertical axis
 
-  // --- UP contributes N if it connects DOWN (S)
+  // UP contributes N if it connects DOWN (S)
   if (r > 0) {
     const up = ascii[r - 1][c];
     const um = glyphToMask.get(up) ?? 0;
     if (um & S) { m |= N; if (isDoubleWire(up)) vDouble = true; }
   }
 
-  // --- DOWN contributes S if it connects UP (N)
+  // DOWN contributes S if it connects UP (N)
   if (r < ROWS - 1) {
     const dn = ascii[r + 1][c];
     const dm = glyphToMask.get(dn) ?? 0;
     if (dm & N) { m |= S; if (isDoubleWire(dn)) vDouble = true; }
   }
 
-  // --- LEFT contributes W if it connects RIGHT (E)
+  // LEFT contributes W if it connects RIGHT (E)
   if (c > 0) {
     const lt = ascii[r][c - 1];
     const lm = glyphToMask.get(lt) ?? 0;
     if (lm & E) { m |= W; if (isDoubleWire(lt)) hDouble = true; }
   }
 
-  // --- RIGHT contributes E if it connects LEFT (W)
+  // RIGHT contributes E if it connects LEFT (W)
   if (c < COLS - 1) {
     const rt = ascii[r][c + 1];
     const rm = glyphToMask.get(rt) ?? 0;
     if (rm & W) { m |= E; if (isDoubleWire(rt)) hDouble = true; }
   }
 
-  // no connections => blank
-  if (m === 0) {
-    ascii[r][c] = " ";
-    return " ";
+  if (m === 0) { ascii[r][c] = " "; return " "; }
+
+  const bothSingle = !hDouble && !vDouble;
+  const bothDouble =  hDouble &&  vDouble;
+
+  function cross() {
+    if (bothSingle) return "┼";
+    if (bothDouble) return "╬";
+    return hDouble ? "╪" : "╫"; // horiz double => ╪ ; vert double => ╫
   }
+  function horiz() { return hDouble ? "═" : "─"; }
+  function vert()  { return vDouble ? "║" : "│"; }
 
-  // helper pickers
-  function crossGlyph() {
-    if (!hDouble && !vDouble) return "┼";
-    if ( hDouble &&  vDouble) return "╬";
-    if ( hDouble && !vDouble) return "╪"; // horiz double, vert single
-    return "╫";                            // horiz single, vert double
-  }
-
-  function horizGlyph() { return hDouble ? "═" : "─"; }
-  function vertGlyph()  { return vDouble ? "║" : "│"; }
-
-  // mixed corners
   function corner(mask) {
-    const bothSingle = !hDouble && !vDouble;
-    const bothDouble =  hDouble &&  vDouble;
-
     if (mask === (E|S)) return bothSingle ? "┌" : bothDouble ? "╔" : (hDouble ? "╒" : "╓");
     if (mask === (W|S)) return bothSingle ? "┐" : bothDouble ? "╗" : (hDouble ? "╕" : "╖");
     if (mask === (E|N)) return bothSingle ? "└" : bothDouble ? "╚" : (hDouble ? "╘" : "╙");
@@ -574,44 +565,25 @@ function recomputeWireCell(r, c) {
     return cur;
   }
 
-  // mixed tees
   function tee(mask) {
-    const bothSingle = !hDouble && !vDouble;
-    const bothDouble =  hDouble &&  vDouble;
-
-    // ┬ / ╦ / ╤ / ╥
     if (mask === (E|S|W)) return bothSingle ? "┬" : bothDouble ? "╦" : (hDouble ? "╤" : "╥");
-    // ┴ / ╩ / ╧ / ╨
     if (mask === (E|N|W)) return bothSingle ? "┴" : bothDouble ? "╩" : (hDouble ? "╧" : "╨");
-    // ├ / ╠ / ╞ / ╟
     if (mask === (N|E|S)) return bothSingle ? "├" : bothDouble ? "╠" : (hDouble ? "╞" : "╟");
-    // ┤ / ╣ / ╡ / ╢
     if (mask === (N|W|S)) return bothSingle ? "┤" : bothDouble ? "╣" : (hDouble ? "╡" : "╢");
-
     return cur;
   }
 
   let next = cur;
 
-  // straights
-  if (m === (E|W)) next = horizGlyph();
-  else if (m === (N|S)) next = vertGlyph();
-
-  // corners
+  if (m === (E|W)) next = horiz();
+  else if (m === (N|S)) next = vert();
+  else if (m === (N|E|S|W)) next = cross();
   else if (m === (E|S) || m === (W|S) || m === (E|N) || m === (W|N)) next = corner(m);
-
-  // tees
   else if (m === (E|S|W) || m === (E|N|W) || m === (N|E|S) || m === (N|W|S)) next = tee(m);
-
-  // cross
-  else if (m === (N|E|S|W)) next = crossGlyph();
-
-  // endpoints (N/S/E/W only): do NOT erase; keep what is there
-  else next = cur;
-
-  // critical anti-erase rule:
-  // if we have a nonzero mask but no mapping, keep current glyph
-  if (!next) next = cur;
+  else {
+    // endpoints (N only / S only / etc): DO NOT erase
+    next = cur;
+  }
 
   ascii[r][c] = next;
   return next;
@@ -649,6 +621,26 @@ function axisStylesFromNeighbors(r, c) {
   }
 
   return { vert, horz };
+}
+
+
+
+function normalizeAffected(affected, stroke) {
+  for (let pass = 0; pass < 2; pass++) {
+    let changed = false;
+    affected.forEach((key) => {
+      const [rs, cs] = key.split(",");
+      const r = Number(rs), c = Number(cs);
+      const prev = ascii[r][c];
+      const next = recomputeWireCell(r, c);
+      if (prev !== next) {
+        stroke.push({ r, c, prev, next });
+        ascii[r][c] = next;
+        changed = true;
+      }
+    });
+    if (!changed) break;
+  }
 }
 
 
