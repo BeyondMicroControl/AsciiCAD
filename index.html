@@ -324,6 +324,34 @@ function isDoubleWire(ch) {
          ch === "╠" || ch === "╣" || ch === "╦" || ch === "╩" || ch === "╬";
 }
 
+
+
+function normalizeAffected(affected, stroke) {
+  // Do 2 passes to allow junction changes to propagate.
+  for (let pass = 0; pass < 2; pass++) {
+    let changed = false;
+
+    affected.forEach((key) => {
+      const parts = key.split(",");
+      const r = Number(parts[0]);
+      const c = Number(parts[1]);
+
+      const prev = ascii[r][c];
+      const next = recomputeWireCell(r, c);
+
+      if (prev !== next) {
+        // Record in same stroke for undo
+        stroke.push({ r, c, prev, next });
+        ascii[r][c] = next;
+        changed = true;
+      }
+    });
+
+    if (!changed) break; // stable already
+  }
+}
+
+
 function isWireGlyph(ch) {
   return glyphToMask.has(ch); // now includes both single+double+space
 }
@@ -1144,7 +1172,7 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
     }
 
   }
-
+/*
   // PASS 2: recompute junctions on touched cells + 4-neighbors
   if (mergeEnabled && touched.length) {
     const affected = new Set();
@@ -1167,6 +1195,14 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
       }
     });
   }
+  */
+
+  if (mergeEnabled && touched.length) {
+  const affected = new Set();
+  for (let i = 0; i < touched.length; i++) addNeighborsToSet(affected, touched[i].r, touched[i].c);
+
+  normalizeAffected(affected, stroke);
+}
 
   lineDrag = null;
   pushStrokeIfNonEmpty(stroke);
