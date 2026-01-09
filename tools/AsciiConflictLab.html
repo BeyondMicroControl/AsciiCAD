@@ -1,0 +1,996 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AsciiCAD Conflict Lab v0.1</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --panel:#111827; --panel2:#0f172a; --text:#e5e7eb; --muted:#94a3b8;
+      --border:#1f2937; --btn:#1f2937; --btn2:#2563eb; --bad:#ef4444; --warn:#f59e0b; --ok:#10b981;
+    }
+    html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+    .app{display:flex; height:100%;}
+    .left{width:360px; min-width:320px; max-width:520px; background:var(--panel); border-right:1px solid var(--border); display:flex; flex-direction:column;}
+    .left header{padding:12px 12px 8px; border-bottom:1px solid var(--border);}
+    .left header h1{font-size:14px; margin:0 0 6px 0; font-weight:700;}
+    .left header .sub{font-size:12px; color:var(--muted); line-height:1.3}
+    .section{padding:10px 12px; border-bottom:1px solid var(--border);}
+    .section h2{font-size:12px; margin:0 0 8px 0; color:var(--muted); font-weight:700; letter-spacing:.02em; text-transform:uppercase;}
+    textarea{width:100%; box-sizing:border-box; resize:vertical; min-height:120px; max-height:260px; background:var(--panel2); color:var(--text);
+      border:1px solid var(--border); border-radius:8px; padding:10px; font: 12px ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; }
+    .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+    button{background:var(--btn); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; cursor:pointer; font-size:12px;}
+    button.primary{background:var(--btn2); border-color:#1d4ed8;}
+    button:active{transform:translateY(1px);}
+    .tiny{font-size:11px; color:var(--muted);}
+    .kv{display:grid; grid-template-columns: 110px 1fr; gap:6px 10px; font-size:12px; align-items:center;}
+    .kv .k{color:var(--muted);}
+    .list{overflow:auto; max-height:260px; border:1px solid var(--border); border-radius:8px; background:var(--panel2);}
+    .item{padding:8px 10px; border-bottom:1px solid var(--border); cursor:pointer;}
+    .item:last-child{border-bottom:none;}
+    .item .t{font-size:12px;}
+    .item .m{font-size:11px; color:var(--muted);}
+    .badge{display:inline-block; padding:2px 6px; border-radius:999px; font-size:10px; margin-right:6px; border:1px solid var(--border);}
+    .b-red{background:rgba(239,68,68,.15); border-color:rgba(239,68,68,.35); color:#fecaca;}
+    .b-amber{background:rgba(245,158,11,.15); border-color:rgba(245,158,11,.35); color:#fde68a;}
+    .b-green{background:rgba(16,185,129,.15); border-color:rgba(16,185,129,.35); color:#bbf7d0;}
+    .right{flex:1; position:relative; overflow:hidden;}
+    .topbar{position:absolute; top:10px; left:10px; right:10px; display:flex; gap:10px; align-items:center; pointer-events:none;}
+    .pill{pointer-events:auto; background:rgba(17,24,39,.85); border:1px solid rgba(31,41,55,.9); border-radius:999px;
+      padding:8px 10px; display:flex; gap:10px; align-items:center; font-size:12px; color:var(--muted); backdrop-filter: blur(6px);}
+    .pill strong{color:var(--text); font-weight:700;}
+    canvas{position:absolute; inset:0; background:#0b0f14; }
+    .inspector{border-top:1px solid var(--border);}
+    .sugs{display:flex; flex-wrap:wrap; gap:6px;}
+    .sugs button{padding:6px 8px; font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;}
+    input[type="file"]{display:none;}
+    label.filebtn{display:inline-block; background:var(--btn); border:1px solid var(--border); border-radius:8px; padding:8px 10px; cursor:pointer; font-size:12px;}
+    .checkrow{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+    .checkrow label{display:flex; gap:6px; align-items:center; font-size:12px; color:var(--muted);}
+    .hr{height:1px; background:var(--border); margin:10px 0;}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="left">
+    <header>
+      <h1>Conflict Lab</h1>
+      <div class="sub">
+        Paste a grid, scan for sensitive crossings/endings, preview fixes with minimal ripple, export patched text or JSON patch.
+      </div>
+    </header>
+
+    <div class="section">
+      <h2>Input</h2>
+      <textarea id="inputText" spellcheck="false" placeholder="Paste your UTF-8 schematic text here..."></textarea>
+      <div class="row" style="margin-top:8px">
+        <button id="btnLoadFromTextarea" class="primary">Load Grid</button>
+        <label class="filebtn" for="fileInput">Load File</label>
+        <input id="fileInput" type="file" accept=".txt,.asc,.md,.log,.csv,.json,text/plain" />
+        <button id="btnCopyOut">Copy Output</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="btnExportText">Download Text</button>
+        <button id="btnExportPatch">Download Patch JSON</button>
+      </div>
+      <div class="tiny" style="margin-top:8px">
+        Tip: Use mouse wheel to zoom; drag with right button (or Shift+drag) to pan.
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Scan</h2>
+      <div class="checkrow">
+        <label><input type="checkbox" id="chkCross" checked> Crossings</label>
+        <label><input type="checkbox" id="chkEnds" checked> Endings</label>
+        <label><input type="checkbox" id="chkMismatch" checked> Mismatch</label>
+        <label><input type="checkbox" id="chkPins" checked> Pin-like</label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="btnScan" class="primary">Scan Conflicts</button>
+        <button id="btnAutoFixSel">Auto-fix Selected</button>
+        <button id="btnNormalizeSel">Normalize (Ripple)</button>
+      </div>
+      <div class="tiny" style="margin-top:8px">
+        “Mismatch” flags cells where the glyph’s connectivity disagrees with neighbors. “Normalize” applies a small ripple (up to 2 passes) around selection.
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Undo / Redo</h2>
+      <div class="row">
+        <button id="btnUndo">Undo</button>
+        <button id="btnRedo">Redo</button>
+        <button id="btnResetView">Reset View</button>
+      </div>
+    </div>
+
+    <div class="section inspector">
+      <h2>Selected cell</h2>
+      <div class="kv">
+        <div class="k">Row, Col</div><div id="selRC">—</div>
+        <div class="k">Char</div><div id="selCh">—</div>
+        <div class="k">Computed mask</div><div id="selMask">—</div>
+        <div class="k">Axis styles</div><div id="selAxis">—</div>
+        <div class="k">Flags</div><div id="selFlags">—</div>
+      </div>
+      <div class="hr"></div>
+      <div class="tiny" style="margin-bottom:8px">Suggestions (click to preview/apply):</div>
+      <div class="sugs" id="sugBtns"></div>
+    </div>
+
+    <div class="section" style="border-bottom:none; flex:1; display:flex; flex-direction:column;">
+      <h2>Conflicts</h2>
+      <div class="list" id="confList" style="flex:1;"></div>
+      <div class="tiny" style="margin-top:8px">
+        Click a conflict to center it. Then choose a suggestion or “Normalize (Ripple)”.
+      </div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="topbar">
+      <div class="pill">
+        <span><strong id="statSize">—</strong> cells</span>
+        <span>Zoom: <strong id="statZoom">100%</strong></span>
+        <span>Pan: <strong id="statPan">0,0</strong></span>
+        <span>Hover: <strong id="statHover">—</strong></span>
+      </div>
+    </div>
+    <canvas id="cv"></canvas>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------------------------
+  // Connectivity + style model
+  // ---------------------------
+  const N=1, E=2, S=4, W=8;
+
+  // Base glyph->mask map (box drawing light/double + mixed + heavy basics)
+  const glyphToMask = new Map([
+    [" ",0],
+
+    // light
+    ["─",E|W], ["│",N|S],
+    ["┌",E|S], ["┐",W|S], ["└",E|N], ["┘",W|N],
+    ["├",N|E|S], ["┤",N|W|S],
+    ["┬",E|S|W], ["┴",E|N|W],
+    ["┼",N|E|S|W],
+
+    // double
+    ["═",E|W], ["║",N|S],
+    ["╔",E|S], ["╗",W|S], ["╚",E|N], ["╝",W|N],
+    ["╠",N|E|S], ["╣",N|W|S],
+    ["╦",E|S|W], ["╩",E|N|W],
+    ["╬",N|E|S|W],
+
+    // mixed crosses
+    ["╪",N|E|S|W], // horiz double, vert single
+    ["╫",N|E|S|W], // horiz single, vert double
+
+    // mixed tees
+    ["╤",E|S|W], ["╥",E|S|W],
+    ["╧",E|N|W], ["╨",E|N|W],
+    ["╞",N|E|S], ["╟",N|E|S],
+    ["╡",N|W|S], ["╢",N|W|S],
+
+    // mixed corners
+    ["╒",E|S], ["╓",E|S],
+    ["╕",W|S], ["╖",W|S],
+    ["╘",E|N], ["╙",E|N],
+    ["╛",W|N], ["╜",W|N],
+
+    // heavy line drawing (treated as "thick")
+    ["━",E|W], ["┃",N|S],
+    ["┏",E|S], ["┓",W|S], ["┗",E|N], ["┛",W|N],
+    ["┣",N|E|S], ["┫",N|W|S],
+    ["┳",E|S|W], ["┻",E|N|W],
+    ["╋",N|E|S|W],
+
+    // example heavy/light mixed cross (your example uses ┿)
+    ["┿",N|E|S|W], // treat as cross; style resolved separately
+  ]);
+
+  // Which glyphs we consider "wire-like" (normalizable)
+  function isWireGlyph(ch) { return glyphToMask.has(ch); }
+
+  // Style classification: thin vs thick.
+  // thick includes double box + heavy line drawing.
+  function isThickGlyph(ch) {
+    if ("═║╔╗╚╝╠╣╦╩╬╪╤╧╞╡╒╕╘╛".includes(ch)) return true; // many double/mixed pieces
+    if ("━┃┏┓┗┛┣┫┳┻╋┿".includes(ch)) return true; // heavy set
+    return false;
+  }
+  function styleOfGlyph(ch) {
+    if (!isWireGlyph(ch) || ch === " ") return null;
+    return isThickGlyph(ch) ? "thick" : "thin";
+  }
+
+  // Pin-like / symbol anchors (extend as you wish)
+  const pinLikeGlyphs = new Set(["⏊","⏉","⏚","⏛","⏦","⏧","⏣","+"]);
+
+  // ---------------------------
+  // Grid state
+  // ---------------------------
+  let grid = [[]];      // grid[r][c] = char
+  let rows = 0, cols = 0;
+  let originalGrid = null; // for patch export
+  let selected = { r: -1, c: -1 };
+  let hover = { r: -1, c: -1 };
+  let conflicts = [];
+
+  // Undo/redo: each entry is a stroke array of {r,c,prev,next}
+  const undo = [];
+  const redo = [];
+
+  function cloneGrid(g) {
+    return g.map(row => row.slice());
+  }
+
+  function gridFromText(text) {
+    const t = String(text || "").replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+    const lines = t.split("\n");
+    rows = lines.length;
+    cols = 0;
+    for (let i=0;i<lines.length;i++) cols = Math.max(cols, [...lines[i]].length);
+
+    grid = new Array(rows);
+    for (let r=0;r<rows;r++) {
+      const arr = [...(lines[r] || "")];
+      const row = new Array(cols);
+      for (let c=0;c<cols;c++) row[c] = arr[c] || " ";
+      grid[r] = row;
+    }
+    originalGrid = cloneGrid(grid);
+    selected = {r:-1,c:-1};
+    hover = {r:-1,c:-1};
+    conflicts = [];
+    undo.length = 0; redo.length = 0;
+  }
+
+  function textFromGrid(g) {
+    let out = "";
+    for (let r=0;r<g.length;r++) {
+      // Trim trailing spaces for export readability (optional)
+      let line = g[r].join("");
+      line = line.replace(/[ \t]+$/g,"");
+      out += line + "\n";
+    }
+    // Remove leading/trailing empty lines
+    out = out.replace(/^\n+/,"").replace(/\n+$/,"\n");
+    return out;
+  }
+
+  // ---------------------------
+  // Compute connectivity from neighbors
+  // ---------------------------
+  function maskAt(r,c) {
+    if (r<0||c<0||r>=rows||c>=cols) return 0;
+    return glyphToMask.get(grid[r][c]) ?? 0;
+  }
+
+  function computedMaskAndAxis(r,c) {
+    // Determine which neighbors connect INTO (r,c)
+    let m=0;
+    let hThick=false, vThick=false;
+
+    // UP contributes N if it connects DOWN (S)
+    if (r>0) {
+      const up = grid[r-1][c];
+      const um = glyphToMask.get(up) ?? 0;
+      if (um & S) { m |= N; if (styleOfGlyph(up)==="thick") vThick=true; }
+    }
+    // DOWN contributes S if it connects UP (N)
+    if (r<rows-1) {
+      const dn = grid[r+1][c];
+      const dm = glyphToMask.get(dn) ?? 0;
+      if (dm & N) { m |= S; if (styleOfGlyph(dn)==="thick") vThick=true; }
+    }
+    // LEFT contributes W if it connects RIGHT (E)
+    if (c>0) {
+      const lt = grid[r][c-1];
+      const lm = glyphToMask.get(lt) ?? 0;
+      if (lm & E) { m |= W; if (styleOfGlyph(lt)==="thick") hThick=true; }
+    }
+    // RIGHT contributes E if it connects LEFT (W)
+    if (c<cols-1) {
+      const rt = grid[r][c+1];
+      const rm = glyphToMask.get(rt) ?? 0;
+      if (rm & W) { m |= E; if (styleOfGlyph(rt)==="thick") hThick=true; }
+    }
+
+    const hasH = (m & (E|W)) !== 0;
+    const hasV = (m & (N|S)) !== 0;
+    const hStyle = hasH ? (hThick ? "thick":"thin") : null;
+    const vStyle = hasV ? (vThick ? "thick":"thin") : null;
+
+    return { m, hasH, hasV, hStyle, vStyle };
+  }
+
+  // ---------------------------
+  // Choose glyph from computed mask + axis styles (thin/thick/mixed)
+  // ---------------------------
+  function glyphFor(m, hStyle, vStyle) {
+    const bothThin  = (hStyle!=="thick" && vStyle!=="thick");
+    const bothThick = (hStyle==="thick" && vStyle==="thick");
+
+    // helpers for straights
+    const H = bothThick ? "═" : "─";
+    const V = bothThick ? "║" : "│";
+
+    // endpoints: keep simple (avoid erasing)
+    if (m === N || m === S) return vStyle==="thick" ? "║" : "│";
+    if (m === E || m === W) return hStyle==="thick" ? "═" : "─";
+
+    // straight
+    if (m === (E|W)) return hStyle==="thick" ? "═" : "─";
+    if (m === (N|S)) return vStyle==="thick" ? "║" : "│";
+
+    // cross
+    if (m === (N|E|S|W)) {
+      if (bothThin) return "┼";
+      if (bothThick) return "╬";
+      return (hStyle==="thick") ? "╪" : "╫";
+    }
+
+    // tees
+    if (m === (E|S|W)) { // top tee
+      if (bothThin) return "┬";
+      if (bothThick) return "╦";
+      return (hStyle==="thick") ? "╤" : "╥";
+    }
+    if (m === (E|N|W)) { // bottom tee
+      if (bothThin) return "┴";
+      if (bothThick) return "╩";
+      return (hStyle==="thick") ? "╧" : "╨";
+    }
+    if (m === (N|E|S)) { // left tee
+      if (bothThin) return "├";
+      if (bothThick) return "╠";
+      return (hStyle==="thick") ? "╞" : "╟";
+    }
+    if (m === (N|W|S)) { // right tee
+      if (bothThin) return "┤";
+      if (bothThick) return "╣";
+      return (hStyle==="thick") ? "╡" : "╢";
+    }
+
+    // corners
+    if (m === (E|S)) { // top-left
+      if (bothThin) return "┌";
+      if (bothThick) return "╔";
+      return (hStyle==="thick") ? "╒" : "╓";
+    }
+    if (m === (W|S)) { // top-right
+      if (bothThin) return "┐";
+      if (bothThick) return "╗";
+      return (hStyle==="thick") ? "╕" : "╖";
+    }
+    if (m === (E|N)) { // bottom-left
+      if (bothThin) return "└";
+      if (bothThick) return "╚";
+      return (hStyle==="thick") ? "╘" : "╙";
+    }
+    if (m === (W|N)) { // bottom-right
+      if (bothThin) return "┘";
+      if (bothThick) return "╝";
+      return (hStyle==="thick") ? "╛" : "╜";
+    }
+
+    // fallback: if unknown, keep blank
+    return " ";
+  }
+
+  // ---------------------------
+  // Normalize / ripple
+  // ---------------------------
+  function addNeighbors(set, r, c) {
+    set.add(r+","+c);
+    if (r>0) set.add((r-1)+","+c);
+    if (r<rows-1) set.add((r+1)+","+c);
+    if (c>0) set.add(r+","+(c-1));
+    if (c<cols-1) set.add(r+","+(c+1));
+  }
+
+  function normalizeAffected(affected, stroke) {
+    // Two passes to let junctions stabilize (important for stacked bars + vertical line)
+    for (let pass=0; pass<2; pass++) {
+      let changed=false;
+      affected.forEach(key => {
+        const [rs,cs] = key.split(",");
+        const r = +rs, c = +cs;
+        const cur = grid[r][c];
+
+        // Don't auto-normalize symbol/pin-like characters
+        if (pinLikeGlyphs.has(cur)) return;
+
+        // Only normalize blanks or wire glyphs
+        if (cur !== " " && !isWireGlyph(cur)) return;
+
+        const { m, hStyle, vStyle } = computedMaskAndAxis(r,c);
+        if (m === 0) return; // leave as-is; this lab focuses on conflicts, not cleanup
+
+        const next = glyphFor(m, hStyle, vStyle);
+        if (next && next !== cur) {
+          stroke.push({r,c,prev:cur,next});
+          grid[r][c] = next;
+          changed=true;
+        }
+      });
+      if (!changed) break;
+    }
+  }
+
+  function applyStroke(stroke) {
+    if (!stroke || stroke.length===0) return;
+    undo.push(stroke);
+    redo.length = 0;
+  }
+
+  function setCell(r,c,ch, recordStroke=true) {
+    if (r<0||c<0||r>=rows||c>=cols) return;
+    const prev = grid[r][c];
+    if (prev === ch) return;
+    const stroke = [{r,c,prev,next:ch}];
+    grid[r][c] = ch;
+    if (recordStroke) applyStroke(stroke);
+  }
+
+  // ---------------------------
+  // Conflict detection
+  // ---------------------------
+  function scanConflicts() {
+    conflicts = [];
+    const wantCross = document.getElementById("chkCross").checked;
+    const wantEnds = document.getElementById("chkEnds").checked;
+    const wantMismatch = document.getElementById("chkMismatch").checked;
+    const wantPins = document.getElementById("chkPins").checked;
+
+    for (let r=0;r<rows;r++) {
+      for (let c=0;c<cols;c++) {
+        const ch = grid[r][c];
+        const ownMask = glyphToMask.get(ch) ?? 0;
+        const ownStyle = styleOfGlyph(ch);
+        const cm = computedMaskAndAxis(r,c);
+
+        const degree = ((cm.m&N)?1:0)+((cm.m&E)?1:0)+((cm.m&S)?1:0)+((cm.m&W)?1:0);
+        const hasCrossAxes = cm.hasH && cm.hasV;
+        const mixedAxes = hasCrossAxes && cm.hStyle && cm.vStyle && (cm.hStyle !== cm.vStyle);
+
+        const mismatch = (cm.m !== 0) && (ch===" " || isWireGlyph(ch)) && (ownMask !== 0 ? (ownMask !== cm.m) : (ch===" "));
+
+        const isPin = pinLikeGlyphs.has(ch);
+
+        let flags = [];
+        let severity = 0;
+
+        if (wantPins && isPin) { flags.push("pin-like"); severity = Math.max(severity, 2); }
+        if (wantCross && hasCrossAxes) { flags.push("crossing"); severity = Math.max(severity, 2); }
+        if (wantCross && mixedAxes) { flags.push("mixed axes"); severity = Math.max(severity, 3); }
+        if (wantEnds && degree===1 && (ch===" " || isWireGlyph(ch))) { flags.push("ending"); severity = Math.max(severity, 1); }
+        if (wantMismatch && mismatch) { flags.push("mismatch"); severity = Math.max(severity, 2); }
+
+        // only record if any meaningful flag
+        if (flags.length) {
+          conflicts.push({
+            r,c,ch,
+            flags,
+            severity,
+            cm,
+            ownMask,
+            ownStyle,
+          });
+        }
+      }
+    }
+
+    // sort: severity desc, then row/col
+    conflicts.sort((a,b)=> (b.severity-a.severity) || (a.r-b.r) || (a.c-b.c));
+  }
+
+  function suggestionsForCell(r,c) {
+    const ch = grid[r][c];
+    const cm = computedMaskAndAxis(r,c);
+    const sugs = [];
+    const label = (g, why) => ({ g, why });
+
+    // keep
+    sugs.push(label(ch, "keep"));
+
+    // if computed mask exists, suggest normalized glyph
+    if (cm.m !== 0) {
+      sugs.push(label(glyphFor(cm.m, cm.hStyle, cm.vStyle), "normalize"));
+      // also offer pure thin / pure thick versions for the same topology
+      sugs.push(label(glyphFor(cm.m, "thin","thin"), "force thin"));
+      sugs.push(label(glyphFor(cm.m, "thick","thick"), "force thick"));
+    }
+
+    // if the glyph is heavy, suggest box-double equivalents
+    if ("━┃┿╋".includes(ch)) {
+      if (ch==="━") sugs.push(label("═", "convert heavy→double"));
+      if (ch==="┃") sugs.push(label("║", "convert heavy→double"));
+      if (ch==="┿"||ch==="╋") sugs.push(label("╬", "convert heavy→double"));
+    }
+
+    // de-dup
+    const seen = new Set();
+    const out = [];
+    for (let i=0;i<sugs.length;i++) {
+      const g = sugs[i].g;
+      if (!g || g.length===0) continue;
+      if (seen.has(g)) continue;
+      seen.add(g);
+      out.push(sugs[i]);
+    }
+    return out;
+  }
+
+  // ---------------------------
+  // Rendering (canvas)
+  // ---------------------------
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
+
+  // view state
+  let scale = 1.0;
+  let panX = 20, panY = 20; // in pixels
+  const baseCellW = 10;
+  const baseCellH = 20;
+
+  function resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = Math.floor(cv.clientWidth * dpr);
+    cv.height = Math.floor(cv.clientHeight * dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    draw();
+  }
+  new ResizeObserver(resizeCanvas).observe(cv);
+
+  function cellMetrics() {
+    // Keep font tied to cell height. This is a lab tool; accuracy > aesthetics.
+    const cw = baseCellW * scale;
+    const ch = baseCellH * scale;
+    const fontPx = Math.max(8, Math.floor(ch * 0.86));
+    return { cw, ch, fontPx };
+  }
+
+  function screenToCell(x,y) {
+    const {cw,ch} = cellMetrics();
+    const gx = (x - panX) / cw;
+    const gy = (y - panY) / ch;
+    const c = Math.floor(gx);
+    const r = Math.floor(gy);
+    if (r<0||c<0||r>=rows||c>=cols) return null;
+    return {r,c};
+  }
+
+  function centerOnCell(r,c) {
+    const {cw,ch} = cellMetrics();
+    panX = cv.clientWidth/2 - (c+0.5)*cw;
+    panY = cv.clientHeight/2 - (r+0.5)*ch;
+    draw();
+  }
+
+  function draw() {
+    ctx.clearRect(0,0,cv.clientWidth,cv.clientHeight);
+
+    const {cw,ch,fontPx} = cellMetrics();
+    ctx.save();
+    ctx.translate(panX, panY);
+
+    // background grid (subtle)
+    ctx.strokeStyle = "rgba(148,163,184,0.10)";
+    ctx.lineWidth = 1;
+
+    // visible bounds
+    const x0 = -panX;
+    const y0 = -panY;
+    const x1 = x0 + cv.clientWidth;
+    const y1 = y0 + cv.clientHeight;
+
+    const c0 = Math.max(0, Math.floor(x0 / cw) - 1);
+    const r0 = Math.max(0, Math.floor(y0 / ch) - 1);
+    const c1 = Math.min(cols-1, Math.ceil(x1 / cw) + 1);
+    const r1 = Math.min(rows-1, Math.ceil(y1 / ch) + 1);
+
+    // grid lines
+    for (let c=c0; c<=c1+1; c++) {
+      const x = c*cw;
+      ctx.beginPath(); ctx.moveTo(x, r0*ch); ctx.lineTo(x, (r1+1)*ch); ctx.stroke();
+    }
+    for (let r=r0; r<=r1+1; r++) {
+      const y = r*ch;
+      ctx.beginPath(); ctx.moveTo(c0*cw, y); ctx.lineTo((c1+1)*cw, y); ctx.stroke();
+    }
+
+    // text
+    ctx.font = `${fontPx}px ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace`;
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(229,231,235,0.95)";
+
+    for (let r=r0; r<=r1; r++) {
+      for (let c=c0; c<=c1; c++) {
+        const ch0 = grid[r][c];
+        if (ch0 === " ") continue;
+        const x = c*cw + cw/2;
+        const y = r*ch + ch/2;
+        ctx.fillText(ch0, x, y);
+      }
+    }
+
+    // conflict overlays
+    if (conflicts && conflicts.length) {
+      for (let i=0;i<conflicts.length;i++) {
+        const it = conflicts[i];
+        if (it.r<r0||it.r>r1||it.c<c0||it.c>c1) continue;
+        const x = it.c*cw, y = it.r*ch;
+        let col = "rgba(245,158,11,0.22)"; // amber
+        if (it.severity>=3) col = "rgba(239,68,68,0.22)";
+        else if (it.flags.includes("pin-like")) col = "rgba(139,92,246,0.18)";
+        ctx.fillStyle = col;
+        ctx.fillRect(x, y, cw, ch);
+      }
+    }
+
+    // selection / hover outlines
+    function outlineCell(r,c,color, lw) {
+      if (r<0||c<0||r>=rows||c>=cols) return;
+      const x=c*cw, y=r*ch;
+      ctx.strokeStyle=color; ctx.lineWidth=lw;
+      ctx.strokeRect(x+0.5, y+0.5, cw-1, ch-1);
+    }
+    outlineCell(hover.r, hover.c, "rgba(148,163,184,0.65)", 1);
+    outlineCell(selected.r, selected.c, "rgba(59,130,246,0.95)", 2);
+
+    ctx.restore();
+
+    // stats
+    document.getElementById("statSize").textContent = `${rows}×${cols}`;
+    document.getElementById("statZoom").textContent = `${Math.round(scale*100)}%`;
+    document.getElementById("statPan").textContent = `${Math.round(panX)},${Math.round(panY)}`;
+    document.getElementById("statHover").textContent = (hover.r>=0)? `${hover.r},${hover.c}` : "—";
+  }
+
+  // ---------------------------
+  // UI wiring
+  // ---------------------------
+  const inputText = document.getElementById("inputText");
+  const confList = document.getElementById("confList");
+
+  function refreshConflictList() {
+    confList.innerHTML = "";
+    if (!conflicts || conflicts.length===0) {
+      const div = document.createElement("div");
+      div.className="item";
+      div.innerHTML = `<div class="t">No conflicts found</div><div class="m">Try enabling more scan types.</div>`;
+      confList.appendChild(div);
+      return;
+    }
+    for (let i=0;i<conflicts.length;i++) {
+      const it = conflicts[i];
+      const div = document.createElement("div");
+      div.className = "item";
+      const badges = it.flags.map(f => {
+        const cls = (f==="mixed axes") ? "b-red" : (f==="crossing"||f==="mismatch") ? "b-amber" : (f==="pin-like") ? "b-green" : "b-amber";
+        return `<span class="badge ${cls}">${f}</span>`;
+      }).join("");
+      div.innerHTML = `
+        <div class="t">${badges} <span style="color:#e5e7eb">${it.r},${it.c}</span> <span style="color:#94a3b8">‘${escapeHtml(it.ch)}’</span></div>
+        <div class="m">mask=${maskStr(it.cm.m)} h=${it.cm.hStyle||"—"} v=${it.cm.vStyle||"—"}</div>
+      `;
+      div.addEventListener("click", () => {
+        selected = { r: it.r, c: it.c };
+        centerOnCell(it.r, it.c);
+        updateInspector();
+        draw();
+      });
+      confList.appendChild(div);
+    }
+  }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])); }
+  function maskStr(m){ return `${(m&N)?"N":""}${(m&E)?"E":""}${(m&S)?"S":""}${(m&W)?"W":""}` || "0"; }
+
+  function updateInspector() {
+    const selRC = document.getElementById("selRC");
+    const selCh = document.getElementById("selCh");
+    const selMask = document.getElementById("selMask");
+    const selAxis = document.getElementById("selAxis");
+    const selFlags = document.getElementById("selFlags");
+    const sugBtns = document.getElementById("sugBtns");
+
+    if (selected.r<0) {
+      selRC.textContent = "—";
+      selCh.textContent = "—";
+      selMask.textContent = "—";
+      selAxis.textContent = "—";
+      selFlags.textContent = "—";
+      sugBtns.innerHTML = "";
+      return;
+    }
+
+    const r=selected.r, c=selected.c;
+    const ch = grid[r][c];
+    const cm = computedMaskAndAxis(r,c);
+
+    selRC.textContent = `${r}, ${c}`;
+    selCh.textContent = `‘${ch}’ (U+${ch.codePointAt(0).toString(16).toUpperCase()})`;
+    selMask.textContent = `${maskStr(cm.m)} (${cm.m})`;
+    selAxis.textContent = `H=${cm.hStyle||"—"}  V=${cm.vStyle||"—"}`;
+
+    const flags = [];
+    const ownMask = glyphToMask.get(ch) ?? 0;
+    if (pinLikeGlyphs.has(ch)) flags.push("pin-like");
+    if (cm.hasH && cm.hasV) flags.push("crossing");
+    if (cm.hasH && cm.hasV && cm.hStyle && cm.vStyle && cm.hStyle!==cm.vStyle) flags.push("mixed axes");
+    const deg = ((cm.m&N)?1:0)+((cm.m&E)?1:0)+((cm.m&S)?1:0)+((cm.m&W)?1:0);
+    if (deg===1 && (ch===" " || isWireGlyph(ch))) flags.push("ending");
+    if (cm.m!==0 && (ch===" " || isWireGlyph(ch)) && ownMask!==0 && ownMask!==cm.m) flags.push("mismatch");
+    selFlags.textContent = flags.length ? flags.join(", ") : "—";
+
+    const sugs = suggestionsForCell(r,c);
+    sugBtns.innerHTML = "";
+    for (let i=0;i<sugs.length;i++) {
+      const s = sugs[i];
+      const b = document.createElement("button");
+      b.textContent = s.g;
+      b.title = s.why;
+      b.addEventListener("click", () => {
+        // apply + ripple normalize small neighborhood
+        const stroke = [];
+        const prev = grid[r][c];
+        if (prev !== s.g) {
+          stroke.push({r,c,prev,next:s.g});
+          grid[r][c] = s.g;
+        }
+        const affected = new Set();
+        addNeighbors(affected, r, c);
+        // small ripple to stabilize junctions
+        normalizeAffected(affected, stroke);
+        applyStroke(stroke);
+        scanConflicts();
+        refreshConflictList();
+        updateInspector();
+        draw();
+      });
+      sugBtns.appendChild(b);
+    }
+  }
+
+  // ---------------------------
+  // Interaction: mouse pan/zoom/select
+  // ---------------------------
+  let panDrag = null;
+
+  cv.addEventListener("contextmenu", (e)=> e.preventDefault());
+
+  cv.addEventListener("mousemove", (e) => {
+    const rect = cv.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (panDrag) {
+      const dx = x - panDrag.x;
+      const dy = y - panDrag.y;
+      panX = panDrag.panX0 + dx;
+      panY = panDrag.panY0 + dy;
+      draw();
+      return;
+    }
+
+    const cell = screenToCell(x,y);
+    hover = cell ? cell : {r:-1,c:-1};
+    draw();
+  });
+
+  cv.addEventListener("mousedown", (e) => {
+    const rect = cv.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Pan: right button OR shift+left
+    if (e.button === 2 || (e.button===0 && e.shiftKey)) {
+      panDrag = { x, y, panX0: panX, panY0: panY };
+      return;
+    }
+
+    if (e.button !== 0) return;
+
+    const cell = screenToCell(x,y);
+    if (!cell) return;
+    selected = cell;
+    updateInspector();
+    draw();
+  });
+
+  window.addEventListener("mouseup", () => { panDrag = null; });
+
+  cv.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const rect = cv.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    // zoom around mouse
+    const old = scale;
+    const dir = (e.deltaY < 0) ? 1.1 : 0.9;
+    scale = Math.min(8.0, Math.max(0.25, scale * dir));
+
+    const {cw:ocw, ch:och} = {cw: baseCellW*old, ch: baseCellH*old};
+    const {cw:ncw, ch:nch} = {cw: baseCellW*scale, ch: baseCellH*scale};
+
+    // Keep the cell under cursor stable
+    const gx = (mx - panX) / ocw;
+    const gy = (my - panY) / och;
+    panX = mx - gx * ncw;
+    panY = my - gy * nch;
+
+    draw();
+  }, { passive:false });
+
+  // ---------------------------
+  // Buttons
+  // ---------------------------
+  document.getElementById("btnLoadFromTextarea").addEventListener("click", () => {
+    gridFromText(inputText.value);
+    scanConflicts();
+    refreshConflictList();
+    updateInspector();
+    draw();
+  });
+
+  document.getElementById("fileInput").addEventListener("change", async (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const txt = await f.text();
+    inputText.value = txt;
+    gridFromText(txt);
+    scanConflicts();
+    refreshConflictList();
+    updateInspector();
+    draw();
+    e.target.value = "";
+  });
+
+  document.getElementById("btnScan").addEventListener("click", () => {
+    scanConflicts();
+    refreshConflictList();
+    updateInspector();
+    draw();
+  });
+
+  document.getElementById("btnNormalizeSel").addEventListener("click", () => {
+    if (selected.r<0) return;
+    const stroke = [];
+    const affected = new Set();
+    // small ripple region around selection
+    for (let dr=-2; dr<=2; dr++) for (let dc=-2; dc<=2; dc++) {
+      const rr = selected.r+dr, cc=selected.c+dc;
+      if (rr>=0&&cc>=0&&rr<rows&&cc<cols) affected.add(rr+","+cc);
+    }
+    normalizeAffected(affected, stroke);
+    applyStroke(stroke);
+    scanConflicts();
+    refreshConflictList();
+    updateInspector();
+    draw();
+  });
+
+  document.getElementById("btnAutoFixSel").addEventListener("click", () => {
+    if (selected.r<0) return;
+    const r=selected.r, c=selected.c;
+    const stroke = [];
+    const cm = computedMaskAndAxis(r,c);
+    if (cm.m===0) return;
+    const target = glyphFor(cm.m, cm.hStyle, cm.vStyle);
+    if (target && target !== grid[r][c]) {
+      stroke.push({r,c,prev:grid[r][c],next:target});
+      grid[r][c] = target;
+    }
+    const affected = new Set();
+    for (let dr=-2; dr<=2; dr++) for (let dc=-2; dc<=2; dc++) {
+      const rr=r+dr, cc=c+dc;
+      if (rr>=0&&cc>=0&&rr<rows&&cc<cols) affected.add(rr+","+cc);
+    }
+    normalizeAffected(affected, stroke);
+    applyStroke(stroke);
+    scanConflicts();
+    refreshConflictList();
+    updateInspector();
+    draw();
+  });
+
+  document.getElementById("btnUndo").addEventListener("click", () => {
+    const stroke = undo.pop();
+    if (!stroke) return;
+    for (let i=stroke.length-1;i>=0;i--) {
+      const s = stroke[i];
+      grid[s.r][s.c] = s.prev;
+    }
+    redo.push(stroke);
+    scanConflicts(); refreshConflictList(); updateInspector(); draw();
+  });
+
+  document.getElementById("btnRedo").addEventListener("click", () => {
+    const stroke = redo.pop();
+    if (!stroke) return;
+    for (let i=0;i<stroke.length;i++) {
+      const s = stroke[i];
+      grid[s.r][s.c] = s.next;
+    }
+    undo.push(stroke);
+    scanConflicts(); refreshConflictList(); updateInspector(); draw();
+  });
+
+  document.getElementById("btnResetView").addEventListener("click", () => {
+    scale = 1.0;
+    panX = 20; panY = 20;
+    draw();
+  });
+
+  document.getElementById("btnCopyOut").addEventListener("click", async () => {
+    const txt = textFromGrid(grid);
+    try {
+      await navigator.clipboard.writeText(txt);
+    } catch {
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = txt;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+    }
+  });
+
+  function download(filename, content, mime) {
+    const blob = new Blob([content], { type: mime || "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  }
+
+  document.getElementById("btnExportText").addEventListener("click", () => {
+    download("conflictlab_patched.txt", textFromGrid(grid), "text/plain;charset=utf-8");
+  });
+
+  document.getElementById("btnExportPatch").addEventListener("click", () => {
+    if (!originalGrid) return;
+    const patch = [];
+    for (let r=0;r<rows;r++) for (let c=0;c<cols;c++) {
+      const a = originalGrid[r][c];
+      const b = grid[r][c];
+      if (a !== b) patch.push({ r, c, old: a, neu: b });
+    }
+    download("conflictlab_patch.json", JSON.stringify({ rows, cols, patch }, null, 2), "application/json;charset=utf-8");
+  });
+
+  // ---------------------------
+  // Boot with a tiny demo
+  // ---------------------------
+  const demo =
+`   │
+━┿━
+   │
+
+⏊+
+⏉
+`;
+  inputText.value = demo;
+  gridFromText(demo);
+  scanConflicts();
+  refreshConflictList();
+  updateInspector();
+  draw();
+
+})();
+</script>
+</body>
+</html>
