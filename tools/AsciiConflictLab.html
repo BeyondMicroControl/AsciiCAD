@@ -540,14 +540,60 @@
   const baseCellW = 10;
   const baseCellH = 20;
 
-  function resizeCanvas() {
-    const dpr = window.devicePixelRatio || 1;
-    cv.width = Math.floor(cv.clientWidth * dpr);
-    cv.height = Math.floor(cv.clientHeight * dpr);
-    ctx.setTransform(dpr,0,0,dpr,0,0);
+    // --- Resize (throttled + clamped) ---
+    const MAX_CANVAS_SIDE = 16384; // sqrt(268435456) => safe cap for width/height in device pixels
+    let resizePending = false;
+
+    function resizeCanvasToContainer() {
+    resizePending = false;
+
+    const container = cv.parentElement; // .right
+    if (!container) return;
+
+    const cssW = Math.max(1, Math.floor(container.clientWidth));
+    const cssH = Math.max(1, Math.floor(container.clientHeight));
+
+    // Clamp DPR if necessary to avoid exceeding MAX_CANVAS_SIDE
+    let dpr = window.devicePixelRatio || 1;
+    dpr = Math.max(1, Math.min(dpr, 4)); // hard cap DPR to avoid silly backing stores
+
+    let pxW = Math.floor(cssW * dpr);
+    let pxH = Math.floor(cssH * dpr);
+
+    // Clamp backing store size (device pixels)
+    pxW = Math.min(pxW, MAX_CANVAS_SIDE);
+    pxH = Math.min(pxH, MAX_CANVAS_SIDE);
+
+    // If backing store is unchanged, just update transform & redraw
+    if (cv.width !== pxW || cv.height !== pxH) {
+        cv.width = pxW;
+        cv.height = pxH;
+    }
+
+    // Map device pixels to CSS pixels
+    const sx = pxW / cssW;
+    const sy = pxH / cssH;
+    ctx.setTransform(sx, 0, 0, sy, 0, 0);
+
     draw();
-  }
-  new ResizeObserver(resizeCanvas).observe(cv);
+    }
+
+    function requestResize() {
+    if (resizePending) return;
+    resizePending = true;
+    requestAnimationFrame(resizeCanvasToContainer);
+    }
+
+    // Observe the container, not the canvas (prevents ResizeObserver loops)
+    const ro = new ResizeObserver(() => requestResize());
+    ro.observe(cv.parentElement);
+
+    // Also handle DPR changes / window resize
+    window.addEventListener("resize", requestResize);
+
+    // Initial
+    requestResize();
+
 
   function cellMetrics() {
     // Keep font tied to cell height. This is a lab tool; accuracy > aesthetics.
@@ -573,6 +619,22 @@
     panY = cv.clientHeight/2 - (r+0.5)*ch;
     draw();
   }
+
+  function mouseToCanvasCSS(e) {
+  const rect = cv.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function screenToCellFromCSS(x, y) {
+  const { cw, ch } = cellMetrics(); // cw/ch already in CSS pixels
+  const gx = (x - panX) / cw;
+  const gy = (y - panY) / ch;
+  const c = Math.floor(gx);
+  const r = Math.floor(gy);
+  if (r < 0 || c < 0 || r >= rows || c >= cols) return null;
+  return { r, c };
+}
+
 
   function draw() {
     ctx.clearRect(0,0,cv.clientWidth,cv.clientHeight);
@@ -769,9 +831,8 @@
   cv.addEventListener("contextmenu", (e)=> e.preventDefault());
 
   cv.addEventListener("mousemove", (e) => {
-    const rect = cv.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const p = mouseToCanvasCSS(e);
+    const x = p.x, y = p.y;
 
     if (panDrag) {
       const dx = x - panDrag.x;
@@ -782,7 +843,7 @@
       return;
     }
 
-    const cell = screenToCell(x,y);
+    const cell = screenToCellFromCSS(x, y);
     hover = cell ? cell : {r:-1,c:-1};
     draw();
   });
