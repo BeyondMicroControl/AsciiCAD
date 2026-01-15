@@ -1,0 +1,196 @@
+<html>
+    <html style="background-color:#B0B0B0"><head>
+        <title>Binary File Packager</title>
+        <meta name="description" content="">
+        <meta name="author" content="Freddy Vandriessche">
+        <meta charset="utf-8"> 
+        <link rel="stylesheet"        href="../res/COM_MAIN.css">
+        <script type="text/javascript" src="../res/COM_MAIN.js"></script>
+        <script type="text/javascript" src="TOOLS_Header.js"></script>
+        <script type="text/javascript" src="../res/pako.min.js"></script>
+      </head>
+      <div class=appbut id=COM_popup style="position: absolute; z-index: 3; left: 0px; top: 120px; " hidden="">
+        <div class="appbut" onclick="oCOM.POPUP.toggle('COM_popup');document.getElementById('COM_popup_text').innerHTML=''" style="text-align:center;float:right;">x</div>
+        <div id=COM_popup_text onclick="selectElementText(this)"></div>
+      </div>
+
+  <script defer type="text/javascript">
+
+    var CONF_version="1.1.1";
+    var CONF_builddate="20240114-190000";
+
+    var filename = "";
+
+    function init_gui(_o)
+    { 
+        document.getElementById('slider_title').outerHTML = _TITLE();       
+    }
+
+    function selectElementText(el, win)
+    {
+        win = win || window;
+        var doc = win.document, sel, range;
+        if (win.getSelection && doc.createRange) {
+            sel = win.getSelection();
+            range = doc.createRange();
+            range.selectNodeContents(el);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        } else if (doc.body.createTextRange) {
+            range = doc.body.createTextRange();
+            range.moveToElementText(el);
+            range.select();
+        }
+    }
+
+    function load_file(file_obj)
+    {
+        var json_txt = oCOM.trim(document.getElementById("JSON").value);
+        var json_txt = json_txt.replace(/(\r\n|\n|\r)/gm,"");
+        var json_txt = json_txt.replace(/(\\)/gm,'\\\\');
+
+        if(json_txt.slice(-1)==",") json_txt = json_txt.slice(0,-1);
+        json_txt = "["+json_txt+"]";
+        console.log(json_txt);
+
+        try{ var j = JSON.parse(json_txt) }
+        catch({ n,m }) { alert("parse error:"+n+" "+m); return null }
+        
+        var blob = window.URL.createObjectURL(file_obj)
+        var oReq = new XMLHttpRequest();
+        filename = file_obj.name
+
+        var e = filename.split(".");
+        ext = "."+e[e.length-1];
+        ext = ext.toLowerCase(ext);
+
+        oReq.open('GET', blob, true);
+        oReq.responseType = 'arraybuffer';
+        oReq.onload = function(e)
+        {
+            var isPerformanceSupported = (
+                window.performance &&
+                window.performance.now &&
+                window.performance.timing &&
+                window.performance.timing.navigationStart
+            );
+
+            var timeStampInMs = (
+                isPerformanceSupported ?
+                window.performance.now() +
+                window.performance.timing.navigationStart :
+                Date.now()
+            );
+
+            var arrayBuffer = oReq.response;
+            if(arrayBuffer)
+            {
+                // COMPRESSION ALGORITHM
+                var l1 = arrayBuffer.byteLength 
+                var bin = new Uint8Array(arrayBuffer);
+                const deflator = new pako.Deflate( { level: 9} );
+                deflator.push(bin, true);
+                var dump = deflator.result
+                var l2 = dump.byteLength;
+                try {  var l3 = oCOM.ArrayBufferTobase64(dump).length; }
+                catch({ n, m }) { alert("ArrayBufferTobase64:"+n+" "+m) }
+
+                // APPLY FILE EXTENTION MAPPING (according to JSON input)                
+                var url = "";
+                var uri_arg="d";
+                var uri_hash = "";
+                for(var i=0;i<j.length;i++)
+                {
+                    var r_str = j[i].regexp;
+                    var r = new RegExp(r_str,"i");
+                    var m = filename.match(r);
+                    if(m!=null)
+                    {
+                        url = j[i].URL ? j[i].URL : "";
+                        uri_arg = j[i].URI ? j[i].URI.replace(/=/,"") : "";
+                        uri_hash = j[i].hash ? j[i].hash.replace(/#/,"") : "";
+
+                        if(typeof(j[i].prompt_hex)!="undefined")
+                        {
+                            var hex = window.prompt(j[i].prompt_hex);
+                            var dec = parseInt(hex,16);
+                            uri_arg = j[i].prompt_hex+"="+(isNaN(dec)?24576:dec)+"&"+uri_arg
+                        }
+
+                    }
+                }
+
+                // CONSTRUCT URL AND URI
+                var browsers = {"safari":80000,"firefox":65536,"chrome":2083,"edge":2083,"opera":1000000};
+
+                var uri = oCOM.ArrayBufferTobase64(dump);
+
+                var url = url+"?"+uri_arg+"="+uri+"#"+uri_hash;
+
+                var brows = "";
+                for(var i in browsers) brows += "<div style=float:left title=\"max. "+browsers[i]+" bytes\" ><img style='width:12px;margin-right:5px' src=../res/i_"+i+".png><br><img src=../res/"+(url.length<=browsers[i]?"i_ok.png":"i_nok.png")+" style=width:10px;padding-left:3px></div>"
+
+                var URI_stats = "format:"+ext+" bytes:"+l1+">"+url.length+" gain:"+(100-Math.round(100*url.length/l1))+"%"
+
+                var link =  "<div style='border:1px solid rgb(0,0,0,0)'>"
+                            + brows
+                            +"<a target=_blank href=../index.html"+url+">[ASCIICAD_URL]</a>"
+                            +"<a target=_blank href="+url+">[ZLIB_URL]</a>"
+                            + " <a href=javascript:oCOM.POPUP.html(oCOM.DumpBase64('"+uri+"',255,'&lt;br&gt;'))>[ZLIB_BASE64]</a>"
+                            + " <a href=javascript:oCOM.POPUP.html('var&nbsp;ui8&nbsp;=&nbsp;new&nbsp;Uint8Array(['+oCOM.DumpTxt('"+[...bin].map((v)=>"0x"+oCOM.getHexByte(v)).join(",")+"])',255,'&lt;br&gt;'))>[JS_HEX_LF]</a>"
+                            + " <a href=javascript:oCOM.POPUP.html('var&nbsp;ui8&nbsp;=&nbsp;new&nbsp;Uint8Array(["+[...bin].map((v)=>"0x"+oCOM.getHexByte(v)).join(",")+"])')>[JS_HEX]</a>"
+                            //+ " <a href=javascript:oCOM.POPUP.html(''+oCOM.DumpTxt('"+[...bin].map((v)=>""+oCOM.getHexByte(v)).join("&nbsp;")+"',3*8,'&lt;br&gt;'))>[LST_HEX]</a>"
+                            +"</div>"
+ 
+                var el = document.getElementById("output");
+                el.innerHTML += link;
+
+                //selectElementText(document.getElementById("COM_popup_text"));
+            }
+        }
+        oReq.send();
+    }
+  </script>
+
+
+<body class="slider_main" onload="init_gui();">
+
+<div id="slider_title"></div>
+<div class="slider_overlay">
+    <div id="topmenu">
+
+    </div>
+    <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+    <table>
+    <tr>
+        <td><img style="margin:20px;width:256px;float:left;image-rendering:pixelated;" src="../res/zlib_icon.png"></td>
+        <td rowspan="2" valign="top">
+            <br>
+            <button onclick="document.getElementById('getFile').click()">Load file</button>
+            <input type='file' id="getFile" style="display:none" onchange="load_file(this.files[0]);">
+            <br><br>
+            <div id="output"></div>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            FILEext. - URI mapping<br>
+            <textarea id=JSON style="font-family:'Courier';font-size:10px;float:left;width:500px;height:50px;resize:vertical;">
+{"regexp":"\.(?:s)$"  ,"URI":"asm=" ,"URL":"../index.html","hash":"#tab2"},
+{"regexp":"\.(?:dsk)$","URI":"D1=","URL":"../index.html","hash":"#tab1"},
+{"regexp":"\.(?:bin)$","URI":"paste=" ,"URL":"../index.html","hash":"#tab1","prompt_hex":"addr"},
+{"regexp":"\.(?:sid)$","URI":"sid=" ,"URL":"SIDchipJS.html"},
+{"regexp":"\.(?:fym)$","URI":"fym=" ,"URL":"MockingboardJS.html"},
+            </textarea><br>
+            <div id="dump" style="font-size:x-small;width:296px;height:120px;overflow-x:hidden;overflow-y:auto;">
+            </div>
+        </td>
+    </tr>
+    </table>
+    </div>
+</div>
+  
+</body>
+
+
+</html>
