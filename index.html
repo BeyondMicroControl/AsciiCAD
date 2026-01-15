@@ -19,6 +19,8 @@
  <link rel="stylesheet" href="res/AsciiCAD.css">
   <script src="res/AsciiCAD_helpers.js"></script>
   <script src="res/AsciiCAD_catalog.js"></script>
+  <script type="text/javascript" src="res/pako.min.js"></script>
+  <script type="text/javascript" src="res/COM_MAIN.js"></script>
 </head>
 <body>
   <div class="app">
@@ -770,7 +772,7 @@ function beginLine(cell,kind)
   // hide selection box when starting a line tool action
   selection = null; selectDrag = null; moveDrag = null;
   lineDrag = { kind, flip:true , merge:true ,start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
-  draw();
+  draw("beginLine");
 }
 
 function moveLine(cell)
@@ -780,7 +782,7 @@ function moveLine(cell)
   if (!cell) return;
   if (cell.r === lineDrag.cur.r && cell.c === lineDrag.cur.c) return;
   lineDrag.cur = { r: cell.r, c: cell.c };
-  draw();
+  draw("moveLine");
 }
 
 function endLine()
@@ -806,27 +808,27 @@ function endLine()
   if(bDebug) console.log("endLine()");
   lineDrag = null;
   pushStrokeIfNonEmpty(stroke);
-  draw();
+  draw("endLine");
 }
 
 function cancelLine() 
 {
   lineDrag = null;
-  draw();
+  draw("cancelLine");
 }
 
 function beginBox(cell, kind) {
   if (!cell) return;
   selection = null; selectDrag = null; moveDrag = null;
   boxDrag = { kind, start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
-  draw();
+  draw("beginBox");
 }
 
 function moveBox(cell) {
   if (!boxDrag || !cell) return;
   if (cell.r === boxDrag.cur.r && cell.c === boxDrag.cur.c) return;
   boxDrag.cur = { r: cell.r, c: cell.c };
-  draw();
+  draw("moveBox");
 }
 
 function commitBox() {
@@ -854,12 +856,12 @@ function commitBox() {
 
   boxDrag = null;
   pushStrokeIfNonEmpty(stroke);
-  draw();
+  draw("commitBox");
 }
 
 function cancelBox() {
   boxDrag = null;
-  draw();
+  draw("cancelBox");
 }
 
 function beginFreetext(cell)
@@ -867,7 +869,7 @@ function beginFreetext(cell)
     if (!cell) return;
     textDrag = { anchor: { r: cell.r, c: cell.c }, text: "" };        // Start a new preview at this anchor.
     canvas.focus?.();                                                 // Ensure canvas can receive key events
-    draw();
+    draw("beginFreetext");
 }
 
 function commitFreetext()
@@ -896,13 +898,13 @@ function commitFreetext()
 
   textDrag = null;
   pushStrokeIfNonEmpty(stroke);
-  draw();
+  draw("commitFreetext");
 }
 
 function cancelFreetext()
 {
   textDrag = null;
-  draw();
+  draw("cancelFreetext");
 }
 
 function cornerChar(r0, c0, r1, c1, v_leg, chset)
@@ -1038,7 +1040,7 @@ if (!stroke) return;
 for (let i = stroke.length - 1; i >= 0; i--) ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
 redoStack.push(stroke);
 updateUI();
-draw();
+draw("doUndo");
 }
 
 function doRedo() {
@@ -1047,7 +1049,7 @@ if (!stroke) return;
 for (let i = 0; i < stroke.length; i++) ascii[stroke[i].r][stroke[i].c] = stroke[i].next;
 undoStack.push(stroke);
 updateUI();
-draw();
+draw("doRedo");
 }
 
 function snapshotRect(rect) {
@@ -1061,7 +1063,7 @@ function startPasteWithText(text)
 {
     const raw = normalizeNewlines(text).split('\n');
     while (raw.length > 0 && raw[raw.length - 1] === '') raw.pop();
-    if (raw.length === 0) { pasteDrag = null; updateUI(); draw(); return; }
+    if (raw.length === 0) { pasteDrag = null; updateUI(); draw("startPasteWithText"); return; }
 
     let w = 0;
     for (const ln of raw) w = Math.max(w, ln.length);
@@ -1087,7 +1089,7 @@ function startPasteWithText(text)
     moveDrag = null;
 
     updateUI();
-    draw();
+    draw("startPasteWithText");
 }
 
 function commitLine()
@@ -1111,7 +1113,7 @@ function commitLine()
 
   lineDrag = null;
   pushStrokeIfNonEmpty(stroke);
-  draw();
+  draw("commitLine");
 }
 
 function addNeighborsToSet(set, r, c) {
@@ -1223,7 +1225,7 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
 
   lineDrag = null;
   pushStrokeIfNonEmpty(stroke);
-  draw();
+  draw("commitLineWithOptionalMerge");
 }
 
 
@@ -1253,7 +1255,7 @@ function commitPasteAt(cell)
     pasteDrag = null;
     pushStrokeIfNonEmpty(stroke);
     updateUI();
-    draw();
+    draw("commitPasteAt");
 }
 
 function cancelPaste() 
@@ -1261,7 +1263,7 @@ function cancelPaste()
     if (!pasteDrag) return;
     pasteDrag = null;
     updateUI();
-    draw();
+    draw("cancelPaste");
 }
 
 // Freeform drawing
@@ -1280,7 +1282,7 @@ currentStroke = [];
 if (!cell) return;
 lastCellKey = cell.r + ',' + cell.c;
 applyOpAtCell(cell);
-draw();
+draw("beginFreeform");
 }
 
 function moveFreeform(cell) {
@@ -1289,7 +1291,7 @@ const key = cell.r + ',' + cell.c;
 if (key === lastCellKey) return;
 lastCellKey = key;
 applyOpAtCell(cell);
-draw();
+draw("moveFreeform");
 }
 
 function endFreeform() {
@@ -1347,13 +1349,13 @@ function beginSelect(cell)
     if (selection && cell.r >= selection.r0 && cell.r <= selection.r1 && cell.c >= selection.c0 && cell.c <= selection.c1)
     {
         moveDrag = { startCell: cell, offset: { dr: 0, dc: 0 }, baseRect: selection, snapshot: snapshotRect(selection) };
-        draw();
+        draw("beginSelect");
         return;
     }
     selection  = null;
     moveDrag   = null;
     selectDrag = { start: cell, current: cell };
-    draw();
+    draw("beginSelect");
 }
 
 function moveSelect(cell)
@@ -1364,12 +1366,12 @@ function moveSelect(cell)
         const dc = cell.c - moveDrag.startCell.c;
         if (dr === moveDrag.offset.dr && dc === moveDrag.offset.dc) return;
         moveDrag.offset = { dr, dc };
-        draw();
+        draw("moveSelect");
         return;
     }
     if (selectDrag) {
         selectDrag.current = cell;
-        draw();
+        draw("moveSelect");
     }
 }
 
@@ -1384,14 +1386,14 @@ function endSelect()
         moveDrag = null;
         selectDrag = null;
         selection = null; // disappear after move mouseup
-        draw();
+        draw("endSelect");
         return;
     }
     if (selectDrag) 
     {
         selection = normRect(selectDrag.start, selectDrag.current);
         selectDrag = null;
-        draw();
+        draw("endSelect");
     }
 }
 
@@ -1570,8 +1572,9 @@ function drawPastePreview(cw, ch, snap)
 
 
 
-function draw() 
+function draw( str ) 
 {
+  //if(str) alert(str);
     const dpr = window.devicePixelRatio || 1;
     const wCss = stageSize.w;
     const hCss = stageSize.h;
@@ -1802,6 +1805,7 @@ function wipeSelection(ch)
 //     ██████   ██████  ██     ██   ██ ██   ██ ██   ████ ██████  ███████ ███████ ██   ██ ███████ 
 
 
+
 // Events
 function setHoverFromEvent(e)
 {
@@ -1830,6 +1834,88 @@ for(var i in mode_el)
         updateUI(); draw();
     });
 }
+
+
+// load
+
+window.addEventListener("load", function()
+{
+
+
+oCOM.URL.parse(document.location.toString());
+for(var uri in oCOM.URL.uri)
+{
+  switch(uri)
+  {
+    case "d":
+
+    var db = oCOM.base64ToArrayBuffer(oCOM.URL.uri[uri]);
+    if(db!=null)
+    {
+      const inflator = new pako.Inflate();
+      inflator.push(db);
+      var bin = inflator.result;
+      if(typeof(bin)!="undefined")
+      {
+        var enc = new TextDecoder("utf-8");
+        var txt = enc.decode(bin);
+        // TODO: PASTE this text in grid
+
+        try
+        {
+            // Expand wide chars (⬤ etc.) so the grid aligns with IDE rendering
+            const expanded = expandWideCharsForGrid(txt);
+
+            // Convert to lines (using your existing normalizeNewlines)
+            const lines = toLines(expanded); // <-- IMPORTANT
+
+            const stroke = [];
+
+            for (let r = 0; r < ROWS; r++) {
+            const line = lines[r] || "";
+            for (let c = 0; c < COLS; c++) {
+                const prev = ascii[r][c];
+                const next = line[c] || ' ';
+                if (prev !== next) {
+                stroke.push({ r, c, prev, next });
+                ascii[r][c] = next;
+                }
+            }
+            }
+
+            selection = null;
+            selectDrag = null;
+            moveDrag = null;
+            textDrag = null;
+            boxDrag = null;
+            cancelPaste();
+
+            pushStrokeIfNonEmpty(stroke);
+            draw();
+
+            fileInput.value = "";
+        } catch (err)
+        {
+            console.error("Load failed:", err);
+            alert("Load failed. See console for details.");
+        }
+      }
+    } 
+  }  
+}
+
+
+}, false);
+
+
+
+
+
+
+
+
+
+
 
 // Picker/catalog
 pickerBackdrop.addEventListener("click", closePicker);
