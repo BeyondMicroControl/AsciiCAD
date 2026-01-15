@@ -1837,86 +1837,73 @@ for(var i in mode_el)
 }
 
 
-// load
-
+// Load URL data
 window.addEventListener("load", function()
 {
 
-
-oCOM.URL.parse(document.location.toString());
-for(var uri in oCOM.URL.uri)
-{
-  switch(uri)
+  oCOM.URL.parse(document.location.toString());
+  for(var uri in oCOM.URL.uri)
   {
-    case "d":
-
-    var db = oCOM.base64ToArrayBuffer(oCOM.URL.uri[uri]);
-    if(db!=null)
+    switch(uri)
     {
-      const inflator = new pako.Inflate();
-      inflator.push(db);
-      var bin = inflator.result;
-      if(typeof(bin)!="undefined")
+      case "d":
+
+      var db = oCOM.base64ToArrayBuffer(oCOM.URL.uri[uri]);
+      if(db!=null)
       {
-        var enc = new TextDecoder("utf-8");
-        var txt = enc.decode(bin);
-        // TODO: PASTE this text in grid
-
-        try
+        const inflator = new pako.Inflate();
+        inflator.push(db);
+        var bin = inflator.result;
+        if(typeof(bin)!="undefined")
         {
-            // Expand wide chars (⬤ etc.) so the grid aligns with IDE rendering
-            const expanded = expandWideCharsForGrid(txt);
+          var enc = new TextDecoder("utf-8");
+          var txt = enc.decode(bin);
+          // TODO: PASTE this text in grid
 
-            // Convert to lines (using your existing normalizeNewlines)
-            const lines = toLines(expanded); // <-- IMPORTANT
+          try
+          {
+              // Expand wide chars (⬤ etc.) so the grid aligns with IDE rendering
+              const expanded = expandWideCharsForGrid(txt);
 
-            const stroke = [];
+              // Convert to lines (using your existing normalizeNewlines)
+              const lines = toLines(expanded); // <-- IMPORTANT
 
-            for (let r = 0; r < ROWS; r++) {
-            const line = lines[r] || "";
-            for (let c = 0; c < COLS; c++) {
-                const prev = ascii[r][c];
-                const next = line[c] || ' ';
-                if (prev !== next) {
-                stroke.push({ r, c, prev, next });
-                ascii[r][c] = next;
-                }
-            }
-            }
+              const stroke = [];
 
-            selection = null;
-            selectDrag = null;
-            moveDrag = null;
-            textDrag = null;
-            boxDrag = null;
-            cancelPaste();
+              for (let r = 0; r < ROWS; r++) {
+              const line = lines[r] || "";
+              for (let c = 0; c < COLS; c++) {
+                  const prev = ascii[r][c];
+                  const next = line[c] || ' ';
+                  if (prev !== next) {
+                  stroke.push({ r, c, prev, next });
+                  ascii[r][c] = next;
+                  }
+              }
+              }
 
-            pushStrokeIfNonEmpty(stroke);
-            draw();
+              selection = null;
+              selectDrag = null;
+              moveDrag = null;
+              textDrag = null;
+              boxDrag = null;
+              cancelPaste();
 
-            fileInput.value = "";
-        } catch (err)
-        {
-            console.error("Load failed:", err);
-            alert("Load failed. See console for details.");
+              pushStrokeIfNonEmpty(stroke);
+              draw();
+
+              fileInput.value = "";
+          } catch (err)
+          {
+              console.error("Load failed:", err);
+              alert("Load failed. See console for details.");
+          }
         }
-      }
-    } 
-  }  
-}
-
+      } 
+    }  
+  }
 
 }, false);
-
-
-
-
-
-
-
-
-
-
 
 // Picker/catalog
 pickerBackdrop.addEventListener("click", closePicker);
