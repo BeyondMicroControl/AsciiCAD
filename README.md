@@ -6,3 +6,92 @@
 
 <a href=https://beyondmicrocontrol.github.io/AsciiCAD/tools/TOOLS_CATALOG.html>TOOLS</a>
 
+
+
+
+
+AsciiCAD
+
+AsciiCAD is a browser-based ASCII / UTF-8 schematic editor designed to embed digital and electronic schematics directly inside source code.
+
+Instead of external CAD files, schematics become readable text that lives next to the firmware, HDL, or documentation it describes.
+
+Try it online:
+https://beyondmicrocontrol.github.io/AsciiCAD/
+
+Why AsciiCAD?
+
+Schematics as plain text
+
+Clean Git diffs
+
+No binaries, no lock-in
+
+Schematics stay close to code
+
+Ideal for MCU, CPU, and digital designs
+
+Features
+
+Freeform drawing with curated UTF-8 glyphs
+
+Single and double line routing with automatic junction resolution
+
+Single and double boxes (ICs, modules, blocks)
+
+Free text placement
+
+Component catalog (MCUs, logic, symbols)
+
+Paste from clipboard with preview
+
+Undo / Redo
+
+Load, Save, Clear
+
+Load schematics via URL parameters
+
+Pan and zoom for large grids
+
+Designed For
+
+Embedded and firmware developers
+
+Open-source hardware projects
+
+Documentation inside codebases
+
+Architecture sketches and design reviews
+
+Philosophy
+
+Schematics should be as version-controllable and reviewable as code.
+
+AsciiCAD favors clarity, longevity, and proximity to source over traditional EDA workflows.
+
+Tools and Catalog
+
+Curated glyphs and component definitions:
+https://beyondmicrocontrol.github.io/AsciiCAD/tools/TOOLS_CATALOG.html
+
+Technical Notes
+
+Single-file HTML and JavaScript
+
+No frameworks
+
+No build step
+
+Runs fully client-side
+
+Optimized for monospace editors (VS Code, Arduino IDE, terminals)
+
+Status
+
+Actively evolving.
+Focused on correctness, editor compatibility, and expressive schematic text.
+
+
+
+
+
