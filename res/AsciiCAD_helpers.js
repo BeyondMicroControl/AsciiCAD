@@ -139,3 +139,47 @@ function isDoubleWidthChar(ch)
         cp === 0x2B24 // ⬤ specifically
     );
 }
+
+function downloadText(text, filename) {
+const name = filename || "ascii-drawing.txt";
+const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = name;
+a.rel = "noopener";
+a.style.display = "none";
+document.body.appendChild(a);
+try { a.click(); } finally { setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0); }
+}
+
+function pushStrokeIfNonEmpty(stroke) {
+if (!stroke || stroke.length === 0) return;
+undoStack.push(stroke);
+redoStack.length = 0;
+updateUI();
+}
+
+function doUndo() {
+const stroke = undoStack.pop();
+if (!stroke) return;
+for (let i = stroke.length - 1; i >= 0; i--) ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
+redoStack.push(stroke);
+updateUI();
+draw("doUndo");
+}
+
+function doRedo() {
+const stroke = redoStack.pop();
+if (!stroke) return;
+for (let i = 0; i < stroke.length; i++) ascii[stroke[i].r][stroke[i].c] = stroke[i].next;
+undoStack.push(stroke);
+updateUI();
+draw("doRedo");
+}
+
+function snapshotRect(rect) {
+const m = new Map();
+for (let r = rect.r0; r <= rect.r1; r++) for (let c = rect.c0; c <= rect.c1; c++) m.set(r + ',' + c, ascii[r][c]);
+return m;
+}
