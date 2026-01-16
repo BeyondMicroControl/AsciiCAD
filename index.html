@@ -27,7 +27,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.91</big><br><small>Author: Freddy Vandriessche</small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.92</big><br><small>Author: Freddy Vandriessche</small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -526,6 +526,10 @@ function recomputeWireCell(r, c)
     // double × single
     if (hStyle === "double" && vStyle === "single") return "╪";
     if (hStyle === "single" && vStyle === "double") return "╫";
+
+    // double × thick
+    if (hStyle === "thick"  && vStyle === "double") return "╫";
+    if (hStyle === "double" && vStyle === "thick")  return "╪";
 
     // thick × single
     if (hStyle === "thick"  && vStyle === "single") return "┿";
