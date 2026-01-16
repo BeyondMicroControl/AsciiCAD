@@ -27,7 +27,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.9</big><br><small>Author: Freddy Vandriessche</small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.91</big><br><small>Author: Freddy Vandriessche</small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -508,13 +508,13 @@ function recomputeWireCell(r, c)
 
   if (m === 0) { ascii[r][c] = " "; return " "; }
 
-  const bothSingle = !hDouble && !vDouble;
-  const bothThick  =  hThick &&  vThick;
-  const bothDouble =  hDouble &&  vDouble;
-
 // Determine style per axis
   const hStyle = hDouble ? "double" : (hThick ? "thick" : "single");
   const vStyle = vDouble ? "double" : (vThick ? "thick" : "single");
+
+  const bothSingle = (hStyle === "single" && vStyle === "single");
+  const bothThick  = (hStyle === "thick"  && vStyle === "thick");
+  const bothDouble = (hStyle === "double" && vStyle === "double");
 
   function cross() {
     // same-style crosses
