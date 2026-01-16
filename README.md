@@ -47,28 +47,30 @@ Try it online:
 
 <a href=https://beyondmicrocontrol.github.io/AsciiCAD/tools/TOOLS_CATALOG.html>LAB TOOLS</a>
 
----
-
-## Tools and Catalog
-
-TBD
+- Image to Base64: This tool helps extending the component catalog. Since catalog items are represented by icons sized at 64x64 pixels, they are   
 
 ---
 
 ## Technical Notes
 
-- Single-file HTML and JavaScript
+- Browser-only focused HTML and JavaScript codebase
+- Runs fully client-side
 - No frameworks
 - No build step
-- Runs fully client-side
-- Optimized for monospace editors (VS Code, Arduino IDE, terminals)
+- Output is optimized for monospace editors (VS Code, Arduino IDE, terminals)
 
 ---
+
+## Feature wish-list
+
+- [ ] Refactor index.html (main file) to fully run in a signle file, with no external resources
+- [ ] Line conflict resolution is buggy, for the simple reason it can be complex (single lines, double lines, double thickness lines, etc...)
 
 ## Status
 
 Actively evolving.  
 Focused on correctness, editor compatibility, and expressive schematic text.
+
 
 
 
