@@ -6,6 +6,8 @@
  _/ /   \ \_  `'.'. | \__.  | |  | |\ `.___.'\ _/ /   \ \_  _| |_.' / 
 |____| |____|[\__) )'.___.'[___][___]`.____ .'|____| |____||______.' 
 </pre>
+<img src="res/AsciiCAD_frontpage.png">
+
 
 AsciiCAD is a browser-based ASCII / UTF-8 schematic editor designed to embed **digital and electronic schematics directly inside source code**.  Instead of external CAD files, schematics become **readable text** that lives next to the firmware, HDL, or documentation it describes.
 
