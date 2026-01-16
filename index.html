@@ -535,9 +535,7 @@ function recomputeWireCell(r, c)
     if (hStyle === "thick"  && vStyle === "single") return "┿";
     if (hStyle === "single" && vStyle === "thick")  return "╂";
 
-    // double × thick (no dedicated glyph in your set; pick a sane fallback)
-    // Prefer double cross because it's visually "stronger" and consistent.
-    return "╬";
+    return "┼";
   }
 
   function horiz() { return hDouble ? "═" : (hThick ? "━" : "─"); }
