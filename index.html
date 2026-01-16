@@ -43,8 +43,10 @@
             <button id="modeFreeform" class="btn primary" data-hint="Pasting: move preview with mouse, click to place.|Drag to draw (cell-by-cell).">Free</button>
             <button id="modeSelect" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag to select. Drag inside selection to move.">Move</button>
             <button id="modeSLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, hold 'shift' for horizontal origin, release to place line. Use 'o' to override instead of merge lines.">SLine</button>
+            <button id="modeTLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, hold 'shift' for horizontal origin, release to place line. Use 'o' to override instead of merge lines.">TLine</button>
             <button id="modeDLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, hold 'shift' for horizontal origin, release to place line. Use 'o' to override instead of merge lines.">DLine</button>
             <button id="modeSBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place single line box.">SBox</button>
+            <button id="modeTBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place thick line box.">TBox</button>
             <button id="modeDBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place double line box.">DBox</button>
             <button id="modeFreetext" class="btn" data-hint="Move cursor to text origin (not click), enter free text preview, press enter to commit."">Text</button>
           </div>
@@ -373,6 +375,10 @@ const maskToDouble = new Map([
   [N|E|S|W,"╬"],
 ]);
 
+const BOX_SINGLE = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
+const BOX_THICK = { h:'━', v:'┃', tl:'┏', tr:'┓', bl:'┗', br:'┛' };
+const BOX_DOUBLE = { h:'═', v:'║', tl:'╔', tr:'╗', bl:'╚', br:'╝' };
+
 function isThickWire(ch) {
   return ch === "━" || ch === "┃" || ch === "┏" || ch === "┓" || ch === "┗" || ch === "┛" ||
          ch === "┣" || ch === "┫" || ch === "┳" || ch === "┻" || ch === "╋";
@@ -425,8 +431,9 @@ function mergedWireGlyph(prevCh, nextCh, lineKind /* "single"|"double" */)
 
   // double wins:
   const wantDouble = (lineKind === "double") || isDoubleWire(prevCh) || isDoubleWire(nextCh);
+  const wantThick  = (lineKind === "thick")  || isThickWire(prevCh)  || isThickWire(nextCh);
 
-  const out = wantDouble ? maskToDouble.get(m) : maskToSingle.get(m);
+  const out = wantDouble ? maskToDouble.get(m) : (wantThick ? maskToThick.get(m) : maskToSingle.get(m) );
   return out ?? nextCh;
 }
 
@@ -549,61 +556,68 @@ function recomputeWireCell(r, c) {
   let m = 0;
   let hDouble = false; // any double on horizontal axis
   let vDouble = false; // any double on vertical axis
+  let hThick  = false; // any thick on horizontal axis
+  let vThick  = false; // any thick on vertical axis
 
   // UP contributes N if it connects DOWN (S)
   if (r > 0) {
     const up = ascii[r - 1][c];
     const um = glyphToMask.get(up) ?? 0;
-    if (um & S) { m |= N; if (isDoubleWire(up)) vDouble = true; }
+    if (um & S) { m |= N; if (isDoubleWire(up)) vDouble = true; else if (isThickWire(up)) vThick = true; }
   }
 
   // DOWN contributes S if it connects UP (N)
   if (r < ROWS - 1) {
     const dn = ascii[r + 1][c];
     const dm = glyphToMask.get(dn) ?? 0;
-    if (dm & N) { m |= S; if (isDoubleWire(dn)) vDouble = true; }
+    if (dm & N) { m |= S; if (isDoubleWire(dn)) vDouble = true; else if (isThickWire(dn)) vThick = true; }
   }
 
   // LEFT contributes W if it connects RIGHT (E)
   if (c > 0) {
     const lt = ascii[r][c - 1];
     const lm = glyphToMask.get(lt) ?? 0;
-    if (lm & E) { m |= W; if (isDoubleWire(lt)) hDouble = true; }
+    if (lm & E) { m |= W; if (isDoubleWire(lt)) hDouble = true; else if (isThickWire(lt)) hThick = true; }
   }
 
   // RIGHT contributes E if it connects LEFT (W)
   if (c < COLS - 1) {
     const rt = ascii[r][c + 1];
     const rm = glyphToMask.get(rt) ?? 0;
-    if (rm & W) { m |= E; if (isDoubleWire(rt)) hDouble = true; }
+    if (rm & W) { m |= E; if (isDoubleWire(rt)) hDouble = true; else if (isThickWire(rt)) hThick = true; }
   }
 
   if (m === 0) { ascii[r][c] = " "; return " "; }
 
   const bothSingle = !hDouble && !vDouble;
+  const bothThick  =  hThick &&  vThick;
   const bothDouble =  hDouble &&  vDouble;
 
   function cross() {
     if (bothSingle) return "┼";
+    if (bothThick)  return "╋";
     if (bothDouble) return "╬";
-    return hDouble ? "╪" : "╫"; // horiz double => ╪ ; vert double => ╫
+
+    // TODO simplify by lookup array ?
+
+    return hDouble ? "╪" : vDouble ? "╫" : hThick ? "┿" : "╂";    // horiz double => ╪ ; vert double => ╫ ; horiz thick => ┿ ; vert thick ╂
   }
-  function horiz() { return hDouble ? "═" : "─"; }
-  function vert()  { return vDouble ? "║" : "│"; }
+  function horiz() { return hDouble ? "═" : (hThick ? "━" : "─"); }
+  function vert()  { return vDouble ? "║" : (hThick ? "┃" : "│"); }
 
   function corner(mask) {
-    if (mask === (E|S)) return bothSingle ? "┌" : bothDouble ? "╔" : (hDouble ? "╒" : "╓");
-    if (mask === (W|S)) return bothSingle ? "┐" : bothDouble ? "╗" : (hDouble ? "╕" : "╖");
-    if (mask === (E|N)) return bothSingle ? "└" : bothDouble ? "╚" : (hDouble ? "╘" : "╙");
-    if (mask === (W|N)) return bothSingle ? "┘" : bothDouble ? "╝" : (hDouble ? "╛" : "╜");
+    if (mask === (E|S)) return bothSingle ? "┌" : bothThick ? "┏" : bothDouble ? "╔" : (hDouble ? "╒" : vDouble ? "╓" : (hThick ? "┍" : "┎"));
+    if (mask === (W|S)) return bothSingle ? "┐" : bothThick ? "┓" : bothDouble ? "╗" : (hDouble ? "╕" : vDouble ? "╖" : (hThick ? "┑" : "┒"));
+    if (mask === (E|N)) return bothSingle ? "└" : bothThick ? "┗" : bothDouble ? "╚" : (hDouble ? "╘" : vDouble ? "╙" : (hThick ? "┕" : "┖"));
+    if (mask === (W|N)) return bothSingle ? "┘" : bothThick ? "┛" : bothDouble ? "╝" : (hDouble ? "╛" : vDouble ? "╜" : (hThick ? "┙" : "┚"));
     return cur;
   }
 
   function tee(mask) {
-    if (mask === (E|S|W)) return bothSingle ? "┬" : bothDouble ? "╦" : (hDouble ? "╤" : "╥");
-    if (mask === (E|N|W)) return bothSingle ? "┴" : bothDouble ? "╩" : (hDouble ? "╧" : "╨");
-    if (mask === (N|E|S)) return bothSingle ? "├" : bothDouble ? "╠" : (hDouble ? "╞" : "╟");
-    if (mask === (N|W|S)) return bothSingle ? "┤" : bothDouble ? "╣" : (hDouble ? "╡" : "╢");
+    if (mask === (E|S|W)) return bothSingle ? "┬" : bothThick ? "┳" : bothDouble ? "╦" : (hDouble ? "╤" : vDouble ? "╥" : (hThick ? "┯" : "┰"));
+    if (mask === (E|N|W)) return bothSingle ? "┴" : bothThick ? "┻" : bothDouble ? "╩" : (hDouble ? "╧" : vDouble ? "╨" : (hThick ? "┷" : "┸"));
+    if (mask === (N|E|S)) return bothSingle ? "├" : bothThick ? "┣" : bothDouble ? "╠" : (hDouble ? "╞" : vDouble ? "╟" : (hThick ? "┝" : "┠"));
+    if (mask === (N|W|S)) return bothSingle ? "┤" : bothThick ? "┫" : bothDouble ? "╣" : (hDouble ? "╡" : vDouble ? "╢" : (hThick ? "┥" : "┨"));
     return cur;
   }
 
@@ -626,7 +640,7 @@ function recomputeWireCell(r, c) {
 
 
 function axisStylesFromNeighbors(r, c) {
-  // Returns { vert: "single"|"double"|null, horz: "single"|"double"|null }
+  // Returns { vert: "single"|"thick"|"double"|null, horz: "single"|"thick|"double"|null }
   let vert = null;
   let horz = null;
 
@@ -634,24 +648,24 @@ function axisStylesFromNeighbors(r, c) {
   if (r > 0) {
     const up = ascii[r - 1][c];
     const m = glyphToMask.get(up) ?? 0;
-    if (m & S) vert = isDoubleWire(up) ? "double" : "single";
+    if (m & S) vert = isDoubleWire(up) ? "double" : isThickWire(up) ? "thick" : "single";
   }
   if (r < ROWS - 1) {
     const dn = ascii[r + 1][c];
     const m = glyphToMask.get(dn) ?? 0;
-    if (m & N) vert = isDoubleWire(dn) ? "double" : "single";
+    if (m & N) vert = isDoubleWire(dn) ? "double" : isThickWire(dn) ? "thick" : "single";
   }
 
   // horizontal comes from left/right neighbors
   if (c > 0) {
     const lt = ascii[r][c - 1];
     const m = glyphToMask.get(lt) ?? 0;
-    if (m & E) horz = isDoubleWire(lt) ? "double" : "single";
+    if (m & E) horz = isDoubleWire(lt) ? "double" : isThickWire(lt) ? "thick" : "single";
   }
   if (c < COLS - 1) {
     const rt = ascii[r][c + 1];
     const m = glyphToMask.get(rt) ?? 0;
-    if (m & W) horz = isDoubleWire(rt) ? "double" : "single";
+    if (m & W) horz = isDoubleWire(rt) ? "double" : isThickWire(rt) ? "thick" : "single";
   }
 
   return { vert, horz };
@@ -681,7 +695,8 @@ function normalizeAffected(affected, stroke) {
 
 function buildOrthogonalPath(start, end, start_vleg, kind)
 {
-  const chset = kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
+  const chset = kind === "double" ? BOX_DOUBLE : (kind === "thick" ? BOX_THICK : BOX_SINGLE);
+
   const r0 = start.r, c0 = start.c;
   const r1 = end.r, c1 = end.c;
   const out = [];
@@ -751,9 +766,6 @@ function buildOrthogonalPath(start, end, start_vleg, kind)
 
   return out;
 }
-
-const BOX_SINGLE = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
-const BOX_DOUBLE = { h:'═', v:'║', tl:'╔', tr:'╗', bl:'╚', br:'╝' };
 
 function buildBoxPath(start, end, style) 
 {
@@ -866,7 +878,8 @@ function moveBox(cell) {
 function commitBox() {
   if (!boxDrag) return;
 
-  const style = boxDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
+  const style = boxDrag.kind === "double" ? BOX_DOUBLE : (boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE);
+
   const path = buildBoxPath(boxDrag.start, boxDrag.cur, style);
 
   // De-dup (corners overwrite edges)
@@ -1193,8 +1206,8 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
 
       if (prevIsWire && nextIsWire) {
         // If styles differ and prev is not blank, keep prev style here.
-        const prevStyle = isDoubleWire(prev) ? "double" : (prev === " " ? null : "single");
-        const nextStyle = isDoubleWire(next) ? "double" : (next === " " ? null : "single");
+        const prevStyle = isDoubleWire(prev) ? "double" : (isThickWire(prev) ? "thick" : (prev === " " ? null : "single"));
+        const nextStyle = isDoubleWire(next) ? "double" : (isThickWire(next) ? "thick" : (next === " " ? null : "single"));
 
         if (prev !== " " && prevStyle && nextStyle && prevStyle !== nextStyle) {
           // leave it for recompute to resolve as mixed junction; don't upgrade
@@ -1768,7 +1781,7 @@ function draw( str )
         const old = ctx.fillStyle;
         ctx.fillStyle = "rgba(59,130,246,0.9)";
 
-        const style = boxDrag.kind === "double" ? BOX_DOUBLE : BOX_SINGLE;
+        const style = boxDrag.kind === "double" ? BOX_DOUBLE : (boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE);
         const path = buildBoxPath(boxDrag.start, boxDrag.cur, style);
 
         for (const p of path) {
@@ -2086,8 +2099,10 @@ canvas.addEventListener("mousemove", (e) =>
     if (tool === "modeFreeform")      moveFreeform(cell);
     else if(tool === "modeSelect")    moveSelect(cell)
     else if (tool === "modeSLine")    moveLine(cell);
+    else if (tool === "modeTLine")    moveLine(cell);
     else if (tool === "modeDLine")    moveLine(cell);
     else if (tool === "modeSBox")     moveBox(cell);
+    else if (tool === "modeTBox")     moveBox(cell);
     else if (tool === "modeDBox")     moveBox(cell);
     else if (tool === "modeFreetext") beginFreetext(cell);
     else console.error("tool mismatch (move)");
@@ -2131,8 +2146,10 @@ canvas.addEventListener("mousedown", (e) =>
     if (tool === "modeFreeform")      beginFreeform(cell);
     else if (tool === "modeSelect")   beginSelect(cell);
     else if (tool === "modeSLine")    beginLine(cell,"single");
+    else if (tool === "modeTLine")    beginLine(cell,"thick");
     else if (tool === "modeDLine")    beginLine(cell,"double");
     else if (tool === "modeSBox")     beginBox(cell, "single");
+    else if (tool === "modeTBox")     beginBox(cell, "thick");
     else if (tool === "modeDBox")     beginBox(cell, "double");
     else if (tool === "modeFreetext") beginFreetext(cell);
     else console.error("tool mismatch (begin)");
@@ -2145,12 +2162,13 @@ window.addEventListener("mouseup", () =>
   if (pasteDrag) return;
 
 // TODO SERIALISE (COMMIT functions)??
-  if ((tool == "modeSLine" || tool == "modeDLine") && lineDrag!=null)
+  if ((tool == "modeSLine" || tool == "modeDLine" || tool == "modeTLine") && lineDrag!=null)
   { 
     commitLineWithOptionalMerge(lineDrag.merge, lineDrag.kind);
     return; 
   }
   else if (tool === "modeSBox" && boxDrag)  { commitBox(); return; }
+  else if (tool === "modeTBox" && boxDrag)  { commitBox(); return; }
   else if (tool === "modeDBox" && boxDrag)  { commitBox(); return; }
 
   if (isDrawing) endFreeform();
@@ -2167,8 +2185,10 @@ canvas.addEventListener("mouseleave", () => {
 
     // TODO SERIALISE (CANCEL functions)??
     //if (tool === "modeSLine" && lineDrag) { cancelLine(); return; }
+    //if (tool === "modeTLine" && lineDrag) { cancelLine(); return; }
     //if (tool === "modeDLine" && lineDrag) { cancelLine(); return; }
     //if (tool === "modeSBox" && boxDrag)  { cancelBox(); return; }
+    //if (tool === "modeTBox" && boxDrag)  { cancelBox(); return; }
     //if (tool === "modeDBox" && boxDrag)  { cancelBox(); return; }
 });
 
