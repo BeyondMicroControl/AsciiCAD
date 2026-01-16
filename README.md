@@ -41,18 +41,16 @@ Try it online:
 
 ---
 
-## Philosophy
+## AsciiCAD Lab
 
-Schematics should be as version-controllable and reviewable as code.
 
-AsciiCAD favors clarity, longevity, and proximity to source over traditional EDA workflows.
+<a href=https://beyondmicrocontrol.github.io/AsciiCAD/tools/TOOLS_CATALOG.html>TOOLS</a>
 
 ---
 
 ## Tools and Catalog
 
-Curated glyphs and component definitions:  
-https://beyondmicrocontrol.github.io/AsciiCAD/tools/TOOLS_CATALOG.html
+TBD
 
 ---
 
