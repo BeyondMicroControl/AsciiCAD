@@ -70,11 +70,13 @@
             <button id="undoBtn" class="btn" disabled>Undo</button>
             <button id="redoBtn" class="btn" disabled>Redo</button>
             <button id="saveBtn" class="btn">Save</button>
+            <button id="uriBtn"  class="btn">SaveURI</button>
             <button id="loadBtn" class="btn">Load</button>
             <!--
             <button id="pasteBtn" class="btn">Paste</button>
             -->
             <button id="clearBtn" class="btn">Clear</button>
+
             <input id="fileInput" type="file" accept="text/plain" style="display:none" />
           </div>
           <div class="tiny muted" id="historyLine" style="margin-top:10px;">Undo stack: 0 · Redo stack: 0</div>
@@ -82,8 +84,8 @@
         </div>
 
         <div class="card">
-          <div class="tiny muted">Wheel = zoom • Hold mouse button while wheel = pan • Middle-drag = pan • R = rotate</div>
-          <div class="tiny muted"><a href="https://github.com/BeyondMicroControl/AsciiCAD" target="_blank">GitHub</a></div>
+          <div class="tiny muted">Wheel = zoom • Hold mouse button while wheel = pan • Middle-drag = pan • R = rotate. <a href="https://github.com/BeyondMicroControl/AsciiCAD" target="_blank">GitHub</a></div>
+          <div class="tiny muted" id="URIcontainer"></div>
         </div>
       </div>
     </aside>
@@ -1825,10 +1827,33 @@ redoBtn.addEventListener("click", doRedo);
 
 // Save/load
 saveBtn.addEventListener("click", () => {
-const raw = serializeToText();
-const cleaned = sanitizeForSave(raw);
-downloadText(cleaned, "ascii-schema.txt");
+  const raw = serializeToText();
+  const cleaned = sanitizeForSave(raw);
+  downloadText(cleaned, "ascii-schema.txt");
+  });
+
+uriBtn.addEventListener("click", () => 
+{
+  const raw = serializeToText();
+  const cleaned = sanitizeForSave(raw);
+
+  const encoder = new TextEncoder();      // UTF-8 by default
+  const bin = encoder.encode(cleaned);
+
+  // COMPRESSION ALGORITHM
+  const deflator = new pako.Deflate( { level: 9} );
+  deflator.push(bin, true);
+  var dump = deflator.result
+  var l2 = dump.byteLength;
+  try
+  {  
+    var l3 = oCOM.ArrayBufferTobase64(dump);
+    var e = document.getElementById("URIcontainer");
+    e.innerHTML = "<a href=\"index.html?d="+l3+"\" target=\"_blank\">Saved PermaLink</a><br>"
+  }
+  catch({ n, m }) { alert("ArrayBufferTobase64:"+n+" "+m) }
 });
+
 loadBtn.addEventListener("click", () => fileInput.click());
 
 fileInput.addEventListener("change", async (e) => {
