@@ -19,7 +19,7 @@ Try it online:
 
 ## Why AsciiCAD?
 
-- Schematics as plain text
+- Schematics as plain text, close to the code
 - Clean Git diffs
 - No binaries, no lock-in
 - Schematics stay close to code
@@ -39,15 +39,6 @@ Try it online:
 - Load, Save, Clear
 - Load schematics via URL parameters
 - Pan and zoom for large grids
-
----
-
-## Designed For
-
-- Embedded and firmware developers
-- Open-source hardware projects
-- Documentation inside codebases
-- Architecture sketches and design reviews
 
 ---
 
