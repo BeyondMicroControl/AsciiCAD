@@ -254,11 +254,11 @@ const glyphToMask = new Map([
   ["┼", N|E|S|W],
 
   //thick
-  [E|W,"━"], [N|S,"┃"],
-  [E|S,"┏"], [W|S,"┓"], [E|N,"┗"], [W|N,"┛"],
-  [N|E|S,"┣"], [N|W|S,"┫"],
-  [E|S|W,"┳"], [E|N|W,"┻"],
-  [N|E|S|W,"╋"],
+  ["━", E|W], ["┃", N|S],
+  ["┏", E|S], ["┓", W|S], ["┗", E|N], ["┛", W|N],
+  ["┣", N|E|S], ["┫", N|W|S],
+  ["┳", E|S|W], ["┻", E|N|W],
+  ["╋", N|E|S|W],
 
   // double
   ["═", E|W], ["║", N|S],
@@ -273,29 +273,10 @@ const glyphToMask = new Map([
 glyphToMask.set("╪", N|E|S|W);
 glyphToMask.set("╫", N|E|S|W);
 
-// mixed tees signle/double
-glyphToMask.set("╤", E|S|W);
-glyphToMask.set("╥", E|S|W);
-glyphToMask.set("╧", E|N|W);
-glyphToMask.set("╨", E|N|W);
-glyphToMask.set("╞", N|E|S);
-glyphToMask.set("╟", N|E|S);
-glyphToMask.set("╡", N|W|S);
-glyphToMask.set("╢", N|W|S);
-
-// mixed corners signle/double
-glyphToMask.set("╒", E|S);
-glyphToMask.set("╓", E|S);
-glyphToMask.set("╕", W|S);
-glyphToMask.set("╖", W|S);
-glyphToMask.set("╘", E|N);
-glyphToMask.set("╙", E|N);
-glyphToMask.set("╛", W|N);
-glyphToMask.set("╜", W|N);
-
 // mixed crosses signle/thick
 glyphToMask.set("┿", N|E|S|W);
 glyphToMask.set("╂", N|E|S|W);
+/*
 glyphToMask.set("┽", N|E|S|W);
 glyphToMask.set("┾", N|E|S|W);
 glyphToMask.set("╀", N|E|S|W);
@@ -308,6 +289,17 @@ glyphToMask.set("╇", N|E|S|W);
 glyphToMask.set("╈", N|E|S|W);
 glyphToMask.set("╉", N|E|S|W);
 glyphToMask.set("╊", N|E|S|W);
+*/
+
+// mixed tees signle/double
+glyphToMask.set("╤", E|S|W);
+glyphToMask.set("╥", E|S|W);
+glyphToMask.set("╧", E|N|W);
+glyphToMask.set("╨", E|N|W);
+glyphToMask.set("╞", N|E|S);
+glyphToMask.set("╟", N|E|S);
+glyphToMask.set("╡", N|W|S);
+glyphToMask.set("╢", N|W|S);
 
 // mixed tees signle/thick
 glyphToMask.set("┯", E|S|W);
@@ -318,6 +310,16 @@ glyphToMask.set("┝", N|E|S);
 glyphToMask.set("┠", N|E|S);
 glyphToMask.set("┥", N|W|S);
 glyphToMask.set("┨", N|W|S);
+
+// mixed corners signle/double
+glyphToMask.set("╒", E|S);
+glyphToMask.set("╓", E|S);
+glyphToMask.set("╕", W|S);
+glyphToMask.set("╖", W|S);
+glyphToMask.set("╘", E|N);
+glyphToMask.set("╙", E|N);
+glyphToMask.set("╛", W|N);
+glyphToMask.set("╜", W|N);
 
 // mixed corners signle/thick
 glyphToMask.set("┍", E|S);
@@ -376,7 +378,7 @@ const maskToDouble = new Map([
 ]);
 
 const BOX_SINGLE = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
-const BOX_THICK = { h:'━', v:'┃', tl:'┏', tr:'┓', bl:'┗', br:'┛' };
+const BOX_THICK =  { h:'━', v:'┃', tl:'┏', tr:'┓', bl:'┗', br:'┛' };
 const BOX_DOUBLE = { h:'═', v:'║', tl:'╔', tr:'╗', bl:'╚', br:'╝' };
 
 function isThickWire(ch) {
@@ -388,8 +390,6 @@ function isDoubleWire(ch) {
   return ch === "═" || ch === "║" || ch === "╔" || ch === "╗" || ch === "╚" || ch === "╝" ||
          ch === "╠" || ch === "╣" || ch === "╦" || ch === "╩" || ch === "╬";
 }
-
-
 
 function normalizeAffected(affected, stroke) {
   // Do 2 passes to allow junction changes to propagate.
@@ -423,7 +423,7 @@ function isWireGlyph(ch) {
 
 function isWireGlyph(ch) { return glyphToMask.has(ch); }
 
-function mergedWireGlyph(prevCh, nextCh, lineKind /* "single"|"double" */)
+function mergedWireGlyph(prevCh, nextCh, lineKind /* "single"|"double","thick" */)
 {
   const pm = glyphToMask.get(prevCh) ?? 0;
   const nm = glyphToMask.get(nextCh) ?? 0;
@@ -433,7 +433,7 @@ function mergedWireGlyph(prevCh, nextCh, lineKind /* "single"|"double" */)
   const wantDouble = (lineKind === "double") || isDoubleWire(prevCh) || isDoubleWire(nextCh);
   const wantThick  = (lineKind === "thick")  || isThickWire(prevCh)  || isThickWire(nextCh);
 
-  const out = wantDouble ? maskToDouble.get(m) : (wantThick ? maskToThick.get(m) : maskToSingle.get(m) );
+  const out = wantDouble ? maskToDouble.get(m) : wantThick ? maskToThick.get(m) : maskToSingle.get(m);
   return out ?? nextCh;
 }
 
@@ -465,89 +465,8 @@ function cellMaskFromNeighbors(r, c)
 
 
 
-
-
-function styleOf(ch) {
-  return isDoubleWire(ch) ? "double" : (isWireGlyph(ch) && ch !== " " ? "single" : null);
-}
-
-function horizGlyph(isDouble) { return isDouble ? "═" : "─"; }
-function vertGlyph(isDouble)  { return isDouble ? "║" : "│"; }
-
-// Corners (E+S, W+S, E+N, W+N)
-function cornerGlyph(mask, hDouble, vDouble) {
-  // mask indicates which corner: ES, WS, EN, WN
-  if (mask === (E|S)) { // top-left
-    if (!hDouble && !vDouble) return "┌";
-    if ( hDouble &&  vDouble) return "╔";
-    if ( hDouble && !vDouble) return "╒"; // down single, right double
-    return "╓";                             // down double, right single
-  }
-  if (mask === (W|S)) { // top-right
-    if (!hDouble && !vDouble) return "┐";
-    if ( hDouble &&  vDouble) return "╗";
-    if ( hDouble && !vDouble) return "╕"; // down single, left double
-    return "╖";                             // down double, left single
-  }
-  if (mask === (E|N)) { // bottom-left
-    if (!hDouble && !vDouble) return "└";
-    if ( hDouble &&  vDouble) return "╚";
-    if ( hDouble && !vDouble) return "╘"; // up single, right double
-    return "╙";                             // up double, right single
-  }
-  if (mask === (W|N)) { // bottom-right
-    if (!hDouble && !vDouble) return "┘";
-    if ( hDouble &&  vDouble) return "╝";
-    if ( hDouble && !vDouble) return "╛"; // up single, left double
-    return "╜";                             // up double, left single
-  }
-  return " ";
-}
-
-// T junctions
-function teeGlyph(mask, hDouble, vDouble) {
-  // top tee: E+S+W
-  if (mask === (E|S|W)) {
-    if (!hDouble && !vDouble) return "┬";
-    if ( hDouble &&  vDouble) return "╦";
-    if ( hDouble && !vDouble) return "╤"; // down single, horizontal double
-    return "╥";                             // down double, horizontal single
-  }
-  // bottom tee: E+N+W
-  if (mask === (E|N|W)) {
-    if (!hDouble && !vDouble) return "┴";
-    if ( hDouble &&  vDouble) return "╩";
-    if ( hDouble && !vDouble) return "╧"; // up single, horizontal double
-    return "╨";                             // up double, horizontal single
-  }
-  // left tee: N+E+S
-  if (mask === (N|E|S)) {
-    if (!hDouble && !vDouble) return "├";
-    if ( hDouble &&  vDouble) return "╠";
-    if ( hDouble && !vDouble) return "╞"; // vertical single, right double
-    return "╟";                             // vertical double, right single
-  }
-  // right tee: N+W+S
-  if (mask === (N|W|S)) {
-    if (!hDouble && !vDouble) return "┤";
-    if ( hDouble &&  vDouble) return "╣";
-    if ( hDouble && !vDouble) return "╡"; // vertical single, left double
-    return "╢";                             // vertical double, left single
-  }
-  return " ";
-}
-
-// Cross
-function crossGlyph(hDouble, vDouble) {
-  if (!hDouble && !vDouble) return "┼";
-  if ( hDouble &&  vDouble) return "╬";
-  if ( hDouble && !vDouble) return "╪"; // horiz double, vert single
-  return "╫";                             // horiz single, vert double
-}
-
-
-
-function recomputeWireCell(r, c) {
+function recomputeWireCell(r, c) 
+{
   const cur = ascii[r][c];
 
   // only touch blanks or wires
@@ -593,31 +512,46 @@ function recomputeWireCell(r, c) {
   const bothThick  =  hThick &&  vThick;
   const bothDouble =  hDouble &&  vDouble;
 
+// Determine style per axis
+  const hStyle = hDouble ? "double" : (hThick ? "thick" : "single");
+  const vStyle = vDouble ? "double" : (vThick ? "thick" : "single");
+
   function cross() {
-    if (bothSingle) return "┼";
-    if (bothThick)  return "╋";
-    if (bothDouble) return "╬";
+    // same-style crosses
+    if (hStyle === "single" && vStyle === "single") return "┼";
+    if (hStyle === "thick"  && vStyle === "thick")  return "╋";
+    if (hStyle === "double" && vStyle === "double") return "╬";
 
-    // TODO simplify by lookup array ?
+    // mixed-style crosses
+    // double × single
+    if (hStyle === "double" && vStyle === "single") return "╪";
+    if (hStyle === "single" && vStyle === "double") return "╫";
 
-    return hDouble ? "╪" : vDouble ? "╫" : hThick ? "┿" : "╂";    // horiz double => ╪ ; vert double => ╫ ; horiz thick => ┿ ; vert thick ╂
+    // thick × single
+    if (hStyle === "thick"  && vStyle === "single") return "┿";
+    if (hStyle === "single" && vStyle === "thick")  return "╂";
+
+    // double × thick (no dedicated glyph in your set; pick a sane fallback)
+    // Prefer double cross because it's visually "stronger" and consistent.
+    return "╬";
   }
+
   function horiz() { return hDouble ? "═" : (hThick ? "━" : "─"); }
-  function vert()  { return vDouble ? "║" : (hThick ? "┃" : "│"); }
+  function vert()  { return vDouble ? "║" : (vThick ? "┃" : "│"); }
 
   function corner(mask) {
-    if (mask === (E|S)) return bothSingle ? "┌" : bothThick ? "┏" : bothDouble ? "╔" : (hDouble ? "╒" : vDouble ? "╓" : (hThick ? "┍" : "┎"));
-    if (mask === (W|S)) return bothSingle ? "┐" : bothThick ? "┓" : bothDouble ? "╗" : (hDouble ? "╕" : vDouble ? "╖" : (hThick ? "┑" : "┒"));
-    if (mask === (E|N)) return bothSingle ? "└" : bothThick ? "┗" : bothDouble ? "╚" : (hDouble ? "╘" : vDouble ? "╙" : (hThick ? "┕" : "┖"));
-    if (mask === (W|N)) return bothSingle ? "┘" : bothThick ? "┛" : bothDouble ? "╝" : (hDouble ? "╛" : vDouble ? "╜" : (hThick ? "┙" : "┚"));
+    if (mask === (E|S)) return bothSingle ? "┌" : bothThick ? "┏" : bothDouble ? "╔" : hDouble ? "╒" : vDouble ? "╓" : hThick ? "┍" : "┎";
+    if (mask === (W|S)) return bothSingle ? "┐" : bothThick ? "┓" : bothDouble ? "╗" : hDouble ? "╕" : vDouble ? "╖" : hThick ? "┑" : "┒";
+    if (mask === (E|N)) return bothSingle ? "└" : bothThick ? "┗" : bothDouble ? "╚" : hDouble ? "╘" : vDouble ? "╙" : hThick ? "┕" : "┖";
+    if (mask === (W|N)) return bothSingle ? "┘" : bothThick ? "┛" : bothDouble ? "╝" : hDouble ? "╛" : vDouble ? "╜" : hThick ? "┙" : "┚";
     return cur;
   }
 
   function tee(mask) {
-    if (mask === (E|S|W)) return bothSingle ? "┬" : bothThick ? "┳" : bothDouble ? "╦" : (hDouble ? "╤" : vDouble ? "╥" : (hThick ? "┯" : "┰"));
-    if (mask === (E|N|W)) return bothSingle ? "┴" : bothThick ? "┻" : bothDouble ? "╩" : (hDouble ? "╧" : vDouble ? "╨" : (hThick ? "┷" : "┸"));
-    if (mask === (N|E|S)) return bothSingle ? "├" : bothThick ? "┣" : bothDouble ? "╠" : (hDouble ? "╞" : vDouble ? "╟" : (hThick ? "┝" : "┠"));
-    if (mask === (N|W|S)) return bothSingle ? "┤" : bothThick ? "┫" : bothDouble ? "╣" : (hDouble ? "╡" : vDouble ? "╢" : (hThick ? "┥" : "┨"));
+    if (mask === (E|S|W)) return bothSingle ? "┬" : bothThick ? "┳" : bothDouble ? "╦" : hDouble ? "╤" : vDouble ? "╥" : hThick ? "┯" : "┰";
+    if (mask === (E|N|W)) return bothSingle ? "┴" : bothThick ? "┻" : bothDouble ? "╩" : hDouble ? "╧" : vDouble ? "╨" : hThick ? "┷" : "┸";
+    if (mask === (N|E|S)) return bothSingle ? "├" : bothThick ? "┣" : bothDouble ? "╠" : hDouble ? "╞" : vDouble ? "╟" : hThick ? "┝" : "┠";
+    if (mask === (N|W|S)) return bothSingle ? "┤" : bothThick ? "┫" : bothDouble ? "╣" : hDouble ? "╡" : vDouble ? "╢" : hThick ? "┥" : "┨";
     return cur;
   }
 
@@ -878,7 +812,7 @@ function moveBox(cell) {
 function commitBox() {
   if (!boxDrag) return;
 
-  const style = boxDrag.kind === "double" ? BOX_DOUBLE : (boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE);
+  const style = boxDrag.kind === "double" ? BOX_DOUBLE : boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE;
 
   const path = buildBoxPath(boxDrag.start, boxDrag.cur, style);
 
@@ -1059,50 +993,6 @@ function collapseAfterWideCharsForSave(text)
     return out.join('\n');
 }
 
-function downloadText(text, filename) {
-const name = filename || "ascii-drawing.txt";
-const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-const url = URL.createObjectURL(blob);
-const a = document.createElement('a');
-a.href = url;
-a.download = name;
-a.rel = "noopener";
-a.style.display = "none";
-document.body.appendChild(a);
-try { a.click(); } finally { setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0); }
-}
-
-function pushStrokeIfNonEmpty(stroke) {
-if (!stroke || stroke.length === 0) return;
-undoStack.push(stroke);
-redoStack.length = 0;
-updateUI();
-}
-
-function doUndo() {
-const stroke = undoStack.pop();
-if (!stroke) return;
-for (let i = stroke.length - 1; i >= 0; i--) ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
-redoStack.push(stroke);
-updateUI();
-draw("doUndo");
-}
-
-function doRedo() {
-const stroke = redoStack.pop();
-if (!stroke) return;
-for (let i = 0; i < stroke.length; i++) ascii[stroke[i].r][stroke[i].c] = stroke[i].next;
-undoStack.push(stroke);
-updateUI();
-draw("doRedo");
-}
-
-function snapshotRect(rect) {
-const m = new Map();
-for (let r = rect.r0; r <= rect.r1; r++) for (let c = rect.c0; c <= rect.c1; c++) m.set(r + ',' + c, ascii[r][c]);
-return m;
-}
-
 // Paste (preview + commit)
 function startPasteWithText(text) 
 {
@@ -1195,10 +1085,6 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
     const prev = ascii[r][c];
     let next = ch;
 
-
-
-    
-
     // Merge only if both are mergeable (and your mergedWireGlyph supports single/double)
     if (mergeEnabled) {
       const prevIsWire = (prev === " ") || isWireGlyph(prev);
@@ -1206,8 +1092,8 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
 
       if (prevIsWire && nextIsWire) {
         // If styles differ and prev is not blank, keep prev style here.
-        const prevStyle = isDoubleWire(prev) ? "double" : (isThickWire(prev) ? "thick" : (prev === " " ? null : "single"));
-        const nextStyle = isDoubleWire(next) ? "double" : (isThickWire(next) ? "thick" : (next === " " ? null : "single"));
+        const prevStyle = isDoubleWire(prev) ? "double" : isThickWire(prev) ? "thick" : (prev === " " ? null : "single");
+        const nextStyle = isDoubleWire(next) ? "double" : isThickWire(next) ? "thick" : (next === " " ? null : "single");
 
         if (prev !== " " && prevStyle && nextStyle && prevStyle !== nextStyle) {
           // leave it for recompute to resolve as mixed junction; don't upgrade
@@ -1218,13 +1104,9 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
       }
     }
 
-        if (prev === " ") {
-    next = ch;             // draw into blank
-    } else if (!isWireGlyph(prev)) {
-    next = ch;             // overwrite non-wire (optional: you may prefer keep prev)
-    } else {
-    next = prev;           // keep existing wire as-is; recompute will place junction
-    }
+    if (prev === " ") next = ch;            // draw into blank
+    else if (!isWireGlyph(prev)) next = ch; // overwrite non-wire (optional: you may prefer keep prev)
+    else next = prev;                       // keep existing wire as-is; recompute will place junction
 
     if (prev !== next) {
     stroke.push({ r, c, prev, next });
@@ -1236,30 +1118,6 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
     }
 
   }
-/*
-  // PASS 2: recompute junctions on touched cells + 4-neighbors
-  if (mergeEnabled && touched.length) {
-    const affected = new Set();
-
-    for (let i = 0; i < touched.length; i++) {
-      addNeighborsToSet(affected, touched[i].r, touched[i].c);
-    }
-
-    affected.forEach((key) => {
-      const parts = key.split(",");
-      const r = Number(parts[0]);
-      const c = Number(parts[1]);
-
-      const prev = ascii[r][c];
-      const next = recomputeWireCell(r, c); // recomputeWireCell may write ascii[r][c] itself
-
-      if (prev !== next) {
-        stroke.push({ r, c, prev, next });
-        ascii[r][c] = next; // harmless even if recompute already set it
-      }
-    });
-  }
-  */
 
   if (mergeEnabled && touched.length) {
   const affected = new Set();
@@ -1781,7 +1639,7 @@ function draw( str )
         const old = ctx.fillStyle;
         ctx.fillStyle = "rgba(59,130,246,0.9)";
 
-        const style = boxDrag.kind === "double" ? BOX_DOUBLE : (boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE);
+        const style = boxDrag.kind === "double" ? BOX_DOUBLE : boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE;
         const path = buildBoxPath(boxDrag.start, boxDrag.cur, style);
 
         for (const p of path) {
