@@ -33,7 +33,7 @@ Try it online:
 - Component catalog (MCUs, logic, symbols)
 - Undo / Redo
 - Load, Save, Clear
-- Load schematics via URL parameters
+- Save permalink (and auto-load) 
 - Pan and zoom for large grids
 
 ---
