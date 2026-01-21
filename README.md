@@ -28,8 +28,9 @@ Try it online:
 - Single and double line routing with automatic junction resolution
 - Single and double boxes (ICs, modules, blocks)
 - Free text placement
+- Copy / Move / Blank (area select & drag function)
+- Paste from clipboard
 - Component catalog (MCUs, logic, symbols)
-- Paste from clipboard with preview
 - Undo / Redo
 - Load, Save, Clear
 - Load schematics via URL parameters
