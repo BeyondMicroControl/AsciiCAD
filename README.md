@@ -25,8 +25,8 @@ Try it online:
 ## Features
 
 - Freeform drawing with curated UTF-8 glyphs
-- Single and double line routing with automatic junction resolution
-- Single and double boxes (ICs, modules, blocks)
+- Single, thick and double line routing with junction/override resolution
+- Single, thick and double boxes (ICs, modules, blocks)
 - Free text placement
 - Copy / Move / Blank (area select & drag function)
 - Paste from clipboard
