@@ -1293,7 +1293,15 @@
 '║   ⦧○╫\n' +
 '╫○⟋   ║\n' +
 '╚═════╝\n'
-
+,
+'╔═════╗\n' +
+'║   ⟋○╫\n' +
+'╫○─   ║\n' +
+'║    ○╫\n' +
+'║   ⟋○╫\n' +
+'╫○─   ║\n' +
+'║    ○╫\n' +
+'╚═════╝\n'
    ],
       image_data:
  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAALy8vIiAgggQJUw0RJyUmHx8fKSkpgICAQBETL8gyHgAAAAp0Uk5TAP/+//++fiHy1vJeSnQAAAHRSURBVHictdXNT8IwFADwcdB6fU38uLYu3rG9cDQrJtwcQbiqCUFvaMLk6kHiXSL/ru+1G7CuXTjoS4DB+9G+vq1bkvxxsMVk3gqKdW/WJoq1UoOHlglGCqM/i4JRRkDfRsHaoNBmEAXfxmTamF4cKIOh2gAK1Q501gZecA0IfqLgOCVgNrFespE2KjOXehPJD41dhTb992B+ylPsQoq96I4Dk7ApcKNRZDrrwrg5xgIQ4Crp1QWYNPLCAmWUA74oMG9BVgGon/Qh/cTTEtzQt6sayGkEkBZcS6vP6oBbkSLQ9ogLD+AvICVgJ8o8+AA4lyRsHvC9AcACqPIBANu8/QyMIORePgjAFQhxQKLMRwCIKu+BYQVcwwKtllWuAtJvtawD6dfgAdkssgZ4qNViB3ig1XyvSHfQqGE7QrlSH3ACkoAIdtJNgeezOmMeeHSrkLtLwgO4bSTNLbedhLsaYE/49/1O8ntve9LWLIu00dyc7M1dMaE1uuhQBdwBsQqAkw+OhboL+jkIPse5W8XpbBkEq6TIyy0TA3QXEBzHD4LOih44ICbLCDimOwbL5RyHej0PABeLCwJJ/LF09GVBPA4BLP7McqAtfQBgrc/V/4lfpAJ//mhZe2QAAAAASUVORK5CYII='    }
