@@ -53,7 +53,7 @@ Try it online:
 - Browser-only focused HTML and JavaScript codebase
 - Runs fully client-side
 - No frameworks, no build step
-- Output is optimized for monospace editors (VS Code, Arduino IDE, terminals)
+- Output is optimized for monospace editors (VS Code, Arduino IDE, terminals, TextEdit)
 
 ---
 
