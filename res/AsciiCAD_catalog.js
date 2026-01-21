@@ -1284,10 +1284,85 @@
       '─○▏▕○─\n' +
       '─○▏▕○─\n' +
       '─○  ○─'
+,
+'╔═════╗\n' +
+'╫○    ║\n' +
+'║   ⦧○╫\n' +
+'╫○⟋   ║\n' +
+'╫○    ║\n' +
+'║   ⦧○╫\n' +
+'╫○⟋   ║\n' +
+'╚═════╝\n'
+
    ],
       image_data:
  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAALy8vIiAgggQJUw0RJyUmHx8fKSkpgICAQBETL8gyHgAAAAp0Uk5TAP/+//++fiHy1vJeSnQAAAHRSURBVHictdXNT8IwFADwcdB6fU38uLYu3rG9cDQrJtwcQbiqCUFvaMLk6kHiXSL/ru+1G7CuXTjoS4DB+9G+vq1bkvxxsMVk3gqKdW/WJoq1UoOHlglGCqM/i4JRRkDfRsHaoNBmEAXfxmTamF4cKIOh2gAK1Q501gZecA0IfqLgOCVgNrFespE2KjOXehPJD41dhTb992B+ylPsQoq96I4Dk7ApcKNRZDrrwrg5xgIQ4Crp1QWYNPLCAmWUA74oMG9BVgGon/Qh/cTTEtzQt6sayGkEkBZcS6vP6oBbkSLQ9ogLD+AvICVgJ8o8+AA4lyRsHvC9AcACqPIBANu8/QyMIORePgjAFQhxQKLMRwCIKu+BYQVcwwKtllWuAtJvtawD6dfgAdkssgZ4qNViB3ig1XyvSHfQqGE7QrlSH3ACkoAIdtJNgeezOmMeeHSrkLtLwgO4bSTNLbedhLsaYE/49/1O8ntve9LWLIu00dyc7M1dMaE1uuhQBdwBsQqAkw+OhboL+jkIPse5W8XpbBkEq6TIyy0TA3QXEBzHD4LOih44ICbLCDimOwbL5RyHej0PABeLCwJJ/LF09GVBPA4BLP7McqAtfQBgrc/V/4lfpAJ//mhZe2QAAAAASUVORK5CYII='    }
     ,
+    {
+      name: 'TRS plug',
+      type: 'Connector',
+      description: 'TRS Connector',
+      MFR: 'TRS Connector',
+      pin_data: null,
+      text_data:[
+      '│───▅─▅⏜⟍\n' +
+      '│───▀─▀⏝⟋\n'
+      ,
+        ' ⟋⟍\n' +
+        '❪  ❫\n' +
+        '████\n' +
+        '│  │\n' +
+        '████\n' +
+        '│  │\n' +
+        '┴──┴\n' 
+   ],
+      image_data:
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAC1QTFRFAAAADxAMsqamKS8ok63C////hZGgvJhk2dDGQ1BOeF48hn1rT3OCr8HRucjLCgJnuAAAAA90Uk5TAP/////////9/////x+FnLzkQQAAApJJREFUeJztk79r20AUx4/S0C4OCE2m26WxnaqLfNBW9uqx9hAQZHZS0eBO8aDgUdBENFMqCCjOkmQwkTaburWuU4dA4YYQSikUZcpQ+uN/6HuSqziO5KVLh37Xz+e9d/dOIuR//pFczsa5y6ez8EXNMIxZ1YYQp9nCfAEoGJl83dGE8UKIrP6rTJXAyBS+ApdkTYiPWQ2Ag3GQJdx2GAowJGPET+biDGyRLlw2qeJgC9dN5TpkZR1baGmCHmdrF2fcFObGXF85REHLwrpupQlz35J620wZoevLH/7Um9yJ7jnd/uGziBeDt3T1upCji0iW97A88DdsG4V8sqjwfNR9icZI1xXPL9m2NYh2PeZ3B70t8RqFpaPRft+GKOqkUFS9zXUXTz+Qu1BuW8qxlGzy87uLjYpZ3XHf6IrD7mG5FTjRY2kM+PxhZbNY7MgltzxStaAMvBBETyXJDIUfcs/cLr2SnuxK0N4q27QVuOpYwE0+qJgndHNbzasSnG7rEW1xz40/GMbgDLl2ry0dmQuSpMowfKna4jw4ib4XxjRY1K1KBxYyUiV5gdkWHXSHBg9cBwzkcM07j/HZtP6gssCoyd0mNfjIBQP6H+CP872N06r9wB/kFT4E3uLCjQJ8Dc4YXdj3uX9c5U1KC0brvRACMfAaIR2YwCrKvuezPYocIzCnxloNhB0P4nc0z+sCNyZTqzVCQr4EHod4Pk04FEZphGfwzrYFHfhzaxo3fiEmBDYPQ4ZJ+bg4jGks2ApPThfRehhefYkoTE2vnxFyTbjicfdrnES8MMmn/iU6XU8yhXR+JcTnv8ETIb7eWbpwP15OPQXHwnh7qZwkvH7zfIkQYtLrCTmnnzJKx8mFuZn87/MbaoVhRwxcKOwAAAAASUVORK5CYII='
+}
+   ,
+    {
+      name: 'TRS jack',
+      type: 'Connector',
+      description: 'TRS Connector',
+      MFR: 'TRS Connector',
+      pin_data: null,
+      text_data:[
+' ╔═════╗\n' +
+'█║    ┌╫\n' +
+' ║^^^─▾╫\n' +
+' ║││  ┌╫\n' +
+' ║│└──▾╫\n' +
+' ║└────╫\n' +
+' ╚═════╝\n'
+   ],
+      image_data:
+
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAC1QTFRFAAAAEBYZP0RFKS0uaWliqKifjIyDOj0+5OTghIaDVllZPkFAsbKvYmhllJWOtb6L3AAAAA90Uk5TAP///v/9/cH9HCd1Fp2ZrWtXmAAAAytJREFUeJy9lb9rFEEUx7cxcDEczM1hf7ObCyYozMySYJm9uS0twu2xltmbGdKGFJLE0siWqRSMhnQWsdEUgQPBRiXhCEJsAgYsjFXwb3Bm9sft3a3p9BV7MO8z733fmzdzlvV/bfpxf1f/Vi4vL0qBNwBuv7Wsmdec3dst8e9hAMBSf+8DCrtuCTD9DmiDG5Q2Pf9jWYLManTxetJ/G+cAgHRrwn+6Doq2NO6vHI34AeyPiTgEYwa3X41UsD4OALj0fRhk5mjCr5GtnHiBywAldbfQwon9+vMgqeC8dLvaBedvEKCjkrt/TQCo7icywBEtV4ghyYByQvnRZgrQ0jIQQk8yoIwgI0B5ALR5UUgxBmk/cmQKmCV7PAFCzW5WBTSfYXxq/GjWTwBSU1t0gEwrTAKg5kMDOJLZDYDsXAisoRR4pAHCmOdENkBmP80qMMAPBbxHrBsx5HvQqFRiKMmA+2ogps8paQXc6VFMsBZKvdxvWv3FCTgnIbObEUhDDAHVycq3wKPUacdOhLGRiGnuR18VILitVtiabLm9QpMTO7CsalcH6HIZ9ljSSpgAjRT43LEhEjJgnHl0uRBBH8acAj5xX/BwR3Saa6tNzwBGQ8MAqsorEUgp4h3Z8lxGc8A2xzmnbs6ZaAHYFDH3XIHcRgbgBFBtqHZ0Vr/LEWGINVINdnLeGpjq6UOucbXo6cwJkCpNAKIX/YZNHMccqPLhdGAWFHCLMz0o9V4NKcCopHZWqr55U9LTtwx2KGKMIgPgdCJ1n6xqZCbSFZRxzrLBTQbGvGTVVT0jkM16jLc7BBd6qfuoDqunQkLXvsN92eZeMrnJefeTx+En9NSM4roUXSFsbK618S8cJM/Lc7u9rBZdBTBO9PzToUJtZzx+qmTUhejMPkWAZsB8/oT+imM1KXURcJ/bOgAZKjS2H8YrGC+KwBEc50Dhsa5cxSuLkR+s+GGkExhgYRhAhRDRmpTPWHvHy4H+yEO9L6QMIxbu0AyYt0btJJDcEfHJcQYcjAHW4HcQhNdW5XDDAJN/J9bMYDDQv3uKIIUSJ+1Upenf4Lesl8fbNwX4B/YHUtUNX0hI4CYAAAAASUVORK5CYII='
+
+   }
+,
+   {
+      name: 'DIP connector',
+      type: 'Connector',
+      description: 'DIP Connector',
+      MFR: 'DIP Connector',
+      pin_data: null,
+      text_data:[
+'─━   ᯿─\n' +
+'─━   ᯿─\n' +
+'─━   ᯿─\n' +
+'─━   ᯿─\n' +
+'─━   ᯿─\n' +
+'─━   ᯿─\n' +
+'─━   ᯿─\n'
+   ],
+      image_data:
+
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAC1QTFRFAAAAb29xX19iRUZJenp94cxuLy8y4tyrCQoK4NKI4tSJZ2dmraugXV1cdnZ1ftRuOAAAAA90Uk5TAP/+/f/7/xP/YrlpCa0psaAYsQAAAqVJREFUeJztlDFvEzEUx72gU9ARyRd/AfsQe89SxZLBrVc2TqhZT7o5DBEqH6DKmAVV7cCGEGtW1AjYqkqVuLJVGQgDQ5p+Bt57ti/Xa1IGVjz4Kff/vb/fe74cY/8XY9HwL/rJ8cNAJx88bB7l+TY9Pv0ERPRhO5DnEwhvNwHRG0a5BxQ2AO8GePypt9gE5B9hP8wpRHek85MhAQMfJvdzj6kwCh20iC5awIHrjQJYLCvlpQ6Z+1wfzvM9pbgHRq6i0BuE2+VcwUo88IgKi0Z57p0+V4p0CRc2cRVhiHxvL/eUJIBzyH3lXKm3EYTLs8ppPJEAPHaKL+ywNud+uXZDb/HtD5UpJaXkNRC75tFi2D270hpL4+uF7QaLFzojd4X5UggPMG8+DTIWYK0QVnDDjTN/v5xrMofkBA2s5bhBcOb7XiZT3CHdWGvABoBu5WXliqfNumXQ4VchuTu6Ub1TjcAaFinMDPMTtdaRwJPwiIXaCUdz4QFjwyIgtTR2UoQlB+FKIOAbXKrgrdV0+Mp5hhU1IMlFA3gNw6HfIdnQINbAEzg5qwEBAEwo6DiHLjxO8QkeIoRxI3a60jjq70Ds4EPQhBux6yGFEeMbC4BRFi8Qr7Cuvwfy7hiBFb5+TwGwpm6PY3YAsAieGZw9+gTzsgwA+wlAbz0bk1DuuCwC0IXBiCzIqVYpAQXsJQFxBf1Rp9agWFJuA2Arif8Sf7aXxkeIeaCLd53yhCp/7oCjsgGwBVg8K1zlAGD9JQC7es6CRcJ73rwGiqJ/E74t8VTx/WYu7Pp69nv99blQSXIH0P3Zl+bnqVtJRcNxgJ7PWGutVFJ4c51d37Rlxi6VKmrzDTpjU4nmGsw3yvDmgUPRLq254qsCsrfKWGb/XuUtiy1n/+v6A60wIVbY3iQaAAAAAElFTkSuQmCC'
+   }
+
+
+   ,   
     {
       name: 'Power Delivery',
       type: 'Power/Driver',
@@ -1346,6 +1421,60 @@
    ],
       image_data:
         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAOjI8UDtYioN+Z15iHRshubWe4uTocmiCsLS62esjNwAAAAp0Uk5TAP/5/f3//Ro1jwaBOcsAAAL+SURBVHic1ZU9j+M2EEDVySmHpNyT4gluRfIEpOSHhbQyzB9gi2DgTsgCcdwtFgfEZXC7wP3dkHt7u/ba3ibNhYIa62nmkTMaF8VPsKb/FXA83n8IzKxZfATMHkJgv30APNBOCvb3TWDWdNCMhl3ReAbKh6YHFgNbXG7q+ZejNH1go2DuUjQDMx428+g6I6U4XgO+GDkiGxx38lIjAcdeQgyUIUZRHRf374EZsx3FnRWIzWPfs8V74ItkVtBGYSRGA65W5xrTsXFbLrfYCbCUbLHF5xp/PXAZWD22NWJsaSlgwc80/pCBR8F619a9Ihr8UilxqmHy+7HWdiAyPV77UVhxKvqVW8VkWxOwCigMxAoF0ryJfk35jVVrvZYUGMBG4ghh+yb6ZJgdBabIGgSUAdVRUefkq+idY8xg46wFcECJYDVFrJGvonuV3oQKsEacUVCSb+jIeDQ/NKaD0xRg9FUyoDgFoghvI2u6F40pJ4F5y8HDkAJohhRYw3NR7r8D5ZNBAnGohsGlrYIj4ZPuN6gOi5dy75VOlQbjVzadFTbKzXVcDqRnx5eGObhkUa09tgKolXZFfDdWYFnWyED56Cq/5CJlB5MuABJjXEKfT+O5afdPxqd+a/SAFF1BqlkX44h6mYryvc8PgmKs7HZQpAUkPWSCEvMKlHeO8vkIg/0MjLgWAMfgU4e4H59e0oC6hXZYQgCkk/NcJ03z6+vXXSpTU7BLwCPkVaXm4KLevc2HtFcUeQsk+AxgV/FOdt9OJsydgy4QTbDOQEssknY3nQD7fOTNBl7W0Ic6BTidUYd05P0mJ0i3H0iUKcDZEEsarB0S8LkFj6DLAc6n3GM+ZkRhXPq1be2ueA+UivrcuaIaUk3jtwugOGg/pPS4QmvR76ZLoHz0eTX602DjVFwCxZ9VBrCkpPu9uAb8ssnAqhvr3XQVKGPlK6/7+LzFK0BxCFCtUkvsihtAGVPjAun+uQUUhzimWbabbgLF/hCV3Re3gZRm//b8p/hT+8/rX2F71gA4BKweAAAAAElFTkSuQmCC'
+    }
+
+   ,
+        {
+      name: 'SGTL5000',
+      type: 'DAC/ADC',
+      description: 'Low Power Stereo Codec with Headphone Amp',
+      MFR: 'ADC/DAC',
+      pin_data: null,
+      instructions:'https://www.reichelt.com/be/nl/shop/product/teensy_shield_-_microsd_audio_f_teensy_4_0-275591?PROVID=2812&gad_source=1&gad_campaignid=17940466725&gbraid=0AAAAADwnxtbkIYn7MoZwvBj2nOUi-lsQm&gclid=CjwKCAiA7LzLBhAgEiwAjMWzCG6YDh9wNbhaTwLT1znB2UIv3eV_tJ1yVbL-R97VikctSrOSp2gKcBoC84UQAvD_BwE#open-modal-image-big-slider',
+      text_data:[
+
+'╔═════╧══╧══╧══════╗\n' +
+'║                  ║\n' +
+'╢ SDA      LINEINL ╟\n' +
+'╢ SCL      LINEINR ╟\n' +
+'║         LINEOUTR ╟\n' +
+'╢ MCLK    LINEOUTL ╟\n' +
+'╢ BCLK             ║\n' +
+'╢ LRCLK        HPL ╟\n' +
+'╢ TX           HPR ╟\n' +
+'╢ RX        HPVGND ╟\n' +
+'║                  ║\n' +
+'╢ VAG          MIC ╟\n' +
+'╢ CPFILT           ║\n' +
+'╢ ADDR             ║\n' +
+'╢ MODE     MICBIAS ╟\n' +
+'║                  ║\n' +
+'╚═════╤══╤══╤══════╝\n'
+
+   ],
+      image_data:
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAC1QTFRFAAAAGhkZ/v79JyYmXl1d////19fWPj09NzY2RENDfn59qKensbGxf39+WllZ3jTtGgAAAA90Uk5TAP//+f0a/v6hTP36EFgV+Uu22QAAAnlJREFUeJzVlD2LE0EYx7e5IuAtPMzihCunWCFbDQlcbqPFkiXhuMZPILiECEm1GkSSKkSQa47AWVwhB2ZlhYCFiSRgEAQrGxHsFI5tBIW77+AzM5uXzZvt3b+a3f9vd563GU27Cbq/3d65jsDXV9sBvZOPtgF6GyAdbQb0U0AdRBuBX44AjE+bgLOB5QPQgXW8HrjitvcQ4LYZkIt1wK5XAfs17hBAyeyuAql2iQ1xA9ykwCrp7jKwOwpIOBYB+NCqgV3/ngT0FwPTIUAGjCHBDc96FiWAnxjgI4ASQ1UAnppF8m4B0F96FW5w5QuCOKTEDqMZ8AdkgC0WaywDhZMpcFV1SBiA7U0BM4BcjdvVCwWk9j0TkzNmPhKOeLayXQF8a8PeZIgJsgVhKoWJA+nLHe1BRzRoyZeEUP639kUu4DFb0h31/q72/IlcGOv/kDvU2jkfaD9IxIi+A/bEB6OY1trQyIYMu2gvAgHAHqvtl0EA0PTGcOTM6yR84wM0zTegANKHJpt2YtoNLGefxwBQ18twCiSMfU580jNdEWda+yGrMOEUBwp6ws/gvyyfTGQe9+JC5co9bADQUbVaR8P2Mo1iXChRakGMcBSHQLJZDoUKFOrKv5TN4mLd4C0RnBD2nr4VC9JV7f4rCdfDDouuFkloutI/nw+MeDzCQN/jubB8+lF+cjIfuTOZSnmg5iDTkAkcRwtDqwgcK5RdU35y7FWyMvScPML55Nhrqc7UM1SC3eWjp8ty2D6V28xukYXDq8rhunEB1hx/WQ7K4wKsAWQqdJ7AKiAImvSXgFunAjj4vBHAVOjWa1DcE9sv0v9fxSu6HsBN0D/wxtXpWh4ypwAAAABJRU5ErkJggg=='
+    }
+
+
+ ,
+        {
+      name: 'W25Q128FV',
+      type: 'Memory',
+      description: '128Mbit Serial Flash Memory SPI Module for Arduino Raspberry Pi',
+      MFR: 'W25Q128JVFIQ',
+      pin_data: null,
+      instructions:'https://www.reichelt.com/be/nl/shop/product/teensy_shield_-_microsd_audio_f_teensy_4_0-275591?PROVID=2812&gad_source=1&gad_campaignid=17940466725&gbraid=0AAAAADwnxtbkIYn7MoZwvBj2nOUi-lsQm&gclid=CjwKCAiA7LzLBhAgEiwAjMWzCG6YDh9wNbhaTwLT1znB2UIv3eV_tJ1yVbL-R97VikctSrOSp2gKcBoC84UQAvD_BwE#open-modal-image-big-slider',
+      text_data:[
+'╔══════════════╗\n' +
+'╢ /CS      VCC ╟\n' +
+'╢ DO  /HLD/RST ╟\n' +
+'║ /WP      CLK ╟\n' +
+'╢ GND       DI ╟\n' +
+'╚══════════════╝\n'
+   ],
+      image_data:
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAC1QTFRFAAAAMC8wPDs9ICAgVFRUcnJx0M7IsbCvxMO8tLOu/f38srGo0M7DlpWQkpGRRgduPAAAAA90Uk5TAP////7yETRstSX69fiThm8nzQAAAqtJREFUeJzN1M9r02AYB/D3lGwX4c2bncRD3saTKKSv/0CzFATtofsBK1J5T7Flo+xgexmDXAzCtut0dB05yc7SiqXxprWy9iL+mEQvYzhE/R9886Nd0yTdQZA9p0I+PM/3ffI2AFyCsi4V0C8AleWz9amgiuUHtSmAX8AYZ89oIqhKGEImImMCwJ1ACAUpZkwAKip0S4iO8QF3KsGghOsrtSjgVTgqITzGCs4Ix0oYH2P5Z4ShYk3WQ6CCYUTUxgB/CiPljqFDcCUjRQUMmljeFmOes70Waj54uAATRPbMA1WJKLEAwluUAe4EERL/HM0ZDFQy7FcCkH8w8CihPStFuwMsLo/jI7IGoroCLD7DXnI8IJp8DKwKggkCpdXsLrBOkXvIuDFExMvsFCcKcU8ZbYIUVS6yPVSLJBATTVA6o60wUBpAwjYVHUNkgUUAVrlJxKbfBONQA1XOrXsAXW1CVyihIEiUtC/u29QbS3fzys3FSaHIWtZwwapz8Hte+ZZHih8EjyIuF7wLs/Ge2/6kOimlmBoPwiJqn13wfP8d3ensDVB6kBpGlbwliDl3Aji0jVL9lX60JLdI+mMQBEMiYO2rd6sPn4JN2+S/P/vZJNfewGETgmV3Cf6d3GzTsmNwb9UbLxQx7wpBxhm5QIdgaxf86RszTttZJPc+IK9HsITRf7Pe07c65nYL359XcvOMCIIfcQj2DN7pG1tOo5FSbBdALZgQAJ3OOl293tbLS+JRCmrodhDx/Bs1Y9Oyvcs12r9aRBykxCKdAJwJVm1a6rxcG2TmBlA7BhOAVbkLNvrmWud1sQVzZgzgKGj06GrH1B+PIk5+zPcNUD9igw7Ov1JhUKKc3QMbbQoSAJvTp7zdBckAPAGztjENALDWA9MBb14AwvUfwD/XXxG3BIyldHjIAAAAAElFTkSuQmCC'
     }
 
     ,
