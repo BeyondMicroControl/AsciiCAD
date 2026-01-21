@@ -57,7 +57,7 @@ Try it online:
 
 ---
 
-## Feature wish-list
+## Wish-list
 
 - [ ] Refactor index.html (main file) to fully run in a signle file, with no immediate external dependencies 
 - [ ] Junction resolution is buggy, for the simple reason it is complex ;-) (single lines, double lines, double thickness lines, etc...)
