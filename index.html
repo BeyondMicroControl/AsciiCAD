@@ -2102,8 +2102,8 @@ window.addEventListener("keydown", (e) =>
         }
     }
 
-    if (e.key === "Shift") lineDrag.flip = false;
-    if (e.key.toLowerCase() === 'o') lineDrag.merge = false;
+    if (e.key === "Shift" && lineDrag) lineDrag.flip = false;
+    if (e.key.toLowerCase() === 'o' && lineDrag) lineDrag.merge = false;
     draw();
 
     if (textDrag)
@@ -2158,9 +2158,9 @@ window.addEventListener("keydown", (e) =>
 }, { passive: false });
 
 window.addEventListener("keyup", e => {
-    if (e.key === "Shift") lineDrag.flip = true;
-    if (e.key.toLowerCase() === 'o') lineDrag.merge = true;
-    if(bDebug) console.log("KEYUP: lineFlip="+(lineDrag.flip || "null")+" lineMerge="+(lineDrag.merge || "null");
+    if (e.key === "Shift" && lineDrag) lineDrag.flip = true;
+    if (e.key.toLowerCase() === 'o' && lineDrag) lineDrag.merge = true;
+    if(bDebug) console.log("KEYUP: lineFlip="+(lineDrag ? lineDrag.flip : "null")+" lineMerge="+(lineDrag ? lineDrag.merge : "null"));
     draw();
 });
 
