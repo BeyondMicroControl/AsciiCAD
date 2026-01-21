@@ -2160,7 +2160,7 @@ window.addEventListener("keydown", (e) =>
 window.addEventListener("keyup", e => {
     if (e.key === "Shift") lineDrag.flip = true;
     if (e.key.toLowerCase() === 'o') lineDrag.merge = true;
-    if(bDebug) console.log("KEYUP: lineFlip="+lineDrag.flip+" lineMerge="+lineDrag.merge);
+    if(bDebug) console.log("KEYUP: lineFlip="+(lineDrag.flip || "null")+" lineMerge="+(lineDrag.merge || "null");
     draw();
 });
 
