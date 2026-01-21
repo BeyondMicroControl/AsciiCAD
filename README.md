@@ -60,7 +60,7 @@ Try it online:
 ## Feature wish-list
 
 - [ ] Refactor index.html (main file) to fully run in a signle file, with no immediate external dependencies 
-- [ ] Line conflict resolution is buggy, for the simple reason it is complex ;-) (single lines, double lines, double thickness lines, etc...)
+- [ ] Junction resolution is buggy, for the simple reason it is complex ;-) (single lines, double lines, double thickness lines, etc...)
 - [ ] Embed a component editor + Import/Export Ascii component catalog
 
 ## Status
