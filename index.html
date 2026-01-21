@@ -27,7 +27,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.92</big><br><small>Author: Freddy Vandriessche</small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.93</big><br><small>Author: Freddy Vandriessche</small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -42,6 +42,8 @@
           <div class="row">
             <button id="modeFreeform" class="btn primary" data-hint="Pasting: move preview with mouse, click to place.|Drag to draw (cell-by-cell).">Free</button>
             <button id="modeSelect" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag to select. Drag inside selection to move.">Move</button>
+            <button id="modeCopy" class="btn" data-hint="Drag to select. Drag inside selection to copy (source remains).">Copy</button>
+            <button id="modeBlank" class="btn" data-hint="Drag to select. Release to blank the selected area.">Blank</button>
             <button id="modeSLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, hold 'shift' for horizontal origin, release to place line. Use 'o' to override instead of merge lines.">SLine</button>
             <button id="modeTLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, hold 'shift' for horizontal origin, release to place line. Use 'o' to override instead of merge lines.">TLine</button>
             <button id="modeDLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, hold 'shift' for horizontal origin, release to place line. Use 'o' to override instead of merge lines.">DLine</button>
@@ -1250,12 +1252,66 @@ function applyMove(baseRect, dr, dc, snapMap)
     pushStrokeIfNonEmpty(stroke);
 }
 
+function applyCopy(baseRect, dr, dc, snapMap) 
+{
+  if (dr === 0 && dc === 0) return;
+  const stroke = [];
+
+  // Paste snapshot at offset (clip to grid) — DO NOT clear source
+  for (let r = baseRect.r0; r <= baseRect.r1; r++) {
+    for (let c = baseRect.c0; c <= baseRect.c1; c++) {
+      const chx = snapMap.get(r + ',' + c) || ' ';
+      if (chx === ' ') continue; // optional: keeps copy sparse
+
+      const rr = r + dr;
+      const cc = c + dc;
+      if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+
+      const prev = ascii[rr][cc];
+      const next = chx;
+      if (prev !== next) {
+        stroke.push({ r: rr, c: cc, prev, next });
+        ascii[rr][cc] = next;
+      }
+    }
+  }
+
+  pushStrokeIfNonEmpty(stroke);
+}
+
+function applyBlankRect(rect)
+{
+  if (!rect) return;
+  const stroke = [];
+
+  for (let r = rect.r0; r <= rect.r1; r++) {
+    for (let c = rect.c0; c <= rect.c1; c++) {
+      const prev = ascii[r][c];
+      if (prev !== ' ') {
+        stroke.push({ r, c, prev, next: ' ' });
+        ascii[r][c] = ' ';
+      }
+    }
+  }
+
+  pushStrokeIfNonEmpty(stroke);
+}
+
 function beginSelect(cell) 
 {
     if (!cell) return;
     if (selection && cell.r >= selection.r0 && cell.r <= selection.r1 && cell.c >= selection.c0 && cell.c <= selection.c1)
     {
-        moveDrag = { startCell: cell, offset: { dr: 0, dc: 0 }, baseRect: selection, snapshot: snapshotRect(selection) };
+        //moveDrag = { startCell: cell, offset: { dr: 0, dc: 0 }, baseRect: selection, snapshot: snapshotRect(selection) };
+
+        moveDrag = {
+          startCell: cell,
+          offset: { dr: 0, dc: 0 },
+          baseRect: selection,
+          snapshot: snapshotRect(selection),
+          action: (tool === "modeCopy") ? "copy" : "move",
+        };
+
         draw("beginSelect");
         return;
     }
@@ -1286,20 +1342,30 @@ function endSelect()
 {
     // Keep selection after selecting; clear after move commit.
     if (moveDrag) {
-        const base = moveDrag.baseRect;
-        const snapMap = moveDrag.snapshot;
-        const { dr, dc } = moveDrag.offset;
-        applyMove(base, dr, dc, snapMap);
-        moveDrag = null;
-        selectDrag = null;
-        selection = null; // disappear after move mouseup
-        draw("endSelect");
-        return;
+      const base = moveDrag.baseRect;
+      const snapMap = moveDrag.snapshot;
+      const { dr, dc } = moveDrag.offset;
+
+      if (moveDrag.action === "copy") applyCopy(base, dr, dc, snapMap);
+      else applyMove(base, dr, dc, snapMap);
+
+      moveDrag = null;
+      selectDrag = null;
+      selection = null; // disappear after mouseup (same behavior)
+      draw("endSelect");
+      return;
     }
+
     if (selectDrag) 
     {
         selection = normRect(selectDrag.start, selectDrag.current);
         selectDrag = null;
+
+        if (tool === "modeBlank") {
+          applyBlankRect(selection);
+          selection = null; // clear overlay after blanking
+        }
+
         draw("endSelect");
     }
 }
@@ -1982,7 +2048,7 @@ canvas.addEventListener("mousemove", (e) =>
 
     // TODO SERIALISE (MOVE functions) ??
     if (tool === "modeFreeform")      moveFreeform(cell);
-    else if(tool === "modeSelect")    moveSelect(cell)
+    else if(tool === "modeSelect" || tool === "modeCopy" || tool === "modeBlank") moveSelect(cell)
     else if (tool === "modeSLine")    moveLine(cell);
     else if (tool === "modeTLine")    moveLine(cell);
     else if (tool === "modeDLine")    moveLine(cell);
@@ -2029,7 +2095,7 @@ canvas.addEventListener("mousedown", (e) =>
 
     // TODO SERIALISE (BEGIN functions)??
     if (tool === "modeFreeform")      beginFreeform(cell);
-    else if (tool === "modeSelect")   beginSelect(cell);
+    else if (tool === "modeSelect" || tool === "modeCopy" || tool === "modeBlank") beginSelect(cell);
     else if (tool === "modeSLine")    beginLine(cell,"single");
     else if (tool === "modeTLine")    beginLine(cell,"thick");
     else if (tool === "modeDLine")    beginLine(cell,"double");
