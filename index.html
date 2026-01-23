@@ -1771,6 +1771,8 @@ function wipeSelection(ch)
 }
 
 
+
+
 //     ██████  ██    ██ ██     ██   ██  █████  ███    ██ ██████  ██      ███████ ██████  ███████ 
 //    ██       ██    ██ ██     ██   ██ ██   ██ ████   ██ ██   ██ ██      ██      ██   ██ ██      
 //    ██   ███ ██    ██ ██     ███████ ███████ ██ ██  ██ ██   ██ ██      █████   ██████  ███████ 
@@ -1990,7 +1992,7 @@ canvas.addEventListener("wheel",(e) => {
 
     // Pinch-zoom on trackpad (Chrome/Safari typically set ctrlKey for pinch)
     if (e.ctrlKey) {
-        const zoomFactor = Math.exp(-e.deltaY * 0.0015);
+        const zoomFactor = Math.exp(-e.deltaY * 0.01);
         scale = clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
         updateUI();
         draw();
@@ -2013,7 +2015,7 @@ canvas.addEventListener("wheel",(e) => {
     }
 
     // Mouse wheel zooms
-    const zoomFactor = Math.exp(-e.deltaY * 0.0015);
+    const zoomFactor = Math.exp(-e.deltaY * 0.01);
     scale = clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
     updateUI();
     draw();
@@ -2147,88 +2149,66 @@ canvas.addEventListener("mouseleave", () => {
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
 // Shortcuts
-window.addEventListener("keydown", (e) => 
-{
-    const isMac = /mac/i.test(navigator.platform);
-    const mod = isMac ? e.metaKey : e.ctrlKey;
+window.addEventListener("keydown", (e) => {
+  const isMac = /mac/i.test(navigator.platform);
+  const mod = isMac ? e.metaKey : e.ctrlKey;
 
-    if(bDebug) console.log("e.key = "+e.key+" mod="+mod+" lineDrag="+(lineDrag!=null)+" textDrag="+(textDrag!=null)+" shiftKey="+e.shiftKey+" ctrlKey="+e.ctrlKey+" metaKey="+e.metaKey+" altKey="+e.altKey);
+  // ✅ Always allow Undo/Redo (even while typing)
+  if (mod) {
+    const k = String(e.key || "").toLowerCase();
+    if (k === "z" && !e.shiftKey) { e.preventDefault(); doUndo(); return; }
+    if (k === "z" &&  e.shiftKey) { e.preventDefault(); doRedo(); return; }
+  }
 
-    if (e.key === "Escape") { if (pasteDrag) { e.preventDefault(); cancelPaste(); } return; }
+  // ✅ If FreeText preview is active, handle ALL typing here and stop.
+  if (textDrag) {
+    // Cancel
+    if (e.key === "Escape") { e.preventDefault(); cancelFreetext(); return; }
 
-    // r for rotating
-    if(e.key.toLowerCase() === 'r' && pasteDrag!=null)
-    { 
-        const it = catalogItemByUID(pasteDrag.item_data.uid);
-        if(it)
-        {
-            pasteDrag.item_data.rotation = (pasteDrag.item_data.rotation+1) % it.text_data.length;
-            const text_data = it.text_data[ pasteDrag.item_data.rotation ];
-            startPasteWithText(expandWideCharsForGrid(text_data) || '');
-        }
+    // Commit
+    if (e.key === "Enter") { e.preventDefault(); commitFreetext(); return; }
+
+    // Edit
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      textDrag.text = textDrag.text.slice(0, -1);
+      draw();
+      return;
     }
 
-    if (e.key === "Shift" && lineDrag) lineDrag.flip = false;
-    if (e.key.toLowerCase() === 'o' && lineDrag) lineDrag.merge = false;
-    draw();
+    // Ignore other control chords while typing
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-    if (textDrag)
-    {
-        // Cancel
-        if (e.key === "Escape") {
-            e.preventDefault();
-            cancelFreetext();
-            return;
-        }
-
-        // Commit
-        if (e.key === "Enter") {
-            e.preventDefault();
-            commitFreetext();
-            return;
-        }
-
-        // Edit
-        if (e.key === "Backspace") {
-            e.preventDefault();
-            textDrag.text = textDrag.text.slice(0, -1);
-            draw();
-            return;
-        }
-
-        // Ignore control keys
-        if (e.ctrlKey || e.metaKey) return;
-        if (e.key.length !== 1) return;
-
-        // Append typed character
-        e.preventDefault();
-        textDrag.text += e.key;
-        draw();
+    // Append printable character
+    if (e.key && e.key.length === 1) {
+      e.preventDefault();
+      textDrag.text += e.key;   // ✅ includes 'o'
+      draw();
     }
+    return; // IMPORTANT: don't fall through to line/box shortcuts
+  }
 
-    // Cmd / Ctrl + ...
-    if (!mod) return;           
-    const k = String(e.key || '').toLowerCase();
-
-    if (k === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
-    else if (k === 'z' && e.shiftKey) { e.preventDefault(); doRedo(); }
-    else if (k === 'v') 
-    {
-        pasteSink.value = '';
-        pasteSink.focus(); 
-    }
-
-    if (tool !== "modeFreetext") return;
-    
-
+  // ... keep the rest of your existing handler here ...
 }, { passive: false });
 
+
 window.addEventListener("keyup", e => {
+    if (textDrag) return; // ✅ don't process line shortcuts while typing
     if (e.key === "Shift" && lineDrag) lineDrag.flip = true;
     if (e.key.toLowerCase() === 'o' && lineDrag) lineDrag.merge = true;
     if(bDebug) console.log("KEYUP: lineFlip="+(lineDrag ? lineDrag.flip : "null")+" lineMerge="+(lineDrag ? lineDrag.merge : "null"));
     draw();
 });
+
+function isEditingTextTarget(e) {
+  const el = e.target;
+  if (!el) return false;
+  const tag = (el.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea") return true;
+  if (el.isContentEditable) return true;
+  return false;
+}
+
 
 // Resize observer (debounced via rAF)
 let resizeRaf = null;
