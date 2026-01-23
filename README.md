@@ -25,14 +25,15 @@ Try it online:
 ## Features
 
 - Freeform drawing with curated UTF-8 glyphs
-- Single and double line routing with automatic junction resolution
-- Single and double boxes (ICs, modules, blocks)
+- Single, thick and double line routing with junction/override resolution
+- Single, thick and double boxes (ICs, modules, blocks)
 - Free text placement
+- Copy / Move / Blank (area select & drag function)
+- Paste from clipboard
 - Component catalog (MCUs, logic, symbols)
-- Paste from clipboard with preview
 - Undo / Redo
 - Load, Save, Clear
-- Load schematics via URL parameters
+- Save to permalink (and auto-load) 
 - Pan and zoom for large grids
 
 ---
@@ -52,14 +53,15 @@ Try it online:
 - Browser-only focused HTML and JavaScript codebase
 - Runs fully client-side
 - No frameworks, no build step
-- Output is optimized for monospace editors (VS Code, Arduino IDE, terminals)
+- Output is optimized for monospace editors (VS Code, Arduino IDE, terminals, TextEdit)
 
 ---
 
-## Feature wish-list
+## Wish-list
 
 - [ ] Refactor index.html (main file) to fully run in a signle file, with no immediate external dependencies 
-- [ ] Line conflict resolution is buggy, for the simple reason it is complex ;-) (single lines, double lines, double thickness lines, etc...)
+- [ ] Junction resolution is buggy, for the simple reason it is complex ;-) (single lines, double lines, double thickness lines, etc...)
+- [ ] Not all UTF8 characters are monospace-friendly, leading to less perfect character selection (still buggy)
 - [ ] Embed a component editor + Import/Export Ascii component catalog
 
 ## Status
