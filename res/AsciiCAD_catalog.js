@@ -486,15 +486,15 @@
 '─╢TX1  CTX2   -1                 3V3╟─\n' +
 '─╢     OUT2   -2  23- MCLK1 CRX1  A9╟─\n' +
 '─╢     LRCLK2 -3  22-       CTX1  A8╟─\n' +
-'─╢     BCLK2  -4  21-  BCLK1 RXS  A7╟─\n' +
+'─╢     BCLK2  -4  21- BCLK1 RXS   A7╟─\n' +
 '─╢     IN2    -5  20-       TXS   A6╟─\n' +
 '─╢     OUT1D  -6  19-  SCL0       A5╟─\n' +
 '─╢RX2  OUT1A  -7  18-  SDA0       A4╟─\n' +
 '─╢TX2  IN1    -8  17-  SDA1 TX4   A3╟─\n' +
 '─╢     OUT1C  -9  16-  SCL1 RX4   A2╟─\n' +
-'─╢MQSR CS     -10 15-      RX3    A1╟─\n' +
-'─╢MOSI CTX1   -11 14-      TX3    A0╟─\n' +
-'─╢MISO MQSL   -12 13- CRX1 SCK (LED)╟─\n' +
+'─╢MQSR CS     -10 15-       RX3   A1╟─\n' +
+'─╢MOSI CTX1   -11 14-       TX3   A0╟─\n' +
+'─╢MISO MQSL   -12 13- CRX1  SCK  LED╟─\n' +
 ' ║                                  ║\n' +
 ' ╚══════════════════════════════════╝\n'
 
