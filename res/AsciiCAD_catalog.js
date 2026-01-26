@@ -645,30 +645,29 @@
         MFR: 'Daisy Seed',
         pin_data: null,
         text_data:[
-' ┌────────────────────Daisy Seed─────────────────┐\n' +
-' │                                               │\n' +
-'─┤3V3_Analog         ARM Cortex-M7           AGND├─\n' +
-'─┤ADC0   A0/D15         480MHz          AudioOut2├─\n' +
-'─┤ADC1   A1/D16                         AudioOut1├─\n' +
-'─┤ADC2   A2/D17                          AudioIn2├─\n' +
-'─┤ADC3   A3/D18                          AudioIn1├─\n' +
-'─┤ADC4   A4/D19            D14 USART1_Rx/I2C4_SDA├─\n' +
-'─┤ADC5   A5/D20            D13 USART1_Tx/I2C4_SCL├─\n' +
-'─┤ADC6   A6/D21            D12 I2C1_SDA /UART4_Tx├─\n' +
-'─┤ADC7   A7/D22 DAC_OUT2   D11 I2C1_SCL /UART4_Rx├─\n' +
-'─┤ADC8   A8/D23 DAC_OUT1   D10 SPI1_MOSI/UART2_Tx├─\n' +
-'─┤ADC9   A9/D24 SAI_MCLK   D9 SPI1_MISO          ├─\n' +
-'─┤ADC10 A10/D25 SAI2_SDB   D8 SPI1_SCK  /SPDIFRX1├─\n' +
-'─┤          D26 SAI2_SDA   D7 SPI1_CS            ├─\n' +
-'─┤          D27 SAI2_FS    D6 SD_CLK.  /USART5_Tx├─\n' +
-'─┤ADC11 A11/D28 SAI2_SCK   D5 SD_CMD.  /USART5_Rx├─\n' +
-'─┤USART1_Tx D29 USB_D-     D4 SD_Data0           ├─\n' +
-'─┤USART1_Rx D30 USB_D+     D3 SD_Data1           ├─\n' +
-'─┤3V3_Digital              D2 SD_Data2 /USART3_Tx├─\n' +
-'─┤VIN                      D1 SD_Data3 /USART3_Rx├─\n' +
-'─┤DGND                    D0 USB ID              ├─\n' +
-' │                    ╭──USB──╮                  │\n' +
-' └────────────────────┴───────┴──────────────────┘'],
+' ╔═══════════════════════════════════════════════╗\n' +
+'─╢3V3_Analog           [Daisy Seed]          AGND╟─\n' +
+'─╢ADC0   A0/D15        ARM Cortex-M7    AudioOut2╟─\n' +
+'─╢ADC1   A1/D16         480MHz          AudioOut1╟─\n' +
+'─╢ADC2   A2/D17                          AudioIn2╟─\n' +
+'─╢ADC3   A3/D18                          AudioIn1╟─\n' +
+'─╢ADC4   A4/D19            D14 USART1_Rx/I2C4_SDA╟─\n' +
+'─╢ADC5   A5/D20            D13 USART1_Tx/I2C4_SCL╟─\n' +
+'─╢ADC6   A6/D21            D12 I2C1_SDA /UART4_Tx╟─\n' +
+'─╢ADC7   A7/D22 DAC_OUT2   D11 I2C1_SCL /UART4_Rx╟─\n' +
+'─╢ADC8   A8/D23 DAC_OUT1   D10 SPI1_MOSI/UART2_Tx╟─\n' +
+'─╢ADC9   A9/D24 SAI_MCLK   D9 SPI1_MISO          ╟─\n' +
+'─╢ADC10 A10/D25 SAI2_SDB   D8 SPI1_SCK  /SPDIFRX1╟─\n' +
+'─╢          D26 SAI2_SDA   D7 SPI1_CS            ╟─\n' +
+'─╢          D27 SAI2_FS    D6 SD_CLK.  /USART5_Tx╟─\n' +
+'─╢ADC11 A11/D28 SAI2_SCK   D5 SD_CMD.  /USART5_Rx╟─\n' +
+'─╢USART1_Tx D29 USB_D-     D4 SD_Data0           ╟─\n' +
+'─╢USART1_Rx D30 USB_D+     D3 SD_Data1           ╟─\n' +
+'─╢3V3_Digital              D2 SD_Data2 /USART3_Tx╟─\n' +
+'─╢VIN                      D1 SD_Data3 /USART3_Rx╟─\n' +
+'─╢DGND                    D0 USB ID              ╟─\n' +
+' ║                    ╭──USB──╮                  ║\n' +
+' ╚════════════════════╧═══════╧══════════════════╝'],
       image_data:
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAA2qg/MTMz2LV01KtJ19XPoINMYFdCxad+1rUs7IThTgAAAAp0Uk5TAPr//7P+/f5ZWoTOXAoAAAFnSURBVHicvZSxSsRAEIbzCsN4eYAUpl6HxNbACteGsNeH02AdjmxrQMVSwca3dTabHAj3GxH1b/MxX2Z2Z5PkmHer2Vr7YO1LciqvlRG6zLJzOrs6DYwidJFludkCgCgCRACoiGIFqOAIEFTImoJlTbHWxQL8XCFiAiBfKUrvBzYIEDZErcB/GGmK4EGxTIGDom4OAp6ymBwqFgAq1oBVRfWPCnSaq4pxmSRUMHM4CbhZdAxScBnPCirS+JNYsQBQMQPw0v6CopwBqCi/qcB7sQB/2AX5KbiLuJlEFinY6H0weDd1u8V7/Y4UY1NQn28agQrn0qzfuwYqXNP1nt3uDgK7rs8VuIEKraCKskUV0i4ougFVGKnTNpng4sxLgZ9BHbW+ccwGzSFMkpi4xopwDjVevUrEiTRSw9e+KZzGYIVsAtDiLswEDPDCjKZQx+2A7sObtdd7BQ4WVNA8BsU9+qp5DvkMfAAoh7C+1ipazQAAAABJRU5ErkJggg=='
     }
