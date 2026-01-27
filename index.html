@@ -27,7 +27,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.93</big><br><small>Author: Freddy Vandriessche</small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.94</big><br><small>Author: Freddy Vandriessche</small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -223,6 +223,10 @@ let op = { type: "place", ch: '+' };
 let hoverCell = null;
 let stageSize = { w: 1, h: 1 };
 
+let schemaHighlightOn = false;
+let highlightCache = null; // { redSet:Set, insideSet:Set } cached for current ascii state
+
+
 let isDrawing = false;
 let lastCellKey = null;
 let currentStroke = [];
@@ -403,6 +407,7 @@ function isDoubleWire(ch) {
          ch === "╠" || ch === "╣" || ch === "╦" || ch === "╩" || ch === "╬";
 }
 
+
 function normalizeAffected(affected, stroke) {
   // Do 2 passes to allow junction changes to propagate.
   for (let pass = 0; pass < 2; pass++) {
@@ -427,6 +432,88 @@ function normalizeAffected(affected, stroke) {
     if (!changed) break; // stable already
   }
 }
+
+function keyRC(r, c) { return r + "," + c; }
+
+const DOUBLE_H = new Set(["═","╦","╩","╤","╧","╬","╪"]);
+const DOUBLE_V = new Set(["║","╠","╣","╟","╢","╬","╫"]);
+
+function hasDoubleH(ch) { return DOUBLE_H.has(ch); }
+function hasDoubleV(ch) { return DOUBLE_V.has(ch); }
+
+// “double box” check: ╔══╗ / ║  ║ / ╚══╝ ... and intersected with single lines
+function isValidDoubleBox(r0, c0, r1, c1) {
+  if (r1 <= r0 || c1 <= c0) return false;
+
+  // Keep corners strict (recommended)
+  if (ascii[r0][c0] !== "╔") return false;
+  if (ascii[r0][c1] !== "╗") return false;
+  if (ascii[r1][c0] !== "╚") return false;
+  if (ascii[r1][c1] !== "╝") return false;
+
+  // Top & bottom edges must carry double-horizontal
+  for (let c = c0 + 1; c <= c1 - 1; c++) {
+    if (!hasDoubleH(ascii[r0][c])) return false;
+    if (!hasDoubleH(ascii[r1][c])) return false;
+  }
+
+  // Left & right edges must carry double-vertical
+  for (let r = r0 + 1; r <= r1 - 1; r++) {
+    if (!hasDoubleV(ascii[r][c0])) return false;
+    if (!hasDoubleV(ascii[r][c1])) return false;
+  }
+
+  return true;
+}
+
+
+function computeHighlightOverlay() {
+  const redSet = new Set();    // frame cells of valid double boxes
+  const insideSet = new Set(); // interior cells of valid double boxes
+
+  // Find boxes by scanning for ╔ and matching to a ╗ on same row + a ╚/╝ on lower row.
+  for (let r0 = 0; r0 < ROWS; r0++) {
+    for (let c0 = 0; c0 < COLS; c0++) {
+      if (ascii[r0][c0] !== "╔") continue;
+
+      // find candidate top-right corners on same row
+      for (let c1 = c0 + 1; c1 < COLS; c1++) {
+        if (ascii[r0][c1] !== "╗") continue;
+
+        // find candidate bottom row
+        for (let r1 = r0 + 1; r1 < ROWS; r1++) {
+          // quick corner check before full validation
+          if (ascii[r1][c0] !== "╚") continue;
+          if (ascii[r1][c1] !== "╝") continue;
+
+          if (!isValidDoubleBox(r0, c0, r1, c1)) continue;
+
+          // frame: top/bottom
+          for (let c = c0; c <= c1; c++) {
+            redSet.add(keyRC(r0, c));
+            redSet.add(keyRC(r1, c));
+          }
+          // frame: left/right
+          for (let r = r0; r <= r1; r++) {
+            redSet.add(keyRC(r, c0));
+            redSet.add(keyRC(r, c1));
+          }
+          // interior
+          for (let r = r0 + 1; r <= r1 - 1; r++) {
+            for (let c = c0 + 1; c <= c1 - 1; c++) {
+              insideSet.add(keyRC(r, c));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return { redSet, insideSet };
+}
+
+
+
 
 
 function isWireGlyph(ch) {
@@ -856,6 +943,7 @@ function cancelBox() {
   boxDrag = null;
   draw("cancelBox");
 }
+
 
 function beginFreetext(cell)
 {
@@ -1659,18 +1747,52 @@ function draw( str )
         ctx.restore();
     }
 
+    if (schemaHighlightOn && !highlightCache) {
+      highlightCache = computeHighlightOverlay();
+    }
+    const redSet = highlightCache ? highlightCache.redSet : null;
+    const insideSet = highlightCache ? highlightCache.insideSet : null;
+
+    const BLUE = "rgba(59,130,246,0.9)";
+    const RED  = "rgba(239,68,68,0.9)";
+
+
     // Draw all chars (skip base rect while moving)
     for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
+      for (let c = 0; c < COLS; c++) {
         const chx = ascii[r][c];
-        if (chx === ' ') continue;
+        if (chx === " ") continue;
+
         if (moveDrag) {
-            const b = moveDrag.baseRect;
-            if (r >= b.r0 && r <= b.r1 && c >= b.c0 && c <= b.c1) continue;
+          const b = moveDrag.baseRect;
+          if (r >= b.r0 && r <= b.r1 && c >= b.c0 && c <= b.c1) continue;
         }
-        ctx.fillText(chx, snap(c * cw + cw/2), snap(r * ch + ch/2));
+
+        // Default color
+        let color = "#000";
+
+        if (schemaHighlightOn) {
+          const k = keyRC(r, c);
+          const inside = insideSet && insideSet.has(k);
+
+          // 1) Red: only double-line frame cells of enclosed rectangles
+          if (redSet && redSet.has(k) && (hasDoubleH(chx) || hasDoubleV(chx) || chx==="╔"||chx==="╗"||chx==="╚"||chx==="╝")) {
+            color = RED;
+          }
+          // 2) Blue: single-line glyphs + crossings, but NOT inside double rectangles
+          else if (!inside) {
+            // single-line wires are: wire glyphs that are neither double nor thick
+            if (isWireGlyph(chx) && !isDoubleWire(chx) && !isThickWire(chx) && chx !== " ") {
+              color = BLUE;
+            }
+          }
         }
+
+        ctx.fillStyle = color;
+        ctx.fillText(chx, snap(c * cw + cw / 2), snap(r * ch + ch / 2));
+      }
     }
+
 
     // Selection overlay (stays after select; cleared after move mouseup)
     if (selection) {
@@ -1908,10 +2030,10 @@ openCatalogBtn.addEventListener("click", () => openCatalog());
 eraserBtn.addEventListener("click", () => { op = { type: "erase" }; setMode('modeFreeform'); updateUI(); });
 
 schemaHighlightBtn.addEventListener("click", () => {
-
-  // TODO:  call code for schema checkup / highlight
-
-  });
+  schemaHighlightOn = !schemaHighlightOn;
+  highlightCache = null;     // force full rescan next draw
+  draw("schemaHighlightToggle");
+});
 
 
 // Undo/redo

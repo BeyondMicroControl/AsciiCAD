@@ -158,6 +158,7 @@ if (!stroke || stroke.length === 0) return;
 undoStack.push(stroke);
 redoStack.length = 0;
 updateUI();
+if (schemaHighlightOn) highlightCache = null;
 }
 
 function doUndo() {
