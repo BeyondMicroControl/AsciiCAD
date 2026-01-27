@@ -69,9 +69,8 @@
         <div class="card">
           <h3>Tools</h3>
           <div class="row" style="margin-top:10px;">
-            <button id="colCode" class="btn">Parser</button>
+            <button id="schemaHighlight" class="btn">Highlight</button>
           </div>
-          <div class="tiny muted" id="currentTool" style="margin-top:10px;">Current: -</div>
         </div>
 
         <div class="card">
@@ -185,6 +184,7 @@ const pickCharBtn = document.getElementById("pickChar");
 const openCatalogBtn = document.getElementById("openCatalog");
 const eraserBtn = document.getElementById("eraser");
 const currentOpLine = document.getElementById("currentOp");
+const schemaHighlightBtn =  document.getElementById("schemaHighlight");
 const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
 const saveBtn = document.getElementById("saveBtn");
@@ -1896,6 +1896,13 @@ catalogClose.addEventListener("click", closeCatalog);
 pickCharBtn.addEventListener("click", () => { if (op.type !== "place") op = { type: "place", ch: '+' }; openPicker(); });
 openCatalogBtn.addEventListener("click", () => openCatalog());
 eraserBtn.addEventListener("click", () => { op = { type: "erase" }; setMode('modeFreeform'); updateUI(); });
+
+schemaHighlightBtn.addEventListener("click", () => {
+
+  // TODO:  call code for schema checkup / highlight
+
+  });
+
 
 // Undo/redo
 undoBtn.addEventListener("click", doUndo);
