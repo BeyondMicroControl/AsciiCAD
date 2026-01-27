@@ -646,7 +646,7 @@
         pin_data: null,
         text_data:[
 ' ╔═══════════════════════════════════════════════╗\n' +
-'─╢3V3_Analog           [Daisy Seed]          AGND╟─\n' +
+'─╢3V3_Analog        [U# Daisy Seed]          AGND╟─\n' +
 '─╢ADC0   A0/D15        ARM Cortex-M7    AudioOut2╟─\n' +
 '─╢ADC1   A1/D16         480MHz          AudioOut1╟─\n' +
 '─╢ADC2   A2/D17                          AudioIn2╟─\n' +
@@ -681,7 +681,7 @@
         pin_data: null,
         text_data:[
 '╔═══════════════════╗\n' +
-'║     [BC805M]      ║\n' +
+'║    [U# BC805M]    ║\n' +
 '║    NRF52 64MHz    ║\n' +
 '║                   ║\n' +
 '╢SWDIO          P001╟\n' +
@@ -939,31 +939,31 @@
       pin_data: null,
       text_data:
       [
-      '┌───────┐\n' +
-      '│ DHT22 │\n' +
-      '│       │\n' +
-      '│       │\n' +
-      '│ + D - │\n' +
-      '└─┬─┬─┬─┘\n'
+      '╔═══════╗\n' +
+      '║[DHT22]║\n' +
+      '║       ║\n' +
+      '║       ║\n' +
+      '║ + D - ║\n' +
+      '╚═╤═╤═╤═╝\n'
       ,
-      ' ┌──────────┐\n' +
-      '─┤ +        │\n' +
-      '─┤ D  DHT22 │\n' +
-      '─┤ -        │\n' +
-      ' └──────────┘\n'
+      ' ╔══════════╗\n' +
+      '─╢ +        ║\n' +
+      '─╢ D [DHT22]║\n' +
+      '─╢ -        ║\n' +
+      ' ╚══════════╝\n'
      ,
-      '┌─┴─┴─┴─┐\n' +
-      '│ - D + │\n' +
-      '│       │\n' +
-      '│       │\n' +
-      '│ DHT22 │\n' +
-      '└───────┘\n'   
+      '╔═╧═╧═╧═╗\n' +
+      '║ - D + ║\n' +
+      '║       ║\n' +
+      '║       ║\n' +
+      '║[DHT22]║\n' +
+      '╚═══════╝\n'   
      ,
-      '┌──────────┐\n' +
-      '│        - ├─\n' +
-      '│ DHT22  D ├─\n' +
-      '│        + ├─\n' +
-      '└──────────┘\n'
+      '╔══════════╗\n' +
+      '║        - ╟─\n' +
+      '║[DHT22] D ╟─\n' +
+      '║        + ╟─\n' +
+      '╚══════════╝\n'
     
       ],
 
@@ -1386,11 +1386,11 @@
       MFR: 'PD',
       pin_data: null,
       text_data:[
-      '┌─PD3.1──────┐\n' +
-      '├─╮        + ├─\n' +
-      '│ │USB-C     │\n' +
-      '├─╯        - ├─\n' +
-      '└────────────┘\n'
+      '╔════════════╗\n' +
+      '╟─╮[PD3.1] + ╟─\n' +
+      '║ │USB-C     ║\n' +
+      '╟─╯        - ╟─\n' +
+      '╚════════════╝\n'
    ],
       image_data:
  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAA5+fnNoFqK2zeXJztLz5NkKu5pLS6Z5uPb6fBLANYmAAAAAp0Uk5TAPv+/f3/GPv7fGnkMyUAAAKhSURBVHicxZW9b9swEMU9CcjIDpVnIoI5h3LTnYd8jFVAOKOBBkk0ynBCZQzTmOetqFPH/m97pC0nViVlKnqLBj797r0jKfV6/6yuPxSMu9ejm5/dgrxgnYjolbHPXYKbIu5EXBtWdiGi16LvWAeCHKKzj62IyDB2dzlgrAUR3RSMxaJgcQsid4wiUE0Yaxz4bdFn1IT1R4zdNzSJfg/0Nw9IHJqiAZE/a829QODINLiI3J2+DBb62jQNa2UTrX2MgpmiQZCjMFpnJDDBad1DtEJuycTgUxGy3jcABLeEiEceENdTRtyi5ZxcPArfwCxrgl96xKmoRzagBsbULOSJzrxAaHLh9+OhWlmPNw6tTgQJElJc0l5gBcjhxD9ucZJZHopciNjNKmsvAKQ9QJxQgmyrGJUPVYYrADgf0wio6NXg4lkPyirCNSgpYZmv/PvUnIIK7hK3G9ILSH2Rnq/XyGmMWvhGxDDjnUP19cimcFquiI0Zljw4Xb4B1NSYQwCz4jbh3BmScD6vABHAaRwXU5WeOxSaAAYtudgBSADGFNPhIeAgZMCyLPlst00HCqCIjbogIacQmZhgieJtG69kCjBVMqXnUeIF1hp8t4tXNAMAmaqh9AgUVpRu/gbovUhSKEmz0B7BKSPi+6/LIghSGGp9AYoGRNd21qsJCK5Sa8nnmfAxx/sC2okU1A9jnsgMWlfun7MF+fdNnmgWXuBwPt4XDLMNAkJZh7WD+l3qw+AiVFribH+9F0mpAyINAtx3GBBfErVDpGd1QLDhBelGMP8LQCXVsaoE9au0TXo83bZoakCHTmZmm7KpAQVZaDcN640NAiKNIVyOFgG5uOsC0LlbLmj9pHXd22h1uBXIrgYbQrvDjQv44C8XffSf/J/1BxnX/ZzwNy6FAAAAAElFTkSuQmCC'
@@ -1404,11 +1404,12 @@
       instructions:'https://www.meanwellusa.com/webapp/product/search.aspx?prod=SKMW40',
       pin_data: null,
       text_data:[
-      ' ┌─DKMW40G-12─┐\n' +
-      '─┤ +VIN   +VO ├─\n' +
-      ' │        COM ├─\n' +
-      '─┤ +VIN   -VO ├─\n' +
-      ' └────────────┘\n'
+      ' ╔════════════╗\n' +
+      ' ║[DKMW40G-12]║\n' +
+      '─╢ +VIN   +VO ╟─\n' +
+      ' ║        COM ╟─\n' +
+      '─╢ +VIN   -VO ╟─\n' +
+      ' ╚════════════╝\n'
 
    ],
       image_data:
@@ -1423,16 +1424,16 @@
       pin_data: null,
       instructions:'https://docs.cirkitdesigner.com/component/6eb5249e-9d81-4cbb-8a54-a23db8023969/pcm5102a',
       text_data:[
-' ┌──┴────┴────┴────┴────┴────┴────┴────┴────┴───┐\n' +
-' │ FLT  DEMP XSMT FMT  A3V3 AGND ROUT AGND ROUT │\n' +
-' │                                              │\n' +
-'─┤ SCK                                       ⟋⟍ │\n' +
-'─┤ BCK                                    ╭─❪  ❫│\n' +
-'─┤ DIN  H1L H2L                       LOUT╯ ████│\n' +
-'─┤ LCK  ▯▯▯ ▯▯▯                       ROUT──│  ││\n' +
-'─┤ GND  H3L H4L                        GND╮ ████│\n' +
-'─┤ VIN  ▯▯▯ ▯▯▯                 PCM510    ╰─│  ││\n' +
-' └──────────────────────────────────────────┴──┴┘\n'
+' ╔══╧════╧════╧════╧════╧════╧════╧════╧════╧═══╗\n' +
+' ║ FLT  DEMP XSMT FMT  A3V3 AGND ROUT AGND ROUT ║\n' +
+' ║                                              ║\n' +
+'─╢ SCK                                       /\ ║\n' +
+'─╢ BCK                                    ╭─❪  ❫║\n' +
+'─╢ DIN  H1L H2L                       LOUT╯ ████║\n' +
+'─╢ LCK  ▯▯▯ ▯▯▯                       ROUT──│  │║\n' +
+'─╢ GND  H3L H4L                        GND╮ ████║\n' +
+'─╢ VIN  ▯▯▯ ▯▯▯                 PCM510    ╰─│  │║\n' +
+' ╚══════════════════════════════════════════════╝\n'
 
    ],
       image_data:
@@ -1449,7 +1450,8 @@
       instructions:'https://www.reichelt.com/be/nl/shop/product/teensy_shield_-_microsd_audio_f_teensy_4_0-275591?PROVID=2812&gad_source=1&gad_campaignid=17940466725&gbraid=0AAAAADwnxtbkIYn7MoZwvBj2nOUi-lsQm&gclid=CjwKCAiA7LzLBhAgEiwAjMWzCG6YDh9wNbhaTwLT1znB2UIv3eV_tJ1yVbL-R97VikctSrOSp2gKcBoC84UQAvD_BwE#open-modal-image-big-slider',
       text_data:[
 
-'╔═════╧══╧══╧══════╗\n' +
+'╔══════════════════╗\n' +
+'║    [SGTL5000]    ║\n' +
 '║                  ║\n' +
 '╢ SDA      LINEINL ╟\n' +
 '╢ SCL      LINEINR ╟\n' +
@@ -1465,7 +1467,7 @@
 '╢ ADDR             ║\n' +
 '╢ MODE     MICBIAS ╟\n' +
 '║                  ║\n' +
-'╚═════╤══╤══╤══════╝\n'
+'╚══════════════════╝\n'
 
    ],
       image_data:
