@@ -1706,7 +1706,10 @@ function renderCatalogGrid()
             currentOpLine.textContent =  it.type+": "+it.name;
             //selectedCharEl.textContent = op.type === "place" ? op.ch : "(space)";
 
-            startPasteWithText(expandWideCharsForGrid(text_data) || '');
+            const expanded = expandWideCharsForGrid(text_data || "");
+            const forPaste = expanded.replace(/§/g, " ");   // WILDCARD_U becomes a real space for placement
+            startPasteWithText(forPaste);
+
             canvas.focus();
         });
 
