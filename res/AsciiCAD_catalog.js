@@ -440,25 +440,19 @@
         MFR: 'Z4T-XIAOESP32C3',
         pin_data: null,
         text_data:[
-'╔═══════════════════╗\n' +
-'║     ╰──USB──╯     ║\n' +
-'║                   ║\n' +
-'║  [XIAO ESP32-C3]  ║\n' +
-'║                   ║\n' +
-'╢D0 A0            5V╟\n' +
-'║                   ║\n' +
-'╢D1 A1           GND╟\n' +
-'║                   ║\n' +
-'╢D2 A2           3V3╟\n' +
-'║                   ║\n' +
-'╢D3         MOSI D10╟\n' +
-'║                   ║\n' +
-'╢D4 SDA     MISO  D9╟\n' +
-'║                   ║\n' +
-'╢D5 SCL      SCK  D8╟\n' +
-'║                   ║\n' +
-'╢D6 TX        RX  D7╟\n' +
-'╚═══════════════════╝\n'
+'╔═════╤═══════╤══════╗\n' +
+'║     ╰──USB──╯      ║\n' +
+'║                    ║\n' +
+'║ [U# XIAO ESP32-C3] ║\n' +
+'║                    ║\n' +
+'╢D0 A0             5V╟\n' +
+'╢D1 A1            GND╟\n' +
+'╢D2 A2            3V3╟\n' +
+'╢D3          MOSI D10╟\n' +
+'╢D4 SDA      MISO  D9╟\n' +
+'╢D5 SCL       SCK  D8╟\n' +
+'╢D6 TX         RX  D7╟\n' +
+'╚════════════════════╝\n'
 ],
 
       image_data:
@@ -577,30 +571,30 @@
         ,
         text_data:[
 
-' ┌────────────────────Teensy 4.1─────────────────┐\n' +
-' │                                               │\n' +
-'─┤3V3_Analog         ARM Cortex-M7           AGND├─\n' +
-'─┤ADC0   A0/D15         480MHz          AudioOut2├─\n' +
-'─┤ADC1   A1/D16                         AudioOut1├─\n' +
-'─┤ADC2   A2/D17                          AudioIn2├─\n' +
-'─┤ADC3   A3/D18                          AudioIn1├─\n' +
-'─┤ADC4   A4/D19            D14 USART1_Rx/I2C4_SDA├─\n' +
-'─┤ADC5   A5/D20            D13 USART1_Tx/I2C4_SCL├─\n' +
-'─┤ADC6   A6/D21            D12 I2C1_SDA /UART4_Tx├─\n' +
-'─┤ADC7   A7/D22 DAC_OUT2   D11 I2C1_SCL /UART4_Rx├─\n' +
-'─┤ADC8   A8/D23 DAC_OUT1   D10 SPI1_MOSI/UART2_Tx├─\n' +
-'─┤ADC9   A9/D24 SAI_MCLK   D9 SPI1_MISO          ├─\n' +
-'─┤ADC10 A10/D25 SAI2_SDB   D8 SPI1_SCK  /SPDIFRX1├─\n' +
-'─┤          D26 SAI2_SDA   D7 SPI1_CS            ├─\n' +
-'─┤          D27 SAI2_FS    D6 SD_CLK.  /USART5_Tx├─\n' +
-'─┤ADC11 A11/D28 SAI2_SCK   D5 SD_CMD.  /USART5_Rx├─\n' +
-'─┤USART1_Tx D29 USB_D-     D4 SD_Data0           ├─\n' +
-'─┤USART1_Rx D30 USB_D+     D3 SD_Data1           ├─\n' +
-'─┤3V3_Digital              D2 SD_Data2 /USART3_Tx├─\n' +
-'─┤VIN                      D1 SD_Data3 /USART3_Rx├─\n' +
-'─┤DGND                    D0 USB ID              ├─\n' +
-' │                    ╭──USB──╮                  │\n' +
-' └────────────────────┴───────┴──────────────────┘\n'
+' ╔═══════════════════════════════════════════════╗\n' +
+' ║                 [U# Teensy 4.1]               ║\n' +
+'─╢3V3_Analog         ARM Cortex-M7           AGND╟─\n' +
+'─╢ADC0   A0/D15         480MHz          AudioOut2╟─\n' +
+'─╢ADC1   A1/D16                         AudioOut1╟─\n' +
+'─╢ADC2   A2/D17                          AudioIn2╟─\n' +
+'─╢ADC3   A3/D18                          AudioIn1╟─\n' +
+'─╢ADC4   A4/D19            D14 USART1_Rx/I2C4_SDA╟─\n' +
+'─╢ADC5   A5/D20            D13 USART1_Tx/I2C4_SCL╟─\n' +
+'─╢ADC6   A6/D21            D12 I2C1_SDA /UART4_Tx╟─\n' +
+'─╢ADC7   A7/D22 DAC_OUT2   D11 I2C1_SCL /UART4_Rx╟─\n' +
+'─╢ADC8   A8/D23 DAC_OUT1   D10 SPI1_MOSI/UART2_Tx╟─\n' +
+'─╢ADC9   A9/D24 SAI_MCLK   D9 SPI1_MISO          ╟─\n' +
+'─╢ADC10 A10/D25 SAI2_SDB   D8 SPI1_SCK  /SPDIFRX1╟─\n' +
+'─╢          D26 SAI2_SDA   D7 SPI1_CS            ╟─\n' +
+'─╢          D27 SAI2_FS    D6 SD_CLK.  /USART5_Tx╟─\n' +
+'─╢ADC11 A11/D28 SAI2_SCK   D5 SD_CMD.  /USART5_Rx╟─\n' +
+'─╢USART1_Tx D29 USB_D-     D4 SD_Data0           ╟─\n' +
+'─╢USART1_Rx D30 USB_D+     D3 SD_Data1           ╟─\n' +
+'─╢3V3_Digital              D2 SD_Data2 /USART3_Tx╟─\n' +
+'─╢VIN                      D1 SD_Data3 /USART3_Rx╟─\n' +
+'─╢DGND                    D0 USB ID              ╟─\n' +
+' ║                    ╭──USB──╮                  ║\n' +
+' ╚════════════════════╧═══════╧══════════════════╝\n'
 
         
         ],
@@ -615,25 +609,25 @@
         MFR: 'Arduino Nano',
         pin_data: null,
         text_data:[
-' ┌───────────┬───────┬───────────┐\n' +
-' │           ╰──USB──╯           │\n' +
-'─┤D13 SCK  Arduino Nano  MISO D12├─\n' +
-'─┤3V3         16MHz      MOSI D11├─\n' +
-'─┤AREF                     SS D10├─\n' +
-'─┤A0/D14                       D9├─\n' +
-'─┤A1/D15                       D8├─\n' +
-'─┤A2/D16                       D7├─\n' +
-'─┤A3/D17                       D6├─\n' +
-'─┤A4/D18 SDA                   D5├─\n' +
-'─┤A5/D19 SCL                   D4├─\n' +
-'─┤A6                      INT1 D3├─\n' +
-'─┤A7                      INT0 D2├─\n' +
-'─┤5V                          GND├─\n' +
-'─┤RESET                     RESET├─\n' +
-'─┤GND                      RXD D0├─\n' +
-'─┤VIN                      TXD D1├─\n' +
-' │                               │\n' +
-' └───────────────────────────────┘'],
+' ╔═══════════╤═══════╤═══════════╗\n' +
+' ║           ╰──USB──╯           ║\n' +
+'─╢D13 SCK [Arduino Nano] MISO D12╟─\n' +
+'─╢3V3         16MHz      MOSI D11╟─\n' +
+'─╢AREF                     SS D10╟─\n' +
+'─╢A0/D14                       D9╟─\n' +
+'─╢A1/D15                       D8╟─\n' +
+'─╢A2/D16                       D7╟─\n' +
+'─╢A3/D17                       D6╟─\n' +
+'─╢A4/D18 SDA                   D5╟─\n' +
+'─╢A5/D19 SCL                   D4╟─\n' +
+'─╢A6                      INT1 D3╟─\n' +
+'─╢A7                      INT0 D2╟─\n' +
+'─╢5V                          GND╟─\n' +
+'─╢RESET                     RESET╟─\n' +
+'─╢GND                      RXD D0╟─\n' +
+'─╢VIN                      TXD D1╟─\n' +
+' ║                               ║\n' +
+' ╚═══════════════════════════════╝'],
       image_data:
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAEXSQeJunysvOPUBBS32NPICVHXmUd4mNzNbcCOcmxgAAAAp0Uk5TAP/++vuh9TM8KPPBRGkAAAHFSURBVHicnZRBTwIxEIU5ep1dnfu2pIlHW7LRI1C5a4DIsQs0HP0JEqNnE07+W6dlUQ8zJdoLm/TjvXmdaQeDP63PvArAwdG6K/z9MJna4TV9fHDANlR6Mm2H2uDymQNW+9ploL26eOGA3cMJwDdWIQBqPR1Z2wCwwLaDtfPeWej4GnZLAqxKgGCBsLbOaQuRtwgR9cg5ZYkULGpyUNq1kbfYdjXtE9EKRQasVKVU0xk5Zr+kmI/fgBizX1JM+Fn/s8hF4ixZCDHT/sYH0SIpoPezUkwS8CQhxcwCWYK3iACXCRgXYmaFKFlEkthkhxjkmElAjJm2NrMgHtQun2Q+6vdys7pQ7iYqATh1s2oKMSFGmhssxFSq3M21o5snxiQLnYFCzCMgdxPSxaEfvsizQxtjF6oGDSoxpr6pbyqLTuzmCRC7qZsjIF1/aiNSDWBi5ItEpEZBA0Y79ilOMZE0wKhXFoh5mpKFoNC/D/TgCjX8PEGloS29UXmijlPJn6Rz/diawPfiVp2Alu/mt0IUFKiGs9f/cjgbTsbR8BYJSNd/bATglwV/kk97skgKULkXDljt+xoIYBUWi8Xcz72/pw8W4NcX3Eyu7NIFgekAAAAASUVORK5CYII='
     }
@@ -1312,10 +1306,10 @@
       MFR: 'TRS Connector',
       pin_data: null,
       text_data:[
-      '│───▅─▅⏜⟍\n' +
-      '│───▀─▀⏝⟋\n'
+      '│───▅─▅⏜\\\n' +
+      '│───▀─▀⏝/\n'
       ,
-        ' ⟋⟍\n' +
+        ' /\n' +
         '❪  ❫\n' +
         '████\n' +
         '│  │\n' +
