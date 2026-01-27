@@ -27,7 +27,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.94</big><br><small>Author: Freddy Vandriessche</small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v0.95</big><br><small>Author: Freddy Vandriessche</small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -70,7 +70,9 @@
           <h3>Tools</h3>
           <div class="row" style="margin-top:10px;">
             <button id="schemaHighlight" class="btn">Highlight</button>
-          </div>
+          
+            <button id="schemaMatch" class="btn">Match</button>
+</div>
         </div>
 
         <div class="card">
@@ -185,6 +187,8 @@ const openCatalogBtn = document.getElementById("openCatalog");
 const eraserBtn = document.getElementById("eraser");
 const currentOpLine = document.getElementById("currentOp");
 const schemaHighlightBtn =  document.getElementById("schemaHighlight");
+
+const schemaMatchBtn =  document.getElementById("schemaMatch");
 const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
 const saveBtn = document.getElementById("saveBtn");
@@ -225,6 +229,9 @@ let stageSize = { w: 1, h: 1 };
 
 let schemaHighlightOn = false;
 let highlightCache = null; // { redSet:Set, insideSet:Set } cached for current ascii state
+
+let schemaMatchOn = false;
+let matchCache = null; // { greenSet:Set } cached matches for current ascii state
 
 
 let isDrawing = false;
@@ -514,6 +521,123 @@ function computeHighlightOverlay() {
 
 
 
+
+// ===== Match overlay (catalog pattern matching) =====
+// Wildcards:
+//   #  => one digit [0-9]
+//   $  => one of [0-9A-Za-z +-*/%Ωπµ⍉⍵°.,;:?@&§_]
+const WILDCARD_D = "0123456789";
+const WILDCARD_S = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-*/%Ωπµ⍉⍵°.,;:?@&§_";
+const WILD_D_SET = new Set(Array.from(WILDCARD_D));
+const WILD_S_SET = new Set(Array.from(WILDCARD_S));
+
+function charMatchesPatternCell(patCh, gridCh) {
+  if (patCh === "#") return WILD_D_SET.has(gridCh);
+  if (patCh === "$") return WILD_S_SET.has(gridCh);
+  return patCh === gridCh;
+}
+
+function lineMatchesAt(gridLine, c0, patLine) {
+  // gridLine is a string of length COLS
+  // patLine is a string; must fit fully
+  if (c0 < 0) return false;
+  if (c0 + patLine.length > gridLine.length) return false;
+
+  for (let i = 0; i < patLine.length; i++) {
+    const pc = patLine[i];
+    const gc = gridLine[c0 + i] || " ";
+    if (!charMatchesPatternCell(pc, gc)) return false;
+  }
+  return true;
+}
+
+function buildCatalogVariants() {
+  // Returns array of { lines:[string], first:string, w:int, h:int }
+  const out = [];
+  const items = (typeof CATALOG !== "undefined" && Array.isArray(CATALOG)) ? CATALOG : [];
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    const td = it && it.text_data;
+    if (!td) continue;
+
+    const variants = Array.isArray(td) ? td : [td];
+    for (let k = 0; k < variants.length; k++) {
+      const raw = String(variants[k] ?? "");
+      if (!raw) continue;
+
+      // Use same wide-char expansion as paste/load to stay aligned with grid.
+      const expanded = expandWideCharsForGrid(raw);
+      const lines = toLines(expanded);
+      if (!lines || lines.length === 0) continue;
+
+      const first = lines[0] ?? "";
+      if (first.length === 0) continue;
+
+      let w = 0;
+      for (let j = 0; j < lines.length; j++) w = Math.max(w, (lines[j] ?? "").length);
+
+      out.push({ lines, first, w, h: lines.length });
+    }
+  }
+  return out;
+}
+
+let catalogVariantsCache = null; // rebuilt on demand (CATALOG is static during a session)
+
+function computeMatchOverlay() {
+  const greenSet = new Set();
+  if (!(typeof CATALOG !== "undefined" && Array.isArray(CATALOG))) return { greenSet };
+
+  if (!catalogVariantsCache) catalogVariantsCache = buildCatalogVariants();
+
+  // Build grid lines once for fast access
+  const gridLines = new Array(ROWS);
+  for (let r = 0; r < ROWS; r++) gridLines[r] = ascii[r].join("");
+
+  for (let v = 0; v < catalogVariantsCache.length; v++) {
+    const pat = catalogVariantsCache[v];
+    const first = pat.first;
+    const patLines = pat.lines;
+
+    // Stage 1: find first-line candidates across all rows
+    for (let r0 = 0; r0 < ROWS; r0++) {
+      const gl0 = gridLines[r0];
+      const maxC = COLS - first.length;
+      if (maxC < 0) continue;
+
+      for (let c0 = 0; c0 <= maxC; c0++) {
+        if (!lineMatchesAt(gl0, c0, first)) continue;
+
+        // Stage 2: verify full multi-line match (including spaces)
+        if (r0 + patLines.length > ROWS) continue;
+
+        let ok = true;
+        for (let rr = 0; rr < patLines.length; rr++) {
+          const pl = patLines[rr] ?? "";
+          const gl = gridLines[r0 + rr];
+
+          if (!lineMatchesAt(gl, c0, pl)) { ok = false; break; }
+        }
+        if (!ok) continue;
+
+        // Mark matched glyph cells in green (skip spaces to reduce noise)
+        for (let rr = 0; rr < patLines.length; rr++) {
+          const pl = patLines[rr] ?? "";
+          for (let cc = 0; cc < pl.length; cc++) {
+            const pc = pl[cc];
+            if (pc === " ") continue;
+            const r = r0 + rr;
+            const c = c0 + cc;
+            if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
+            greenSet.add(keyRC(r, c));
+          }
+        }
+      }
+    }
+  }
+
+  return { greenSet };
+}
 
 
 function isWireGlyph(ch) {
@@ -1757,7 +1881,14 @@ function draw( str )
     const RED  = "rgba(239,68,68,0.9)";
 
 
-    // Draw all chars (skip base rect while moving)
+    
+    const GREEN = "rgba(34,197,94,0.95)";
+
+    if (schemaMatchOn && !matchCache) {
+      matchCache = computeMatchOverlay();
+    }
+    const greenSet = matchCache ? matchCache.greenSet : null;
+// Draw all chars (skip base rect while moving)
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const chx = ascii[r][c];
@@ -1771,7 +1902,13 @@ function draw( str )
         // Default color
         let color = "#000";
 
-        if (schemaHighlightOn) {
+        // Match overlay has priority (green)
+        if (schemaMatchOn && greenSet) {
+          const k = keyRC(r, c);
+          if (greenSet.has(k)) color = GREEN;
+        }
+
+        if (schemaHighlightOn && color === "#000") {
           const k = keyRC(r, c);
           const inside = insideSet && insideSet.has(k);
 
@@ -2035,6 +2172,24 @@ schemaHighlightBtn.addEventListener("click", () => {
   draw("schemaHighlightToggle");
 });
 
+
+
+
+schemaMatchBtn.addEventListener("click", () => {
+  schemaMatchOn = !schemaMatchOn;
+  matchCache = null; // force full rescan next draw
+  draw("schemaMatchToggle");
+});
+
+// Invalidate overlay caches after any committed stroke (undo/redo uses same path).
+if (typeof pushStrokeIfNonEmpty === "function") {
+  const _pushStrokeIfNonEmpty = pushStrokeIfNonEmpty;
+  pushStrokeIfNonEmpty = function(stroke) {
+    highlightCache = null;
+    matchCache = null;
+    return _pushStrokeIfNonEmpty(stroke);
+  };
+}
 
 // Undo/redo
 undoBtn.addEventListener("click", doUndo);
