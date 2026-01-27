@@ -38,7 +38,7 @@
         </div>
 
         <div class="card">
-          <h3>Mode</h3>
+          <h3>Draw mode</h3>
           <div class="row">
             <button id="modeFreeform" class="btn primary" data-hint="Pasting: move preview with mouse, click to place.|Drag to draw (cell-by-cell).">Free</button>
             <button id="modeSelect" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag to select. Drag inside selection to move.">Move</button>
@@ -56,7 +56,7 @@
         </div>
 
         <div class="card">
-          <h3>Draw</h3>
+          <h3>Symbols</h3>
           <div class="tiny muted">Pick a char or catalog item, then draw / place.</div>
           <div class="row" style="margin-top:10px;">
             <button id="pickChar" class="btn">Char</button>
@@ -64,6 +64,14 @@
             <button id="eraser" class="btn">Space</button>
           </div>
           <div class="tiny muted" id="currentOp" style="margin-top:10px;">Current: place '+'</div>
+        </div>
+
+        <div class="card">
+          <h3>Tools</h3>
+          <div class="row" style="margin-top:10px;">
+            <button id="colCode" class="btn">Parser</button>
+          </div>
+          <div class="tiny muted" id="currentTool" style="margin-top:10px;">Current: -</div>
         </div>
 
         <div class="card">
