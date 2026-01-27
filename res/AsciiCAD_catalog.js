@@ -849,14 +849,14 @@
       MFR: 'COM-28380',
       pin_data: null,
       text_data:[
-      '╔═══════════════════════════════════╗\n' +
-      '║ [ENS160+AHT2X_#]                  ║\n' +
-      '║ AQI  0-5                          ║\n' +
-      '║ TVOC 0-65000                      ║\n' +
-      '║ eCO2 400-65000                    ║\n' +
-      '║                                   ║\n' +
-      '║  VIN 3V3 GND SCL SDA ADO  CS INT  ║\n' +
-      '╚═══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╝'],
+      '╔═════════════════════════════════╗\n' +
+      '║ [ENS160+AHT2X_#]                ║\n' +
+      '║ AQI  0-5                        ║\n' +
+      '║ TVOC 0-65000                    ║\n' +
+      '║ eCO2 400-65000                  ║\n' +
+      '║                                 ║\n' +
+      '║ VIN 3V3 GND SCL SDA ADO  CS INT ║\n' +
+      '╚══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╤══╝'],
       image_data:
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAL2qkmaa2ZYao0NPbUmF6LzhOqrvJUo/AwcbL5e1P5QAAAAp0Uk5TAP78/vz//xJZf3NBpVAAAAKSSURBVHic7VQ9b9swEM3mdDzRCrKKlB14JCm5XUMSATJKtLQ7rjgXaIBYWz6G5gcYCPpvexRlw45lD90K9AAJFt7hvXePR19c/K+/qbfn8/garn+cxSVl387gly+pMfzXSXz0Qowxt6dF3qFrgFMUaygAGxKA52EDr1UNY6MB4Hqw4SWuXQGhhkTW4FxDeWgY8LmGqnaNFyCGD4isXyvn7HfFCsg6G598jryBemW1LaIwyCeRVtfOUU7rJZTYMEGK9wOB1EydS3U2X4oqM6obZk/k8o2ldw8LxXKIJsWKzsMkewnAlZivrLIApSvragki2adYA1w9KMhyByAainjE+F4YiAOLEhhPPTGZL+OmRFzyrchP/Ei7BAk+UY2JokkpMNWQeMvHRvqGOA9HMXccpMWOXqRVmUm8qzwXXcO0gLhiQCkLFKMNU0AoF1W56JRygEpmumSCh0m+4ARKSNFMWX/alRVmUeuc9T43OjVAc13GTYeTJkmN0jIqe58tmiRCLYraVb4hFiQzRhc+jutO5FFDqplE/413QShIY3IuFH59DT650ehz4oIGByKYRVL8PQtZKC/CcCkgCltnLeQ4BYj7sDCbhBjGk/mSTFb9KNLiUBH9uNhSmIQgpcjLQEEwK3Tzsd2sjZYANBG5nNx2aVUlvsVst3kjwyPDE5JXsiOILfcCe5vZqjH2aFFWu+tDtgZ6n4wB/j0ksWv6Djo7WO1WwVjh4ljngk1xiHuKzABhcePssYCvJyMZIYKXLgjcHF1QFElxWrIcEujzTHE3wn7Sp2McKTB+PEuP3xzhIU9Ib/kJgeCTd5f/IMKDetT+jI8n3Pc5POGuWlyzUwYCxW8dnRYIImp4wl093Z/H/836A07RrdM9ywO5AAAAAElFTkSuQmCC'
      }
@@ -1309,7 +1309,7 @@
       '│───▅─▅⏜\\\n' +
       '│───▀─▀⏝/\n'
       ,
-        ' /\n' +
+        ' /\\\n' +
         '❪  ❫\n' +
         '████\n' +
         '│  │\n' +

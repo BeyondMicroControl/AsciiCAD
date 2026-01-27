@@ -50,7 +50,7 @@
             <button id="modeSBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place single line box.">SBox</button>
             <button id="modeTBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place thick line box.">TBox</button>
             <button id="modeDBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place double line box.">DBox</button>
-            <button id="modeFreetext" class="btn" data-hint="Move cursor to text origin (not click), enter free text preview, press enter to commit."">Text</button>
+            <button id="modeFreetext" class="btn" data-hint="Move cursor to text origin (not click), enter free text preview, press enter to commit.">Text</button>
           </div>
           <div id="modeHint" class="tiny muted" style="margin-top:8px;">Drag to draw (cell-by-cell).</div>
         </div>
@@ -1502,6 +1502,16 @@ function renderCatalogGrid()
     }
 }
 
+function findCatalogItemByUID(uid) {
+  const items = (typeof CATALOG !== "undefined") ? CATALOG : [];
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    const itUID = it.name + "_" + it.type + "_" + it.MFR;
+    if (itUID === uid) return it;
+  }
+  return null;
+}
+
 // Drawing
 function drawPastePreview(cw, ch, snap) 
 {
@@ -2191,8 +2201,9 @@ window.addEventListener("keydown", (e) => {
       return;
     }
 
-    // Ignore other control chords while typing
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    // Ignore only OS/app command chords while typing.
+    // IMPORTANT: On macOS (e.g. Belgian layout), Option+Shift is used to type chars like '[' '{' etc.
+    if (e.ctrlKey || e.metaKey) return;
 
     // Append printable character
     if (e.key && e.key.length === 1) {
@@ -2202,6 +2213,37 @@ window.addEventListener("keydown", (e) => {
     }
     return; // IMPORTANT: don't fall through to line/box shortcuts
   }
+
+
+// Rotate catalog paste preview (works in any mode, including Freeform)
+  // Only applies when we're in paste preview and the paste came from a catalog item.
+  if (pasteDrag && pasteDrag.item_data && pasteDrag.item_data.uid) 
+  {
+    const k = String(e.key || "").toLowerCase();
+    if (k === "r") {
+      e.preventDefault();
+
+      const uid = pasteDrag.item_data.uid;
+      const it = findCatalogItemByUID(uid);
+      if (!it || !it.text_data || !it.text_data.length) return;
+
+      const oldAnchor = pasteDrag.anchor ? { ...pasteDrag.anchor } : null;
+
+      const n = it.text_data.length;
+      pasteDrag.item_data.rotation = ((pasteDrag.item_data.rotation || 0) + 1) % n;
+
+      const text_data = it.text_data[pasteDrag.item_data.rotation] || "";
+      startPasteWithText(expandWideCharsForGrid(text_data));
+
+      // keep anchor stable while rotating
+      if (oldAnchor && pasteDrag) pasteDrag.anchor = oldAnchor;
+
+      draw();
+      return;
+    }
+  }
+
+
 
   // ... keep the rest of your existing handler here ...
 }, { passive: false });
