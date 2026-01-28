@@ -12,11 +12,10 @@ Try it online:
 
 ## Why AsciiCAD?
 
-- Schematics as plain text, close to the code
-- Clean Git diffs
-- No binaries, no lock-in
-- Schematics stay close to code
+- Hardware and Firmware descriptions become 'one' in sourcecode
+- Schematics as plain text, tight to the code, allowing semantic extraction (still more than just a drawing)
 - Ideal for MCU, CPU, and digital designs
+- No binaries, no lock-in
 
 ---
 
@@ -32,7 +31,7 @@ Try it online:
   - Parameterized catalog items
 - Schema Highlighting & Analysis
   - Schema Highlight
-  - Schema Match
+  - Schema Match (semantic extraction)
 - Selection & Editing
   - Area selection
   - Move, Copy, Paste, Blank (rectangle)
