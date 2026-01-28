@@ -2,7 +2,7 @@
 <img src="res/AsciiCAD_frontpage.png">
 
 
-AsciiCAD is a browser-based ASCII / UTF-8 schematic editor designed to **embed digital and electronic schematics directly inside source code**.  Instead of external CAD files, schematics become **readable text** that lives next to the firmware, HDL, or documentation it describes.  **Caution**: AsciiCAD does not replace CAD apps for electronic schema design, but adding (e.g. Arduino) sourcecode-embedded schematics makes prototyping circuits and flashing its associated codebase faster and easier!
+AsciiCAD is a browser-based ASCII / UTF-8 schematic editor designed to **embed digital and electronic schematics directly inside source code**.  Instead of external CAD files, schematics become **readable text** that lives next to the firmware, or documentation it describes.  **Caution**: AsciiCAD does not replace CAD apps for electronic schema design, but adding (e.g. Arduino) sourcecode-embedded schematics makes prototyping circuits and flashing its associated codebase faster and easier!
 
 Try it online:  
 - <a href=https://beyondmicrocontrol.github.io/AsciiCAD/index.html>RUN AsciiCAD</a>
