@@ -13,7 +13,7 @@ Try it online:
 ## Why AsciiCAD?
 
 - Hardware and Software become 'one': **sourcecode**
-- ASCII Schematics allow basic semantic extraction (much more than just a drawing)
+- It's text-based schematics allow semantic extraction (beyond 'just a drawing')
 - Ideal for MCU, CPU, and digital designs
 - No binaries, no lock-in
 
