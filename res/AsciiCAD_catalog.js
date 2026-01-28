@@ -1009,6 +1009,12 @@
       '║ [U# L78L] ║\n' +
       '║    GND    ║\n' +
       '╚═════╤═════╝\n' 
+      ,
+      '╔═════╧═════╗\n' +
+      '║    GND    ║\n' +
+      '║ [U# L78L] ║\n' +
+      '╢VO       VI╟\n' +
+      '╚═══════════╝\n' 
     ],
       image_data:
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAC1QTFRFAAAAHhobAQEBJiIj9PT00dHRJSQkRUREJiMkTkxMKScor6+vj46OgH9/NzY2AjO0pQAAAA90Uk5TAP7+1/3oIA+p+nRi9xdJMYB5gAAAA0dJREFUeJzFlM9r02AYx99TUwoLPA2TvDKF5iC6k7E6yw6eksPoEMQGka6wrbB1O0hBWEthw7Zs1iGDYCqr9GAZDhw79FKGSA+TFg96KA4dOibVgT/3R/i++dEm6bqrz6Xp8/3k+36fN2+CUJ9q9RPMSo+6O5nNmWT33xJA26l7coJQ2Jy19CzADac+LehV+GHpwHUsBg4OUcbQhcAIaTBUBzhv6TVJrudMwH+BdFhVB8wUTE2SpDHLQBgmLR82gOs68JHost8yEC6SlhcMC04fK0KAN6YOQmCdbJAPDAtulRL2BfzCoBRtEUC34LLwkAByxLaA0JCkcN0DukXQGCQi7XYNAsRPipExsUp1OEuAg1dCxyDgp4liKA7wJCgClHi6h1c6CQUYPqhJShWxInBEh8Y6Afags8Al5V1r4HWUNI9oiCG1PDGJ0IcA+E2DQYnOsEgfLQWKt3CTDE2eEoCRkIwghY39r2BQ8QQUYwh912+nLkCBqAH4MJV3C0oLTXdGFP4qkmwC6BEU1dL4z+U7aMoCVPIga3LVBD6rQ2NYq8cV9I0mIAAdAQ3UrbPKVHBz/Ti6oKGEQMcI+Itk/UPbGbsXLMfY5s4cQjMbJGMAtG5CoxYyzf3j6Fe6l/M5YnKNAIrznL6IZRpGpkxO4MnJczogNCd/Wo6ZkRIr5Gx2RrAstFjCYXqIXDWnLC67e6kF2/vl0Xb2XPqXX+KI3SKcct7u2RCBn+w25huOWOyfPD3MK7Y1tsPd66XUkaifdqdFF9jKg1k2C2bbvNhPZkRLd1jcN29f2wBb2S3Mn6xdd1iY+UUHYLcwyht0ApzbwsvD6Ras6AwBo0mXQzbkWCEoPncBIc5mESSJLjsBJpjtxuTpSA9cIabyvDUpfe8hNOICfLwZk6NPBDfVcy6AqWR5Ix7VVe22eyNQ+iyNGaL2Q7sweNOtI5bGpPGhVB7jH/cCTDzP6fFKKh6f/R3uARDLi+Srgst3IS8n43Kyl6jkMeASHl9Ly8l0qd0LpHmM3wMoSW+kyqye4MCIBVHht5Q2W37aq9Iin89G20fehPzmyQALq1rVo709WaWVQlerTPZMfwAh8lFbmjwNePnsNJVUok+8/1z/AONQABzAc1SDAAAAAElFTkSuQmCC' 
@@ -1212,7 +1218,7 @@
       pin_data: null,
       text_data:[
       '§\n' +
-      '╧\n'
+      '╧ \n'
 ],
       image_data:
 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAC1QTFRF////AAAAAAAAAQEB2traAAAA6urqAAAAaGhoCgoKSEhIAAAAPj4+mJiYvLy8rab/nAAAAA90Uk5T/wD+4fYi2pjPyJpUysXI+BOEWwAAAq1JREFUeJyFlc9rE0EUxwcNoZVuIIQllL3Id6npUit2tUpERaQXj7GIBy/BetBDwVR6kF4kSOlBQTfgj5tHES+Jh1wlQkXIIVgQvYXgRf8K38zO28xsd+v3kuy+z755b+a9eaJs6RbJfiPMh34nBPz6TiMbuPMIWsF2FnA7RCJ/5zCg7Jf3nv/c+yaR7TTgkb2+K5ScLwahAXcLuNQUWsVftErXAtaBK8LQDaBmAh6w2DQBcQC0DKCHYGzZRXGAWiMBKMJ9trCj+9qFiB2cZvuDq/xvEkchATfEO37dDthFKXYhgcrUgWj716YuljSwhRdZwAz8hgI8+OMsgBJpKWAeyyILEBtYUEDPWMECHJkHARHG2YCI0CXAM3JIARMKQpSrOJUHzGKVgHUzBBuQQQiKcZQHFMOAgC2/mQeIARqiHJoxpoDv6AoXi/nAMbSEhzP5wCxeiipO5gNzWCHgbD4wg1Uxb23DIWCBgIdHAxV8zgccBRyxhKOW+G8MGri3JjXwf6vfKcBpFiIY8kdJmlwODizFX8mN8nTJpoA4teO01clh/f1g6H1TvbtLh1UOA5GrNh039VUzF4h8VXJP9GNhTYu3ohjWVNHycR5whFxjJ6h9ZdlzxQySXRgLncQKAS6CNMB3RFs1DkWp636Tk3zKIVD/E3ATF7JzmNPNW7Wa09CEOk8CdEUlvSWT5G0pyuZWV1AP59npOdIrcwUFVOHrr67LHLiRBpSkvicj6K82JLDMu4QGAxXoQit8HA6HI3awlNy0bmTf9VJ/9EAQPA32bbsTxg54XkTwf5j2UsQTRQNVWAOB7lC5SebM+kRnuMv2zSgZOAkghxbeqGVKz2jABd0UEBOov/3aUQfOdmOwusngBS4mdnM0u/2Q526jnAWQ+o879dfWbE8BGfoHc2felG0TA6YAAAAASUVORK5CYII=' 
@@ -1226,19 +1232,27 @@
       MFR: 'C',
       pin_data: null,
       text_data:[
-      '  +[##$$]\n' +
+      '  +[###$F]\n' +
       '─┨┠─\n'
       ,
-      ' + [##$$]\n' +
+      '  +[##$F]\n' +
+      '─┨┠─\n'
+      ,
+      ' + [##$F]\n' +
       '─┨┠─\n'
       ,
       '─┨┠─\n' +
-      '  +[##$$]\n'
+      '  +[##$F]\n'
       ,
       '─┨┠─\n' +
-      ' + [##$$]\n'
+      ' + [##$F]\n'
       ,
-
+      '§§§§§─┨┠─\n' +
+      '[##$F] +\n'
+      ,
+      '§§§§§─┨┠─\n' +
+      '[##$F]+\n'
+      ,
 
       '[###]\n' +
       '─┨┠─\n'
@@ -1265,7 +1279,7 @@
       MFR: 'Diode',
       pin_data: null,
       text_data:[
-      '──▶├─\n'+
+      '§─▶├─\n'+
       '[$$$$$$]'
       ,
       '│\n'+
@@ -1273,15 +1287,45 @@
       '┬\n'+
       '│\n'
       ,
-      '─┤◀─\n'
+      '§─┤◀─\n' +
+      '[$$$$$$]'
       ,
       '│\n'+
       '┴\n'+
       '▲\n'+
       '│\n'
+]
+,
+image_data:
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAjIKAmkQw0W1J0dTVvLy8RzQutbCuuLq6uLi4l8L6gAAAAAp0Uk5TAPj///0P//tltQW66gsAAAGbSURBVHicrZSxTsMwEIa7WCqjU6hhjCN1r/0EEUZeydRkLIPLGhLkshUpKHOlVPC4XAISi+9cBF396ct/v92bWX6akb+2vrkngS6mmJuYov+zgnVW0IqytS8xRSRFaWpaAYNEUsz/QXHmjTAcKqc6qw+UYH0uTqX3b7jC18I3HB+G9V40ek1UetHeSq1SfBhmrJRyRSgGq4DYoinmbaNkpiWq2GitFZXifQIylYpwF2xoVDaGyNb7sKKzSmsApOJhRVUn4zfSJOXXQQU7JhnEWKWcIykKLgGQ2yQT4RSM19CDepBSI5da+IWegGwdrpMdAZB6BPhVWCEauRgB7bZhxWCTry6cCysqz6fCV849Iik4hFBwjnwDunj6BvghCLAhhyrcCCCXXplGjwKHPRsYZBIgESbFEo6dwB/3Ec7Npb/DgFnh3C43xNZiS7fzxhD7onDbU2VyQvEKT64zPra1LD7IpDljd1pxIIne8Gc6RZvTKWYbw/ckwEBBp6iMjygGi/wJfxQ1sgp+oYimMIIExhQ0AAoaAEUEYMMncg+EkMAhsPUAAAAASUVORK5CYII='
+
+},
+    {
+      name: 'Shottky Diode',
+      type: 'Discrete',
+      description: 'Shottky Diode',
+      MFR: 'Shottky Diode',
+      pin_data: null,
+      text_data:[
+      '§─▶S─\n'+
+      '[$$$$$$]'
+      ,
+      '│\n'+
+      '▼\n'+
+      'ᔕ\n'+
+      '│\n'
+      ,
+      '§─S◀─\n' +
+      '[$$$$$$]'
+      ,
+      '│\n'+
+      'ᔕ\n'+
+      '▲\n'+
+      '│\n'
 ],
+
       image_data:
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAjIKAmkQw0W1J0dTVvLy8RzQutbCuuLq6uLi4l8L6gAAAAAp0Uk5TAPj///0P//tltQW66gsAAAGbSURBVHicrZSxTsMwEIa7WCqjU6hhjCN1r/0EEUZeydRkLIPLGhLkshUpKHOlVPC4XAISi+9cBF396ct/v92bWX6akb+2vrkngS6mmJuYov+zgnVW0IqytS8xRSRFaWpaAYNEUsz/QXHmjTAcKqc6qw+UYH0uTqX3b7jC18I3HB+G9V40ek1UetHeSq1SfBhmrJRyRSgGq4DYoinmbaNkpiWq2GitFZXifQIylYpwF2xoVDaGyNb7sKKzSmsApOJhRVUn4zfSJOXXQQU7JhnEWKWcIykKLgGQ2yQT4RSM19CDepBSI5da+IWegGwdrpMdAZB6BPhVWCEauRgB7bZhxWCTry6cCysqz6fCV849Iik4hFBwjnwDunj6BvghCLAhhyrcCCCXXplGjwKHPRsYZBIgESbFEo6dwB/3Ec7Npb/DgFnh3C43xNZiS7fzxhD7onDbU2VyQvEKT64zPra1LD7IpDljd1pxIIne8Gc6RZvTKWYbw/ckwEBBp6iMjygGi/wJfxQ1sgp+oYimMIIExhQ0AAoaAEUEYMMncg+EkMAhsPUAAAAASUVORK5CYII='
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAC1QTFRF////9vf3MSspIBsY6unoQz472NfWYV1YxcPBU05Kt7WxcmtjhX10qKGblo+GcDC5fAAAAf9JREFUeJztkz1r20AYx6VvEMFhOj/HEQqd7j6BwZiSUXAYEToEhBAtyVAwh5DpVEz6Yg8OQhibrlVb0bGlVchWaLGVqRTXqWeDE3+HnuwUat8RdS3kv2j4Pc//Hj0vhnGr/0VmGa+X8fRmjrriRl7rZAst2Vl/6oejPNElVtxVBOqMz5O2JqDy/qtVcP9ScldT+K+sdSD5w/lo2nYtJeDO1UiE3y3kX4yXxzo+j4TIPtffXo2niVtV37+MeCPMwuP52TLxqjsqFwEQEfBPQy1HqYhiG/oc9meSKwWgC9GD3R4QgHuJV9PkRwFAw2YUYLddU/PfRbwJTpMxBkB+qDyNbHDiAMsACvzDdgBKg37fIVHBGeX8wVYLzG4QB31hYwYMFwH7B5v8pexPL26u8zFwJ3y68RPmG07uCrHiDDB1woW7GfAISOPjmlOgMFi0t9p43+aCY/k8lk0gTq7MEX3hmK46IBXn6h6gZ9fvS4MiX5mT+WKVToFBI9ftAepIBwyAwTnTztn/diIdGCWSq/6G6c9bdlEA0eeb3s9Xs7EsgvAnWl5PB7PkeTGC1kTLu5J7/gklen90NJALWqs8JsOJp+6RgQ6zZdKuWtbroc7fMPZG+bRYQHNvotlDqez8+gKRzl/q9M+FWpaWG1Pdhf4tzeQ2VcaNMm6U8Vv9o34DokDEiYBD3R8AAAAASUVORK5CYII='
     }
     ,
      {

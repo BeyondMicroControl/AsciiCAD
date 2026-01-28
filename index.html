@@ -249,6 +249,9 @@ let boxDrag = null;;   // { start:{r,c}, cur:{r,c}, type:'SBox'|'DBox' }
 let textDrag = null;   // { anchor:{r,c}, text:"" }
 let modeRECALL = null;
 
+let shiftDown = false;
+let oDown = false;
+
 // Picker tabs
 let pickerTab = "Box";
 let catalogTab = "All";
@@ -412,32 +415,6 @@ function isThickWire(ch) {
 function isDoubleWire(ch) {
   return ch === "═" || ch === "║" || ch === "╔" || ch === "╗" || ch === "╚" || ch === "╝" ||
          ch === "╠" || ch === "╣" || ch === "╦" || ch === "╩" || ch === "╬";
-}
-
-
-function normalizeAffected(affected, stroke) {
-  // Do 2 passes to allow junction changes to propagate.
-  for (let pass = 0; pass < 2; pass++) {
-    let changed = false;
-
-    affected.forEach((key) => {
-      const parts = key.split(",");
-      const r = Number(parts[0]);
-      const c = Number(parts[1]);
-
-      const prev = ascii[r][c];
-      const next = recomputeWireCell(r, c);
-
-      if (prev !== next) {
-        // Record in same stroke for undo
-        stroke.push({ r, c, prev, next });
-        ascii[r][c] = next;
-        changed = true;
-      }
-    });
-
-    if (!changed) break; // stable already
-  }
 }
 
 function keyRC(r, c) { return r + "," + c; }
@@ -637,11 +614,6 @@ function computeMatchOverlay() {
   }
 
   return { greenSet };
-}
-
-
-function isWireGlyph(ch) {
-  return glyphToMask.has(ch); // now includes both single+double+space
 }
 
 function isWireGlyph(ch) { return glyphToMask.has(ch); }
@@ -974,7 +946,14 @@ function beginLine(cell,kind)
 
   // hide selection box when starting a line tool action
   selection = null; selectDrag = null; moveDrag = null;
-  lineDrag = { kind, flip:true , merge:true ,start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
+  lineDrag = {
+    kind,
+    flip: !shiftDown,      // Shift held => horizontal-first (no vertical leg)
+    merge: !oDown,         // 'o' held => override (no merge)
+    start: { r: cell.r, c: cell.c },
+    cur:   { r: cell.r, c: cell.c }
+  };
+  
   draw("beginLine");
 }
 
@@ -985,6 +964,9 @@ function moveLine(cell)
   if (!cell) return;
   if (cell.r === lineDrag.cur.r && cell.c === lineDrag.cur.c) return;
   lineDrag.cur = { r: cell.r, c: cell.c };
+  // live modifiers during preview
+  lineDrag.flip  = !shiftDown;
+  lineDrag.merge = !oDown;
   draw("moveLine");
 }
 
@@ -2458,6 +2440,16 @@ window.addEventListener("keydown", (e) => {
   const isMac = /mac/i.test(navigator.platform);
   const mod = isMac ? e.metaKey : e.ctrlKey;
 
+  // Track live modifiers for Line mode (so Shift affects preview + commit)
+  if (e.key === "Shift") shiftDown = true;
+  if (String(e.key || "").toLowerCase() === "o") oDown = true;
+
+  if (lineDrag && (e.key === "Shift" || String(e.key || "").toLowerCase() === "o")) {
+    lineDrag.flip  = !shiftDown;
+    lineDrag.merge = !oDown;
+    draw();
+  }
+
   // ✅ Always allow Undo/Redo (even while typing)
   if (mod) {
     const k = String(e.key || "").toLowerCase();
@@ -2529,13 +2521,20 @@ window.addEventListener("keydown", (e) => {
 }, { passive: false });
 
 
-window.addEventListener("keyup", e => {
-    if (textDrag) return; // ✅ don't process line shortcuts while typing
-    if (e.key === "Shift" && lineDrag) lineDrag.flip = true;
-    if (e.key.toLowerCase() === 'o' && lineDrag) lineDrag.merge = true;
-    if(bDebug) console.log("KEYUP: lineFlip="+(lineDrag ? lineDrag.flip : "null")+" lineMerge="+(lineDrag ? lineDrag.merge : "null"));
+window.addEventListener("keyup", (e) => {
+  if (textDrag) return;
+
+  if (e.key === "Shift") shiftDown = false;
+  if (String(e.key || "").toLowerCase() === "o") oDown = false;
+
+  if (lineDrag) {
+    lineDrag.flip  = !shiftDown;
+    lineDrag.merge = !oDown;
+    if (bDebug) console.log("KEYUP: lineFlip=" + lineDrag.flip + " lineMerge=" + lineDrag.merge);
     draw();
+  }
 });
+
 
 function isEditingTextTarget(e) {
   const el = e.target;
