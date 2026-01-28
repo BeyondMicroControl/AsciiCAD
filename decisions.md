@@ -1,8 +1,7 @@
 # Architectural Decision Records (ADRs)
 
-> 📝 **Template Note:** Record your actual decisions here. The example below shows the format - replace it with your real ADRs.
 
-This document captures important architectural and design decisions for the project. Recording decisions helps future contributors (including your future self) understand why things are the way they are.
+This document captures important architectural and design decisions for the project. Recording decisions helps future contributors understand why things are the way they are.
 
 ---
 
@@ -57,16 +56,15 @@ Therefore we though about creating a software packager for client-side JavaScrip
 
 **Decision**
 Even if very handy, do not consider merging this codebase in one file, reasons listed in consequences.
-Only if indentify and test a light-weight package manager within GitHub or associated with GitHub, offered as a web service, we would review this decision.
+We'd only reconsider after successfully indentifying and validating a candidate package manager.  Preferably offered within the GitHub web environment.
 
 **Alternatives Considered**
 What other options did we evaluate?
-- Option A: Include a package manager that compiles all dependencies into one file: rejected because unhandy for the user, and hard to offer multi-platform versions of a package managerr
-- Option B: 
+- Include a package manager that compiles all dependencies into one file: rejected because unhandy for the user, and hard to offer multi-platform versions.
 
 **Consequences**
-- **Benefits:** Keep vibe coding less costly when separating codebase in different files.
-- **Trade-offs:** Less friendly for users as the consumers of this app need to keep all dependencies in a directory structure.
+- **Benefits:** Keep vibe coding low cost by separating codebase logically into multiple files.
+- **Trade-offs:** Less friendly for  consumers of this app, need to keep all dependencies in a directory structure.
 - **Risks:** Less attractive for end users.
 
 **Status**
