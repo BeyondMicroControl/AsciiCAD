@@ -27,15 +27,15 @@ Try it online:
   - Orthogonal line routing
   - Box drawing modes
   - Free text placement
-- Selection & Editing
-  - Area selection
-  - Move, Copy, Paste, Blank (rectangle)
 - Component Catalog
   - Integrated component catalog
   - Parameterized catalog items
-- Highlighting & Analysis
+- Schema Highlighting & Analysis
   - Schema Highlight
   - Schema Match
+- Selection & Editing
+  - Area selection
+  - Move, Copy, Paste, Blank (rectangle)
 - Navigation & View
   - Large grid support
   - Pan, Zoom
