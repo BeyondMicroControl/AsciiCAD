@@ -12,7 +12,7 @@ Try it online:
 
 ## Why AsciiCAD?
 
-- Hardware and Software become 'one': sourcecode.
+- Hardware and Software become 'one': **sourcecode**
 - Schematics as plain text, tight to the code, allowing semantic extraction (still more than just a drawing)
 - Ideal for MCU, CPU, and digital designs
 - No binaries, no lock-in
