@@ -22,19 +22,24 @@ Try it online:
 
 ---
 
-## Features
+## Features at a glance
 
-- Freeform drawing with curated UTF-8 glyphs
-- Single, thick and double line routing with junction/override resolution
-- Single, thick and double boxes (ICs, modules, blocks)
-- Free text placement
-- Copy / Move / Blank (area select & drag function)
-- Paste from clipboard
-- Component catalog (MCUs, logic, symbols)
-- Undo / Redo
-- Load, Save, Clear
-- Save to permalink (and auto-load) 
-- Pan and zoom for large grids
+- Drawing & Layout Tools
+  - Freeform drawing
+  - Orthogonal line routing
+  - Box drawing modes
+  - Free text placement
+- Selection & Editing
+  - Area selection
+  - Move, Copy, Paste, Blank (rectangle)
+- Component Catalog
+  - Integrated component catalog
+  - Parameterized catalog items
+- Highlighting & Analysis
+  - Schema Highlight
+  - Schema Match
+- Navigation & View
+- History & Persistence
 
 ---
 
@@ -48,12 +53,13 @@ Try it online:
 - **FileJS**: Helps create URI data for AsciiCAD (index.html?d=...[URI content]...), which provides an all-containing URL loading AsciiCAD with schema included. (<a href="https://beyondmicrocontrol.github.io/AsciiCAD/index.html?d=eNqtlU9rgzAYxu9+ive+i//qztaMUuamLK4USj9ALztvt9bzDhYilcEYlMEuhX2nfJIlqV3VRk1VCZo3kDy/503eOHlEQMlm6ParPKjaNGh+KIn/O9rNaMa+a0oO4j1Ui9sGr5bTyuwtvnJ3/ebQlNA06dp2ratvgR6+ARZuFK1e3uamvYTjcPtEiRP5PPF+V0hwclIg+Ui6h5nnFRQmvADSr9OETKZUp5ecPUCjA6im/efK/k5QlNX2ELp2HmHvnkUWd3JW5da4Wez5gJGbb87FOs3UW7VES1IvV+PUI4CnuQEPUxywyCxSy441r7Fu5GKtBcbIsHRn2bgW53IAIs4V4CmLjAsux4ZXsEwI/DvUn0vNI+e6PQbPIeJcepmLdNqdrAv5R4+L41PubWyxo6CLE+yzSC/Woqiw+htOlbz+ppQTmewQCCJWMuHYqBDFA/1Lsopyv9wWr7iB+P4AnMC7VA==#">EXAMPLE SCHEMA</a>).  We made sure most schematics fit a URI since AsciiCAD unpacks (inflates) the URI data using ZLIB.   FileJS uses the same library to compress schema text files into a small-size URI string, usually below 1024 characters.
 ---
 
-## Technical Notes
+## Design philosophy
 
-- Browser-only focused HTML and JavaScript codebase
-- Runs fully client-side
-- No frameworks, no build step
-- Output is optimized for monospace editors (VS Code, Arduino IDE, terminals, TextEdit)
+- No frameworks required (plain HTML + JavaScript)
+- Works entirely client-side
+- Monospace-accurate rendering for real editors (VSCode, Arduino IDE, terminals)
+- Designed for readability first, not pixel imitation
+- Optimized for human-authored ASCII schematics
 
 ---
 
