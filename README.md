@@ -37,7 +37,11 @@ Try it online:
   - Schema Highlight
   - Schema Match
 - Navigation & View
+  - Large grid support
+  - Pan, Zoom
 - History & Persistence
+  - Undo / Redo / Clear
+  - Load / Save /Permalink support
 
 ---
 
