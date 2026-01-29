@@ -58,7 +58,7 @@ Try it online:
 
 ## Wish-list
 
-- [ ] Create a software packager for client-side JavaScript/HTML, quickly putting all includable files into one single production release file with absolutely no dependencies.
+- [x] Automatically deploy a one-file .html app in /dist
 - [ ] Junction resolution is buggy, for the simple reason it is complex (single lines, double lines, double thickness lines, etc...)
 - [ ] Not all UTF8 characters are monospace-friendly, leading to less perfect character selection (still buggy)
 - [ ] Embed a component editor + Import/Export Ascii component catalog
