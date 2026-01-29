@@ -10,6 +10,7 @@ const srcHtmlPath = path.join(repoRoot, "index.html");
 const outDir = path.join(repoRoot, "dist");
 const outHtmlPath = path.join(outDir, "AsciiCAD.html");
 
+
 function readUtf8(p) {
   return fs.readFileSync(p, "utf8");
 }
@@ -66,9 +67,12 @@ function main()
 
    if (fs.existsSync(outDir)) {
      const st = fs.lstatSync(outDir);
-     if (!st.isDirectory()) {
+     if (!st.isDirectory())
+     {
        fs.unlinkSync(outDir);            // remove file/symlink
        fs.mkdirSync(outDir, { recursive: true });
+       fs.writeFileSync(outHtmlPath, built, "utf8");
+       console.log(`Wrote ${outHtmlPath}`);
      }
    } else {
      fs.mkdirSync(outDir, { recursive: true });
