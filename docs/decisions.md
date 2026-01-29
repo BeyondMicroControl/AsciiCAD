@@ -447,7 +447,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 **Context** Component symbols often contain labels/values that vary\
 **Decision:** Implement wildcard system:
 
-# matches any digit [0-9]
+'#' matches any digit [0-9]
 - $ matches alphanumeric + special [0-9A-Za-z+-*/%Ωπµ⍉⍵°.,;:?@&§_]
 - § (WILDCARD_U) matches line characters (single, double) - replaced with space when pasting
 \
