@@ -6,7 +6,8 @@ AsciiCAD is a browser-based ASCII / UTF-8 schematic editor designed to **embed d
 
 Try online:  
 - <a href=https://beyondmicrocontrol.github.io/AsciiCAD/index.html>RUN AsciiCAD</a>
-- <a href="https://beyondmicrocontrol.github.io/AsciiCAD/index.html?d=eNqtlUFrgzAUx+9+inffxah1Z6ujlLopiy2F0g+wy87bbfU8mIWIMhiDXnYZ7DvlkyzJ7Ko2aqpK0LxA8v/9X/Li7M4DSnZjtx/lQdWmQftDSfzf0a4mK/Z9oeRbvMdqcdfgxXJalb3DV+Fu2ByaEpomfVvWufoeaPYGsFkicKLo4fF5bVhbMd49U2JFPk+8XxUynBwVSDGSHmDluiWFGa+A9PM4IZcpNeklJw/Q6gDqef+6sJ8JiqraAULHKiLsLlhkcicnVW6Nm8WuD9hzit05W6edeq+WaEnq5WqcegJwv0ZwO8cBi4wytexc8yLrRy7W2mDsIVO3t61rcS4bIOJcAZ6zCJ1x2RY8gWlA4N94w7nUPHKu679gGXqcS69ykV67k/chfx9wc3zIvU1NdhR0cYJ9FunlWhQV1nzFqZI3X5VyIoMdAkHESiacohpRPNLPJK8pD8tt+Yobie8XKn27kA==">RUN AsciiCAD with schema in URI</a>
+- <a href="https://beyondmicrocontrol.github.io/AsciiCAD/index.html?d=eNqtlUFrgzAUx+9+inffxah1Z6ujlLopiy2F0g+wy87bbfU8mIWIMhiDXnYZ7DvlkyzJ7Ko2aqpK0LxA8v/9X/Li7M4DSnZjtx/lQdWmQftDSfzf0a4mK/Z9oeRbvMdqcdfgxXJalb3DV+Fu2ByaEpomfVvWufoeaPYGsFkicKLo4fF5bVhbMd49U2JFPk+8XxUynBwVSDGSHmDluiWFGa+A9PM4IZcpNeklJw/Q6gDqef+6sJ8JiqraAULHKiLsLlhkcicnVW6Nm8WuD9hzit05W6edeq+WaEnq5WqcegJwv0ZwO8cBi4wytexc8yLrRy7W2mDsIVO3t61rcS4bIOJcAZ6zCJ1x2RY8gWlA4N94w7nUPHKu679gGXqcS69ykV67k/chfx9wc3zIvU1NdhR0cYJ9FunlWhQV1nzFqZI3X5VyIoMdAkHESiacohpRPNLPJK8pD8tt+Yobie8XKn27kA==">RUN AsciiCAD + example schema</a>
+- Portable all-in-one-file distribution: <a href=https://beyondmicrocontrol.github.io/AsciiCAD/dist/AsciiCAD.html>AsciiCAD.html</a>
 
 ---
 
