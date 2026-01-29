@@ -3019,6 +3019,7 @@ function(csv)
       var _urlarr = _url?_url.split("?"):new Array("","");
       var _urlargs = _urlarr[1]?_urlarr[1].split("&"):new Array(_urlarr[0],"");
       this.url = _urlarr[0];
+      this.filename = this.url.substring(this.url.lastIndexOf("/")+1,this.url.length);
   
       this.uri = {};
       for(var _i=0;_i<_urlargs.length;_i++)
@@ -3276,7 +3277,15 @@ function GRID()
         </div>
 
         <div class="card">
-          <div class="tiny muted">Wheel = zoom • Hold mouse button while wheel = pan • Middle-drag = pan • R = rotate. <a href="https://github.com/BeyondMicroControl/AsciiCAD" target="_blank">GitHub</a> • <a href="#" id="downloadSelfLink" onclick="downloadThisFile(); return false;">Download</a></div>
+          <div class="tiny muted">Wheel = zoom • Hold mouse button while wheel = pan • Middle-drag = pan • R = rotate. <a href="https://github.com/BeyondMicroControl/AsciiCAD" target="_blank">GitHub</a>
+          
+            <script>
+            oCOM.URL.parse(document.location.toString());
+            if(oCOM.URL.filename == "AsciiCAD.html")
+              document.write("• <a href=\"#\" id=\"downloadSelfLink\" onclick=\"downloadThisFile(); return false;\">Download</a>");
+            </script>
+          
+          </div>
           <div class="tiny muted" id="URIcontainer"></div>
         </div>
       </div>
