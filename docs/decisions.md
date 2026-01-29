@@ -802,6 +802,27 @@ const dragTools = {
 
 ---
 
+## ADR-031: Self-downloading app
+**Date:** 29-Jan-2029\
+**Status:** Accepted\
+**Context** App portability\
+**Decision:** Self-downloading .html app
+
+- A link located at the left-bottom allows self-download
+
+### Rationale:
+
+- Ultimate portability
+- Easy to copy and deploy offline
+
+### Consequences:
+
+- (+) Easy to copy the app from the web, and deploy offline
+- (-) Only appears/makes sense when running the <a href=https://beyondmicrocontrol.github.io/AsciiCAD/dist/AsciiCAD.html">one-file distribution</a>. It does so by a trick, detecting the filename: if filename = "AsciiCAD.html" the download link appears, otherwise not.
+
+
+---
+
 ## Summary of Key Design Principles
 
 1. Simplicity: No frameworks, vanilla JavaScript
