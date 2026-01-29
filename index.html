@@ -27,7 +27,7 @@
     <aside id="sidebar" class="sidebar">
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.00</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.01</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -95,7 +95,7 @@
         </div>
 
         <div class="card">
-          <div class="tiny muted">Wheel = zoom • Hold mouse button while wheel = pan • Middle-drag = pan • R = rotate. <a href="https://github.com/BeyondMicroControl/AsciiCAD" target="_blank">GitHub</a></div>
+          <div class="tiny muted">Wheel = zoom • Hold mouse button while wheel = pan • Middle-drag = pan • R = rotate. <a href="https://github.com/BeyondMicroControl/AsciiCAD" target="_blank">GitHub</a> • <a href="#" id="downloadSelfLink" onclick="downloadThisFile(); return false;">Download</a></div>
           <div class="tiny muted" id="URIcontainer"></div>
         </div>
       </div>
@@ -2592,6 +2592,33 @@ resizeRaf = requestAnimationFrame(() => {
 
 const ro = new ResizeObserver(() => scheduleResize());
 ro.observe(container);
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// SELF-DOWNLOAD FUNCTIONALITY
+// ════════════════════════════════════════════════════════════════════════════
+
+function downloadThisFile() {
+  // Get the complete HTML source including current state
+  const htmlContent = document.documentElement.outerHTML;
+  
+  // Create a Blob with the HTML content
+  const blob = new Blob([htmlContent], { type: 'text/html' });
+  
+  // Create a download link
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'AsciiCAD.html';
+  
+  // Trigger the download
+  document.body.appendChild(a);
+  a.click();
+  
+  // Cleanup
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 
 //    ███████  █████  ███    ██ ██ ████████ ██    ██      ██████ ██   ██ ███████  ██████ ██   ██ 
