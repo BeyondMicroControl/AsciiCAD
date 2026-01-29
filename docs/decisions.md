@@ -5,10 +5,10 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 ---
 
 ## ADR-001: No Framework/Library Dependencies
-**Date**: Initial project inception
+**Date**: Initial project inception\
 **Status:** Accepted
-### Context: Need for a lightweight, maintainable ASCII drawing tool
-### Decision: Build the entire application using vanilla HTML/CSS/JavaScript without frameworks or libraries
+**Context:** Need for a lightweight, maintainable ASCII drawing tool
+**Decision:** Build the entire application using vanilla HTML/CSS/JavaScript without frameworks or libraries\
 ### Rationale:
 
 - Reduces complexity and learning curve
@@ -28,10 +28,10 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 ---
 
 ## ADR-002: Grid-Based Architecture with 2D Character Array
-### Date: Initial project inception
-**Status:** Accepted
-### Context: Need to represent ASCII art in a structured, editable format
-### Decision: Implement a 2D array of characters where each grid cell contains exactly one character
+**Date:** Initial project inception\
+**Status:** Accepted\
+**Context** Need to represent ASCII art in a structured, editable format\
+**Decision:** Implement a 2D array of characters where each grid cell contains exactly one character\
 ### Rationale:
 
 - Direct mapping between visual grid and data structure
@@ -51,10 +51,10 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 ---
 
 ## ADR-003: Cell Aspect Ratio of 2:1
-### Date: Early development
-**Status:** Accepted, later refined
-### Context: Monospace fonts are typically taller than wide
-### Decision: Implement grid cells with a 2:1 width-to-height aspect ratio
+**Date:** Early development\
+**Status:** Accepted, later refined\
+**Context** Monospace fonts are typically taller than wide\
+**Decision:** Implement grid cells with a 2:1 width-to-height aspect ratio\
 ### Rationale:
 
 - Matches typical monospace character proportions
@@ -76,10 +76,10 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 ---
 
 ## ADR-004: Full-Screen Canvas Experience
-### Date: Initial project inception
-**Status:** Accepted
-### Context: Maximize available workspace for diagram creation
-### Decision: Canvas borders correspond to browser window borders, providing full-screen drawing area
+**Date:** Initial project inception\
+**Status:** Accepted\
+**Context** Maximize available workspace for diagram creation\
+**Decision:** Canvas borders correspond to browser window borders, providing full-screen drawing area\
 ### Rationale:
 
 - Maximizes usable workspace
@@ -97,10 +97,10 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 ---
 
 ## ADR-005: Pan and Zoom Functionality
-### Date: Early development, extended mid-development
-**Status:** Accepted
-### Context: Large diagrams (256x128 cells) need navigation and detail work
-### Decision: Implement mouse/trackpad zoom (up to 1000%) and pan capabilities
+**Date:** Early development, extended mid-development\
+**Status:** Accepted\
+**Context** Large diagrams (256x128 cells) need navigation and detail work\
+**Decision:** Implement mouse/trackpad zoom (up to 1000%) and pan capabilities\
 ### Rationale:
 
 - Essential for working with large grid areas
@@ -118,15 +118,15 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 ---
 
 ## ADR-006: Freeform Character Drawing with Continuous Mode
-### Date: Early development
-**Status:** Accepted
-### Context: Need to place arbitrary UTF-8 characters on the grid
-### Decision: Implement freeform drawing that:
+**Date:** Early development\
+**Status:** Accepted\
+**Context** Need to place arbitrary UTF-8 characters on the grid\
+**Decision:** Implement freeform drawing that:
 
 - Uses a popup character picker organized by category
 - Draws continuously while mouse is down and moving
 - Only places character when moving to a new grid cell (prevents duplicates)
-
+\
 ### Rationale:
 
 - Provides flexibility for custom symbols
@@ -156,15 +156,15 @@ Character Categories Implemented:
 ---
 
 ## ADR-007: Intelligent Line Drawing with Automatic Merging
-### Date: Mid-development
-**Status:** Accepted (with ongoing refinements)
-### Context: Need to create clean electronic schematics with connected lines
-### Decision: Implement single and double line modes that:
+**Date:** Mid-development\
+**Status:** Accepted (with ongoing refinements)\
+**Context** Need to create clean electronic schematics with connected lines\
+**Decision:** Implement single and double line modes that:
 
 - Automatically detect and merge line intersections
 - Use appropriate box-drawing characters for corners, T-junctions, and crossings
 - Support both single (thin) and double (thick) line styles
-
+\
 ### Rationale:
 
 - Essential feature for schematic drawings
@@ -190,15 +190,15 @@ Known Challenges (from prompts):
 Decision to Defer: Full line conflict resolution moved to separate tool due to complexity of all edge cases---
 
 ## ADR-008: Box Drawing Mode
-### Date: Mid-development
-**Status:** Accepted
-### Context: Need to create rectangular enclosures quickly
-### Decision: Implement single and double box drawing modes that create rectangles with:
+**Date:** Mid-development\
+**Status:** Accepted\
+**Context** Need to create rectangular enclosures quickly\
+**Decision:** Implement single and double box drawing modes that create rectangles with:
 
 - Appropriate corner characters
 - Proper side characters
 - Drag-to-create interaction model
-
+\
 ### Rationale:
 
 - Common pattern in schematics (component boundaries, regions)
@@ -215,10 +215,10 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 ---
 
 ## ADR-009: Select, Move, Copy, and Blank Operations
-### Date: Mid-development
-**Status:** Accepted
-### Context: Need editing capabilities for created content
-### Decision: Implement four selection-based modes:
+**Date:** Mid-development\
+**Status:** Accepted\
+**Context** Need editing capabilities for created content\
+**Decision:** Implement four selection-based modes:
 
 - Move: Select region, drag to new location, original cleared
 - Copy: Select region, drag to new location, original preserved
@@ -232,7 +232,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 - Apply on mouseup
 - Clamp/trim to grid boundaries
 - Entire operation = one undoable stroke
-
+\
 ### Rationale:
 
 - Standard editing operations users expect
@@ -250,10 +250,10 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 ---
 
 ## ADR-010: Unrestricted Selection Beyond Grid Boundaries
-### Date: Mid-development
-**Status:** Accepted
-### Context: Users need to move partially visible selections
-### Decision: Allow selection origin to extend beyond grid boundaries; only trim content when committing to grid
+**Date:** Mid-development\
+**Status:** Accepted\
+**Context** Users need to move partially visible selections\
+**Decision:** Allow selection origin to extend beyond grid boundaries; only trim content when committing to grid\
 ### Rationale:
 
 - More flexible editing
@@ -270,16 +270,16 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 ---
 
 ## ADR-011: Undo/Redo System
-### Date: Mid-development
-**Status:** Accepted
-### Context: Need to support iterative editing and error recovery
-### Decision: Implement undo/redo with:
+**Date:** Mid-development\
+**Status:** Accepted\
+**Context** Need to support iterative editing and error recovery\
+**Decision:** Implement undo/redo with:
 
 - Each complete operation = one stroke in undo stack
 - Keyboard shortcuts: Cmd/Ctrl+Z (undo), Cmd/Ctrl+Shift+Z (redo)
 - Integrated into Load & Save toolbar
 - All operations (draw, move, paste, load) add to stack
-
+\
 ### Rationale:
 
 - Essential editing feature
@@ -297,15 +297,15 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 ---
 
 ## ADR-012: Plain Text File Format
-### Date: Mid-development
-**Status:** Accepted
-### Context: Need save/load functionality
-### Decision: Use plain text files (ROWS × COLS characters) with:
+**Date:** Mid-development\
+**Status:** Accepted\
+**Context** Need save/load functionality\
+**Decision:** Use plain text files (ROWS × COLS characters) with:
 
 - Each row on a separate line
 - Padding/truncation per row as needed
 - Direct grid array serialization
-
+\
 ### Rationale:
 
 - Human-readable format
@@ -326,10 +326,10 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 ---
 
 ## ADR-013: URL Parameter Loading
-### Date: Later development
-**Status:** Accepted
-### Context: Need to share diagrams via hyperlinks
-### Decision: Support loading diagrams via URL parameter (?d=<encoded-data>)
+**Date:** Later development\
+**Status:** Accepted\
+**Context** Need to share diagrams via hyperlinks\
+**Decision:** Support loading diagrams via URL parameter (?d=<encoded-data>)\
 ### Rationale:
 
 - Easy sharing without file exchange
@@ -347,16 +347,16 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 ---
 
 ## ADR-014: Clipboard Integration (Paste Mode)
-### Date: Mid-development
-**Status:** Accepted
-### Context: Need to import ASCII art from external sources
-### Decision: Implement Cmd/Ctrl+V to trigger paste mode that:
+**Date:** Mid-development\
+**Status:** Accepted\
+**Context** Need to import ASCII art from external sources\
+**Decision:** Implement Cmd/Ctrl+V to trigger paste mode that:
 
 - Captures clipboard text
 - Shows preview overlay (using move/copy visual feedback)
 - Allows positioning before committing
 - Clips content beyond grid boundaries
-
+\
 ### Rationale:
 
 - Import from other tools
@@ -374,10 +374,10 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 ---
 
 ## ADR-015: Real-Time Coordinate Display
-### Date: Mid-development
-**Status:** Accepted
-### Context: Users need position feedback for precise placement
-### Decision: Display current cell coordinates in Canvas toolbar
+**Date:** Mid-development\
+**Status:** Accepted\
+**Context** Users need position feedback for precise placement\
+**Decision:** Display current cell coordinates in Canvas toolbar\
 ### Rationale:
 
 - Helps with precise positioning
@@ -393,10 +393,10 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 ---
 
 ## ADR-016: Large Grid Size (256×128 cells)
-### Date: Mid-development
-**Status:** Accepted
-### Context: Complex electronic schematics need substantial workspace
-### Decision: Expand grid to 256×128 cells (from original 128×128)
+**Date:** Mid-development\
+**Status:** Accepted\
+**Context** Complex electronic schematics need substantial workspace\
+**Decision:** Expand grid to 256×128 cells (from original 128×128)\
 ### Rationale:
 
 - Accommodate complex CPU/MCU schematics
@@ -414,16 +414,16 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 ---
 
 ## ADR-017: Component Catalog System
-### Date: Later development
-**Status:** Accepted
-### Context: Electronic schematics use standard component symbols
-### Decision: Implement component catalog with:
+**Date:** Later development\
+**Status:** Accepted\
+**Context** Electronic schematics use standard component symbols\
+**Decision:** Implement component catalog with:
 
 - Curated library of discrete and digital components
 - Category organization
 - One-click insertion
 - Catalog stored in JSON-like structure with text_data field
-
+\
 ### Rationale:
 
 - Speed up common schematic tasks
@@ -442,15 +442,15 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 ---
 
 ## ADR-018: Wildcard Matching System for Catalog
-### Date: Later development (v0.95)
-**Status:** Accepted
-### Context: Component symbols often contain labels/values that vary
-### Decision: Implement wildcard system:
+**Date:** Later development (v0.95)\
+**Status:** Accepted\
+**Context** Component symbols often contain labels/values that vary\
+**Decision:** Implement wildcard system:
 
 # matches any digit [0-9]
 - $ matches alphanumeric + special [0-9A-Za-z+-*/%Ωπµ⍉⍵°.,;:?@&§_]
 - § (WILDCARD_U) matches line characters (single, double) - replaced with space when pasting
-
+\
 ### Rationale:
 
 - Flexible pattern matching for components
@@ -468,17 +468,17 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 ---
 
 ## ADR-019: Schema Highlighting Feature
-### Date: v0.94
-**Status:** Accepted
-### Context: Visual organization of complex schematics
-### Decision: Implement toggleable highlighting mode:
+**Date:** v0.94\
+**Status:** Accepted\
+**Context** Visual organization of complex schematics\
+**Decision:** Implement toggleable highlighting mode:
 
 - Double-line frames: Red (defines enclosed areas/modules)
 - Single-line wires: Blue (within and outside enclosed areas)
 - Exception: Single lines inside double-line enclosed areas remain black
 - Update highlighting on each commit (editable while highlighted)
 - Overlay approach (non-destructive)
-
+\
 ### Rationale:
 
 Visual hierarchy for complex schematics
@@ -497,16 +497,16 @@ Non-destructive (doesn't modify actual data)
 Double-line frame characters: ═ ║ ╔ ╗ ╚ ╝ ╢ ╟ ╠ ╣ ╬ ╤ ╧ ╦ ╩ ╪ ╫---
 
 ## ADR-020: Catalog Matching Feature (Green Highlighting)
-### Date: v0.95
-**Status:** Accepted
-### Context: Identify where catalog components are used in diagrams
-### Decision: Implement "Match" button that:
+**Date:** v0.95\
+**Status:** Accepted\
+**Context** Identify where catalog components are used in diagrams\
+**Decision:** Implement "Match" button that:
 
 - Highlights catalog components in green
 - Uses first line of catalog item for fast initial match
 - Performs full match including wildcards on promising candidates
 - Searches across all catalog categories
-
+\
 ### Rationale:
 
 - Visual feedback of component placement
@@ -525,10 +525,10 @@ Double-line frame characters: ═ ║ ╔ ╗ ╚ ╝ ╢ ╟ ╠ ╣ ╬ ╤ �
 ---
 
 ## ADR-021: Collapsible Left Pane UI
-### Date: Initial project inception
-**Status:** Accepted
-### Context: Balance between tools access and workspace
-### Decision: Implement collapsible left pane for tools using Roboto font
+**Date:** Initial project inception\
+**Status:** Accepted\
+**Context** Balance between tools access and workspace\
+**Decision:** Implement collapsible left pane for tools using Roboto font\
 ### Rationale:
 
 - Maximize canvas space when not selecting tools
@@ -546,17 +546,17 @@ Double-line frame characters: ═ ║ ╔ ╗ ╚ ╝ ╢ ╟ ╠ ╣ ╬ ╤ �
 ---
 
 ## ADR-022: Tool Life-Cycle Pattern Standardization
-### Date: Later refactoring phase
-**Status:** Proposed
-### Context: Repetitive code patterns across tools (line, box, text, select, etc.)
-### Decision: Refactor to unified tool framework:
+**Date:** Later refactoring phase\
+**Status:** Proposed\
+**Context** Repetitive code patterns across tools (line, box, text, select, etc.)\
+**Decision:** Refactor to unified tool framework:
 ```javascript
 const dragTools = {
   modeSLine: { begin, move, end, cancel },
   modeTLine: { begin, move, end, cancel },
   // ... other tools
 };
-```
+```\
 ### Rationale:
 
 - Reduce code duplication
@@ -576,15 +576,15 @@ const dragTools = {
 ---
 
 ## ADR-023: Freetext Mode
-### Date: Mid-development
-**Status:** Accepted
-### Context: Need to add labels and annotations
-### Decision: Implement freetext mode that:
+**Date:** Mid-development\
+**Status:** Accepted\
+**Context** Need to add labels and annotations\
+**Decision:** Implement freetext mode that:
 
 - Allows typing text directly on grid
 - Positions text at specific grid location
 - Commits as single undo stroke
-
+\
 ### Rationale:
 
 - Essential for labeling components
@@ -601,10 +601,10 @@ const dragTools = {
 ---
 
 ## ADR-024: Stroke Deduplication with Map
-### Date: Later development
-**Status:** Accepted (inconsistently applied)
-### Context: Prevent duplicate characters in same cell during continuous drawing
-### Decision: Use Map data structure to deduplicate stroke operations
+**Date:** Later development\
+**Status:** Accepted (inconsistently applied)\
+**Context** Prevent duplicate characters in same cell during continuous drawing\
+**Decision:** Use Map data structure to deduplicate stroke operations\
 ### Rationale:
 
 - Prevents overwriting same cell multiple times in one operation
@@ -620,16 +620,16 @@ const dragTools = {
 ---
 
 ## ADR-025: Light Color Scheme
-### Date: Initial project inception
-**Status:** Accepted
-### Context: Long editing sessions, readability
-### Decision: Use light color scheme:
+**Date:** Initial project inception\
+**Status:** Accepted\
+**Context** Long editing sessions, readability\
+**Decision:** Use light color scheme:
 
 - Canvas: White (#FFFFFF)
 - Grid: Light grey (#EEEEEE)
 - Text: Black (default)
 - Accent colors: Green (selection), Blue (preview), Red (highlights)
-
+\
 ### Rationale:
 
 - Better for extended use
@@ -647,10 +647,10 @@ const dragTools = {
 ---
 
 ## ADR-026: Roboto Font Choice
-### Date: Initial project inception
-**Status:** Accepted
-### Context: Need clean, readable monospace rendering
-### Decision: Use Roboto font family
+**Date:** Initial project inception\
+**Status:** Accepted\
+**Context** Need clean, readable monospace rendering\
+**Decision:** Use Roboto font family\
 ### Rationale:
 
 - Clean, modern appearance
@@ -668,15 +668,15 @@ const dragTools = {
 ---
 
 ## ADR-027: Clear Function
-### Date: Mid-development
-**Status:** Accepted
-### Context: Need to start fresh or remove all content
-### Decision: Add Clear button to Load & Save toolbar that:
+**Date:** Mid-development\
+**Status:** Accepted\
+**Context** Need to start fresh or remove all content\
+**Decision:** Add Clear button to Load & Save toolbar that:
 
 - Wipes a selected area on the grid
 - Adds to undo stack
 - Requires no confirmation (relying on undo)
-
+\
 ### Rationale:
 
 - Quick reset functionality
@@ -692,16 +692,16 @@ const dragTools = {
 ---
 
 ## ADR-028: Separate Line Conflict Resolution Tool (Deferred)
-### Date: Mid-development
-**Status:** Deferred
-### Context: Complex edge cases in single/double line crossing
-### Decision: Extract line conflict resolution to separate tool for:
+**Date:** Mid-development\
+**Status:** Deferred\
+**Context** Complex edge cases in single/double line crossing\
+**Decision:** Extract line conflict resolution to separate tool for:
 
 - Identifying sensitive crossing cells
 - Indicating which cells need modification
 - Handling line endings (e.g., capacitor symbols)
 - Human feedback and refinement
-
+\
 ### Rationale:
 
 - Too many edge cases for automated solution
@@ -720,17 +720,17 @@ const dragTools = {
 ---
 
 ## ADR-029: Tool Organization and Grouping
-### Date: Throughout development
-**Status:** Accepted
-### Context: Growing number of tools and features
-### Decision: Organize tools into logical groups:
+**Date:** Throughout development\
+**Status:** Accepted\
+**Context** Growing number of tools and features\
+**Decision:** Organize tools into logical groups:
 
 - Drawing: Freeform, Line (Single/Double), Box (Single/Double), Text
 - Editing: Select, Move, Copy, Blank
 - File: Load, Save, Clear, Undo, Redo
 - Canvas: Pan, Zoom, Coordinates
 - Analysis: Highlight, Match
-
+\
 ### Rationale:
 
 - Logical organization
@@ -747,15 +747,15 @@ const dragTools = {
 ---
 
 ## ADR-030: Event-Driven Architecture
-### Date: Initial implementation
-**Status:** Accepted
-### Context: Interactive canvas with multiple tools
-### Decision: Use event-driven architecture with:
+**Date:** Initial implementation\
+**Status:** Accepted\
+**Context** Interactive canvas with multiple tools\
+**Decision:** Use event-driven architecture with:
 
 - Mouse events: mousedown, mousemove, mouseup
 - Keyboard events: keydown for shortcuts
 - Mode-based event handling (current tool determines behavior)
-
+\
 ### Rationale:
 
 - Natural for interactive applications
