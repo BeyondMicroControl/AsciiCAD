@@ -145,5 +145,3 @@ function testDoubleBusCross()
 if (bDebug) { testDoubleBusCross(); wipeSelection(' '); }  
 ```
 ---
-
-*These are our conventions for Client-side browser JavaScript development. Consistency across the codebase makes collaboration easier.*
