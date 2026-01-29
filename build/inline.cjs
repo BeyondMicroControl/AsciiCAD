@@ -63,8 +63,19 @@ function main() {
   const srcHtml = readUtf8(srcHtmlPath);
   const built = inlineBuild(srcHtml);
 
-   fs.mkdirSync(outDir, { recursive: true });
-   fs.writeFileSync(outHtmlPath, built, "utf8");
+   // Ensure dist exists and is a directory
+   try {
+     const st = fs.statSync(outDir);
+     if (!st.isDirectory()) {
+       throw new Error(`'${outDir}' exists but is not a directory.`);
+     }
+   } catch (e) {
+     if (e && e.code === "ENOENT") {
+       fs.mkdirSync(outDir, { recursive: true });
+     } else {
+       throw e;
+     }
+   }
 
 
   console.log(`Wrote ${path.relative(repoRoot, outHtmlPath)}`);
