@@ -38,4 +38,4 @@ Beyond my professional work, I maintain an active portfolio of personal projects
 
 These projects represent my curiosity-driven approach to technology—combining practical problem-solving with a deep appreciation for both computing history and modern embedded systems development.
 
-<a href="https://www.linkedin.com/in/freddy-vandriessche/" target=_blank>connect on LinkedIn</a>
+Stay creative, and if you like to keep in touch: <a href="https://www.linkedin.com/in/freddy-vandriessche/" target=_blank>connect on LinkedIn</a>
