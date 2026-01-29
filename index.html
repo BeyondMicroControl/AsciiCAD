@@ -2367,17 +2367,24 @@ cliTerminal.addEventListener('keydown', (e) => {
 });
 
 // Prevent clicking before the prompt
+// Prevent placing caret before prompt (but DO NOT break text selection)
 cliTerminal.addEventListener('click', () => {
-  const lines = cliTerminal.value.split('\n');
-  const cursorPos = cliTerminal.selectionStart;
+  const selStart = cliTerminal.selectionStart;
+  const selEnd   = cliTerminal.selectionEnd;
+
+  // If user selected text, keep selection intact (don’t jump caret)
+  if (selStart !== selEnd) return;
+
+  const cursorPos = selStart;
   const textBeforeCursor = cliTerminal.value.substring(0, cursorPos);
   const lastLineStart = textBeforeCursor.lastIndexOf('\n') + 1;
   const promptEnd = lastLineStart + 'AsciiCAD> '.length;
-  
+
   if (cursorPos < promptEnd) {
     cliTerminal.setSelectionRange(cliTerminal.value.length, cliTerminal.value.length);
   }
 });
+
 
 // Clipboard Support for CLI
 cliTerminal.addEventListener('paste', (e) => {
@@ -2420,6 +2427,17 @@ cliTerminal.addEventListener('keydown', (e) => {
     // Allow default select-all behavior
     return;
   }
+  else if (e.key === 'ArrowLeft' || e.key === 'Home') {
+  // If selecting (shift+arrow) or any selection exists, don't override browser behavior
+  if (e.shiftKey || cliTerminal.selectionStart !== cliTerminal.selectionEnd) return;
+
+  setTimeout(() => {
+    if (cliTerminal.selectionStart < promptEnd) {
+      cliTerminal.setSelectionRange(promptEnd, promptEnd);
+    }
+  }, 0);
+}
+
 }, true);
 
 // Sidebar Resize Functionality
