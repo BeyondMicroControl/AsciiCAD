@@ -1,9 +1,7 @@
 function COM()
 {
   const hexLookupTable = new Array(256);
-  for (let i = 0; i < 256; i++) {
-    hexLookupTable[i] = i.toString(16).padStart(2, '0');
-  }
+  for (let i = 0; i < 256; i++) hexLookupTable[i] = i.toString(16).padStart(2, '0');
 
   const hex2tab=[
     "00","01","02","03","04","05","06","07","08","09","0A","0B","0C","0D","0E","0F","10","11","12","13","14","15","16","17","18","19","1A","1B","1C","1D","1E","1F",
@@ -20,7 +18,6 @@ function COM()
   this.getHexWord    = function(v)   { return hex2tab[v>>8] + hex2tab[v&0xFF] }
   this.getHexMulti   = function(v,m) { return ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase() }
   this.getBinMulti   = function(v,m) { return ("0".repeat(m)+v.toString(2)).slice(-m).toUpperCase() }
-  //this.getNumByteArr = function(v)   { let y= Math.floor(v/2**32); return [y,(y<<8),(y<<16),(y<<24), v,(v<<8),(v<<16),(v<<24)].map(z=> z>>>24) } // convert JS number to byte array
   this.getNumByteArr = function(v)   { let y= Math.floor(v/2**32); return [(v<<24),(v<<16),(v<<8),v,(y<<24),(y<<16),(y<<8),y].map(z=> z>>>24) } // convert JS number to byte array
   this.getByteArrNum = function(arr) { return arr.reduce((a,c,i)=> a+c*2**(56-i*8),0) } // convert byte array to JS number
 
@@ -102,14 +99,6 @@ function COM()
     var maxlen = maxlen===undefined ? 1024 : maxlen;
     var re = RegExp(".{1,"+maxlen+"}","g");
     return "var b64 ="+lf+" \""+b64body.match(re).join('"'+lf+'+"')+"\";"+lf
-  }
-
-  this.DumpTxt = function(txt,maxlen,lf)
-  {
-    var lf = lf===undefined ? "\n" : lf;
-    var maxlen = maxlen===undefined ? 1024 : maxlen;
-    var re = RegExp(".{1,"+maxlen+"}","g");
-    return txt.match(re).join(lf);
   }
 
   this.base_convert = function (str, fromBase, toBase)
@@ -199,70 +188,6 @@ function COM()
     return result.join('');                                                                                     // Join the array into a single string
   }
 
-  /*
-  //+ Carlos R. L. Rodrigues
-  //@ http://jsfromhell.com/classes/math-parser [rev. #3]
-
-  this.MathParser = function()
-  {
-      var o = this, p = o.operator = {};
-      p["+"] = function(n, m){return n + m;}
-      p["-"] = function(n, m){return n - m;}
-      p["*"] = function(n, m){return n * m;}
-      p["/"] = function(m, n){return n / m;}
-      p["%"] = function(m, n){return n % m;}
-      p["^"] = function(m, n){return Math.pow(n, m);}
-      p["~"] = function(m, n){return Math.sqrt(n, m);}
-      o.custom = {}
-    p.f = function(s, n)
-    {
-          if(Math[s]) return Math[s](n);
-          else if(o.custom[s]) return o.custom[s].apply(o, n);
-          else throw new Error("Function \"" + s + "\" not defined.");
-      }
-    o.add = function(n, f){this.custom[n] = f;}
-  }
-
-  this.MathParser.prototype.eval = function(e, ig)
-  {
-      var v = [], p = [], i, _, a, c = 0, s = 0, x, t = !ig ? e.indexOf("^") : -1, d = null;
-      var cp = e, e = e.split(""), n = "0123456789.", o = "+-/*^%~", f = this.operator;
-      if(t + 1)
-          do{
-              for(a = "", _ = t - 1;  _ && o.indexOf(e[_]) < 0; a += e[_], e[_--] = ""); a += "^";
-              for(_ = t + 1, i = e.length; _ < i && o.indexOf(e[_]) < 0; a += e[_], e[_++] = "");
-              e = e.slice(0, t).concat((this.eval(a, 1) + "").split("")).concat(e.slice(t + 1));
-          }
-          while(t = cp.indexOf("^", ++t) + 1);
-      for(i = 0, l = e.length; i < l; i++){
-          if(o.indexOf(e[i]) > -1)
-              e[i] == "-" && (s > 1 || d === null) && ++s, !s && d !== null && (p.push(e[i]), s = 2), "+-".indexOf(e[i]) < (d = null) && (c = 1);
-          else if(a = n.indexOf(e[i]) + 1 ? e[i++] : "")
-      {
-              while(n.indexOf(e[i]) + 1) a += e[i++];
-              v.push(d = (s & 1 ? -1 : 1) * a), c && v.push(f[p.pop()](v.pop(), v.pop())) && (c = 0), --i, s = 0;
-          }
-      }
-      for(c = v[0], i = 0, l = p.length; l--; c = f[p[i]](c, v[++i]));
-      return c;
-  }
-
-  this.MathParser.prototype.parse = function(e)
-  {
-    var p = [], f = [], ag, n, c, a, o = this, v = "0123456789.+-*"+"/^%~(, )";
-    for(var x, i = 0, l = e.length; i < l; i++){
-      if(v.indexOf(c = e.charAt(i)) < 0) { for(a = c; v.indexOf(c = e.charAt(++i)) < 0; a += c); f.push((--i, a)) }
-      else if(!(c == "(" && p.push(i)) && c == ")")
-      {
-        if(a = e.slice(0, (n = p.pop()) - (x = v.indexOf(e.charAt(n - 1)) < 0 ? y = (c = f.pop()).length : 0)), x)
-          for(var j = (ag = e.slice(n, ++i).split(",")).length; j--; ag[j] = o.eval(ag[j]));
-        l = (e = a + (x ? o.operator.f(c, ag) : o.eval(e.slice(n, ++i))) + e.slice(i)).length, i -= i - n + c.length;
-      }
-    }
-    return o.eval(e);
-  }
-  */
-
 
   this.MathParser = function()
   {
@@ -328,6 +253,7 @@ function COM()
       return this.eval(e);
     }
 
+    // C++ style string formatting
     this.format = function(str,substitutes)
     {
       var pos = str.lastIndexOf(",");
@@ -367,74 +293,30 @@ function COM()
       var regex = /%(-)?(0?[0-9]+)?([.][0-9]+)?([#][0-9]+)?([scfpexXd%])/g;
       return str2.replace(regex, callback);
     }
-
   }
 
   // https://stackoverflow.com/questions/1293147/how-to-parse-csv-data
   this.CSVParser =
   {
     parse:
-
-function(csv)
-{
-  var arr = csv.match( /\s*(\"[^"]*\"|'[^']*'|[^,]*)\s*(,|$)/g ).map( 
-    function (csv)
+    function(csv)
     {
-      let m;
-      if (m = csv.match(/^\s*,?$/)) return null; // null value
-      if (m = csv.match(/^\s*\"([^"]*)\"\s*,?$/)) return "\""+m[1]+"\""; // Double Quoted Text
-      if (m = csv.match(/^\s*'([^']*)'\s*,?$/)) return "'"+m[1]+"'"; // Single Quoted Text
-      if (m = csv.match(/^\s*(true|false)\s*,?$/)) return m[1] === "true"; // Boolean
-      if (m = csv.match(/^\s*((?:\+|\-)?\d+)\s*,?$/)) return parseInt(m[1]); // Integer Number
-      if (m = csv.match(/^\s*((?:\+|\-)?\d*\.\d*)\s*,?$/)) return parseFloat(m[1]); // Floating Number
-      if (m = csv.match(/^\s*(.*?)\s*,?$/)) return m[1]; // Unquoted Text
-    }
-  )
-  if(arr[arr.length-1]==null) arr.pop();
-  return arr;
-}
-
-/*
-    function(csv, reviver)
-    {
-      reviver = reviver || function(r, c, v) { return v };
-      var chars = csv.split(''), c = 0, cc = chars.length, start, end, table = [], row;
-      while (c < cc)
-      {
-        table.push(row = []);
-        while (c < cc && '\r' !== chars[c] && '\n' !== chars[c])
+      var arr = csv.match( /\s*(\"[^"]*\"|'[^']*'|[^,]*)\s*(,|$)/g ).map( 
+        function (csv)
         {
-          start = end = c;
-          if ('"' === chars[c])
-          {
-            start = end = ++c;
-            while (c < cc)
-            {
-              if ('"' === chars[c])
-              {
-                if ('"' !== chars[c+1]) break;
-                else chars[++c] = ''; // unescape ""
-              }
-              end = ++c;
-            }
-            if ('"' === chars[c]) ++c;
-            while (c < cc && '\r' !== chars[c] && '\n' !== chars[c] && ',' !== chars[c])
-              ++c;
-          }
-          else
-          {
-              while (c < cc && '\r' !== chars[c] && '\n' !== chars[c] && ',' !== chars[c])
-                end = ++c;
-          }
-          row.push(reviver(table.length-1, row.length, chars.slice(start, end).join('')));
-          if (',' === chars[c]) ++c;
+          let m;
+          if (m = csv.match(/^\s*,?$/)) return null; // null value
+          if (m = csv.match(/^\s*\"([^"]*)\"\s*,?$/)) return "\""+m[1]+"\""; // Double Quoted Text
+          if (m = csv.match(/^\s*'([^']*)'\s*,?$/)) return "'"+m[1]+"'"; // Single Quoted Text
+          if (m = csv.match(/^\s*(true|false)\s*,?$/)) return m[1] === "true"; // Boolean
+          if (m = csv.match(/^\s*((?:\+|\-)?\d+)\s*,?$/)) return parseInt(m[1]); // Integer Number
+          if (m = csv.match(/^\s*((?:\+|\-)?\d*\.\d*)\s*,?$/)) return parseFloat(m[1]); // Floating Number
+          if (m = csv.match(/^\s*(.*?)\s*,?$/)) return m[1]; // Unquoted Text
         }
-        if ('\r' === chars[c]) ++c;
-        if ('\n' === chars[c]) ++c;
-      }
-      return table;
+      )
+      if(arr[arr.length-1]==null) arr.pop();
+      return arr;
     }
-    */  
     ,
     stringify:
     function(table, replacer)
@@ -497,263 +379,12 @@ function(csv)
     }
   }
 
- this.instance_of = function(V, F)
- {
-    var O = F.prototype;
-    V = V.__proto__;
-    while (true)
-    {
-      if (V === null)
-        return false;
-      if (O === V)
-        return true;
-      V = V.__proto__;
-    }
-  }
-
   this.toASCIIarr = function(str){for(var a=[],i=0;i<str.length;i++)a.push(str.charCodeAt(i));return a;}  // convert string into array of ascii codes (numbers)
-
   this.crc16 = function(r){var crc=0xFFFF;var odd; for(var i=0;i<r.length;i++) { crc = crc ^ r[i]; for (var j = 0; j < 8; j++) { odd = crc & 0x0001; crc = crc >> 1; if (odd) { crc = crc ^ 0xA001 }}} return crc };
   this.crc32 = function(r){for(var a,o=[],c=0;c<256;c++){a=c;for(var f=0;f<8;f++)a=1&a?3988292384^a>>>1:a>>>1;o[c]=a}for(var n=-1,t=0;t<r.length;t++)n=n>>>8^o[255&(n^r[t])];return(-1^n)>>>0};
 
-  // simpified (and faster) version of RingBuffer
-  this.buffer = function(_capacity,_type)
-  {
-    switch(_type)
-    {
-      case 8: var _buffer = new Uint8Array(_capacity); break;
-      case 16: var _buffer = new Uint16Array(_capacity); break;
-      case 32: var _buffer = new Uint32Array(_capacity); break;
-    }
-    var _first = 0;
-    var _length = 0;
-
-    return {
-      pop: function()
-      {
-        if (_length != _capacity || _length === 0) return 0;
-        const index = _first + (_length - 1);
-        const last = (index > (_capacity - 1)) ? index - _capacity : index;
-        const value = _buffer[last];
-        _buffer[last] = 0;
-        _length--;
-        return value;
-      },
-      delay: function(value)
-      {
-        if (--_first < 0) _first = _capacity - 1
-        _buffer[_first] = value;
-        return _length++;
-      }
-    }
-  }
-
-  // TODO: replace Ringbuffer >> buffer
-  this.RingBuffer = function(_capacity)
-  {
-    /**
-     * Constructs a RingBuffer with fixed maximum _capacity.
-     * @param {Number} _capacity - maximum number of values in the buffer
-     */
-
-    var _buffer      = new Array(_capacity)
-
-    return {
-      /**
-       * Empties the ring buffer.
-       */
-
-      _first:0,
-      _length:0,
-
-      debug: function()
-      {
-        return JSON.stringify( {"buffer":_buffer,"first":this._first,"length":this._length,"capacity":_capacity} )
-      },
-
-      clear: function() 
-      {
-        this._first = 0;
-        this._length = 0;
-      },
-    
-      /**
-       * Returns the value at the back of the buffer.
-       * @returns {any} - the back of the buffer, or `undefined` if empty
-       */
-      back: function()
-      {
-        if (this._length === 0) return undefined
-        return _buffer[this._last()]
-      },
-    
-      /**
-       * Returns the value at the front of the buffer.
-       * @returns {any} - the front of the buffer, or `undefined` if empty
-       */
-      front: function()
-      {
-        if (this._length === 0) return undefined
-        return _buffer[this._first]
-      },
-    
-      /**
-       * Pushes a value onto the back of the buffer. If length === _capacity,
-       * the value at the front of the buffer is discarded.
-       * @param {any} value - value to push
-       * @returns {Number} - the current length of the buffer
-       */
-      push: function(value)
-      {
-        if (this._length === _capacity) this.shift()
-        this._length++;
-        _buffer[this._last()] = value;
-        return this._length
-      },
-    
-      /**
-       * Removes a value from the back of the buffer and returns it. The
-       * newly empty buffer location is set to undefined to release any
-       * object references.
-       * @returns {any} the value removed from the back of the buffer
-       * or `undefined` if empty.
-       */
-      pop: function()
-      {
-        if (this._length === 0) return undefined
-        const value = _buffer[this._last()]
-        _buffer[this._last()] = undefined // release reference on memory
-        this._length--
-        return value
-      },
-    
-      slice: function(pos1,pos2)
-      {
-
-      },
-
-      /**
-       * Removes a value from the front of the buffer and returns it. The
-       * newly empty buffer location is set to undefined to release any
-       * object references.
-       * @returns {any} the value removed from the front of the buffer
-       * or `undefined` if empty.
-       */
-      shift: function()
-      {
-        if (this._length === 0) return undefined
-        const value = _buffer[this._first]
-        _buffer[this._first] = undefined // release reference on memory
-        this._length--
-        this._right()
-        return value
-      },
-    
-      /**
-       * Pushes a value on the front of the buffer. If length === _capacity,
-       * the value at the back is discarded.
-       * @param {any} value - to push onto the front
-       * @returns {Number} - the current length of the buffer
-       */
-      unshift: function(value)
-      {
-        if (this._length === _capacity) this.pop()
-        this._left()
-        this._length++
-        _buffer[this._first] = value
-        return this._length
-      },
-    
-      // Calculates the index of the value at the back of the buffer.
-      _last: function()
-      {
-        const index = this._first + (this._length - 1)
-        return (index > (_capacity - 1)) ? index - _capacity : index
-      },
-    
-      // moves the front of the buffer one step toward the back.
-      _right: function()
-      {
-        if (++this._first > (this._capacity - 1)) this._first = 0
-      },
-    
-      // moves the front of the buffer one step forward.
-      _left: function()
-      {
-        if (--this._first < 0) this._first = _capacity - 1
-      }
-    }
-  }
-
-  this.FIFO = function(length)
-  {
-    var pointer = 0, buffer = []; 
-  
-    return {
-      get  : function(key)
-      {
-        if (key < 0) return buffer[pointer+key];
-        else if (key === false) return buffer[pointer - 1];
-        else return buffer[key];
-      },
-      push : function(item)
-      {
-        buffer[pointer] = item;
-        pointer = (pointer + 1) % length;
-        return item;
-      },
-      prev : function()
-      {
-        var tmp_pointer = (pointer - 1) % length;
-        if (buffer[tmp_pointer])
-        {
-          pointer = tmp_pointer;
-          return buffer[pointer];
-        }
-      },
-      next : function()
-      {
-        if (buffer[pointer])
-        {
-          pointer = (pointer + 1) % length;
-          return buffer[pointer];
-        }
-      }
-    };
-  };
 
   /////// GUI FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////
-
-
-  /////////////////////////////////////
-  // WRITE VALUES TO ANY TAG ELEMENT //
-  /////////////////////////////////////
-
-  this.writeDisplay = function(n,v,f)
-	{
-		// n = el, v = value, f = extra HTML
-		var obj,tagname,bAppend = typeof(f)!="undefined";
-		if(document.getElementById) { obj=document.getElementById(n); tagname = obj.tagName.toUpperCase() }
-		else if (document.all) { obj=document.all[n] }
-		if(!obj) return;
-    
-		switch(tagname)
-		{
-			case "INPUT":
-				switch(f)
-				{
-					case "beforebegin":obj.value += v; break; 				    // less common
-					case "afterbegin": obj.value = v + obj.value; break;	// less common
-					case "afterend":   obj.value = v + obj.value; break;
-					case "beforeend":  obj.value += v; break;
-					default:  		   obj.value = v;
-				}
-			break;
-			default:
-				if(bAppend) obj.insertAdjacentHTML(f,v);
-				else obj.innerHTML=v;
-		}
-	}
 
   this.POPUP = {
     create: function(target_id) 
@@ -872,70 +503,7 @@ function(csv)
           }
       }
       this.fread.addEventListener('load',handleEvent(this));
-
   }
-
-  this.SystemSelect = function(id,tab)
-  {
-    var def = _TABS[tab]["SYS"];
-    var s = "<select onchange=\"document.getElementById('"+id+"').innerHTML=oCOM.onSystemSelect(this.value,'"+tab+"')\">";
-    for(var i in _CFG_SYSCODE)
-      s+= "<option value='"+i+"' "+(i==def?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>";
-    return(s+"</select>");
-  }
-
-  this.onSystemSelect = function(val,tab)
-  {
-    _TABS[tab].SYS = val;
-
-    var s = "";
-    for(var i in _CFG_SYSCODE[val])
-    {
-      if(i!="Model" && i!="ROMS")
-      {
-        if(_CFG_SYSCODE[val][i] && _CFG_SYSCODE[val][i].split(",").length>1)
-        {
-          this.onSysOptionSelect(i,tab,0);
-          var name = tab+"_"+i
-          s+="<div style=display:flex;>"
-          +i+":"
-          +"<button onclick=oCOM.onSysOptionSelect('"+i+"','"+tab+"',-1)><i class='fa fa-arrow-alt-circle-left'></i></button>"
-          +"<input name='"+name+"' value='"+_CFG_SYSCODE[val][i].split(",")[0]+"' size=7>"  // TODO NAVIGATE THROUGH OPTIONS
-          +"<button onclick=oCOM.onSysOptionSelect('"+i+"','"+tab+"',1)><i class='fa fa-arrow-alt-circle-right'></i></button>"
-          +"</div>"
-        }
-        else
-          s+= i+":"+_CFG_SYSCODE[val][i]+"<br>";
-      }
-    }
-    return s;
-  }
-
-  this.onSysOptionSelect = function(option,tab,up_dn)
-  {
-    var sys = _TABS[tab]["SYS"];
-    var arr = _CFG_SYSCODE[sys][option].split(",");
-    var idx = 0;
-    if(typeof(_TABS[tab][option])!="undefined")
-    {
-      for(var i=0;i<arr.length;i++)
-        if(arr[i]==_TABS[tab][option]) idx=i;
-      idx += up_dn;
-      if(idx<0) idx=arr.length-1;
-      if(idx==arr.length) idx=0;
-    }
-    _TABS[tab][option] = arr[idx];
-    var name = tab+"_"+option;
-    var el = document.getElementsByName(name);
-    if(el.length>0)
-      el[0].value = arr[idx];
-
-    //var el = el[0];
-    //el.value = arr[idx]
-    //.val.value = arr[idx];
-    //alert("_TABS['"+tab+"']['"+option+"'] = '"+arr[idx]+"'");
-  }
-
     /////////////////////
     // URL PARSER      //
     /////////////////////
@@ -1039,126 +607,3 @@ function(csv)
 }
 
 oCOM = new COM();
-
-var oMEMGRID = new function()
-{
-  if(typeof(this.bDebug)=="undefined") this.bDebug = false;
-  this.oCOM = new COM();
-
-  const mem_gran = 8;  // block granularity in bits
-  this.mem_gran = mem_gran;
-
-  this.build_mem_map = function(layout)
-  {
-    for(var i in layout)
-    {
-      var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16),a[0].length];
-      for(var addr=b[0],s="";addr<b[1];addr+=1<<mem_gran)
-      { 
-        this.mem_pg[addr>>mem_gran] = layout[i][2];
-        if(this.bDebug) console.log("this.mem_pg["+(addr>>mem_gran)+"] = "+layout[i][2]);
-        s += (addr>>mem_gran)+"="+layout[i][2]+" ";
-      }
-      //console.log(a[0]+"-"+a[1]+" ("+s+")");
-    }
-  }
-
-  this.mem_pg = new Array(0x10000>>mem_gran);
-
-  this.line = function(start,len,step,digits)
-  {
-    var end = start+len*step;
-    for(var j=start,a=[],ii=0;j<end;j+=step) a[ii++] = this.oCOM.getHexMulti(j,digits);
-    return a;
-  }
-
-  this.conf_grid = {id_prefix:"m",digits:4};
-  this.build_grid = function(start,len,step,cnf)
-  {
-    if(cnf===undefined) var cnf = this.conf_grid;
-    var s = "<table class=gtable style='display:inline-block;' id='gtable_"+cnf.id_prefix+"'>\n";
-    var end = start+len*step;
-    for(var i=start;i!=end;i+=step)
-      s += "<tr><td>"+this.oCOM.getHexMulti(i,cnf.digits)+"</td>"
-              +"<td id='"+cnf.id_prefix+this.line(i,16,256,cnf.digits).join("'></td><td id='"+cnf.id_prefix)+"'></td></tr>\n";
-    return s+"</table>"
-  }
-
-  this.paint_grid = function(layout,cnf)
-  {
-    var fix = this.conf_grid.id_prefix;
-    this.build_mem_map(layout);  // populate this.mem_pg array (not for display, but later lookup)
-
-    // PREPARE DISPLAY DATA
-    var blk_col = {}, blk_txt = {} //, c = ""
-    for(var i in layout)
-    {
-      var a = i.split("-"); var b = [parseInt(a[0],16),parseInt(a[1],16),a[0].length];
-      for(var j=b[0];j<b[1];j+=parseInt("0100",16)) // iterate through layout address range
-      { //c += ("0000"+j.toString(16)).slice(-4).toUpperCase()+" "+blk[i][0]+"<br>";
-        //var idx = ("0000"+j.toString(16)).slice(-4).toUpperCase();
-        var idx = this.oCOM.getHexMulti(j,b[2]); // address index
-        blk_col[idx] = layout[i][0];             // populate background colors (indexed by address)
-        blk_txt[idx] = "$"+idx+" "+layout[i][1]; // populate popup texts (indexed by address)
-        if(this.bDebug) console.log("blk_col["+idx+"] = "+layout[i][0]);
-        if(this.bDebug) console.log("blk_txt["+idx+"] = $"+idx+" "+layout[i][1]);
-      }
-    }
-
-    // PAINT GRID
-    for(var i in layout)
-    {
-      var a = i.split("-");
-      if(a.length==2)
-      {
-        var b = [parseInt(a[0],16),parseInt(a[1],16),a[0].length];
-        for(var j=b[0];j<b[1];j+=parseInt("0100",16))
-        {
-          //var idx = ("000"+j.toString(16)).slice(-4).toUpperCase();
-          var idx = this.oCOM.getHexMulti(j,b[2]);
-          var el = document.getElementById(fix+idx);
-          if(el!=null)
-          {
-            if(blk_col[idx].charAt(0)=="#" || blk_col[idx].substring(0,5)=="rgba(")
-              el.style.backgroundColor = blk_col[idx];
-            el.innerHTML = "<span class=gt>"+blk_txt[idx]+"</span>"
-          }
-        }
-      }
-    }
-  }
-}(COM)
-
-function GRID()
-{
-  this.build_grid = function(start,len,step)
-  {
-    var output = "<table class=gtable>\n";
-    var end = start+len*step;
-    output+="<tr><td></td>"
-    for(var i=start,s="";i!=end;i+=step)
-    {
-      output+=this.col_label(i,len,step)
-      s += "<tr>"+this.row_label(i,len,step)+"<td id='m"+this.line(i,len,1).join("'></td><td id='m")+"'></td></tr>\n";
-    }
-    output+="</tr>\n"
-    return output+s+"</table>";
-  }
-
-  this.col_label = function(i,len,step)
-  {
-    return "<td>"+(i/step)+"</td>";
-  }
-
-  this.row_label = function(i,len,step)
-  {
-    return "<td>"+(i/step)+"</td>";
-  }
-
-  this.line = function(start,len,step)
-  {
-    var end = start+len*step;
-    for(var j=start,a=[],ii=0;j<end;j+=step) a[ii++] = j;
-    return a;
-  }
-}
