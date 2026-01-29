@@ -37,4 +37,4 @@ EurorackSoundbar - A Eurorack-compatible audio module, bridging embedded program
 
 These projects represent my curiosity-driven approach to technology—combining practical problem-solving with a deep appreciation for both computing history and modern embedded systems development.
 
-<a href=https://www.linkedin.com/in/freddy-vandriessche/>find me on LinkedIn</a>
+<a href="https://www.linkedin.com/in/freddy-vandriessche/" target=_blank>connect on LinkedIn</a>
