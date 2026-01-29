@@ -69,10 +69,10 @@
         <div class="card">
           <h3>Tools</h3>
           <div class="row" style="margin-top:10px;">
-            <button id="schemaHighlight" class="btn">Highlight</button>
-          
-            <button id="schemaMatch" class="btn">Match</button>
-</div>
+            <button id="toolSchemaHighlight" class="btn">Highlight</button>   
+            <button id="toolSchemaMatch" class="btn">Match</button>
+          </div>
+          <div id="toolHint" class="tiny muted" style="margin-top:8px;"></div>
         </div>
 
         <div class="card">
@@ -181,14 +181,19 @@ const coordLine = document.getElementById("coordLine");
 const button_list = document.querySelectorAll("button[id^=\"mode\"]");
 const mode_el = Object.fromEntries( Array.from(button_list).map(btn => [btn.id, btn]) );
 
+const tool_list = document.querySelectorAll("button[id^=\"tool\"]");
+const tool_el = Object.fromEntries( Array.from(tool_list).map(btn => [btn.id, btn]) );
+
 const modeHint = document.getElementById("modeHint");
 const pickCharBtn = document.getElementById("pickChar");
 const openCatalogBtn = document.getElementById("openCatalog");
 const eraserBtn = document.getElementById("eraser");
 const currentOpLine = document.getElementById("currentOp");
-const schemaHighlightBtn =  document.getElementById("schemaHighlight");
+const toolHint = document.getElementById("toolHint");
 
-const schemaMatchBtn =  document.getElementById("schemaMatch");
+const schemaHighlightBtn =  document.getElementById("toolSchemaHighlight");
+const schemaMatchBtn =  document.getElementById("toolSchemaMatch");
+
 const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
 const saveBtn = document.getElementById("saveBtn");
@@ -1121,13 +1126,29 @@ function canvasPointToCell(clientX, clientY)
 
 function setMode(mode)
 {
-    updateModeUI(mode);
+    updateRadioBtnUI(mode);
+    updateOpLine(mode,op);
+
     modeRECALL = tool;
     tool = mode;
 }
 
+function updateOpLine(mode,item)
+{
+    if(mode === "modeFreeform")
+    {
+        currentOpLine.textContent = item.type === "place" ? ("Current: place ' " + item.ch + " '" ) : "Current: space";
+        selectedCharEl.textContent = item.type === "place" ? item.ch : "(space)";
+    }
+    if(mode == "catalog")
+    {
+        currentOpLine.textContent =  item.type+": "+item.name;
+        // leave selectedCharEl untouched: make sure to remember selected char after dropping catalog item in grid
+    }
+}
+
 // Let mode button act like radio buttons (add/remove primary)
-function updateModeUI(mode)
+function updateRadioBtnUI(mode)
 {
     for(var i in mode_el)
     {
@@ -1139,11 +1160,31 @@ function updateModeUI(mode)
         }
         else mode_el[i].classList.remove("primary");
     }
-    
-    if(mode === "modeFreeform")
+}
+
+
+
+function _setMode(mode)
+{
+    const hints = mode_el[i].dataset.hint.split('|');
+    const hintText = pasteDrag ? hints[0] : (hints[1]===undefined?hints[0]:hints[1]);
+    updateModeUI(mode,mode_el,modeHint,hintText);
+    modeRECALL = tool;
+    tool = mode;
+}
+
+// Let mode button act like radio buttons (add/remove primary)
+function _updateModeUI(id,buttonList_el,hint,hintText)
+{
+    for(var i in buttonList_el)
     {
-        currentOpLine.textContent = op.type === "place" ? ("Current: place ' " + op.ch + " '" ) : "Current: space";
-        selectedCharEl.textContent = op.type === "place" ? op.ch : "(space)";
+        if(id==i)
+        {
+            buttonList_el[i].classList.add("primary");
+            const hints = buttonList_el[i].dataset.hint.split('|');
+            hint.textContent = hintText;
+        }
+        else buttonList_el[i].classList.remove("primary");
     }
 }
 
@@ -1685,8 +1726,7 @@ function renderCatalogGrid()
             const text_data = it.text_data[ pasteDrag.item_data.rotation ];
 
             if(bDebug) console.log("pasteDrag.item_data.uid="+pasteDrag.item_data.uid)
-            currentOpLine.textContent =  it.type+": "+it.name;
-            //selectedCharEl.textContent = op.type === "place" ? op.ch : "(space)";
+            updateOpLine("catalog",it);
 
             const expanded = expandWideCharsForGrid(text_data || "");
             const forPaste = expanded.replace(/§/g, " ");   // WILDCARD_U becomes a real space for placement
@@ -2152,15 +2192,14 @@ openCatalogBtn.addEventListener("click", () => openCatalog());
 eraserBtn.addEventListener("click", () => { op = { type: "erase" }; setMode('modeFreeform'); updateUI(); });
 
 schemaHighlightBtn.addEventListener("click", () => {
+  toolHint.textContent = "Highlight: Mark signle lines in blue, enclosed double line boxes in red.";
   schemaHighlightOn = !schemaHighlightOn;
   highlightCache = null;     // force full rescan next draw
   draw("schemaHighlightToggle");
 });
 
-
-
-
 schemaMatchBtn.addEventListener("click", () => {
+  toolHint.textContent = "Match: Mark matching catalog items in green. Mind replace wildcards inside these items, '#' with numbers, '$' with alphanumeric.";
   schemaMatchOn = !schemaMatchOn;
   matchCache = null; // force full rescan next draw
   draw("schemaMatchToggle");
