@@ -21,13 +21,21 @@
     *{box-sizing:border-box} html,body{height:100%}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);background:var(--bg);overflow:hidden}
     .app{height:100vh;display:flex}
-    .sidebar{height:100vh;border-right:1px solid var(--border);background:#fff;display:flex;flex-direction:column;transition:width 200ms ease;width:290px;min-width:180px}
-    .sidebar.closed{width:48px}
+    .sidebar{height:100vh;border-right:1px solid var(--border);background:#fff;display:flex;flex-direction:column;transition:opacity 200ms ease;width:290px;min-width:180px;max-width:50vw;position:relative}
+    .sidebar.hidden{display:none}
+    .sidebar.resizing{transition:none}
+    .resize-handle{position:absolute;top:0;right:0;width:8px;height:100%;cursor:ew-resize;z-index:10}
+    .resize-handle:hover{background:rgba(59,130,246,0.1)}
+    .resize-handle.active{background:rgba(59,130,246,0.2)}
     .sb-top{padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
     .btn{border:1px solid #cbd5e1;background:#fff;border-radius:14px;padding:8px 12px;font-weight:500;font-size:13px;cursor:pointer;user-select:none}
     .btn:hover{background:#f8fafc} .btn:disabled{opacity:.5;cursor:not-allowed} .btn.primary{border-color:#334155}
     .sb-title{font-size:13px;color:var(--muted)}
-    .sb-content{padding:12px;overflow:auto} .sidebar.closed .sb-content{display:none}
+    .sb-content{padding:12px;overflow:auto}
+    .cli-container{display:flex;flex-direction:column;height:100%;padding:12px}
+    .cli-terminal{flex:1;font-family:monospace;font-size:12px;padding:8px;background:#1e1e1e;color:#d4d4d4;border:1px solid var(--border);border-radius:8px;resize:none;outline:none;overflow-y:auto;caret-color:#d4d4d4}
+    .cli-terminal:focus{border-color:#3b82f6;caret-color:#3b82f6}
+    .cli-terminal::selection{background:#264f78;color:#fff}
     .card{border:1px solid var(--border);border-radius:var(--radius);padding:12px;box-shadow:0 1px 0 rgba(15,23,42,.03);background:#fff;margin-bottom:12px}
     .card h3{margin:0 0 6px;font-size:14px}
     .muted{color:var(--muted)} .tiny{font-size:12px} .row{display:flex;flex-wrap:wrap;gap:8px}
@@ -2558,9 +2566,10 @@ oCOM = new COM();
 <body>
   <div class="app">
     <aside id="sidebar" class="sidebar">
+       <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
-        <button id="toggleSidebar" class="btn" title="Collapse / Expand" aria-label="Toggle sidebar">◀</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.01</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.02</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -2642,6 +2651,17 @@ oCOM = new COM();
       </div>
     </aside>
 
+    <aside id="cliSidebar" class="sidebar hidden">
+      <div class="resize-handle" id="resizeHandleCLI"></div>
+      <div class="sb-top">
+        <button id="toggleCLI" class="btn" title="Switch to UI" aria-label="Toggle to UI sidebar">◀</button>
+        <div class="sb-title"><big>AsciiCAD CLI</big><br><small>Type commands, press Enter</small></div>
+      </div>
+      <div class="cli-container">
+        <textarea id="cliTerminal" class="cli-terminal" placeholder="Type 'help' for commands..." spellcheck="false"></textarea>
+      </div>
+    </aside>
+
     <main class="main">
       <div id="container" class="container">
         <div id="stage" class="stage">
@@ -2705,7 +2725,7 @@ const baseCellW = 10;
 const baseCellH = 20;
 
 // View state
-let sidebarOpen = true;
+let activeSidebar = 'ui'; // 'ui' or 'cli'
 let scale = 1;
 let panX = 0;
 let panY = 0;
@@ -2718,6 +2738,14 @@ const sbTitle = document.getElementById("sbTitle");
 const cellsLine = document.getElementById("cellsLine");
 const zoomLine = document.getElementById("zoomLine");
 const coordLine = document.getElementById("coordLine");
+
+const resizeHandle = document.getElementById("resizeHandle");
+
+// CLI refs
+const cliSidebar = document.getElementById("cliSidebar");
+const toggleCLI = document.getElementById("toggleCLI");
+const cliTerminal = document.getElementById("cliTerminal");
+const resizeHandleCLI = document.getElementById("resizeHandleCLI");
 
 const button_list = document.querySelectorAll("button[id^=\"mode\"]");
 const mode_el = Object.fromEntries( Array.from(button_list).map(btn => [btn.id, btn]) );
@@ -3689,9 +3717,6 @@ function updateUI()
   undoBtn.disabled = undoStack.length === 0;
   redoBtn.disabled = redoStack.length === 0;
   historyLine.textContent = "Undo stack: " + undoStack.length + " · Redo stack: " + redoStack.length;
-
-  toggleSidebar.textContent = sidebarOpen ? '◀' : '▶';
-  sbTitle.style.display = sidebarOpen ? "block" : "none";
 }
 
 function expandWideCharsForGrid(text) 
@@ -4585,14 +4610,448 @@ function setHoverFromEvent(e)
   updateUI();
 }
 
-// Sidebar toggle
-toggleSidebar.addEventListener("click", () =>
-{
-  sidebarOpen = !sidebarOpen;
-  sidebar.classList.toggle("closed", !sidebarOpen);
-  updateUI();
+// Sidebar toggle between UI and CLI
+function switchToSidebar(newSidebar) {
+  if (newSidebar === activeSidebar) return;
+  
+  activeSidebar = newSidebar;
+  
+  if (activeSidebar === 'cli') {
+    sidebar.classList.add('hidden');
+    cliSidebar.classList.remove('hidden');
+    
+    // Initialize terminal with welcome message if empty
+    if (!cliTerminal.value) {
+      // Extract title text from sbTitle (get text content of <big> tag)
+      const titleElement = sbTitle.querySelector('big');
+      const titleText = titleElement ? titleElement.textContent : 'AsciiCAD CLI';
+      
+      cliTerminal.value = `${titleText} Command Line\nType "help" for basic help.\n\nAsciiCAD> `;
+    }
+    
+    cliTerminal.focus();
+    cliTerminal.setSelectionRange(cliTerminal.value.length, cliTerminal.value.length);
+  } else {
+    cliSidebar.classList.add('hidden');
+    sidebar.classList.remove('hidden');
+  }
+
   scheduleResize();
+  }
+
+  toggleSidebar.addEventListener("click", () => {
+  switchToSidebar('cli');
 });
+
+
+toggleCLI.addEventListener("click", () => {
+  switchToSidebar('ui');
+});
+
+//       ______  _____     _____    _________                              _                   __   
+//     .' ___  ||_   _|   |_   _|  |  _   _  |                            (_)                 [  |  
+//    / .'   \_|  | |       | |    |_/ | | \_|.---.  _ .--.  _ .--..--.   __   _ .--.   ,--.   | |  
+//    | |         | |   _   | |        | |   / /__\\[ `/'`\][ `.-. .-. | [  | [ `.-. | `'_\ :  | |  
+//    \ `.___.'\ _| |__/ | _| |_      _| |_  | \__., | |     | | | | | |  | |  | | | | // | |, | |  
+//     `.____ .'|________||_____|    |_____|  '.__.'[___]   [___||__||__][___][___||__]\'-;__/[___] 
+
+// BEGIN CLI TERMINAL MANAGEMENT
+
+let cliHistoryIndex = -1;
+let cliHistory = [];
+
+function cliPrint(message) {
+  // Save current selection state
+  const selectionStart = cliTerminal.selectionStart;
+  const selectionEnd = cliTerminal.selectionEnd;
+  const hasSelection = selectionStart !== selectionEnd;
+  
+  const lines = cliTerminal.value.split('\n');
+  
+  // Remove the trailing prompt line if present
+  if (lines[lines.length - 1].startsWith('AsciiCAD>')) {
+    lines.pop();
+  }
+  
+  // Add the message
+  lines.push(message);
+  
+  // Add new prompt
+  lines.push('AsciiCAD> ');
+  
+  cliTerminal.value = lines.join('\n');
+  cliTerminal.scrollTop = cliTerminal.scrollHeight;
+  
+  // Only move cursor to end if user doesn't have text selected
+  if (!hasSelection) {
+    cliTerminal.setSelectionRange(cliTerminal.value.length, cliTerminal.value.length);
+  }
+}
+
+function getCurrentCommand() {
+  const lines = cliTerminal.value.split('\n');
+  const lastLine = lines[lines.length - 1];
+  
+  if (lastLine.startsWith('AsciiCAD> ')) {
+    return lastLine.substring('AsciiCAD> '.length);
+  }
+  return '';
+}
+
+function setCurrentCommand(cmd) {
+  const lines = cliTerminal.value.split('\n');
+  
+  if (lines[lines.length - 1].startsWith('AsciiCAD>')) {
+    lines[lines.length - 1] = 'AsciiCAD> ' + cmd;
+  } else {
+    lines.push('AsciiCAD> ' + cmd);
+  }
+  
+  cliTerminal.value = lines.join('\n');
+  cliTerminal.setSelectionRange(cliTerminal.value.length, cliTerminal.value.length);
+}
+
+function executeCLICommand(cmdLine) {
+  const trimmed = cmdLine.trim();
+  if (!trimmed) {
+    cliPrint('');
+    return;
+  }
+  
+  // Add to history
+  cliHistory.push(trimmed);
+  cliHistoryIndex = cliHistory.length;
+  
+  try {
+    // Parse command and arguments
+    const match = trimmed.match(/^(\w+)\s*\((.*)\)\s*;?\s*$/);
+    
+    if (!match) {
+      // Check for simple commands without parentheses
+      if (trimmed === 'help' || trimmed === 'help;') {
+        cliPrint('Available commands:');
+        cliPrint('  freeform(col, row, char) - Place character at position');
+        cliPrint('  clear() - Clear the entire grid');
+        cliPrint('  undo() - Undo last action');
+        cliPrint('  redo() - Redo last undone action');
+        cliPrint('  help - Show this help message');
+        return;
+      }
+      cliPrint('[ERROR] Invalid syntax. Use: command(args);');
+      return;
+    }
+    
+    const [, command, argsStr] = match;
+    
+    // Parse arguments - simple CSV parser
+    const args = argsStr ? argsStr.split(',').map(arg => {
+      arg = arg.trim();
+      // Handle string literals
+      if ((arg.startsWith("'") && arg.endsWith("'")) || (arg.startsWith('"') && arg.endsWith('"'))) {
+        return arg.slice(1, -1);
+      }
+      // Handle numbers
+      if (!isNaN(arg) && arg !== '') {
+        return Number(arg);
+      }
+      return arg;
+    }) : [];
+    
+    // Execute command
+    switch (command.toLowerCase()) {
+      case 'freeform':
+        cmdFreeform(args);
+        break;
+      case 'clear':
+        cmdClear(args);
+        break;
+      case 'undo':
+        cmdUndo(args);
+        break;
+      case 'redo':
+        cmdRedo(args);
+        break;
+      default:
+        cliPrint(`[ERROR] Unknown command: ${command}`);
+    }
+    
+  } catch (error) {
+    cliPrint(`[ERROR] ${error.message}`);
+    if (bDebug) console.error(error);
+  }
+}
+
+// CLI Command Implementations
+
+function cmdFreeform(args) {
+  if (args.length !== 3) {
+    cliPrint('[ERROR] Usage: freeform(col, row, char)');
+    return;
+  }
+  
+  const [col, row, char] = args;
+  
+  if (typeof row !== 'number' || typeof col !== 'number') {
+    cliPrint('[ERROR] Col and row must be numbers');
+    return;
+  }
+  
+  if (typeof char !== 'string' || char.length !== 1) {
+    cliPrint('[ERROR] Char must be a single character string');
+    return;
+  }
+  
+  if (row < 0 || row >= ROWS || col < 0 || col >= COLS) {
+    cliPrint(`[ERROR] Position out of bounds. Valid: col[0-${COLS-1}], row[0-${ROWS-1}]`);
+    return;
+  }
+  
+  // Execute the freeform placement
+  const stroke = [];
+  const prev = ascii[row][col];
+  const next = char;
+  
+  if (prev !== next) {
+    stroke.push({ r: row, c: col, prev, next });
+    ascii[row][col] = next;
+  }
+  
+  pushStrokeIfNonEmpty(stroke);
+  draw("cmdFreeform");
+  
+  cliPrint(`[OK] Placed '${char}' at col ${col}, row ${row}`);
+}
+
+function cmdClear(args) {
+  const stroke = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const prev = ascii[r][c];
+      if (prev !== ' ') {
+        stroke.push({ r, c, prev, next: ' ' });
+        ascii[r][c] = ' ';
+      }
+    }
+  }
+  
+  pushStrokeIfNonEmpty(stroke);
+  draw("cmdClear");
+  cliPrint('[OK] Grid cleared');
+}
+
+function cmdUndo(args) {
+  if (undoStack.length === 0) {
+    cliPrint('[ERROR] Nothing to undo');
+    return;
+  }
+  doUndo();
+  cliPrint('[OK] Undo applied');
+}
+
+function cmdRedo(args) {
+  if (redoStack.length === 0) {
+    cliPrint('[ERROR] Nothing to redo');
+    return;
+  }
+  doRedo();
+  cliPrint('[OK] Redo applied');
+}
+
+// CLI Terminal Input Handler
+cliTerminal.addEventListener('keydown', (e) => {
+  const lines = cliTerminal.value.split('\n');
+  const lastLine = lines[lines.length - 1];
+  const cursorPos = cliTerminal.selectionStart;
+  const textBeforeCursor = cliTerminal.value.substring(0, cursorPos);
+  const lastLineStart = textBeforeCursor.lastIndexOf('\n') + 1;
+  const promptEnd = lastLineStart + 'AsciiCAD> '.length;
+  
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    
+    const command = getCurrentCommand();
+    executeCLICommand(command);
+    
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    
+    if (cliHistoryIndex > 0) {
+      cliHistoryIndex--;
+      setCurrentCommand(cliHistory[cliHistoryIndex]);
+    }
+    
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    
+    if (cliHistoryIndex < cliHistory.length - 1) {
+      cliHistoryIndex++;
+      setCurrentCommand(cliHistory[cliHistoryIndex]);
+    } else {
+      cliHistoryIndex = cliHistory.length;
+      setCurrentCommand('');
+    }
+    
+  } else if (e.key === 'Backspace') {
+    // Prevent deleting the prompt
+    if (cursorPos <= promptEnd) {
+      e.preventDefault();
+    }
+    
+  } else if (e.key === 'ArrowLeft' || e.key === 'Home') {
+    // Prevent cursor from going before the prompt
+    setTimeout(() => {
+      if (cliTerminal.selectionStart < promptEnd) {
+        cliTerminal.setSelectionRange(promptEnd, promptEnd);
+      }
+    }, 0);
+  }
+});
+
+// Prevent clicking before the prompt
+cliTerminal.addEventListener('click', () => {
+  const lines = cliTerminal.value.split('\n');
+  const cursorPos = cliTerminal.selectionStart;
+  const textBeforeCursor = cliTerminal.value.substring(0, cursorPos);
+  const lastLineStart = textBeforeCursor.lastIndexOf('\n') + 1;
+  const promptEnd = lastLineStart + 'AsciiCAD> '.length;
+  
+  if (cursorPos < promptEnd) {
+    cliTerminal.setSelectionRange(cliTerminal.value.length, cliTerminal.value.length);
+  }
+});
+
+// Clipboard Support for CLI
+cliTerminal.addEventListener('paste', (e) => {
+  e.preventDefault();
+  
+  const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+  
+  // Get current cursor position
+  const cursorPos = cliTerminal.selectionStart;
+  const textBeforeCursor = cliTerminal.value.substring(0, cursorPos);
+  const lastLineStart = textBeforeCursor.lastIndexOf('\n') + 1;
+  const promptEnd = lastLineStart + 'AsciiCAD> '.length;
+  
+  // Only allow pasting after the prompt
+  if (cursorPos < promptEnd) {
+    return;
+  }
+  
+  // Insert pasted text at cursor position (single line only, ignore newlines)
+  const cleanText = pastedText.replace(/[\r\n]+/g, '');
+  const before = cliTerminal.value.substring(0, cursorPos);
+  const after = cliTerminal.value.substring(cliTerminal.selectionEnd);
+  
+  cliTerminal.value = before + cleanText + after;
+  
+  // Position cursor after pasted text
+  const newPos = cursorPos + cleanText.length;
+  cliTerminal.setSelectionRange(newPos, newPos);
+});
+
+// Copy support (Ctrl+C / Cmd+C) - allow default browser behavior
+cliTerminal.addEventListener('copy', (e) => {
+  // Allow default copy behavior - browser handles this automatically
+  // This event just ensures we don't prevent it
+});
+
+// Ctrl+A - Select all text
+cliTerminal.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+    // Allow default select-all behavior
+    return;
+  }
+}, true);
+
+// Sidebar Resize Functionality
+let resizing = false;
+let resizeStartX = 0;
+let resizeStartWidth = 0;
+let activeSidebarElement = null;
+
+function startResize(e, sidebarEl) {
+  e.preventDefault();
+  resizing = true;
+  resizeStartX = e.clientX;
+  resizeStartWidth = sidebarEl.offsetWidth;
+  activeSidebarElement = sidebarEl;
+  
+  // Add resizing class to disable transition
+  sidebarEl.classList.add('resizing');
+  
+  // Add active class to resize handle
+  e.target.classList.add('active');
+  
+  // Change cursor globally
+  document.body.style.cursor = 'ew-resize';
+  document.body.style.userSelect = 'none';
+}
+
+function doResize(e) {
+  if (!resizing || !activeSidebarElement) return;
+  
+  const deltaX = e.clientX - resizeStartX;
+  const newWidth = resizeStartWidth + deltaX;
+  
+  // Constrain width between min and max
+  const minWidth = 180;
+  const maxWidth = window.innerWidth * 0.5;
+  const clampedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+  
+  activeSidebarElement.style.width = clampedWidth + 'px';
+}
+
+function stopResize(e) {
+  if (!resizing) return;
+  
+  resizing = false;
+  
+  if (activeSidebarElement) {
+    // Remove resizing class to re-enable transition
+    activeSidebarElement.classList.remove('resizing');
+  }
+  
+  // Remove active class from all resize handles
+  resizeHandle.classList.remove('active');
+  resizeHandleCLI.classList.remove('active');
+  
+  // Restore cursor
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  
+  activeSidebarElement = null;
+  
+  // Trigger canvas resize
+  scheduleResize();
+}
+
+// UI Sidebar resize handle
+resizeHandle.addEventListener('mousedown', (e) => {
+  startResize(e, sidebar);
+});
+
+// CLI Sidebar resize handle
+resizeHandleCLI.addEventListener('mousedown', (e) => {
+  startResize(e, cliSidebar);
+});
+
+// Global mouse move and up handlers
+document.addEventListener('mousemove', doResize);
+document.addEventListener('mouseup', stopResize);
+
+
+// END CLI TERMINAL MANAGEMENT
+//     ________                __     ______  _____     _____  
+//    |_   __  |              |  ]  .' ___  ||_   _|   |_   _| 
+//      | |_ \_| _ .--.   .--.| |  / .'   \_|  | |       | |   
+//      |  _| _ [ `.-. |/ /'`\' |  | |         | |   _   | |   
+//     _| |__/ | | | | || \__/  |  \ `.___.'\ _| |__/ | _| |_  
+//    |________|[___||__]'.__.;__]  `.____ .'|________||_____| 
+//                                                             
+
+
+
+
 
 // Capture Mode button events
 for(var i in mode_el)
