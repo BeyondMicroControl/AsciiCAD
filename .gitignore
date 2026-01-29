@@ -1,6 +1,12 @@
 .DS_Store
 
 docs/prompts.md
+docs/testing.md
+docs/design-patterns.md
+docs/refactoring.md
+docs/working-agreement.md
+docs/domain-language.md
+docs/philosophy.md
 
 # Ignore everything in dist...
 dist/*
