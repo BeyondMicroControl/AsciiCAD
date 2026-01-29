@@ -20,9 +20,6 @@
     .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:999}
     .modal.open{display:flex}
     .modal .backdrop{position:absolute;inset:0;background:rgba(0,0,0,.2)}
-   /*
-    .modal .panel{position:relative;width:min(780px,92vw);background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:14px}
-   */
     .modal .panel{position:relative;width:min(850px,150vw);background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:14px}
 
     .panel-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px}
@@ -39,20 +36,3 @@
     .cat-name{font-size:12px;color:var(--text);line-height:1.1;word-break:break-word}
 
     #pasteSink{position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0}
-
-#logPanel{
-  height: 140px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  background: #0f172a;
-  color: #e5e7eb;
-  font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  padding: 6px;
-  border-top: 1px solid #334155;
-  box-sizing: border-box;
-  white-space: pre-wrap;
-}
-
-   .log-log   { color: #e5e7eb; }
-   .log-warn  { color: #fde047; }
-   .log-error { color: #f87171; }
