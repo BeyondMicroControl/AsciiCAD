@@ -802,23 +802,33 @@ const dragTools = {
 
 ---
 
-## ADR-031: Self-downloading app
-**Date:** 29-Jan-2029 v1.01\
+## ADR-031: Self-downloading app & CLI foundation
+**Date:** 29-Jan-2029 v1.02\
 **Status:** Accepted\
-**Context** App portability\
-**Decision:** Self-downloading .html app
+**Context** App portability and prompt interfacing\
+**Decision:** Make app self-downloading (.html) and add a basic sidebar prompt
 
 - A link located at the left-bottom allows self-download
+- CLI in the left sidebar allows basic commands:
+  freeform(col, row, char) - Place character at position
+  clear() - Clear the entire grid
+  undo() - Undo last action
+  redo() - Redo last undone action
+  help - Show this help message
+- make the sidebar resizable (explanding the CLI may be necessary)
+- basic clipboard copy/paste function while interacting with the CLI
 
 ### Rationale:
 
-- Ultimate portability
-- Easy to copy and deploy offline
+- Ultimate portability, easy to copy online app to a local file
+- Allow scripting (JavaScript syntax) to produce schemas
 
 ### Consequences:
 
-- (+) Easy to copy the app from the web, and deploy offline
-- (-) Only appears/makes sense when running the <a href="https://beyondmicrocontrol.github.io/AsciiCAD/dist/AsciiCAD.html">one-file distribution</a>. It does so by a trick, detecting the filename: if filename = "AsciiCAD.html" the download link appears, otherwise not.
+- (+) Self-download: Easy to copy the app from the web, and deploy offline
+- (+) CLI window opens plenty new windows of opportunity
+- (-) Self-download: Only works when running the <a href="https://beyondmicrocontrol.github.io/AsciiCAD/dist/AsciiCAD.html">one-file distribution</a>. It does so by a trick, detecting the filename: if filename = "AsciiCAD.html" the download link appears, otherwise not.
+  
 
 
 ---
