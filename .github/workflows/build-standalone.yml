@@ -36,7 +36,7 @@ jobs:
           stat dist || true
 
       - name: Build dist/AsciiCAD.html
-        run: node build/inline.cjs
+        run: node .github/scripts/inline.cjs
 
       - name: Show dist contents
         run: |
