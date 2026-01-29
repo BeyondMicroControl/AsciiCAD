@@ -5,7 +5,7 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 ---
 
 ## ADR-001: No Framework/Library Dependencies
-### Date: Initial project inception
+**Date**: Initial project inception
 ### Status: Accepted
 ### Context: Need for a lightweight, maintainable ASCII drawing tool
 ### Decision: Build the entire application using vanilla HTML/CSS/JavaScript without frameworks or libraries
