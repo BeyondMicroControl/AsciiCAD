@@ -37,7 +37,12 @@ jobs:
 
       - name: Build dist/AsciiCAD.html
         run: node build/inline.cjs
-
+        
+      - name: Verify output
+        run: |
+          ls -la dist || true
+          test -f dist/AsciiCAD.html
+    
       - name: Commit dist if changed
         run: |
           git config user.name "github-actions[bot]"
