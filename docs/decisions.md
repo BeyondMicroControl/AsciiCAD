@@ -771,28 +771,30 @@ const dragTools = {
 - (-) Need careful state management
 - (-) Potential for event handler conflicts
 
+/
+/
 
 ## Summary of Key Design Principles
 
-- Simplicity: No frameworks, vanilla JavaScript
-- Purposeful: Optimized for electronic schematics in code
-- Portability: Plain text format for easy embedding
-- Professional: Intelligent line merging, component catalog
-- User-Friendly: Visual feedback, undo/redo, familiar shortcuts
-- Extensible: Catalog system, organized tools, clear architecture
-- Visual Clarity: Highlighting for structure and component matching
+1. Simplicity: No frameworks, vanilla JavaScript
+2. Purposeful: Optimized for electronic schematics in code
+3. Portability: Plain text format for easy embedding
+4. Professional: Intelligent line merging, component catalog
+5. User-Friendly: Visual feedback, undo/redo, familiar shortcuts
+6. Extensible: Catalog system, organized tools, clear architecture
+7. Visual Clarity: Highlighting for structure and component matching
 
 
 ## Future Considerations
 Based on the prompts, areas for potential future development:
 
-- Refactoring: Unified tool lifecycle framework
-- Performance: Optimization for very large grids
-- Export: Additional format support (PNG, SVG)
-- Collaboration: Multi-user editing
-- Dark Mode: Alternative color scheme
-- Mobile: Touch-optimized interface
-- Component Catalog: Expanded library
-- Templates: Pre-built schematic patterns
-- Search: Find components in diagram
-- Layers: Separate annotation/component layers
+1. Refactoring: Unified tool lifecycle framework
+2. Performance: Optimization for very large grids
+3. Export: Additional format support (PNG, SVG)
+4. Collaboration: Multi-user editing
+5. Dark Mode: Alternative color scheme
+6. Mobile: Touch-optimized interface
+7. Component Catalog: Expanded library
+8. Templates: Pre-built schematic patterns
+9. Search: Find components in diagram
+10. Layers: Separate annotation/component layers
