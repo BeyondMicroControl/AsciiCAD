@@ -34,7 +34,7 @@ EmulatorBasics - Educational resources exploring the fundamentals of computer em
 
 AsciiCAD - A text-based CAD tool for hardware design and visualization.\
 SSD1306_greyscale - Explorations in pushing OLED display capabilities beyond their documented specifications, implementing grayscale rendering on monochrome displays.\
-EurorackSoundbar - A Eurorack-compatible audio module, bridging embedded programming with music synthesis.\
+EurorackSoundbar - A Eurorack-compatible audio module, bridging embedded programming with music synthesis.
 
 These projects represent my curiosity-driven approach to technology—combining practical problem-solving with a deep appreciation for both computing history and modern embedded systems development.
 
