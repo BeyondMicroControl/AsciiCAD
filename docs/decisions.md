@@ -771,8 +771,8 @@ const dragTools = {
 - (-) Need careful state management
 - (-) Potential for event handler conflicts
 
-/
-/
+ /
+ /
 
 ## Summary of Key Design Principles
 
