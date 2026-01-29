@@ -9,6 +9,7 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 **Status:** Accepted\
 **Context:** Need for a lightweight, maintainable ASCII drawing tool\
 **Decision:** Build the entire application using vanilla HTML/CSS/JavaScript without frameworks or libraries\
+
 ### Rationale:
 
 - Reduces complexity and learning curve
@@ -32,6 +33,7 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 **Status:** Accepted\
 **Context** Need to represent ASCII art in a structured, editable format\
 **Decision:** Implement a 2D array of characters where each grid cell contains exactly one character\
+
 ### Rationale:
 
 - Direct mapping between visual grid and data structure
@@ -55,6 +57,7 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 **Status:** Accepted, later refined\
 **Context** Monospace fonts are typically taller than wide\
 **Decision:** Implement grid cells with a 2:1 width-to-height aspect ratio\
+
 ### Rationale:
 
 - Matches typical monospace character proportions
@@ -80,6 +83,7 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 **Status:** Accepted\
 **Context** Maximize available workspace for diagram creation\
 **Decision:** Canvas borders correspond to browser window borders, providing full-screen drawing area\
+
 ### Rationale:
 
 - Maximizes usable workspace
@@ -101,6 +105,7 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 **Status:** Accepted\
 **Context** Large diagrams (256x128 cells) need navigation and detail work\
 **Decision:** Implement mouse/trackpad zoom (up to 1000%) and pan capabilities\
+
 ### Rationale:
 
 - Essential for working with large grid areas
@@ -127,6 +132,7 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 - Draws continuously while mouse is down and moving
 - Only places character when moving to a new grid cell (prevents duplicates)
 \
+
 ### Rationale:
 
 - Provides flexibility for custom symbols
@@ -165,6 +171,7 @@ Character Categories Implemented:
 - Use appropriate box-drawing characters for corners, T-junctions, and crossings
 - Support both single (thin) and double (thick) line styles
 \
+
 ### Rationale:
 
 - Essential feature for schematic drawings
@@ -199,6 +206,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 - Proper side characters
 - Drag-to-create interaction model
 \
+
 ### Rationale:
 
 - Common pattern in schematics (component boundaries, regions)
@@ -233,6 +241,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 - Clamp/trim to grid boundaries
 - Entire operation = one undoable stroke
 \
+
 ### Rationale:
 
 - Standard editing operations users expect
@@ -254,6 +263,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 **Status:** Accepted\
 **Context** Users need to move partially visible selections\
 **Decision:** Allow selection origin to extend beyond grid boundaries; only trim content when committing to grid\
+
 ### Rationale:
 
 - More flexible editing
@@ -280,6 +290,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 - Integrated into Load & Save toolbar
 - All operations (draw, move, paste, load) add to stack
 \
+
 ### Rationale:
 
 - Essential editing feature
@@ -306,6 +317,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 - Padding/truncation per row as needed
 - Direct grid array serialization
 \
+
 ### Rationale:
 
 - Human-readable format
@@ -330,6 +342,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 **Status:** Accepted\
 **Context** Need to share diagrams via hyperlinks\
 **Decision:** Support loading diagrams via URL parameter (?d=<encoded-data>)\
+
 ### Rationale:
 
 - Easy sharing without file exchange
@@ -357,6 +370,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 - Allows positioning before committing
 - Clips content beyond grid boundaries
 \
+
 ### Rationale:
 
 - Import from other tools
@@ -378,6 +392,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 **Status:** Accepted\
 **Context** Users need position feedback for precise placement\
 **Decision:** Display current cell coordinates in Canvas toolbar\
+
 ### Rationale:
 
 - Helps with precise positioning
@@ -397,6 +412,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 **Status:** Accepted\
 **Context** Complex electronic schematics need substantial workspace\
 **Decision:** Expand grid to 256×128 cells (from original 128×128)\
+
 ### Rationale:
 
 - Accommodate complex CPU/MCU schematics
@@ -424,6 +440,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 - One-click insertion
 - Catalog stored in JSON-like structure with text_data field
 \
+
 ### Rationale:
 
 - Speed up common schematic tasks
@@ -451,6 +468,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 - '$' matches alphanumeric + special [0-9A-Za-z+-*/%Ωπµ⍉⍵°.,;:?@&§_]
 - '§' (WILDCARD_U) matches line characters (single, double) - replaced with space when pasting
 \
+
 ### Rationale:
 
 - Flexible pattern matching for components
@@ -479,6 +497,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 - Update highlighting on each commit (editable while highlighted)
 - Overlay approach (non-destructive)
 \
+
 ### Rationale:
 
 Visual hierarchy for complex schematics
@@ -507,6 +526,7 @@ Double-line frame characters: ═ ║ ╔ ╗ ╚ ╝ ╢ ╟ ╠ ╣ ╬ ╤ �
 - Performs full match including wildcards on promising candidates
 - Searches across all catalog categories
 \
+
 ### Rationale:
 
 - Visual feedback of component placement
@@ -529,6 +549,7 @@ Double-line frame characters: ═ ║ ╔ ╗ ╚ ╝ ╢ ╟ ╠ ╣ ╬ ╤ �
 **Status:** Accepted\
 **Context** Balance between tools access and workspace\
 **Decision:** Implement collapsible left pane for tools using Roboto font\
+
 ### Rationale:
 
 - Maximize canvas space when not selecting tools
@@ -586,6 +607,7 @@ const dragTools = {
 - Positions text at specific grid location
 - Commits as single undo stroke
 \
+
 ### Rationale:
 
 - Essential for labeling components
@@ -606,6 +628,7 @@ const dragTools = {
 **Status:** Accepted (inconsistently applied)\
 **Context** Prevent duplicate characters in same cell during continuous drawing\
 **Decision:** Use Map data structure to deduplicate stroke operations\
+
 ### Rationale:
 
 - Prevents overwriting same cell multiple times in one operation
@@ -631,6 +654,7 @@ const dragTools = {
 - Text: Black (default)
 - Accent colors: Green (selection), Blue (preview), Red (highlights)
 \
+
 ### Rationale:
 
 - Better for extended use
@@ -652,6 +676,7 @@ const dragTools = {
 **Status:** Accepted\
 **Context** Need clean, readable monospace rendering\
 **Decision:** Use Roboto font family\
+
 ### Rationale:
 
 - Clean, modern appearance
@@ -678,6 +703,7 @@ const dragTools = {
 - Adds to undo stack
 - Requires no confirmation (relying on undo)
 \
+
 ### Rationale:
 
 - Quick reset functionality
@@ -703,6 +729,7 @@ const dragTools = {
 - Handling line endings (e.g., capacitor symbols)
 - Human feedback and refinement
 \
+
 ### Rationale:
 
 - Too many edge cases for automated solution
@@ -732,6 +759,7 @@ const dragTools = {
 - Canvas: Pan, Zoom, Coordinates
 - Analysis: Highlight, Match
 \
+
 ### Rationale:
 
 - Logical organization
@@ -757,6 +785,7 @@ const dragTools = {
 - Keyboard events: keydown for shortcuts
 - Mode-based event handling (current tool determines behavior)
 \
+
 ### Rationale:
 
 - Natural for interactive applications
