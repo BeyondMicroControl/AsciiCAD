@@ -1,7 +1,11 @@
 const fs = require("fs");
 const path = require("path");
 
-const repoRoot = path.resolve(__dirname, "..");
+// Find repo root by stripping everything after "/.github"
+const marker = `${path.sep}.github${path.sep}`;
+const idx = __dirname.lastIndexOf(marker);
+const repoRoot = idx >= 0 ? __dirname.slice(0, idx) : path.resolve(__dirname, "..");
+
 const srcHtmlPath = path.join(repoRoot, "index.html");
 const outDir = path.join(repoRoot, "dist");
 const outHtmlPath = path.join(outDir, "AsciiCAD.html");
