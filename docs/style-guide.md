@@ -85,7 +85,7 @@ This guide defines coding standards and conventions for our project. Consistency
 
 ## Testing Considerations
 
-- Write testable code (see [testing.md](testing.md))
+<!-- - Write testable code (see [testing.md](testing.md)) -->
 - Avoid tight coupling to external dependencies
 - Make dependencies explicit and injectable
 - Keep side effects isolated and obvious
