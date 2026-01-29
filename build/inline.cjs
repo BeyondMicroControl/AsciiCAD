@@ -1,7 +1,3 @@
-/* build/inline.cjs
-   Create dist/AsciiCAD.html by inlining <link rel="stylesheet" href="...">
-   and <script src="..."></script> from index.html.
-*/
 const fs = require("fs");
 const path = require("path");
 
@@ -10,8 +6,10 @@ const srcHtmlPath = path.join(repoRoot, "index.html");
 const outDir = path.join(repoRoot, "dist");
 const outHtmlPath = path.join(outDir, "AsciiCAD.html");
 
-
 function readUtf8(p) {
+  if (!fs.existsSync(p)) {
+    throw new Error(`Missing file: ${p}`);
+  }
   return fs.readFileSync(p, "utf8");
 }
 
@@ -20,38 +18,32 @@ function isRemote(url) {
 }
 
 function inlineBuild(html) {
-  // Inline CSS <link rel="stylesheet" href="...">
-  // Handles attribute order variations (href before rel, etc.)
+  // Inline stylesheet links
   const linkRe = /<link\b[^>]*\brel\s*=\s*["']stylesheet["'][^>]*>/gi;
-
   html = html.replace(linkRe, (tag) => {
-    // extract href
     const hrefMatch = tag.match(/\bhref\s*=\s*["']([^"']+)["']/i);
     if (!hrefMatch) return tag;
 
     const href = hrefMatch[1].trim();
     if (isRemote(href)) return tag;
 
-    const filePath = path.join(repoRoot, href);
-    const css = readUtf8(filePath);
+    const cssPath = path.join(repoRoot, href);
+    const css = readUtf8(cssPath);
     return `<style>\n${css}\n</style>`;
   });
 
-  // Inline JS <script ... src="..."></script>
-  // Keeps inline scripts untouched; only replaces those with src=
-  const scriptRe = /<script\b([^>]*)\bsrc\s*=\s*["']([^"']+)["']([^>]*)>\s*<\/script>/gi;
+  // Inline scripts with src=
+  const scriptRe =
+    /<script\b([^>]*)\bsrc\s*=\s*["']([^"']+)["']([^>]*)>\s*<\/script>/gi;
 
-  html = html.replace(scriptRe, (_m, preAttrs, src, postAttrs) => {
+  html = html.replace(scriptRe, (full, preAttrs, src, postAttrs) => {
     const s = src.trim();
-    if (isRemote(s)) return _m;
+    if (isRemote(s)) return full;
 
-    const filePath = path.join(repoRoot, s);
-    const js = readUtf8(filePath);
+    const jsPath = path.join(repoRoot, s);
+    const js = readUtf8(jsPath);
 
-    // Return a plain script tag (no src), preserving other attributes except src.
-    // We keep any attributes around src (type, defer, etc.) except src itself.
     const attrs = (preAttrs + " " + postAttrs).replace(/\s+/g, " ").trim();
-    // Remove any leftover src= that might appear oddly
     const cleanedAttrs = attrs.replace(/\bsrc\s*=\s*["'][^"']+["']/i, "").trim();
 
     return `<script${cleanedAttrs ? " " + cleanedAttrs : ""}>\n${js}\n</script>`;
@@ -60,26 +52,26 @@ function inlineBuild(html) {
   return html;
 }
 
-function main()
-{
+function main() {
+  console.log("repoRoot   =", repoRoot);
+  console.log("srcHtml    =", srcHtmlPath);
+  console.log("outDir     =", outDir);
+  console.log("outHtml    =", outHtmlPath);
+
   const srcHtml = readUtf8(srcHtmlPath);
   const built = inlineBuild(srcHtml);
 
-   if (fs.existsSync(outDir)) {
-     const st = fs.lstatSync(outDir);
-     if (!st.isDirectory())
-     {
-       fs.unlinkSync(outDir);            // remove file/symlink
-       fs.mkdirSync(outDir, { recursive: true });
-       fs.writeFileSync(outHtmlPath, built, "utf8");
-       console.log(`Wrote ${outHtmlPath}`);
-     }
-   } else {
-     fs.mkdirSync(outDir, { recursive: true });
-   }
+  // Ensure dist exists (and is a directory)
+  if (fs.existsSync(outDir) && !fs.lstatSync(outDir).isDirectory()) {
+    throw new Error(`'${outDir}' exists but is not a directory.`);
+  }
+  fs.mkdirSync(outDir, { recursive: true });
 
+  fs.writeFileSync(outHtmlPath, built, "utf8");
 
-  console.log(`Wrote ${path.relative(repoRoot, outHtmlPath)}`);
+  // Confirm the file is really there
+  const st = fs.statSync(outHtmlPath);
+  console.log(`Wrote ${outHtmlPath} (${st.size} bytes)`);
 }
 
 main();
