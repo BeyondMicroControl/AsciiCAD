@@ -979,6 +979,7 @@ function(csv)
       var _urlarr = _url?_url.split("?"):new Array("","");
       var _urlargs = _urlarr[1]?_urlarr[1].split("&"):new Array(_urlarr[0],"");
       this.url = _urlarr[0];
+      this.filename = this.url.substring(this.url.lastIndexOf("/")+1,this.url.length);
   
       this.uri = {};
       for(var _i=0;_i<_urlargs.length;_i++)
