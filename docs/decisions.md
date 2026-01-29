@@ -556,7 +556,8 @@ const dragTools = {
   modeTLine: { begin, move, end, cancel },
   // ... other tools
 };
-```\
+```
+
 ### Rationale:
 
 - Reduce code duplication
