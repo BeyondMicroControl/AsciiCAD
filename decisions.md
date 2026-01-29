@@ -19,11 +19,11 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 
 ### Consequences:
 
-(+) Complete control over all code
-(+) No build system required
-(+) Faster load times
-(-) Need to implement common patterns manually
-(-) More boilerplate code for common functionality
+- (+) Complete control over all code
+- (+) No build system required
+- (+) Faster load times
+- (-) Need to implement common patterns manually
+- (-) More boilerplate code for common functionality
 
 ---
 
@@ -34,19 +34,19 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 ### Decision: Implement a 2D array of characters where each grid cell contains exactly one character
 ### Rationale:
 
-Direct mapping between visual grid and data structure
-Simplifies save/load operations (plain text files)
-Makes undo/redo implementation straightforward
-Aligns with how ASCII art is actually stored and shared
+- Direct mapping between visual grid and data structure
+- Simplifies save/load operations (plain text files)
+- Makes undo/redo implementation straightforward
+- Aligns with how ASCII art is actually stored and shared
 
 ### Consequences:
 
-(+) Simple data model
-(+) Easy serialization to text files
-(+) Natural undo/redo through array snapshots
-(+) Clipboard operations are straightforward
-(-) Memory usage scales with grid size
-(-) Need to handle grid boundaries explicitly
+- (+) Simple data model
+- (+) Easy serialization to text files
+- (+) Natural undo/redo through array snapshots
+- (+) Clipboard operations are straightforward
+- (-) Memory usage scales with grid size
+- (-) Need to handle grid boundaries explicitly
 
 ---
 
@@ -57,21 +57,21 @@ Aligns with how ASCII art is actually stored and shared
 ### Decision: Implement grid cells with a 2:1 width-to-height aspect ratio
 ### Rationale:
 
-Matches typical monospace character proportions
-Ensures characters like ╬ can create continuous lines both horizontally and vertically
-Prevents visual distortion in the final ASCII output
+- Matches typical monospace character proportions
+- Ensures characters like ╬ can create continuous lines both horizontally and vertically
+- Prevents visual distortion in the final ASCII output
 
 ### Consequences:
 
-(+) Visual grid matches actual character rendering
-(+) Box-drawing characters align properly
-(-) Required careful calibration during zoom implementation
-(-) Initial implementation had spacing issues that needed debugging
+- (+) Visual grid matches actual character rendering
+- (+) Box-drawing characters align properly
+- (-) Required careful calibration during zoom implementation
+- (-) Initial implementation had spacing issues that needed debugging
 
-Related Changes:
+### Related Changes:
 
-Multiple iterations to match character size to grid size (prompts about 256x128 grid)
-Adjustments for vertical spacing to accommodate characters like ╬
+- Multiple iterations to match character size to grid size (prompts about 256x128 grid)
+- Adjustments for vertical spacing to accommodate characters like ╬
 
 ---
 
@@ -82,17 +82,17 @@ Adjustments for vertical spacing to accommodate characters like ╬
 ### Decision: Canvas borders correspond to browser window borders, providing full-screen drawing area
 ### Rationale:
 
-Maximizes usable workspace
-Better user experience for complex diagrams
-Follows modern web application patterns
+- Maximizes usable workspace
+- Better user experience for complex diagrams
+- Follows modern web application patterns
 
 ### Consequences:
 
-(+) More drawing space
-(+) Professional appearance
-(+) Better for complex schematics
-(-) Need to handle window resize events
-(-) Requires responsive layout design
+- (+) More drawing space
+- (+) Professional appearance
+- (+) Better for complex schematics
+- (-) Need to handle window resize events
+- (-) Requires responsive layout design
 
 ---
 
@@ -103,17 +103,17 @@ Follows modern web application patterns
 ### Decision: Implement mouse/trackpad zoom (up to 1000%) and pan capabilities
 ### Rationale:
 
-Essential for working with large grid areas
-Allows precision placement of characters
-Standard interaction pattern users expect
-Accommodates increased work area size
+- Essential for working with large grid areas
+- Allows precision placement of characters
+- Standard interaction pattern users expect
+- Accommodates increased work area size
 
 ### Consequences:
 
-(+) Can work on both overview and details
-(+) Supports larger diagrams
-(-) Complexity in coordinate transformations
-(-) Need to handle zoom-relative mouse positions
+- (+) Can work on both overview and details
+- (+) Supports larger diagrams
+- (-) Complexity in coordinate transformations
+- (-) Need to handle zoom-relative mouse positions
 
 ---
 
@@ -123,35 +123,35 @@ Accommodates increased work area size
 ### Context: Need to place arbitrary UTF-8 characters on the grid
 ### Decision: Implement freeform drawing that:
 
-Uses a popup character picker organized by category
-Draws continuously while mouse is down and moving
-Only places character when moving to a new grid cell (prevents duplicates)
+- Uses a popup character picker organized by category
+- Draws continuously while mouse is down and moving
+- Only places character when moving to a new grid cell (prevents duplicates)
 
 ### Rationale:
 
-Provides flexibility for custom symbols
-Prevents character spam through movement-based triggering
-Categories (Arrows, Box Drawing, Geometric, Emoji, etc.) organize large character sets
-Follows W3Schools UTF-8 character reference structure
+- Provides flexibility for custom symbols
+- Prevents character spam through movement-based triggering
+- Categories (Arrows, Box Drawing, Geometric, Emoji, etc.) organize large character sets
+- Follows W3Schools UTF-8 character reference structure
 
 ### Consequences:
 
-(+) Supports vast range of symbols
-(+) Organized character selection
-(+) Efficient continuous drawing
-(-) Complex picker UI with multiple tabs
-(-) Need to curate useful character sets
+- (+) Supports vast range of symbols
+- (+) Organized character selection
+- (+) Efficient continuous drawing
+- (-) Complex picker UI with multiple tabs
+- (-) Need to curate useful character sets
 
 Character Categories Implemented:
 
-Arrows & Misc
-Box Drawing
-Geometric
-Emoji
-Technical
-Places
-Recycling
-Number Forms
+- Arrows & Misc
+- Box Drawing
+- Geometric
+- Emoji
+- Technical
+- Places
+- Recycling
+- Number Forms
 
 ---
 
@@ -161,31 +161,31 @@ Number Forms
 ### Context: Need to create clean electronic schematics with connected lines
 ### Decision: Implement single and double line modes that:
 
-Automatically detect and merge line intersections
-Use appropriate box-drawing characters for corners, T-junctions, and crossings
-Support both single (thin) and double (thick) line styles
+- Automatically detect and merge line intersections
+- Use appropriate box-drawing characters for corners, T-junctions, and crossings
+- Support both single (thin) and double (thick) line styles
 
 ### Rationale:
 
-Essential feature for schematic drawings
-Reduces manual character selection
-Creates professional-looking diagrams
-Aligns with electronic schematic conventions
+- Essential feature for schematic drawings
+- Reduces manual character selection
+- Creates professional-looking diagrams
+- Aligns with electronic schematic conventions
 
 ### Consequences:
 
-(+) Dramatically improves drawing efficiency
-(+) Professional appearance
-(+) Reduces errors in line connections
-(-) Complex logic for all intersection cases
-(-) Edge cases with single/double line mixing required extensive debugging
+- (+) Dramatically improves drawing efficiency
+- (+) Professional appearance
+- (+) Reduces errors in line connections
+- (-) Complex logic for all intersection cases
+- (-) Edge cases with single/double line mixing required extensive debugging
 
 Known Challenges (from prompts):
 
-Double lines not appearing during dragging (fixed)
-Single/double line crossing conflicts
-Line endings at component boundaries
-Special cases like capacitor symbols (⏊+⏉)
+- Double lines not appearing during dragging (fixed)
+- Single/double line crossing conflicts
+- Line endings at component boundaries
+- Special cases like capacitor symbols (⏊+⏉)
 
 Decision to Defer: Full line conflict resolution moved to separate tool due to complexity of all edge cases---
 
@@ -195,22 +195,22 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 ### Context: Need to create rectangular enclosures quickly
 ### Decision: Implement single and double box drawing modes that create rectangles with:
 
-Appropriate corner characters
-Proper side characters
-Drag-to-create interaction model
+- Appropriate corner characters
+- Proper side characters
+- Drag-to-create interaction model
 
 ### Rationale:
 
-Common pattern in schematics (component boundaries, regions)
-Faster than drawing lines individually
-Ensures proper corner characters automatically
+- Common pattern in schematics (component boundaries, regions)
+- Faster than drawing lines individually
+- Ensures proper corner characters automatically
 
 ### Consequences:
 
-(+) Rapid rectangle creation
-(+) Consistent box styling
-(-) Needed separate handling for single vs double boxes
-(-) Intersection with existing content needs consideration
+- (+) Rapid rectangle creation
+- (+) Consistent box styling
+- (-) Needed separate handling for single vs double boxes
+- (-) Intersection with existing content needs consideration
 
 ---
 
@@ -220,32 +220,32 @@ Ensures proper corner characters automatically
 ### Context: Need editing capabilities for created content
 ### Decision: Implement four selection-based modes:
 
-Move: Select region, drag to new location, original cleared
-Copy: Select region, drag to new location, original preserved
-Blank: Select region to clear it
-Paste: Special case of Copy for clipboard content
+- Move: Select region, drag to new location, original cleared
+- Copy: Select region, drag to new location, original preserved
+- Blank: Select region to clear it
+- Paste: Special case of Copy for clipboard content
 
-Interaction Design:
+### Interaction Design:
 
-Drag creates green dashed "rubber band" selection
-Blue overlay shows preview during move/copy
-Apply on mouseup
-Clamp/trim to grid boundaries
-Entire operation = one undoable stroke
+- Drag creates green dashed "rubber band" selection
+- Blue overlay shows preview during move/copy
+- Apply on mouseup
+- Clamp/trim to grid boundaries
+- Entire operation = one undoable stroke
 
 ### Rationale:
 
-Standard editing operations users expect
-Visual feedback during operation
-Consistent undo/redo behavior
+- Standard editing operations users expect
+- Visual feedback during operation
+- Consistent undo/redo behavior
 
 ### Consequences:
 
-(+) Full editing capability
-(+) Clear visual feedback
-(+) Consistent with user expectations
-(-) Complex state management for drag operations
-(-) Edge cases with grid boundaries
+- (+) Full editing capability
+- (+) Clear visual feedback
+- (+) Consistent with user expectations
+- (-) Complex state management for drag operations
+- (-) Edge cases with grid boundaries
 
 ---
 
@@ -256,16 +256,16 @@ Consistent undo/redo behavior
 ### Decision: Allow selection origin to extend beyond grid boundaries; only trim content when committing to grid
 ### Rationale:
 
-More flexible editing
-Allows repositioning of partially visible content
-Only enforce boundaries at commit time
+- More flexible editing
+- Allows repositioning of partially visible content
+- Only enforce boundaries at commit time
 
 ### Consequences:
 
-(+) Better user experience
-(+) More forgiving editing
-(-) Need to handle clipping logic on commit
-(-) More complex coordinate validation
+- (+) Better user experience
+- (+) More forgiving editing
+- (-) Need to handle clipping logic on commit
+- (-) More complex coordinate validation
 
 ---
 
@@ -275,24 +275,24 @@ Only enforce boundaries at commit time
 ### Context: Need to support iterative editing and error recovery
 ### Decision: Implement undo/redo with:
 
-Each complete operation = one stroke in undo stack
-Keyboard shortcuts: Cmd/Ctrl+Z (undo), Cmd/Ctrl+Shift+Z (redo)
-Integrated into Load & Save toolbar
-All operations (draw, move, paste, load) add to stack
+- Each complete operation = one stroke in undo stack
+- Keyboard shortcuts: Cmd/Ctrl+Z (undo), Cmd/Ctrl+Shift+Z (redo)
+- Integrated into Load & Save toolbar
+- All operations (draw, move, paste, load) add to stack
 
 ### Rationale:
 
-Essential editing feature
-Standard keyboard shortcuts
-Grouped with load/save as related file operations
+- Essential editing feature
+- Standard keyboard shortcuts
+- Grouped with load/save as related file operations
 
 ### Consequences:
 
-(+) Error recovery
-(+) Supports experimentation
-(+) Standard UX
-(-) Memory usage for large diagrams
-(-) Need to track all state-changing operations
+- (+) Error recovery
+- (+) Supports experimentation
+- (+) Standard UX
+- (-) Memory usage for large diagrams
+- (-) Need to track all state-changing operations
 
 ---
 
@@ -302,26 +302,26 @@ Grouped with load/save as related file operations
 ### Context: Need save/load functionality
 ### Decision: Use plain text files (ROWS × COLS characters) with:
 
-Each row on a separate line
-Padding/truncation per row as needed
-Direct grid array serialization
+- Each row on a separate line
+- Padding/truncation per row as needed
+- Direct grid array serialization
 
 ### Rationale:
 
-Human-readable format
-Can be edited in any text editor
-Easy to embed in source code (primary use case)
-No parsing complexity
-Version control friendly
+- Human-readable format
+- Can be edited in any text editor
+- Easy to embed in source code (primary use case)
+- No parsing complexity
+- Version control friendly
 
 ### Consequences:
 
-(+) Maximum portability
-(+) Human-readable
-(+) Easy embedding in code
-(+) Version control compatible
-(-) No metadata storage
-(-) Fixed grid size per file
+- (+) Maximum portability
+- (+) Human-readable
+- (+) Easy embedding in code
+- (+) Version control compatible
+- (-) No metadata storage
+- (-) Fixed grid size per file
 
 ---
 
@@ -332,17 +332,17 @@ Version control friendly
 ### Decision: Support loading diagrams via URL parameter (?d=<encoded-data>)
 ### Rationale:
 
-Easy sharing without file exchange
-Enables linking from documentation
-Supports embedding in web pages
+- Easy sharing without file exchange
+- Enables linking from documentation
+- Supports embedding in web pages
 
 ### Consequences:
 
-(+) Shareable links
-(+) No server storage needed
-(+) Works with static hosting
-(-) URL length limits for large diagrams
-(-) Need compression/encoding scheme
+- (+) Shareable links
+- (+) No server storage needed
+- (+) Works with static hosting
+- (-) URL length limits for large diagrams
+- (-) Need compression/encoding scheme
 
 ---
 
@@ -352,24 +352,24 @@ Supports embedding in web pages
 ### Context: Need to import ASCII art from external sources
 ### Decision: Implement Cmd/Ctrl+V to trigger paste mode that:
 
-Captures clipboard text
-Shows preview overlay (using move/copy visual feedback)
-Allows positioning before committing
-Clips content beyond grid boundaries
+- Captures clipboard text
+- Shows preview overlay (using move/copy visual feedback)
+- Allows positioning before committing
+- Clips content beyond grid boundaries
 
 ### Rationale:
 
-Import from other tools
-Quick integration of external content
-Consistent with move/copy interaction
+- Import from other tools
+- Quick integration of external content
+- Consistent with move/copy interaction
 
 ### Consequences:
 
-(+) Easy content import
-(+) Familiar interaction pattern
-(+) Preview before commit
-(-) Need clipboard API access
-(-) Browser permission requirements
+- (+) Easy content import
+- (+) Familiar interaction pattern
+- (+) Preview before commit
+- (-) Need clipboard API access
+- (-) Browser permission requirements
 
 ---
 
@@ -380,15 +380,15 @@ Consistent with move/copy interaction
 ### Decision: Display current cell coordinates in Canvas toolbar
 ### Rationale:
 
-Helps with precise positioning
-Useful for documentation/communication
-Low implementation cost
+- Helps with precise positioning
+- Useful for documentation/communication
+- Low implementation cost
 
 ### Consequences:
 
-(+) Better spatial awareness
-(+) Easier collaboration
-(-) Minimal screen space usage
+- (+) Better spatial awareness
+- (+) Easier collaboration
+- (-) Minimal screen space usage
 
 ---
 
@@ -399,17 +399,17 @@ Low implementation cost
 ### Decision: Expand grid to 256×128 cells (from original 128×128)
 ### Rationale:
 
-Accommodate complex CPU/MCU schematics
-Provide generous working area
-Reduce need for multiple files
+- Accommodate complex CPU/MCU schematics
+- Provide generous working area
+- Reduce need for multiple files
 
 ### Consequences:
 
-(+) Can create complex diagrams in single file
-(+) Reduces splitting of related content
-(-) Increased memory usage
-(-) Required zoom up to 1000% for detail work
-(-) Character spacing calibration challenges
+- (+) Can create complex diagrams in single file
+- (+) Reduces splitting of related content
+- (-) Increased memory usage
+- (-) Required zoom up to 1000% for detail work
+- (-) Character spacing calibration challenges
 
 ---
 
@@ -419,25 +419,25 @@ Reduce need for multiple files
 ### Context: Electronic schematics use standard component symbols
 ### Decision: Implement component catalog with:
 
-Curated library of discrete and digital components
-Category organization
-One-click insertion
-Catalog stored in JSON-like structure with text_data field
+- Curated library of discrete and digital components
+- Category organization
+- One-click insertion
+- Catalog stored in JSON-like structure with text_data field
 
 ### Rationale:
 
-Speed up common schematic tasks
-Ensure consistent component representation
-Build library of reusable elements
-Reduce need to redraw common symbols
+- Speed up common schematic tasks
+- Ensure consistent component representation
+- Build library of reusable elements
+- Reduce need to redraw common symbols
 
 ### Consequences:
 
-(+) Faster schematic creation
-(+) Consistent symbol library
-(+) Extensible catalog
-(-) Need to maintain catalog content
-(-) Need UI for catalog selection
+- (+) Faster schematic creation
+- (+) Consistent symbol library
+- (+) Extensible catalog
+- (-) Need to maintain catalog content
+- (-) Need UI for catalog selection
 
 ---
 
@@ -448,22 +448,22 @@ Reduce need to redraw common symbols
 ### Decision: Implement wildcard system:
 
 # matches any digit [0-9]
-$ matches alphanumeric + special [0-9A-Za-z+-*/%Ωπµ⍉⍵°.,;:?@&§_]
-§ (WILDCARD_U) matches line characters (single, double) - replaced with space when pasting
+- $ matches alphanumeric + special [0-9A-Za-z+-*/%Ωπµ⍉⍵°.,;:?@&§_]
+- § (WILDCARD_U) matches line characters (single, double) - replaced with space when pasting
 
 ### Rationale:
 
-Flexible pattern matching for components
-Recognize components regardless of specific labels
-Support schematic highlighting/matching features
+- Flexible pattern matching for components
+- Recognize components regardless of specific labels
+- Support schematic highlighting/matching features
 
 ### Consequences:
 
-(+) Flexible component recognition
-(+) Enables automated highlighting
-(+) Supports labeled components
-(-) Regex complexity
-(-) Need careful pattern design
+- (+) Flexible component recognition
+- (+) Enables automated highlighting
+- (+) Supports labeled components
+- (-) Regex complexity
+- (-) Need careful pattern design
 
 ---
 
@@ -473,11 +473,11 @@ Support schematic highlighting/matching features
 ### Context: Visual organization of complex schematics
 ### Decision: Implement toggleable highlighting mode:
 
-Double-line frames: Red (defines enclosed areas/modules)
-Single-line wires: Blue (within and outside enclosed areas)
-Exception: Single lines inside double-line enclosed areas remain black
-Update highlighting on each commit (editable while highlighted)
-Overlay approach (non-destructive)
+- Double-line frames: Red (defines enclosed areas/modules)
+- Single-line wires: Blue (within and outside enclosed areas)
+- Exception: Single lines inside double-line enclosed areas remain black
+- Update highlighting on each commit (editable while highlighted)
+- Overlay approach (non-destructive)
 
 ### Rationale:
 
@@ -488,11 +488,11 @@ Non-destructive (doesn't modify actual data)
 
 ### Consequences:
 
-(+) Better visual organization
-(+) Easier to understand complex circuits
-(+) Non-destructive overlay
-(-) Performance consideration for large grids
-(-) Complex detection logic for enclosed areas
+- (+) Better visual organization
+- (+) Easier to understand complex circuits
+- (+) Non-destructive overlay
+- (-) Performance consideration for large grids
+- (-) Complex detection logic for enclosed areas
 
 Double-line frame characters: ═ ║ ╔ ╗ ╚ ╝ ╢ ╟ ╠ ╣ ╬ ╤ ╧ ╦ ╩ ╪ ╫---
 
@@ -502,25 +502,25 @@ Double-line frame characters: ═ ║ ╔ ╗ ╚ ╝ ╢ ╟ ╠ ╣ ╬ ╤ �
 ### Context: Identify where catalog components are used in diagrams
 ### Decision: Implement "Match" button that:
 
-Highlights catalog components in green
-Uses first line of catalog item for fast initial match
-Performs full match including wildcards on promising candidates
-Searches across all catalog categories
+- Highlights catalog components in green
+- Uses first line of catalog item for fast initial match
+- Performs full match including wildcards on promising candidates
+- Searches across all catalog categories
 
 ### Rationale:
 
-Visual feedback of component placement
-Helps identify reusable patterns
-Quality check for catalog usage
-Documentation aid
+- Visual feedback of component placement
+- Helps identify reusable patterns
+- Quality check for catalog usage
+- Documentation aid
 
 ### Consequences:
 
-(+) Visual component identification
-(+) Catalog validation
-(+) Learning aid for catalog contents
-(-) Performance considerations for large catalogs
-(-) Regex matching complexity
+- (+) Visual component identification
+- (+) Catalog validation
+- (+) Learning aid for catalog contents
+- (-) Performance considerations for large catalogs
+- (-) Regex matching complexity
 
 ---
 
@@ -531,17 +531,17 @@ Documentation aid
 ### Decision: Implement collapsible left pane for tools using Roboto font
 ### Rationale:
 
-Maximize canvas space when not selecting tools
-Organized tool presentation
-Standard UI pattern
+- Maximize canvas space when not selecting tools
+- Organized tool presentation
+- Standard UI pattern
 
 ### Consequences:
 
-(+) Efficient space usage
-(+) Clean interface
-(+) Expandable for more tools
-(-) Need toggle mechanism
-(-) Layout calculations for expand/collapse
+- (+) Efficient space usage
+- (+) Clean interface
+- (+) Expandable for more tools
+- (-) Need toggle mechanism
+- (-) Layout calculations for expand/collapse
 
 ---
 
@@ -550,11 +550,13 @@ Standard UI pattern
 ### Status: Proposed
 ### Context: Repetitive code patterns across tools (line, box, text, select, etc.)
 ### Decision: Refactor to unified tool framework:
-javascriptconst dragTools = {
+'''javascript
+const dragTools = {
   modeSLine: { begin, move, end, cancel },
   modeTLine: { begin, move, end, cancel },
   // ... other tools
 };
+'''
 ### Rationale:
 
 Reduce code duplication
@@ -564,12 +566,12 @@ Consistent behavior across tools
 
 ### Consequences:
 
-(+) Less code duplication
-(+) Easier maintenance
-(+) Consistent tool behavior
-(+) Easier to add new tools
-(-) Upfront refactoring effort
-(-) Need to design generic interface
+- (+) Less code duplication
+- (+) Easier maintenance
+- (+) Consistent tool behavior
+- (+) Easier to add new tools
+- (-) Upfront refactoring effort
+- (-) Need to design generic interface
 
 ---
 
@@ -591,10 +593,10 @@ Pin numbers, signal names, etc.
 
 ### Consequences:
 
-(+) Complete annotation capability
-(+) Direct text input
-(-) Need cursor positioning
-(-) Text wrapping considerations
+- (+) Complete annotation capability
+- (+) Direct text input
+- (-) Need cursor positioning
+- (-) Text wrapping considerations
 
 ---
 
@@ -611,9 +613,9 @@ More efficient
 
 ### Consequences:
 
-(+) Cleaner operations
-(+) Better undo behavior
-(-) Not consistently applied across all tools (noted as refactoring need)
+- (+) Cleaner operations
+- (+) Better undo behavior
+- (-) Not consistently applied across all tools (noted as refactoring need)
 
 ---
 
@@ -637,10 +639,10 @@ Reduces eye strain
 
 ### Consequences:
 
-(+) Better readability
-(+) Reduced eye strain
-(+) Professional appearance
-(-) May not suit all user preferences (no dark mode)
+- (+) Better readability
+- (+) Reduced eye strain
+- (+) Professional appearance
+- (-) May not suit all user preferences (no dark mode)
 
 ---
 
@@ -658,10 +660,10 @@ Professional look
 
 ### Consequences:
 
-(+) Professional appearance
-(+) Good UTF-8 support
-(+) Widely available
-(-) May need fallbacks for missing characters
+- (+) Professional appearance
+- (+) Good UTF-8 support
+- (+) Widely available
+- (-) May need fallbacks for missing characters
 
 ---
 
@@ -683,9 +685,9 @@ Undo provides safety net
 
 ### Consequences:
 
-(+) Quick fresh start
-(+) Recoverable via undo
-(-) No confirmation dialog (could be accidental)
+- (+) Quick fresh start
+- (+) Recoverable via undo
+- (-) No confirmation dialog (could be accidental)
 
 ---
 
@@ -709,11 +711,11 @@ Can iterate independently
 
 ### Consequences:
 
-(+) Focused development on core tool
-(+) Better resolution for edge cases
-(+) Human-in-the-loop for complex patterns
-(-) Separate tool maintenance
-(-) Two-step workflow for perfect crossings
+- (+) Focused development on core tool
+- (+) Better resolution for edge cases
+- (+) Human-in-the-loop for complex patterns
+- (-) Separate tool maintenance
+- (-) Two-step workflow for perfect crossings
 
 ---
 
@@ -737,10 +739,10 @@ Scalable for future additions
 
 ### Consequences:
 
-(+) Better UX
-(+) Easier to learn
-(+) Scalable organization
-(-) Need UI space for all groups
+- (+) Better UX
+- (+) Easier to learn
+- (+) Scalable organization
+- (-) Need UI space for all groups
 
 ---
 
@@ -762,11 +764,11 @@ Easy to extend with new tools
 
 ### Consequences:
 
-(+) Responsive UI
-(+) Clean event flow
-(+) Easy to extend
-(-) Need careful state management
-(-) Potential for event handler conflicts
+- (+) Responsive UI
+- (+) Clean event flow
+- (+) Easy to extend
+- (-) Need careful state management
+- (-) Potential for event handler conflicts
 
 
 Summary of Key Design Principles
