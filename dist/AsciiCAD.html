@@ -5210,32 +5210,13 @@ resizeRaf = requestAnimationFrame(() => {
 const ro = new ResizeObserver(() => scheduleResize());
 ro.observe(container);
 
-
-// ════════════════════════════════════════════════════════════════════════════
-// SELF-DOWNLOAD FUNCTIONALITY
-// ════════════════════════════════════════════════════════════════════════════
-
 function downloadThisFile() 
 {
-  // Get the complete HTML source including current state
+  // Prepare the data: get the complete HTML source including current state
   const htmlContent = document.documentElement.outerHTML;
-  
-  // Create a Blob with the HTML content
-  const blob = new Blob([htmlContent], { type: 'text/html' });
-  
-  // Create a download link
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'AsciiCAD.html';
-  
-  // Trigger the download
-  document.body.appendChild(a);
-  a.click();
-  
-  // Cleanup
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const filename = 'AsciiCAD.html';
+  const mimeType = 'text/html';
+  oCOM.download(htmlContent, filename, mimeType);
 }
 
 
