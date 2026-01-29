@@ -4,7 +4,7 @@
 
 **Always read these two files at the beginning of each session:**
 
-1. [style-guide.md](style-guide.md) - Coding standards and conventions
+1. [style-guide.md](docs/style-guide.md) - Coding standards and conventions
 2. [working-agreement.md](working-agreement.md) - How collaborate in this project (Claude, GPT, Gemini, ...)
 
 ---
