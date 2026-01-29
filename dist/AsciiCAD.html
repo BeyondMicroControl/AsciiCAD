@@ -3250,8 +3250,8 @@ function GRID()
         <div class="card">
           <h3>Tools</h3>
           <div class="row" style="margin-top:10px;">
-            <button id="toolSchemaHighlight" class="btn">Highlight</button>   
-            <button id="toolSchemaMatch" class="btn">Match</button>
+            <button id="toolSchemaHighlight" class="btn" data-hint="Highlight: Mark signle lines in blue, enclosed double line boxes in red.">Highlight</button>   
+            <button id="toolSchemaMatch" class="btn" data-hint="Match: Marks matching catalog items in green. Mind replacing wildcards inside these items, '#' with numbers, '$' with alphanumeric.">Match</button>
           </div>
           <div id="toolHint" class="tiny muted" style="margin-top:8px;"></div>
         </div>
@@ -4307,9 +4307,8 @@ function canvasPointToCell(clientX, clientY)
 
 function setMode(mode)
 {
-    updateRadioBtnUI(mode);
-    updateOpLine(mode,op);
-
+    updateRadioButtonUI(mode,mode_el,modeHint);   // make buttons act like radio buttons
+    updateOpLine(mode,op);                    // update hint text
     modeRECALL = tool;
     tool = mode;
 }
@@ -4329,44 +4328,34 @@ function updateOpLine(mode,item)
 }
 
 // Let mode button act like radio buttons (add/remove primary)
-function updateRadioBtnUI(mode)
+function updateRadioButtonUI(mode,mode_el,hint)
 {
-    for(var i in mode_el)
-    {
-        if(mode==i)
-        {
-            mode_el[i].classList.add("primary");
-            const hints = mode_el[i].dataset.hint.split('|');
-            modeHint.textContent = pasteDrag ? hints[0] : (hints[1]===undefined?hints[0]:hints[1]);
-        }
-        else mode_el[i].classList.remove("primary");
-    }
+  for(var i in mode_el)
+  {
+      if(mode==i)
+      {
+          mode_el[i].classList.add("primary");
+          const hints = mode_el[i].dataset.hint.split('|');
+          if(hint!=null) hint.textContent = pasteDrag ? hints[0] : (hints[1]===undefined?hints[0]:hints[1]);
+      }
+      else mode_el[i].classList.remove("primary");
+  }
 }
 
-
-
-function _setMode(mode)
+function updateToogleButtonUI(onoff,mode_el,hint)
 {
-    const hints = mode_el[i].dataset.hint.split('|');
-    const hintText = pasteDrag ? hints[0] : (hints[1]===undefined?hints[0]:hints[1]);
-    updateModeUI(mode,mode_el,modeHint,hintText);
-    modeRECALL = tool;
-    tool = mode;
-}
-
-// Let mode button act like radio buttons (add/remove primary)
-function _updateModeUI(id,buttonList_el,hint,hintText)
-{
-    for(var i in buttonList_el)
-    {
-        if(id==i)
-        {
-            buttonList_el[i].classList.add("primary");
-            const hints = buttonList_el[i].dataset.hint.split('|');
-            hint.textContent = hintText;
-        }
-        else buttonList_el[i].classList.remove("primary");
-    }
+  onoff = !onoff;
+  if(onoff)
+  {
+    mode_el.classList.add("primary");
+    hint.textContent = schemaHighlightBtn.dataset.hint;
+  }
+  else
+  { 
+    mode_el.classList.remove("primary");
+    hint.textContent = "";
+  }
+  return onoff;
 }
 
 function updateUI()
@@ -5372,17 +5361,17 @@ pickCharBtn.addEventListener("click", () => { if (op.type !== "place") op = { ty
 openCatalogBtn.addEventListener("click", () => openCatalog());
 eraserBtn.addEventListener("click", () => { op = { type: "erase" }; setMode('modeFreeform'); updateUI(); });
 
-schemaHighlightBtn.addEventListener("click", () => {
-  toolHint.textContent = "Highlight: Mark signle lines in blue, enclosed double line boxes in red.";
-  schemaHighlightOn = !schemaHighlightOn;
+schemaHighlightBtn.addEventListener("click", () => 
+{
+  schemaHighlightOn = updateToogleButtonUI(schemaHighlightOn,schemaHighlightBtn,toolHint);
   highlightCache = null;     // force full rescan next draw
   draw("schemaHighlightToggle");
 });
 
-schemaMatchBtn.addEventListener("click", () => {
-  toolHint.textContent = "Match: Marks matching catalog items in green. Mind replacing wildcards inside these items, '#' with numbers, '$' with alphanumeric.";
-  schemaMatchOn = !schemaMatchOn;
-  matchCache = null; // force full rescan next draw
+schemaMatchBtn.addEventListener("click", () => 
+{
+  schemaMatchOn = updateToogleButtonUI(schemaMatchOn,schemaMatchBtn,toolHint);
+  matchCache = null;        // force full rescan next draw
   draw("schemaMatchToggle");
 });
 
