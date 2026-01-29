@@ -95,7 +95,15 @@
         </div>
 
         <div class="card">
-          <div class="tiny muted">Wheel = zoom • Hold mouse button while wheel = pan • Middle-drag = pan • R = rotate. <a href="https://github.com/BeyondMicroControl/AsciiCAD" target="_blank">GitHub</a> • <a href="#" id="downloadSelfLink" onclick="downloadThisFile(); return false;">Download</a></div>
+          <div class="tiny muted">Wheel = zoom • Hold mouse button while wheel = pan • Middle-drag = pan • R = rotate. <a href="https://github.com/BeyondMicroControl/AsciiCAD" target="_blank">GitHub</a>
+          
+            <script>
+            oCOM.URL.parse(document.location.toString());
+            if(oCOM.URL.filename == "AsciiCAD.html")
+              document.write("• <a href=\"#\" id=\"downloadSelfLink\" onclick=\"downloadThisFile(); return false;\">Download</a>");
+            </script>
+          
+          </div>
           <div class="tiny muted" id="URIcontainer"></div>
         </div>
       </div>
