@@ -22,8 +22,9 @@ SOFTWARE.
 
 # About the author
 
-I'm a security & software professional with nearly 25 years of experience, currently based in Leuven, Belgium. Throughout my career, my focus has evolved from hands-on software development to broader technology leadership and cybersecurity concerns, as evidenced by my perspectives on organizational approaches to ransomware prevention.
-Beyond my professional work, I maintain an active portfolio of personal projects that reflect my passion for both retro computing and embedded systems development. As a hobbyist JavaScript developer, I find satisfaction in solving interesting technical challenges across several domains:
+I'm a security & software professional with nearly 25 years of experience, currently based in Leuven, Belgium. Throughout my career, my focus has evolved from hands-on software development to broader technology leadership and cybersecurity concerns./
+Beyond my professional work, I maintain an active portfolio of personal projects that reflect my passion for both retro computing and embedded systems development. As a hobbyist software developer since the early 80', I still find fun in exploring interesting topics across several domains, far away from corporate management subject matters, which (curiously for many) remains unequivocally my core field of interest.
+
 ## Retro Computing & Emulation
 
 RetroAppleJS - A complete Apple II+ assembler, debugger, and emulator environment built entirely in browser-native JavaScript, requiring no server. This project wraps a full IDE toolchain for exploring the elegance of 8-bit computing and the 6502 processor architecture.
