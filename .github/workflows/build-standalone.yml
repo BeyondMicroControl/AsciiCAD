@@ -3,13 +3,12 @@ name: Build standalone AsciiCAD.html
 on:
   push:
     branches: [ "main" ]
-    # Run only when build inputs change; ignore changes to dist to avoid loops.
     paths:
       - "index.html"
       - "res/**"
       - "build/**"
       - ".github/workflows/build-standalone.yml"
-      - "!dist/**"
+      - '!dist/**'
   workflow_dispatch:
 
 permissions:
@@ -28,13 +27,13 @@ jobs:
           node-version: 20
 
       - name: Debug dist path
-          run: |
-            pwd
-            ls -la
-            echo "---- dist (if any) ----"
-            ls -la dist || true
-            echo "---- dist stat ----"
-            stat dist || true
+        run: |
+          pwd
+          ls -la
+          echo "---- dist (if any) ----"
+          ls -la dist || true
+          echo "---- dist stat ----"
+          stat dist || true
 
       - name: Build dist/AsciiCAD.html
         run: node build/inline.cjs
