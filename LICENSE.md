@@ -27,14 +27,14 @@ Beyond my professional work, I maintain an active portfolio of personal projects
 
 ## Retro Computing & Emulation
 
-RetroAppleJS - A complete Apple II+ assembler, debugger, and emulator environment built entirely in browser-native JavaScript, requiring no server. This project wraps a full IDE toolchain for exploring the elegance of 8-bit computing and the 6502 processor architecture.
-EmulatorBasics - Educational resources exploring the fundamentals of computer emulation.
+**RetroAppleJS** - A complete Apple II+ assembler, debugger, and emulator environment built entirely in browser-native JavaScript, requiring no server. This project wraps a full IDE toolchain for exploring the elegance of 8-bit computing and the 6502 processor architecture.
+**EmulatorBasics** - Educational resources exploring the fundamentals of computer emulation.
 
 ## Embedded Systems & Hardware Projects
 
-AsciiCAD - A text-based CAD tool for hardware design and visualization.\
-SSD1306_greyscale - Explorations in pushing OLED display capabilities beyond their documented specifications, implementing grayscale rendering on monochrome displays.\
-EurorackSoundbar - A Eurorack-compatible audio module, bridging embedded programming with music synthesis.
+**AsciiCAD** - A text-based CAD tool for hardware design and visualization.\
+**SSD1306_greyscale** - Explorations in pushing OLED display capabilities beyond their documented specifications, implementing grayscale rendering on monochrome displays.\
+**EurorackSoundbar** - A Eurorack-compatible audio module, bridging embedded programming with music synthesis.
 
 These projects represent my curiosity-driven approach to technology—combining practical problem-solving with a deep appreciation for both computing history and modern embedded systems development.
 
