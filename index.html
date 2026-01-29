@@ -283,95 +283,95 @@ const N = 1, E = 2, S = 4, W = 8;
 
 // Only "light" box drawing for now (keeps it simple & readable)
 const glyphToMask = new Map([
-  [" ", 0],
+[" ", 0],
 
-  // single
-  ["─", E|W], ["│", N|S],
-  ["┌", E|S], ["┐", W|S], ["└", E|N], ["┘", W|N],
-  ["├", N|E|S], ["┤", N|W|S],
-  ["┬", E|S|W], ["┴", E|N|W],
-  ["┼", N|E|S|W],
+// single
+["─", E|W], ["│", N|S],
+["┌", E|S], ["┐", W|S], ["└", E|N], ["┘", W|N],
+["├", N|E|S], ["┤", N|W|S],
+["┬", E|S|W], ["┴", E|N|W],
+["┼", N|E|S|W],
 
-  // thick
-  ["━", E|W], ["┃", N|S],
-  ["┏", E|S], ["┓", W|S], ["┗", E|N], ["┛", W|N],
-  ["┣", N|E|S], ["┫", N|W|S],
-  ["┳", E|S|W], ["┻", E|N|W],
-  ["╋", N|E|S|W],
+// thick
+["━", E|W], ["┃", N|S],
+["┏", E|S], ["┓", W|S], ["┗", E|N], ["┛", W|N],
+["┣", N|E|S], ["┫", N|W|S],
+["┳", E|S|W], ["┻", E|N|W],
+["╋", N|E|S|W],
 
-  // double
-  ["═", E|W], ["║", N|S],
-  ["╔", E|S], ["╗", W|S], ["╚", E|N], ["╝", W|N],
-  ["╠", N|E|S], ["╣", N|W|S],
-  ["╦", E|S|W], ["╩", E|N|W],
-  ["╬", N|E|S|W],
+// double
+["═", E|W], ["║", N|S],
+["╔", E|S], ["╗", W|S], ["╚", E|N], ["╝", W|N],
+["╠", N|E|S], ["╣", N|W|S],
+["╦", E|S|W], ["╩", E|N|W],
+["╬", N|E|S|W],
 
-  // mixed crosses single/double
-  ["╪", N|E|S|W],["╫", N|E|S|W],
+// mixed crosses single/double
+["╪", N|E|S|W],["╫", N|E|S|W],
 
-  // mixed crosses single/thick
-  ["┿", N|E|S|W],["╂", N|E|S|W],
-  /*
-  ["┽", N|E|S|W],["┾", N|E|S|W],["╀", N|E|S|W],["╁", N|E|S|W],["╃", N|E|S|W],["╄", N|E|S|W],
-  ["╅", N|E|S|W],["╆", N|E|S|W],["╇", N|E|S|W],["╈", N|E|S|W],["╉", N|E|S|W],["╊", N|E|S|W],
-  */
-  // mixed tees single/double
-  ["╤", E|S|W],["╥", E|S|W],["╧", E|N|W],["╨", E|N|W],["╞", N|E|S],["╟", N|E|S],["╡", N|W|S],["╢", N|W|S],
+// mixed crosses single/thick
+["┿", N|E|S|W],["╂", N|E|S|W],
+/*
+["┽", N|E|S|W],["┾", N|E|S|W],["╀", N|E|S|W],["╁", N|E|S|W],["╃", N|E|S|W],["╄", N|E|S|W],
+["╅", N|E|S|W],["╆", N|E|S|W],["╇", N|E|S|W],["╈", N|E|S|W],["╉", N|E|S|W],["╊", N|E|S|W],
+*/
+// mixed tees single/double
+["╤", E|S|W],["╥", E|S|W],["╧", E|N|W],["╨", E|N|W],["╞", N|E|S],["╟", N|E|S],["╡", N|W|S],["╢", N|W|S],
 
-  // mixed tees single/thick
-  ["┯", E|S|W],["┰", E|S|W],["┷", E|N|W],["┸", E|N|W],["┝", N|E|S],["┠", N|E|S],["┥", N|W|S],["┨", N|W|S],
+// mixed tees single/thick
+["┯", E|S|W],["┰", E|S|W],["┷", E|N|W],["┸", E|N|W],["┝", N|E|S],["┠", N|E|S],["┥", N|W|S],["┨", N|W|S],
 
-  // mixed corners single/double
-  ["╒", E|S],["╓", E|S],["╕", W|S],["╖", W|S],["╘", E|N],["╙", E|N],["╛", W|N],["╜", W|N],
+// mixed corners single/double
+["╒", E|S],["╓", E|S],["╕", W|S],["╖", W|S],["╘", E|N],["╙", E|N],["╛", W|N],["╜", W|N],
 
-  // mixed corners single/thick
-  ["┍", E|S],["┎", E|S],["┑", W|S],["┒", W|S],["┕", E|N],["┖", E|N],["┙", W|N],["┚", W|N]
+// mixed corners single/thick
+["┍", E|S],["┎", E|S],["┑", W|S],["┒", W|S],["┕", E|N],["┖", E|N],["┙", W|N],["┚", W|N]
 ]);
 
 const maskToGlyph = new Map([
-  [0, ' '],
+[0, ' '],
 
-  [E | W, '─'],
-  [N | S, '│'],
+[E | W, '─'],
+[N | S, '│'],
 
-  [E | S, '┌'],
-  [W | S, '┐'],
-  [E | N, '└'],
-  [W | N, '┘'],
+[E | S, '┌'],
+[W | S, '┐'],
+[E | N, '└'],
+[W | N, '┘'],
 
-  [N | E | S, '├'],
-  [N | W | S, '┤'],
-  [E | S | W, '┬'],
-  [E | N | W, '┴'],
+[N | E | S, '├'],
+[N | W | S, '┤'],
+[E | S | W, '┬'],
+[E | N | W, '┴'],
 
-  [N | E | S | W, '┼'],
+[N | E | S | W, '┼'],
 ]);
 
 const maskToSingle = new Map([
-  [0," "],
-  [E|W,"─"], [N|S,"│"],
-  [E|S,"┌"], [W|S,"┐"], [E|N,"└"], [W|N,"┘"],
-  [N|E|S,"├"], [N|W|S,"┤"],
-  [E|S|W,"┬"], [E|N|W,"┴"],
-  [N|E|S|W,"┼"],
+[0," "],
+[E|W,"─"], [N|S,"│"],
+[E|S,"┌"], [W|S,"┐"], [E|N,"└"], [W|N,"┘"],
+[N|E|S,"├"], [N|W|S,"┤"],
+[E|S|W,"┬"], [E|N|W,"┴"],
+[N|E|S|W,"┼"],
 ]);
 
 const maskToThick = new Map([
-  [0," "],
-  [E|W,"━"], [N|S,"┃"],
-  [E|S,"┏"], [W|S,"┓"], [E|N,"┗"], [W|N,"┛"],
-  [N|E|S,"┣"], [N|W|S,"┫"],
-  [E|S|W,"┳"], [E|N|W,"┻"],
-  [N|E|S|W,"╋"],
+[0," "],
+[E|W,"━"], [N|S,"┃"],
+[E|S,"┏"], [W|S,"┓"], [E|N,"┗"], [W|N,"┛"],
+[N|E|S,"┣"], [N|W|S,"┫"],
+[E|S|W,"┳"], [E|N|W,"┻"],
+[N|E|S|W,"╋"],
 ]);
 
 const maskToDouble = new Map([
-  [0," "],
-  [E|W,"═"], [N|S,"║"],
-  [E|S,"╔"], [W|S,"╗"], [E|N,"╚"], [W|N,"╝"],
-  [N|E|S,"╠"], [N|W|S,"╣"],
-  [E|S|W,"╦"], [E|N|W,"╩"],
-  [N|E|S|W,"╬"],
+[0," "],
+[E|W,"═"], [N|S,"║"],
+[E|S,"╔"], [W|S,"╗"], [E|N,"╚"], [W|N,"╝"],
+[N|E|S,"╠"], [N|W|S,"╣"],
+[E|S|W,"╦"], [E|N|W,"╩"],
+[N|E|S|W,"╬"],
 ]);
 
 const BOX_SINGLE = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
@@ -379,13 +379,13 @@ const BOX_THICK =  { h:'━', v:'┃', tl:'┏', tr:'┓', bl:'┗', br:'┛' };
 const BOX_DOUBLE = { h:'═', v:'║', tl:'╔', tr:'╗', bl:'╚', br:'╝' };
 
 function isThickWire(ch) {
-  return ch === "━" || ch === "┃" || ch === "┏" || ch === "┓" || ch === "┗" || ch === "┛" ||
-         ch === "┣" || ch === "┫" || ch === "┳" || ch === "┻" || ch === "╋";
+return ch === "━" || ch === "┃" || ch === "┏" || ch === "┓" || ch === "┗" || ch === "┛" ||
+        ch === "┣" || ch === "┫" || ch === "┳" || ch === "┻" || ch === "╋";
 }
 
 function isDoubleWire(ch) {
-  return ch === "═" || ch === "║" || ch === "╔" || ch === "╗" || ch === "╚" || ch === "╝" ||
-         ch === "╠" || ch === "╣" || ch === "╦" || ch === "╩" || ch === "╬";
+return ch === "═" || ch === "║" || ch === "╔" || ch === "╗" || ch === "╚" || ch === "╝" ||
+        ch === "╠" || ch === "╣" || ch === "╦" || ch === "╩" || ch === "╬";
 }
 
 function keyRC(r, c) { return r + "," + c; }
@@ -398,37 +398,40 @@ function hasDoubleV(ch) { return DOUBLE_V.has(ch); }
 
 // “double box” check: ╔══╗ / ║  ║ / ╚══╝ ... and intersected with single lines
 function isValidDoubleBox(r0, c0, r1, c1) {
-  if (r1 <= r0 || c1 <= c0) return false;
+if (r1 <= r0 || c1 <= c0) return false;
 
-  // Keep corners strict (recommended)
-  if (ascii[r0][c0] !== "╔") return false;
-  if (ascii[r0][c1] !== "╗") return false;
-  if (ascii[r1][c0] !== "╚") return false;
-  if (ascii[r1][c1] !== "╝") return false;
+// Keep corners strict (recommended)
+if (ascii[r0][c0] !== "╔") return false;
+if (ascii[r0][c1] !== "╗") return false;
+if (ascii[r1][c0] !== "╚") return false;
+if (ascii[r1][c1] !== "╝") return false;
 
-  // Top & bottom edges must carry double-horizontal
-  for (let c = c0 + 1; c <= c1 - 1; c++) {
-    if (!hasDoubleH(ascii[r0][c])) return false;
-    if (!hasDoubleH(ascii[r1][c])) return false;
-  }
+// Top & bottom edges must carry double-horizontal
+for (let c = c0 + 1; c <= c1 - 1; c++) {
+  if (!hasDoubleH(ascii[r0][c])) return false;
+  if (!hasDoubleH(ascii[r1][c])) return false;
+}
 
-  // Left & right edges must carry double-vertical
-  for (let r = r0 + 1; r <= r1 - 1; r++) {
-    if (!hasDoubleV(ascii[r][c0])) return false;
-    if (!hasDoubleV(ascii[r][c1])) return false;
-  }
+// Left & right edges must carry double-vertical
+for (let r = r0 + 1; r <= r1 - 1; r++) {
+  if (!hasDoubleV(ascii[r][c0])) return false;
+  if (!hasDoubleV(ascii[r][c1])) return false;
+}
 
-  return true;
+return true;
 }
 
 
-function computeHighlightOverlay() {
+function computeHighlightOverlay() 
+{
   const redSet = new Set();    // frame cells of valid double boxes
   const insideSet = new Set(); // interior cells of valid double boxes
 
   // Find boxes by scanning for ╔ and matching to a ╗ on same row + a ╚/╝ on lower row.
-  for (let r0 = 0; r0 < ROWS; r0++) {
-    for (let c0 = 0; c0 < COLS; c0++) {
+  for (let r0 = 0; r0 < ROWS; r0++) 
+  {
+    for (let c0 = 0; c0 < COLS; c0++)
+    {
       if (ascii[r0][c0] !== "╔") continue;
 
       // find candidate top-right corners on same row
@@ -463,7 +466,6 @@ function computeHighlightOverlay() {
       }
     }
   }
-
   return { redSet, insideSet };
 }
 
@@ -479,13 +481,14 @@ const WILD_S_SET = new Set(Array.from(WILDCARD_S));
 const WILD_U_SET = new Set(Array.from(WILDCARD_U));
 
 function charMatchesPatternCell(patCh, gridCh) {
-  if (patCh === "#") return WILD_D_SET.has(gridCh);
-  if (patCh === "$") return WILD_S_SET.has(gridCh);
-  if (patCh === "§") return WILD_U_SET.has(gridCh);
-  return patCh === gridCh;
+if (patCh === "#") return WILD_D_SET.has(gridCh);
+if (patCh === "$") return WILD_S_SET.has(gridCh);
+if (patCh === "§") return WILD_U_SET.has(gridCh);
+return patCh === gridCh;
 }
 
-function lineMatchesAt(gridLine, c0, patLine) {
+function lineMatchesAt(gridLine, c0, patLine)
+{
   // gridLine is a string of length COLS
   // patLine is a string; must fit fully
   if (c0 < 0) return false;
@@ -499,17 +502,19 @@ function lineMatchesAt(gridLine, c0, patLine) {
   return true;
 }
 
-function buildCatalogVariants() {
+function buildCatalogVariants() 
+{
   // Returns array of { lines:[string], first:string, w:int, h:int }
   const out = [];
   const items = (typeof CATALOG !== "undefined" && Array.isArray(CATALOG)) ? CATALOG : [];
-  for (let i = 0; i < items.length; i++) {
+  for (let i = 0; i < items.length; i++)
+  {
     const it = items[i];
     const td = it && it.text_data;
     if (!td) continue;
-
     const variants = Array.isArray(td) ? td : [td];
-    for (let k = 0; k < variants.length; k++) {
+    for (let k = 0; k < variants.length; k++)
+    {
       const raw = String(variants[k] ?? "");
       if (!raw) continue;
 
@@ -532,7 +537,8 @@ function buildCatalogVariants() {
 
 let catalogVariantsCache = null; // rebuilt on demand (CATALOG is static during a session)
 
-function computeMatchOverlay() {
+function computeMatchOverlay() 
+{
   const greenSet = new Set();
   if (!(typeof CATALOG !== "undefined" && Array.isArray(CATALOG))) return { greenSet };
 
@@ -542,13 +548,15 @@ function computeMatchOverlay() {
   const gridLines = new Array(ROWS);
   for (let r = 0; r < ROWS; r++) gridLines[r] = ascii[r].join("");
 
-  for (let v = 0; v < catalogVariantsCache.length; v++) {
+  for (let v = 0; v < catalogVariantsCache.length; v++) 
+  {
     const pat = catalogVariantsCache[v];
     const first = pat.first;
     const patLines = pat.lines;
 
     // Stage 1: find first-line candidates across all rows
-    for (let r0 = 0; r0 < ROWS; r0++) {
+    for (let r0 = 0; r0 < ROWS; r0++) 
+    {
       const gl0 = gridLines[r0];
       const maxC = COLS - first.length;
       if (maxC < 0) continue;
@@ -674,7 +682,7 @@ function recomputeWireCell(r, c)
 
   if (m === 0) { ascii[r][c] = " "; return " "; }
 
-// Determine style per axis
+  // Determine style per axis
   const hStyle = hDouble ? "double" : (hThick ? "thick" : "single");
   const vStyle = vDouble ? "double" : (vThick ? "thick" : "single");
 
@@ -741,7 +749,8 @@ function recomputeWireCell(r, c)
 
 
 
-function axisStylesFromNeighbors(r, c) {
+function axisStylesFromNeighbors(r, c) 
+{
   // Returns { vert: "single"|"thick"|"double"|null, horz: "single"|"thick|"double"|null }
   let vert = null;
   let horz = null;
@@ -773,9 +782,8 @@ function axisStylesFromNeighbors(r, c) {
   return { vert, horz };
 }
 
-
-
-function normalizeAffected(affected, stroke) {
+function normalizeAffected(affected, stroke) 
+{
   for (let pass = 0; pass < 2; pass++) {
     let changed = false;
     affected.forEach((key) => {
@@ -792,8 +800,6 @@ function normalizeAffected(affected, stroke) {
     if (!changed) break;
   }
 }
-
-
 
 function buildOrthogonalPath(start, end, start_vleg, kind)
 {
@@ -924,7 +930,7 @@ function beginLine(cell,kind)
     start: { r: cell.r, c: cell.c },
     cur:   { r: cell.r, c: cell.c }
   };
-  
+
   draw("beginLine");
 }
 
@@ -973,21 +979,24 @@ function cancelLine()
   draw("cancelLine");
 }
 
-function beginBox(cell, kind) {
+function beginBox(cell, kind) 
+{
   if (!cell) return;
   selection = null; selectDrag = null; moveDrag = null;
   boxDrag = { kind, start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
   draw("beginBox");
 }
 
-function moveBox(cell) {
+function moveBox(cell) 
+{
   if (!boxDrag || !cell) return;
   if (cell.r === boxDrag.cur.r && cell.c === boxDrag.cur.c) return;
   boxDrag.cur = { r: cell.r, c: cell.c };
   draw("moveBox");
 }
 
-function commitBox() {
+function commitBox() 
+{
   if (!boxDrag) return;
 
   const style = boxDrag.kind === "double" ? BOX_DOUBLE : boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE;
@@ -1016,7 +1025,8 @@ function commitBox() {
   draw("commitBox");
 }
 
-function cancelBox() {
+function cancelBox() 
+{
   boxDrag = null;
   draw("cancelBox");
 }
@@ -1024,10 +1034,10 @@ function cancelBox() {
 
 function beginFreetext(cell)
 {
-    if (!cell) return;
-    textDrag = { anchor: { r: cell.r, c: cell.c }, text: "" };        // Start a new preview at this anchor.
-    canvas.focus?.();                                                 // Ensure canvas can receive key events
-    draw("beginFreetext");
+  if (!cell) return;
+  textDrag = { anchor: { r: cell.r, c: cell.c }, text: "" };        // Start a new preview at this anchor.
+  canvas.focus?.();                                                 // Ensure canvas can receive key events
+  draw("beginFreetext");
 }
 
 function commitFreetext()
@@ -1075,41 +1085,41 @@ function cornerChar(r0, c0, r1, c1, v_leg, chset)
 
 function canvasPointToCell(clientX, clientY)
 {
-    const rect = canvas.getBoundingClientRect();
-    const px = PanZoomSize(clientX,rect.left,1/stageSize.w, 1/stageSize.w,rect.width)
-    const py = PanZoomSize(clientY,rect.top,1/stageSize.h, 1/stageSize.h ,rect.height)
+  const rect = canvas.getBoundingClientRect();
+  const px = PanZoomSize(clientX,rect.left,1/stageSize.w, 1/stageSize.w,rect.width)
+  const py = PanZoomSize(clientY,rect.top,1/stageSize.h, 1/stageSize.h ,rect.height)
 
-    const cx = stageSize.w / 2;
-    const cy = stageSize.h / 2;
+  const cx = stageSize.w / 2;
+  const cy = stageSize.h / 2;
 
-    const { cw, ch } = getCellSize();
-    const c = Math.floor( PanZoomSize(px,cx,scale,panX,cw) );
-    const r = Math.floor( PanZoomSize(py,cy,scale,panY,ch) );
+  const { cw, ch } = getCellSize();
+  const c = Math.floor( PanZoomSize(px,cx,scale,panX,cw) );
+  const r = Math.floor( PanZoomSize(py,cy,scale,panY,ch) );
 
-    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
-    return { r, c };
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
+  return { r, c };
 }
 
 function setMode(mode)
 {
-    updateRadioButtonUI(mode,mode_el,modeHint);   // make buttons act like radio buttons
-    updateOpLine(mode,op);                    // update hint text
-    modeRECALL = tool;
-    tool = mode;
+  updateRadioButtonUI(mode,mode_el,modeHint);   // make buttons act like radio buttons
+  updateOpLine(mode,op);                    // update hint text
+  modeRECALL = tool;
+  tool = mode;
 }
 
 function updateOpLine(mode,item)
 {
-    if(mode === "modeFreeform")
-    {
-        currentOpLine.textContent = item.type === "place" ? ("Current: place ' " + item.ch + " '" ) : "Current: space";
-        selectedCharEl.textContent = item.type === "place" ? item.ch : "(space)";
-    }
-    if(mode == "catalog")
-    {
-        currentOpLine.textContent =  item.type+": "+item.name;
-        // leave selectedCharEl untouched: make sure to remember selected char after dropping catalog item in grid
-    }
+  if(mode === "modeFreeform")
+  {
+      currentOpLine.textContent = item.type === "place" ? ("Current: place ' " + item.ch + " '" ) : "Current: space";
+      selectedCharEl.textContent = item.type === "place" ? item.ch : "(space)";
+  }
+  if(mode == "catalog")
+  {
+      currentOpLine.textContent =  item.type+": "+item.name;
+      // leave selectedCharEl untouched: make sure to remember selected char after dropping catalog item in grid
+  }
 }
 
 // Let mode button act like radio buttons (add/remove primary)
@@ -1117,118 +1127,110 @@ function updateRadioButtonUI(mode,mode_el,hint)
 {
   for(var i in mode_el)
   {
-      if(mode==i)
-      {
-          mode_el[i].classList.add("primary");
-          const hints = mode_el[i].dataset.hint.split('|');
-          if(hint!=null) hint.textContent = pasteDrag ? hints[0] : (hints[1]===undefined?hints[0]:hints[1]);
-      }
-      else mode_el[i].classList.remove("primary");
+    if(mode==i)
+    {
+        mode_el[i].classList.add("primary");
+        const hints = mode_el[i].dataset.hint.split('|');
+        if(hint!=null) hint.textContent = pasteDrag ? hints[0] : (hints[1]===undefined?hints[0]:hints[1]);
+    }
+    else mode_el[i].classList.remove("primary");
   }
 }
 
 function updateToogleButtonUI(onoff,mode_el,hint)
 {
   onoff = !onoff;
-  if(onoff)
-  {
-    mode_el.classList.add("primary");
-    hint.textContent = schemaHighlightBtn.dataset.hint;
-  }
-  else
-  { 
-    mode_el.classList.remove("primary");
-    hint.textContent = "";
-  }
+  if(onoff) { mode_el.classList.add("primary"); hint.textContent = schemaHighlightBtn.dataset.hint; }
+  else { mode_el.classList.remove("primary"); hint.textContent = ""; }
   return onoff;
 }
 
 function updateUI()
 {
-    cellsLine.textContent = "Cells: " + COLS + " x " + ROWS;
-    zoomLine.textContent = "Zoom: " + Math.round(scale * 100) + "%";
-    coordLine.textContent = hoverCell ? ("Cell: Ln " + (hoverCell.r+1) + ", Col " + (hoverCell.c+1)) : "Cell: —";
+  cellsLine.textContent = "Cells: " + COLS + " x " + ROWS;
+  zoomLine.textContent = "Zoom: " + Math.round(scale * 100) + "%";
+  coordLine.textContent = hoverCell ? ("Cell: Ln " + (hoverCell.r+1) + ", Col " + (hoverCell.c+1)) : "Cell: —";
 
-    pasteLine.style.display = pasteDrag ? "block" : "none";
+  pasteLine.style.display = pasteDrag ? "block" : "none";
 
-    undoBtn.disabled = undoStack.length === 0;
-    redoBtn.disabled = redoStack.length === 0;
-    historyLine.textContent = "Undo stack: " + undoStack.length + " · Redo stack: " + redoStack.length;
+  undoBtn.disabled = undoStack.length === 0;
+  redoBtn.disabled = redoStack.length === 0;
+  historyLine.textContent = "Undo stack: " + undoStack.length + " · Redo stack: " + redoStack.length;
 
-    toggleSidebar.textContent = sidebarOpen ? '◀' : '▶';
-    sbTitle.style.display = sidebarOpen ? "block" : "none";
+  toggleSidebar.textContent = sidebarOpen ? '◀' : '▶';
+  sbTitle.style.display = sidebarOpen ? "block" : "none";
 }
 
 function expandWideCharsForGrid(text) 
 {
-    const outLines = [];
-    const lines = toLines(text); // your normalizeNewlines + split('\n')
-    for (const line of lines)
-    {
-        let out = "";
-        for (const ch of line)  // code-point safe
-        {
-            out += ch;
-            if (isDoubleWidthChar(ch)) out += ' ';  // pad one cell
-        }
-        outLines.push(out);
-    }
-    return outLines.join('\n');
+  const outLines = [];
+  const lines = toLines(text); // your normalizeNewlines + split('\n')
+  for (const line of lines)
+  {
+      let out = "";
+      for (const ch of line)  // code-point safe
+      {
+          out += ch;
+          if (isDoubleWidthChar(ch)) out += ' ';  // pad one cell
+      }
+      outLines.push(out);
+  }
+  return outLines.join('\n');
 }
 
 function collapseAfterWideCharsForSave(text)
 {
-    const lines = toLines(text);
-    const out = [];
-    for (const line of lines)
-    {
-        // Work at code-point level but treat output as "cells"
-        const cells = Array.from(line); // code points
-        const filtered = [];
-        for (let i = 0; i < cells.length; i++)
-        {
-            const ch = cells[i];
-            filtered.push(ch);
-            if (isDoubleWidthChar(ch)) i ++;  // Remove the following cell by skipping it
-        }
-        out.push(filtered.join(""));
-    }
+  const lines = toLines(text);
+  const out = [];
+  for (const line of lines)
+  {
+      // Work at code-point level but treat output as "cells"
+      const cells = Array.from(line); // code points
+      const filtered = [];
+      for (let i = 0; i < cells.length; i++)
+      {
+          const ch = cells[i];
+          filtered.push(ch);
+          if (isDoubleWidthChar(ch)) i ++;  // Remove the following cell by skipping it
+      }
+      out.push(filtered.join(""));
+  }
 
-    return out.join('\n');
+  return out.join('\n');
 }
 
 // Paste (preview + commit)
 function startPasteWithText(text) 
 {
-    const raw = normalizeNewlines(text).split('\n');
-    while (raw.length > 0 && raw[raw.length - 1] === '') raw.pop();
-    if (raw.length === 0) { pasteDrag = null; updateUI(); draw("startPasteWithText"); return; }
+  const raw = normalizeNewlines(text).split('\n');
+  while (raw.length > 0 && raw[raw.length - 1] === '') raw.pop();
+  if (raw.length === 0) { pasteDrag = null; updateUI(); draw("startPasteWithText"); return; }
 
-    let w = 0;
-    for (const ln of raw) w = Math.max(w, ln.length);
+  let w = 0;
+  for (const ln of raw) w = Math.max(w, ln.length);
 
-    const maxH = Math.min(raw.length, ROWS);
-    const maxW = Math.min(w, COLS);
-    const lines = raw.slice(0, maxH).map(ln => ln.slice(0, maxW));
+  const maxH = Math.min(raw.length, ROWS);
+  const maxW = Math.min(w, COLS);
+  const lines = raw.slice(0, maxH).map(ln => ln.slice(0, maxW));
 
-    pasteDrag = {
-        lines,
-        h: lines.length,
-        w: maxW,
-        item_data: pasteDrag==null ? null : pasteDrag.item_data, // carry over item data if any 
-        anchor: hoverCell ? { r: hoverCell.r, c: hoverCell.c } : { r: Math.floor(ROWS/2), c: Math.floor(COLS/2) },
-        transparentSpaces: true,
-    };
+  pasteDrag = {
+      lines,
+      h: lines.length,
+      w: maxW,
+      item_data: pasteDrag==null ? null : pasteDrag.item_data, // carry over item data if any 
+      anchor: hoverCell ? { r: hoverCell.r, c: hoverCell.c } : { r: Math.floor(ROWS/2), c: Math.floor(COLS/2) },
+      transparentSpaces: true,
+  };
 
-    // Paste mode implies Select tool (so cursor behavior matches your workflow)
-    setMode("modeSelect");
-    // Clear selection overlay while pasting
-    selection = null;
-    selectDrag = null;
-    moveDrag = null;
+  // Paste mode implies Select tool (so cursor behavior matches your workflow)
+  setMode("modeSelect");
+  // Clear selection overlay while pasting
+  selection = null;
+  selectDrag = null;
+  moveDrag = null;
 
-    updateUI();
-    draw("startPasteWithText");
+  updateUI();
+  draw("startPasteWithText");
 }
 
 function commitLine()
@@ -1255,7 +1257,8 @@ function commitLine()
   draw("commitLine");
 }
 
-function addNeighborsToSet(set, r, c) {
+function addNeighborsToSet(set, r, c) 
+{
   set.add(r + "," + c);
   if (r > 0) set.add((r - 1) + "," + c);
   if (r < ROWS - 1) set.add((r + 1) + "," + c);
@@ -1328,7 +1331,7 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
   for (let i = 0; i < touched.length; i++) addNeighborsToSet(affected, touched[i].r, touched[i].c);
 
   normalizeAffected(affected, stroke);
-}
+  }
 
   lineDrag = null;
   pushStrokeIfNonEmpty(stroke);
@@ -1339,115 +1342,119 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
 
 function commitPasteAt(cell) 
 {
-    if (!pasteDrag || !cell) return;
-    const a = { r: cell.r, c: cell.c };
-    const stroke = [];
+  if (!pasteDrag || !cell) return;
+  const a = { r: cell.r, c: cell.c };
+  const stroke = [];
 
-    for (let rr = 0; rr < pasteDrag.h; rr++) {
-        const line = pasteDrag.lines[rr] || '';
-        for (let cc = 0; cc < pasteDrag.w; cc++) {
-        const chx = line[cc] || ' ';
-        if (pasteDrag.transparentSpaces && chx === ' ') continue;
-        const tr = a.r + rr;
-        const tc = a.c + cc;
-        if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) continue; // clip
-        const prev = ascii[tr][tc];
-        const next = chx;
-        if (prev === next) continue;
-        stroke.push({ r: tr, c: tc, prev, next });
-        ascii[tr][tc] = next;
-        }
-    }
+  for (let rr = 0; rr < pasteDrag.h; rr++) {
+      const line = pasteDrag.lines[rr] || '';
+      for (let cc = 0; cc < pasteDrag.w; cc++) {
+      const chx = line[cc] || ' ';
+      if (pasteDrag.transparentSpaces && chx === ' ') continue;
+      const tr = a.r + rr;
+      const tc = a.c + cc;
+      if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) continue; // clip
+      const prev = ascii[tr][tc];
+      const next = chx;
+      if (prev === next) continue;
+      stroke.push({ r: tr, c: tc, prev, next });
+      ascii[tr][tc] = next;
+      }
+  }
 
-    pasteDrag = null;
-    pushStrokeIfNonEmpty(stroke);
-    updateUI();
-    draw("commitPasteAt");
+  pasteDrag = null;
+  pushStrokeIfNonEmpty(stroke);
+  updateUI();
+  draw("commitPasteAt");
 }
 
 function cancelPaste() 
 {
-    if (!pasteDrag) return;
-    pasteDrag = null;
-    updateUI();
-    draw("cancelPaste");
+  if (!pasteDrag) return;
+  pasteDrag = null;
+  updateUI();
+  draw("cancelPaste");
 }
 
 // Freeform drawing
-function applyOpAtCell(cell) {
-const prev = ascii[cell.r][cell.c];
-const next = (op.type === "place") ? op.ch : ' ';
-if (prev === next) return;
-currentStroke.push({ r: cell.r, c: cell.c, prev, next });
-ascii[cell.r][cell.c] = next;
+function applyOpAtCell(cell) 
+{
+  const prev = ascii[cell.r][cell.c];
+  const next = (op.type === "place") ? op.ch : ' ';
+  if (prev === next) return;
+  currentStroke.push({ r: cell.r, c: cell.c, prev, next });
+  ascii[cell.r][cell.c] = next;
 }
 
-function beginFreeform(cell) {
-isDrawing = true;
-lastCellKey = null;
-currentStroke = [];
-if (!cell) return;
-lastCellKey = cell.r + ',' + cell.c;
-applyOpAtCell(cell);
-draw("beginFreeform");
+function beginFreeform(cell) 
+{
+  isDrawing = true;
+  lastCellKey = null;
+  currentStroke = [];
+  if (!cell) return;
+  lastCellKey = cell.r + ',' + cell.c;
+  applyOpAtCell(cell);
+  draw("beginFreeform");
 }
 
-function moveFreeform(cell) {
-if (!isDrawing || !cell) return;
-const key = cell.r + ',' + cell.c;
-if (key === lastCellKey) return;
-lastCellKey = key;
-applyOpAtCell(cell);
-draw("moveFreeform");
+function moveFreeform(cell) 
+{
+  if (!isDrawing || !cell) return;
+  const key = cell.r + ',' + cell.c;
+  if (key === lastCellKey) return;
+  lastCellKey = key;
+  applyOpAtCell(cell);
+  draw("moveFreeform");
 }
 
-function endFreeform() {
-if (!isDrawing) return;
-isDrawing = false;
-const stroke = currentStroke;
-currentStroke = [];
-lastCellKey = null;
-pushStrokeIfNonEmpty(stroke);
+function endFreeform() 
+{
+  if (!isDrawing) return;
+  isDrawing = false;
+  const stroke = currentStroke;
+  currentStroke = [];
+  lastCellKey = null;
+  pushStrokeIfNonEmpty(stroke);
 }
 
 // Select & move
 function applyMove(baseRect, dr, dc, snapMap) 
 {
-    if (dr === 0 && dc === 0) return;
-    const stroke = [];
+  if (dr === 0 && dc === 0) return;
+  const stroke = [];
 
-    // Clear base rect
-    for (let r = baseRect.r0; r <= baseRect.r1; r++) {
-        for (let c = baseRect.c0; c <= baseRect.c1; c++)
-        {
-            const prev = ascii[r][c];
-            if (prev !== ' ')
-            {
-                stroke.push({ r, c, prev, next: ' ' });
-                ascii[r][c] = ' ';
-            }
-        }
-    }
+  // Clear base rect
+  for (let r = baseRect.r0; r <= baseRect.r1; r++) {
+      for (let c = baseRect.c0; c <= baseRect.c1; c++)
+      {
+          const prev = ascii[r][c];
+          if (prev !== ' ')
+          {
+              stroke.push({ r, c, prev, next: ' ' });
+              ascii[r][c] = ' ';
+          }
+      }
+  }
 
-    // Paste moved snapshot (clip to grid)
-    for (let r = baseRect.r0; r <= baseRect.r1; r++)
-    {
-        for (let c = baseRect.c0; c <= baseRect.c1; c++)
-        {
-            const chx = snapMap.get(r + ',' + c) || ' ';
-            const rr = r + dr;
-            const cc = c + dc;
-            if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
-            const prev = ascii[rr][cc];
-            const next = chx;
-            if (prev !== next)
-            {
-                stroke.push({ r: rr, c: cc, prev, next });
-                ascii[rr][cc] = next;
-            }
-        }
-    }
-    pushStrokeIfNonEmpty(stroke);
+  // Paste moved snapshot (clip to grid)
+  for (let r = baseRect.r0; r <= baseRect.r1; r++)
+  {
+      for (let c = baseRect.c0; c <= baseRect.c1; c++)
+      {
+          const chx = snapMap.get(r + ',' + c) || ' ';
+          const rr = r + dr;
+          const cc = c + dc;
+          if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+          const prev = ascii[rr][cc];
+          const next = chx;
+          if (prev !== next)
+          {
+              stroke.push({ r: rr, c: cc, prev, next });
+              ascii[rr][cc] = next;
+          }
+      }
+  }
+  pushStrokeIfNonEmpty(stroke);
 }
 
 function applyCopy(baseRect, dr, dc, snapMap) 
@@ -1497,118 +1504,120 @@ function applyBlankRect(rect)
 
 function beginSelect(cell) 
 {
-    if (!cell) return;
-    if (selection && cell.r >= selection.r0 && cell.r <= selection.r1 && cell.c >= selection.c0 && cell.c <= selection.c1)
-    {
-        //moveDrag = { startCell: cell, offset: { dr: 0, dc: 0 }, baseRect: selection, snapshot: snapshotRect(selection) };
+  if (!cell) return;
+  if (selection && cell.r >= selection.r0 && cell.r <= selection.r1 && cell.c >= selection.c0 && cell.c <= selection.c1)
+  {
+      //moveDrag = { startCell: cell, offset: { dr: 0, dc: 0 }, baseRect: selection, snapshot: snapshotRect(selection) };
 
-        moveDrag = {
-          startCell: cell,
-          offset: { dr: 0, dc: 0 },
-          baseRect: selection,
-          snapshot: snapshotRect(selection),
-          action: (tool === "modeCopy") ? "copy" : "move",
-        };
+      moveDrag = {
+        startCell: cell,
+        offset: { dr: 0, dc: 0 },
+        baseRect: selection,
+        snapshot: snapshotRect(selection),
+        action: (tool === "modeCopy") ? "copy" : "move",
+      };
 
-        draw("beginSelect");
-        return;
-    }
-    selection  = null;
-    moveDrag   = null;
-    selectDrag = { start: cell, current: cell };
-    draw("beginSelect");
+      draw("beginSelect");
+      return;
+  }
+  selection  = null;
+  moveDrag   = null;
+  selectDrag = { start: cell, current: cell };
+  draw("beginSelect");
 }
 
 function moveSelect(cell)
 {
-    if (!cell) return;
-    if (moveDrag) {
-        const dr = cell.r - moveDrag.startCell.r;
-        const dc = cell.c - moveDrag.startCell.c;
-        if (dr === moveDrag.offset.dr && dc === moveDrag.offset.dc) return;
-        moveDrag.offset = { dr, dc };
-        draw("moveSelect");
-        return;
-    }
-    if (selectDrag) {
-        selectDrag.current = cell;
-        draw("moveSelect");
-    }
+  if (!cell) return;
+  if (moveDrag) {
+      const dr = cell.r - moveDrag.startCell.r;
+      const dc = cell.c - moveDrag.startCell.c;
+      if (dr === moveDrag.offset.dr && dc === moveDrag.offset.dc) return;
+      moveDrag.offset = { dr, dc };
+      draw("moveSelect");
+      return;
+  }
+  if (selectDrag) {
+      selectDrag.current = cell;
+      draw("moveSelect");
+  }
 }
 
 function endSelect() 
 {
-    // Keep selection after selecting; clear after move commit.
-    if (moveDrag) {
-      const base = moveDrag.baseRect;
-      const snapMap = moveDrag.snapshot;
-      const { dr, dc } = moveDrag.offset;
+  // Keep selection after selecting; clear after move commit.
+  if (moveDrag) {
+    const base = moveDrag.baseRect;
+    const snapMap = moveDrag.snapshot;
+    const { dr, dc } = moveDrag.offset;
 
-      if (moveDrag.action === "copy") applyCopy(base, dr, dc, snapMap);
-      else applyMove(base, dr, dc, snapMap);
+    if (moveDrag.action === "copy") applyCopy(base, dr, dc, snapMap);
+    else applyMove(base, dr, dc, snapMap);
 
-      moveDrag = null;
+    moveDrag = null;
+    selectDrag = null;
+    selection = null; // disappear after mouseup (same behavior)
+    draw("endSelect");
+    return;
+  }
+
+  if (selectDrag) 
+  {
+      selection = normRect(selectDrag.start, selectDrag.current);
       selectDrag = null;
-      selection = null; // disappear after mouseup (same behavior)
+
+      if (tool === "modeBlank") {
+        applyBlankRect(selection);
+        selection = null; // clear overlay after blanking
+      }
+
       draw("endSelect");
-      return;
-    }
-
-    if (selectDrag) 
-    {
-        selection = normRect(selectDrag.start, selectDrag.current);
-        selectDrag = null;
-
-        if (tool === "modeBlank") {
-          applyBlankRect(selection);
-          selection = null; // clear overlay after blanking
-        }
-
-        draw("endSelect");
-    }
+  }
 }
 
 // Modals
 function openPicker() 
 {
-    picker.classList.add("open");
-    picker.setAttribute("aria-hidden", "false");
-    renderTabs();
-    renderCharGrid();
-    updateUI();
+  picker.classList.add("open");
+  picker.setAttribute("aria-hidden", "false");
+  renderTabs();
+  renderCharGrid();
+  updateUI();
 }
 
 function closePicker()
 {
-    picker.classList.remove("open");
-    picker.setAttribute("aria-hidden", "true");
-    setMode("modeFreeform");
-    updateUI();
+  picker.classList.remove("open");
+  picker.setAttribute("aria-hidden", "true");
+  setMode("modeFreeform");
+  updateUI();
 }
 
-function renderTabs() {
-tabsEl.innerHTML = '';
-for (const tab of Object.keys(PICKER_TABS)) {
+function renderTabs()
+{
+  tabsEl.innerHTML = '';
+  for (const tab of Object.keys(PICKER_TABS)) {
     const b = document.createElement("button");
     b.className = "btn" + (tab === pickerTab ? " primary" : '');
     b.textContent = tab;
     b.addEventListener("click", () => { pickerTab = tab; renderTabs(); renderCharGrid(); });
     tabsEl.appendChild(b);
-}
+  }
 }
 
-function renderCharGrid() {
-    charGrid.innerHTML = '';
-    const arr = PICKER_TABS[pickerTab] || [];
-    for (const ch of arr)
-    {
-        const b = document.createElement("button");
-        b.className = "char";
-        b.textContent = ch;
-        b.title = "Select '" + ch + "' 0x" + ch.codePointAt(0).toString(16).toUpperCase();
-        b.addEventListener("click", () => { op = { type: "place", ch }; closePicker(); updateUI(); });
-        charGrid.appendChild(b);
-    }
+function renderCharGrid() 
+{
+  charGrid.innerHTML = '';
+  const arr = PICKER_TABS[pickerTab] || [];
+  for (const ch of arr)
+  {
+    const b = document.createElement("button");
+    b.className = "char";
+    b.textContent = ch;
+    b.title = "Select '" + ch + "' 0x" + ch.codePointAt(0).toString(16).toUpperCase();
+    b.addEventListener("click", () => { op = { type: "place", ch }; closePicker(); updateUI(); });
+    charGrid.appendChild(b);
+  }
 }
 
 function renderCharAtCell(ctx, r, c, ch) 
@@ -1620,81 +1629,83 @@ function renderCharAtCell(ctx, r, c, ch)
 
 function openCatalog()
 {
-    catalogModal.classList.add("open");
-    catalogModal.setAttribute("aria-hidden", "false");
-    renderCatalogTabs();
-    renderCatalogGrid();
-    updateUI();
+  catalogModal.classList.add("open");
+  catalogModal.setAttribute("aria-hidden", "false");
+  renderCatalogTabs();
+  renderCatalogGrid();
+  updateUI();
 }
 
 function closeCatalog()
 {
-    catalogModal.classList.remove("open");
-    catalogModal.setAttribute("aria-hidden", "true");
-    updateUI();
+  catalogModal.classList.remove("open");
+  catalogModal.setAttribute("aria-hidden", "true");
+  updateUI();
 }
 
 function renderCatalogTabs()
 {
-    catalogTabsEl.innerHTML = '';
-    const types = ["All", ...catalogTypes()];
+  catalogTabsEl.innerHTML = '';
+  const types = ["All", ...catalogTypes()];
 
-    for (const t of types) {
-        const b = document.createElement("button");
-        b.className = "btn" + (t === catalogTab ? " primary" : '');
-        b.textContent = t;
-        b.addEventListener("click", () => { catalogTab = t; renderCatalogTabs(); renderCatalogGrid(); });
-        catalogTabsEl.appendChild(b);
-    }
+  for (const t of types) {
+      const b = document.createElement("button");
+      b.className = "btn" + (t === catalogTab ? " primary" : '');
+      b.textContent = t;
+      b.addEventListener("click", () => { catalogTab = t; renderCatalogTabs(); renderCatalogGrid(); });
+      catalogTabsEl.appendChild(b);
+  }
 }
 
 function renderCatalogGrid()
 {
-    catalogGridEl.innerHTML = '';
-    const items = catalogItemsForTab(catalogTab);
-    for (const it of items)
+  catalogGridEl.innerHTML = '';
+  const items = catalogItemsForTab(catalogTab);
+  for (const it of items)
+  {
+    if(it===undefined) return;
+    const card = document.createElement("div");
+    card.className = "cat-item";
+    card.title = it.description ? it.description : it.name;   // catalog item tooltip
+
+    const img = document.createElement("img");
+    img.className = "cat-thumb";
+    img.alt = it.name;
+    img.src = it.image_data;
+
+    const cap = document.createElement("div");
+    cap.className = "cat-name";
+    cap.textContent = it.name;
+
+    card.appendChild(img);
+    card.appendChild(cap);
+
+    // USER CLICK ON CATALOG ITEM
+    card.addEventListener("click", () => 
     {
-        if(it===undefined) return;
-        const card = document.createElement("div");
-        card.className = "cat-item";
-        card.title = it.description ? it.description : it.name;   // catalog item tooltip
+        closeCatalog();
 
-        const img = document.createElement("img");
-        img.className = "cat-thumb";
-        img.alt = it.name;
-        img.src = it.image_data;
+        if(pasteDrag==null) pasteDrag = {item_data:{}};
+        pasteDrag.item_data.rotation = 0;                           // default rotation
+        pasteDrag.item_data.uid = it.name+'_'+it.type+'_'+it.MFR;   // unique id for this catalog item
+        const text_data = it.text_data[ pasteDrag.item_data.rotation ];
 
-        const cap = document.createElement("div");
-        cap.className = "cat-name";
-        cap.textContent = it.name;
+        if(bDebug) console.log("pasteDrag.item_data.uid="+pasteDrag.item_data.uid)
+        updateOpLine("catalog",it);
 
-        card.appendChild(img);
-        card.appendChild(cap);
+        const expanded = expandWideCharsForGrid(text_data || "");
+        const forPaste = expanded.replace(/§/g, " ");   // WILDCARD_U becomes a real space for placement
+        startPasteWithText(forPaste);
 
-        // USER CLICK ON CATALOG ITEM
-        card.addEventListener("click", () => {
-            closeCatalog();
+        canvas.focus();
+    });
 
-            if(pasteDrag==null) pasteDrag = {item_data:{}};
-            pasteDrag.item_data.rotation = 0;                           // default rotation
-            pasteDrag.item_data.uid = it.name+'_'+it.type+'_'+it.MFR;   // unique id for this catalog item
-            const text_data = it.text_data[ pasteDrag.item_data.rotation ];
-
-            if(bDebug) console.log("pasteDrag.item_data.uid="+pasteDrag.item_data.uid)
-            updateOpLine("catalog",it);
-
-            const expanded = expandWideCharsForGrid(text_data || "");
-            const forPaste = expanded.replace(/§/g, " ");   // WILDCARD_U becomes a real space for placement
-            startPasteWithText(forPaste);
-
-            canvas.focus();
-        });
-
-        catalogGridEl.appendChild(card);
-    }
+    catalogGridEl.appendChild(card);
+  }
 }
 
-function findCatalogItemByUID(uid) {
+function findCatalogItemByUID(uid) 
+{
   const items = (typeof CATALOG !== "undefined") ? CATALOG : [];
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
@@ -1707,42 +1718,42 @@ function findCatalogItemByUID(uid) {
 // Drawing
 function drawPastePreview(cw, ch, snap) 
 {
-    if (!pasteDrag || !pasteDrag.anchor) return;
-    const a = pasteDrag.anchor;
+  if (!pasteDrag || !pasteDrag.anchor) return;
+  const a = pasteDrag.anchor;
 
-    // Preview fill (clipped to visible grid)
-    const pxW = Math.max(0, Math.min(pasteDrag.w, COLS - a.c)) * cw;
-    const pxH = Math.max(0, Math.min(pasteDrag.h, ROWS - a.r)) * ch;
-    if (pxW > 0 && pxH > 0)
-    {
-        ctx.save();
-        ctx.globalAlpha = 0.75;
-        ctx.fillStyle = "rgba(16,185,129,0.10)";
-        ctx.fillRect(a.c * cw, a.r * ch, pxW, pxH);
-        ctx.restore();
-    }
+  // Preview fill (clipped to visible grid)
+  const pxW = Math.max(0, Math.min(pasteDrag.w, COLS - a.c)) * cw;
+  const pxH = Math.max(0, Math.min(pasteDrag.h, ROWS - a.r)) * ch;
+  if (pxW > 0 && pxH > 0)
+  {
+      ctx.save();
+      ctx.globalAlpha = 0.75;
+      ctx.fillStyle = "rgba(16,185,129,0.10)";
+      ctx.fillRect(a.c * cw, a.r * ch, pxW, pxH);
+      ctx.restore();
+  }
 
-    ctx.save();
-    ctx.globalAlpha = 0.9;
-    for (let rr = 0; rr < pasteDrag.h; rr++) {
-        const line = pasteDrag.lines[rr] || '';
-        for (let cc = 0; cc < pasteDrag.w; cc++) {
-        const chx = line[cc] || ' ';
-        if (pasteDrag.transparentSpaces && chx === ' ') continue;
-        const tr = a.r + rr;
-        const tc = a.c + cc;
-        if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) continue;
-        ctx.fillText(chx, snap(tc * cw + cw/2), snap(tr * ch + ch/2));
-        }
-    }
-    ctx.restore();
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  for (let rr = 0; rr < pasteDrag.h; rr++) {
+      const line = pasteDrag.lines[rr] || '';
+      for (let cc = 0; cc < pasteDrag.w; cc++) {
+      const chx = line[cc] || ' ';
+      if (pasteDrag.transparentSpaces && chx === ' ') continue;
+      const tr = a.r + rr;
+      const tc = a.c + cc;
+      if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) continue;
+      ctx.fillText(chx, snap(tc * cw + cw/2), snap(tr * ch + ch/2));
+      }
+  }
+  ctx.restore();
 
-    ctx.save();
-    ctx.lineWidth = 2 / scale;
-    ctx.setLineDash([6 / scale, 4 / scale]);
-    ctx.strokeStyle = "rgba(16,185,129,0.95)";
-    ctx.strokeRect(a.c * cw, a.r * ch, pasteDrag.w * cw, pasteDrag.h * ch);
-    ctx.restore();
+  ctx.save();
+  ctx.lineWidth = 2 / scale;
+  ctx.setLineDash([6 / scale, 4 / scale]);
+  ctx.strokeStyle = "rgba(16,185,129,0.95)";
+  ctx.strokeRect(a.c * cw, a.r * ch, pasteDrag.w * cw, pasteDrag.h * ch);
+  ctx.restore();
 }
 
 
@@ -1757,87 +1768,89 @@ function drawPastePreview(cw, ch, snap)
 
 function draw( str ) 
 {
-  //if(str) alert(str);
-    const dpr = window.devicePixelRatio || 1;
-    const wCss = stageSize.w;
-    const hCss = stageSize.h;
+  const dpr = window.devicePixelRatio || 1;
+  const wCss = stageSize.w;
+  const hCss = stageSize.h;
 
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
 
-    ctx.fillStyle = GRID_BG;
-    ctx.fillRect(0,0,wCss,hCss);
+  ctx.fillStyle = GRID_BG;
+  ctx.fillRect(0,0,wCss,hCss);
 
-    const cx = wCss/2, cy = hCss/2;
-    ctx.translate(cx, cy);
-    ctx.scale(scale, scale);
-    ctx.translate(-cx + panX, -cy + panY);
+  const cx = wCss/2, cy = hCss/2;
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+  ctx.translate(-cx + panX, -cy + panY);
 
-    const { snap, snapLine } = getSnapFns(dpr, scale);
-    var { cw, ch } = getCellSize();
+  const { snap, snapLine } = getSnapFns(dpr, scale);
+  var { cw, ch } = getCellSize();
 
-    // Visible bounds in WORLD coordinates (undo pan/zoom around center)
-    const left   = (0 - cx) / scale + cx - panX;
-    const top    = (0 - cy) / scale + cy - panY;
+  // Visible bounds in WORLD coordinates (undo pan/zoom around center)
+  const left   = (0 - cx) / scale + cx - panX;
+  const top    = (0 - cy) / scale + cy - panY;
 
-    const right  = (wCss - cx) / scale + cx - panX;
-    const bottom = (hCss - cy) / scale + cy - panY;
+  const right  = (wCss - cx) / scale + cx - panX;
+  const bottom = (hCss - cy) / scale + cy - panY;
 
-    // Convert bounds -> grid indices (clamped)
-    //const c0 = Math.max(0, Math.floor(left / cw));
-    const c0 = Math.max(0, Math.floor( PanZoomSize(0,cx,scale,panX,cw) ));
-    //const r0 = Math.max(0, Math.floor(top / ch));
-    const r0 = Math.max(0, Math.floor( PanZoomSize(0,cy,scale,panY,ch) ));
-    //const c1 = Math.min(COLS, Math.ceil(right / cw));
-    const c1 = Math.min(COLS, Math.ceil( PanZoomSize(wCss,cx,scale,panX,cw) ));
-    //const r1 = Math.min(ROWS, Math.ceil(bottom / ch));
-    const r1 = Math.min(ROWS, Math.ceil( PanZoomSize(hCss,cy,scale,panY,ch)  ));
+  // Convert bounds -> grid indices (clamped)
+  //const c0 = Math.max(0, Math.floor(left / cw));
+  const c0 = Math.max(0, Math.floor( PanZoomSize(0,cx,scale,panX,cw) ));
+  //const r0 = Math.max(0, Math.floor(top / ch));
+  const r0 = Math.max(0, Math.floor( PanZoomSize(0,cy,scale,panY,ch) ));
+  //const c1 = Math.min(COLS, Math.ceil(right / cw));
+  const c1 = Math.min(COLS, Math.ceil( PanZoomSize(wCss,cx,scale,panX,cw) ));
+  //const r1 = Math.min(ROWS, Math.ceil(bottom / ch));
+  const r1 = Math.min(ROWS, Math.ceil( PanZoomSize(hCss,cy,scale,panY,ch)  ));
 
-    ctx.beginPath();
-    ctx.strokeStyle = GRID_LINE;
-    ctx.lineWidth = 1 / scale;
+  ctx.beginPath();
+  ctx.strokeStyle = GRID_LINE;
+  ctx.lineWidth = 1 / scale;
 
-    // vertical lines
-    for (let c = c0; c <= c1; c++) {
-    const x = snapLine(c * cw);
-    ctx.moveTo(x, snapLine(r0 * ch));
-    ctx.lineTo(x, snapLine(r1 * ch));
-    }
+  // vertical lines
+  for (let c = c0; c <= c1; c++) {
+  const x = snapLine(c * cw);
+  ctx.moveTo(x, snapLine(r0 * ch));
+  ctx.lineTo(x, snapLine(r1 * ch));
+  }
 
-    // horizontal lines
-    for (let r = r0; r <= r1; r++) {
-    const y = snapLine(r * ch);
-    ctx.moveTo(snapLine(c0 * cw), y);
-    ctx.lineTo(snapLine(c1 * cw), y);
-    }
+  // horizontal lines
+  for (let r = r0; r <= r1; r++) {
+  const y = snapLine(r * ch);
+  ctx.moveTo(snapLine(c0 * cw), y);
+  ctx.lineTo(snapLine(c1 * cw), y);
+  }
 
-    ctx.stroke();
+  ctx.stroke();
 
-    // Font sized to cell
-    ctx.fillStyle = "#000";
+  // Font sized to cell
+  ctx.fillStyle = "#000";
 
-    const cwr = 0.62;   // 0.62
+  const cwr = 0.62;   // 0.62
 
-    const maxByHeight = ch * 0.98;
-    const maxByWidth = (cw / cwr) * 0.98;
-    const fontPx = Math.max(4, Math.floor(Math.min(maxByHeight, maxByWidth)));
+  const maxByHeight = ch * 0.98;
+  const maxByWidth = (cw / cwr) * 0.98;
+  const fontPx = Math.max(4, Math.floor(Math.min(maxByHeight, maxByWidth)));
 
-    ctx.font = fontPx + "px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
-    //ctx.font = fontPx + "px Menlo, monospace";
+  ctx.font = fontPx + "px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+  //ctx.font = fontPx + "px Menlo, monospace";
 
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
 
-    // Move preview
-    if (moveDrag) {
-        const b = moveDrag.baseRect;
-        const o = moveDrag.offset;
-        const snapMap = moveDrag.snapshot;
-        ctx.save();
-        ctx.globalAlpha = 0.9;
-        for (let r = b.r0; r <= b.r1; r++) {
-        for (let c = b.c0; c <= b.c1; c++) {
+  // Move preview
+  if (moveDrag)
+  {
+      const b = moveDrag.baseRect;
+      const o = moveDrag.offset;
+      const snapMap = moveDrag.snapshot;
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+      for (let r = b.r0; r <= b.r1; r++)
+      {
+        for (let c = b.c0; c <= b.c1; c++)
+        {
             const chx = snapMap.get(r + ',' + c) || ' ';
             if (chx === ' ') continue;
             const rr = r + o.dr;
@@ -1845,157 +1858,158 @@ function draw( str )
             if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
             ctx.fillText(chx, snap(cc * cw + cw/2), snap(rr * ch + ch/2));
         }
-        }
-        ctx.restore();
-    }
-
-    if (schemaHighlightOn && !highlightCache) {
-      highlightCache = computeHighlightOverlay();
-    }
-    const redSet = highlightCache ? highlightCache.redSet : null;
-    const insideSet = highlightCache ? highlightCache.insideSet : null;
-
-    const BLUE = "rgba(59,130,246,0.9)";
-    const RED  = "rgba(239,68,68,0.9)";
-    const GREEN = "rgba(34,197,94,0.95)";
-
-    if (schemaMatchOn && !matchCache) {
-      matchCache = computeMatchOverlay();
-    }
-    const greenSet = matchCache ? matchCache.greenSet : null;
-// Draw all chars (skip base rect while moving)
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        const chx = ascii[r][c];
-        if (chx === " ") continue;
-
-        if (moveDrag) {
-          const b = moveDrag.baseRect;
-          if (r >= b.r0 && r <= b.r1 && c >= b.c0 && c <= b.c1) continue;
-        }
-
-        // Default color
-        let color = "#000";
-
-        // Match overlay has priority (green)
-        if (schemaMatchOn && greenSet) {
-          const k = keyRC(r, c);
-          if (greenSet.has(k)) color = GREEN;
-        }
-
-        if (schemaHighlightOn && color === "#000") {
-          const k = keyRC(r, c);
-          const inside = insideSet && insideSet.has(k);
-
-          // 1) Red: only double-line frame cells of enclosed rectangles
-          if (redSet && redSet.has(k) && (hasDoubleH(chx) || hasDoubleV(chx) || chx==="╔"||chx==="╗"||chx==="╚"||chx==="╝")) {
-            color = RED;
-          }
-          // 2) Blue: single-line glyphs + crossings, but NOT inside double rectangles
-          else if (!inside) {
-            // single-line wires are: wire glyphs that are neither double nor thick
-            if (isWireGlyph(chx) && !isDoubleWire(chx) && !isThickWire(chx) && chx !== " ") {
-              color = BLUE;
-            }
-          }
-        }
-
-        ctx.fillStyle = color;
-        ctx.fillText(chx, snap(c * cw + cw / 2), snap(r * ch + ch / 2));
       }
-    }
+      ctx.restore();
+  }
 
-    // Selection overlay (stays after select; cleared after move mouseup)
-    if (selection) {
-        const x0 = selection.c0 * cw;
-        const y0 = selection.r0 * ch;
-        const w = (selection.c1 - selection.c0 + 1) * cw;
-        const h = (selection.r1 - selection.r0 + 1) * ch;
-        ctx.save();
-        ctx.lineWidth = 2 / scale;
-        ctx.strokeStyle = "rgba(59,130,246,0.9)";
-        ctx.fillStyle = "rgba(59,130,246,0.12)";
-        ctx.fillRect(x0, y0, w, h);
-        ctx.strokeRect(x0, y0, w, h);
-        ctx.restore();
-    }
+  if (schemaHighlightOn && !highlightCache) highlightCache = computeHighlightOverlay();
+  const redSet = highlightCache ? highlightCache.redSet : null;
+  const insideSet = highlightCache ? highlightCache.insideSet : null;
 
-    // Drag-select marquee
-    if (selectDrag) {
-        const rr = normRect(selectDrag.start, selectDrag.current);
-        const x0 = rr.c0 * cw;
-        const y0 = rr.r0 * ch;
-        const w = (rr.c1 - rr.c0 + 1) * cw;
-        const h = (rr.r1 - rr.r0 + 1) * ch;
-        ctx.save();
-        ctx.lineWidth = 2 / scale;
-        ctx.setLineDash([6/scale, 4/scale]);
-        ctx.strokeStyle = "rgba(16,185,129,0.95)";
-        ctx.strokeRect(x0, y0, w, h);
-        ctx.restore();
-    }
+  const BLUE = "rgba(59,130,246,0.9)";
+  const RED  = "rgba(239,68,68,0.9)";
+  const GREEN = "rgba(34,197,94,0.95)";
 
-    if (pasteDrag) drawPastePreview(cw, ch, snap);
+  if (schemaMatchOn && !matchCache) {
+    matchCache = computeMatchOverlay();
+  }
+  const greenSet = matchCache ? matchCache.greenSet : null;
+// Draw all chars (skip base rect while moving)
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const chx = ascii[r][c];
+      if (chx === " ") continue;
 
-    drawLinePreview();
+      if (moveDrag) {
+        const b = moveDrag.baseRect;
+        if (r >= b.r0 && r <= b.r1 && c >= b.c0 && c <= b.c1) continue;
+      }
 
-    // Line preview overlay
-    if (lineDrag)
-    {
-        const old = ctx.fillStyle;
-        ctx.fillStyle = "rgba(59,130,246,0.9)";
+      // Default color
+      let color = "#000";
 
-        const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+      // Match overlay has priority (green)
+      if (schemaMatchOn && greenSet) {
+        const k = keyRC(r, c);
+        if (greenSet.has(k)) color = GREEN;
+      }
 
-        for (const p of path) {
-            if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-            renderCharAtCell(ctx, p.r, p.c, p.ch);
+      if (schemaHighlightOn && color === "#000") {
+        const k = keyRC(r, c);
+        const inside = insideSet && insideSet.has(k);
+
+        // 1) Red: only double-line frame cells of enclosed rectangles
+        if (redSet && redSet.has(k) && (hasDoubleH(chx) || hasDoubleV(chx) || chx==="╔"||chx==="╗"||chx==="╚"||chx==="╝")) {
+          color = RED;
         }
-
-        ctx.fillStyle = old;
-    }
-
-    if (boxDrag)
-    {
-        const old = ctx.fillStyle;
-        ctx.fillStyle = "rgba(59,130,246,0.9)";
-
-        const style = boxDrag.kind === "double" ? BOX_DOUBLE : boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE;
-        const path = buildBoxPath(boxDrag.start, boxDrag.cur, style);
-
-        for (const p of path) {
-            if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-            renderCharAtCell(ctx, p.r, p.c, p.ch); // canvas-only renderer
+        // 2) Blue: single-line glyphs + crossings, but NOT inside double rectangles
+        else if (!inside) {
+          // single-line wires are: wire glyphs that are neither double nor thick
+          if (isWireGlyph(chx) && !isDoubleWire(chx) && !isThickWire(chx) && chx !== " ") {
+            color = BLUE;
+          }
         }
+      }
 
-        ctx.fillStyle = old;
+      ctx.fillStyle = color;
+      ctx.fillText(chx, snap(c * cw + cw / 2), snap(r * ch + ch / 2));
+    }
+  }
+
+  // Selection overlay (stays after select; cleared after move mouseup)
+  if (selection) 
+  {
+      const x0 = selection.c0 * cw;
+      const y0 = selection.r0 * ch;
+      const w = (selection.c1 - selection.c0 + 1) * cw;
+      const h = (selection.r1 - selection.r0 + 1) * ch;
+      ctx.save();
+      ctx.lineWidth = 2 / scale;
+      ctx.strokeStyle = "rgba(59,130,246,0.9)";
+      ctx.fillStyle = "rgba(59,130,246,0.12)";
+      ctx.fillRect(x0, y0, w, h);
+      ctx.strokeRect(x0, y0, w, h);
+      ctx.restore();
+  }
+
+  // Drag-select marquee
+  if (selectDrag) 
+  {
+      const rr = normRect(selectDrag.start, selectDrag.current);
+      const x0 = rr.c0 * cw;
+      const y0 = rr.r0 * ch;
+      const w = (rr.c1 - rr.c0 + 1) * cw;
+      const h = (rr.r1 - rr.r0 + 1) * ch;
+      ctx.save();
+      ctx.lineWidth = 2 / scale;
+      ctx.setLineDash([6/scale, 4/scale]);
+      ctx.strokeStyle = "rgba(16,185,129,0.95)";
+      ctx.strokeRect(x0, y0, w, h);
+      ctx.restore();
+  }
+
+  if (pasteDrag) drawPastePreview(cw, ch, snap);
+
+  drawLinePreview();
+
+  // Line preview overlay
+  if (lineDrag)
+  {
+    const old = ctx.fillStyle;
+    ctx.fillStyle = "rgba(59,130,246,0.9)";
+
+    const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+
+    for (const p of path) {
+        if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+        renderCharAtCell(ctx, p.r, p.c, p.ch);
     }
 
-    if (textDrag) 
+    ctx.fillStyle = old;
+  }
+
+  if (boxDrag)
+  {
+    const old = ctx.fillStyle;
+    ctx.fillStyle = "rgba(59,130,246,0.9)";
+
+    const style = boxDrag.kind === "double" ? BOX_DOUBLE : boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE;
+    const path = buildBoxPath(boxDrag.start, boxDrag.cur, style);
+
+    for (const p of path) {
+        if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+        renderCharAtCell(ctx, p.r, p.c, p.ch); // canvas-only renderer
+    }
+
+    ctx.fillStyle = old;
+  }
+
+  if (textDrag) 
+  {
+    const old = ctx.fillStyle;
+    ctx.fillStyle = "rgba(59,130,246,0.9)";
+    const r = textDrag.anchor.r;
+    let c = textDrag.anchor.c;
+
+    renderCharAtCell(ctx, r, c-1, '█');
+
+    for (const ch of Array.from(textDrag.text)) 
     {
-        const old = ctx.fillStyle;
-        ctx.fillStyle = "rgba(59,130,246,0.9)";
-        const r = textDrag.anchor.r;
-        let c = textDrag.anchor.c;
+        if (ch === '\n' || ch === '\r') continue;
+        if (r < 0 || r >= ROWS) break;
+        if (c < 0) { c++; continue; }
+        if (c >= COLS) break;
 
-        renderCharAtCell(ctx, r, c-1, '█');
-    
-        for (const ch of Array.from(textDrag.text)) 
-        {
-            if (ch === '\n' || ch === '\r') continue;
-            if (r < 0 || r >= ROWS) break;
-            if (c < 0) { c++; continue; }
-            if (c >= COLS) break;
-
-            renderCharAtCell(ctx, r, c, ch); // canvas-only renderer
-            c++;
-        }
-
-        ctx.fillStyle = old;
+        renderCharAtCell(ctx, r, c, ch); // canvas-only renderer
+        c++;
     }
+
+    ctx.fillStyle = old;
+  }
 }
 
-function drawLinePreview() {
+function drawLinePreview() 
+{
   if (!lineDrag) return;
   const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
 }
@@ -2006,10 +2020,12 @@ function wipeSelection(ch)
 {
   // TODO use range selection as parameter
   const stroke = [];
-  for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-      const prev = ascii[r][c];
-      if (prev !== ' ') { stroke.push({ r, c, prev, next: ' ' }); drawCharAtCell(r,c,ch);}
+  for (let r = 0; r < ROWS; r++)
+  {
+      for (let c = 0; c < COLS; c++)
+      {
+        const prev = ascii[r][c];
+        if (prev !== ' ') { stroke.push({ r, c, prev, next: ' ' }); drawCharAtCell(r,c,ch);}
       }
   }
   selection = null; selectDrag = null; moveDrag = null; cancelPaste();
@@ -2031,37 +2047,37 @@ function wipeSelection(ch)
 // Events
 function setHoverFromEvent(e)
 {
-    hoverCell = canvasPointToCell(e.clientX, e.clientY);
-    if (pasteDrag && hoverCell) pasteDrag.anchor = { r: hoverCell.r, c: hoverCell.c };
-    updateUI();
+  hoverCell = canvasPointToCell(e.clientX, e.clientY);
+  if (pasteDrag && hoverCell) pasteDrag.anchor = { r: hoverCell.r, c: hoverCell.c };
+  updateUI();
 }
 
 // Sidebar toggle
-toggleSidebar.addEventListener("click", () => {
-    sidebarOpen = !sidebarOpen;
-    sidebar.classList.toggle("closed", !sidebarOpen);
-    updateUI();
-    scheduleResize();
+toggleSidebar.addEventListener("click", () =>
+{
+  sidebarOpen = !sidebarOpen;
+  sidebar.classList.toggle("closed", !sidebarOpen);
+  updateUI();
+  scheduleResize();
 });
 
 // Capture Mode button events
 for(var i in mode_el)
 {
-    if(bDebug) console.log("mode_el["+i+"].addEventListener('click')",mode_el[i].innerHTML)
-    mode_el[i].addEventListener("click", (e) => 
-    {
-        setMode(e.currentTarget.id);
-        selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;  textDrag = null;
-        cancelPaste?.();
-        updateUI(); draw();
-    });
+  if(bDebug) console.log("mode_el["+i+"].addEventListener('click')",mode_el[i].innerHTML)
+  mode_el[i].addEventListener("click", (e) => 
+  {
+      setMode(e.currentTarget.id);
+      selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;  textDrag = null;
+      cancelPaste?.();
+      updateUI(); draw();
+  });
 }
 
 
 // Load URL data
 window.addEventListener("load", function()
 {
-
   oCOM.URL.parse(document.location.toString());
   for(var uri in oCOM.URL.uri)
   {
@@ -2085,22 +2101,22 @@ window.addEventListener("load", function()
           {
               // Expand wide chars (⬤ etc.) so the grid aligns with IDE rendering
               const expanded = expandWideCharsForGrid(txt);
-
               // Convert to lines (using your existing normalizeNewlines)
               const lines = toLines(expanded); // <-- IMPORTANT
-
               const stroke = [];
-
-              for (let r = 0; r < ROWS; r++) {
-              const line = lines[r] || "";
-              for (let c = 0; c < COLS; c++) {
-                  const prev = ascii[r][c];
-                  const next = line[c] || ' ';
-                  if (prev !== next) {
-                  stroke.push({ r, c, prev, next });
-                  ascii[r][c] = next;
-                  }
-              }
+              for (let r = 0; r < ROWS; r++)
+              {
+                const line = lines[r] || "";
+                for (let c = 0; c < COLS; c++) 
+                {
+                    const prev = ascii[r][c];
+                    const next = line[c] || ' ';
+                    if (prev !== next)
+                    {
+                      stroke.push({ r, c, prev, next });
+                      ascii[r][c] = next;
+                    }
+                }
               }
 
               selection = null;
@@ -2151,7 +2167,8 @@ schemaMatchBtn.addEventListener("click", () =>
 });
 
 // Invalidate overlay caches after any committed stroke (undo/redo uses same path).
-if (typeof pushStrokeIfNonEmpty === "function") {
+if (typeof pushStrokeIfNonEmpty === "function") 
+{
   const _pushStrokeIfNonEmpty = pushStrokeIfNonEmpty;
   pushStrokeIfNonEmpty = function(stroke) {
     highlightCache = null;
@@ -2165,11 +2182,12 @@ undoBtn.addEventListener("click", doUndo);
 redoBtn.addEventListener("click", doRedo);
 
 // Save/load
-saveBtn.addEventListener("click", () => {
+saveBtn.addEventListener("click", () => 
+{
   const raw = serializeToText();
   const cleaned = sanitizeForSave(raw);
   downloadText(cleaned, "ascii-schema.txt");
-  });
+});
 
 uriBtn.addEventListener("click", () => 
 {
@@ -2195,8 +2213,9 @@ uriBtn.addEventListener("click", () =>
 
 loadBtn.addEventListener("click", () => fileInput.click());
 
-fileInput.addEventListener("change", async (e) => {
-try {
+fileInput.addEventListener("change", async (e) => 
+{
+  try {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
 
@@ -2233,63 +2252,66 @@ try {
     draw();
 
     fileInput.value = "";
-} catch (err) {
+  } catch (err) {
     console.error("Load failed:", err);
     alert("Load failed. See console for details.");
-}
+  }
 });
 
 
 // Clear
-clearBtn.addEventListener("click", () =>{
-   wipeSelection(' ');
+clearBtn.addEventListener("click", () =>
+{
+  wipeSelection(' ');
 });
-
 
 
 // Paste capture (also allow direct paste anywhere)
-window.addEventListener("paste", (e) => {
-    const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
-    if (typeof text === "string" && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
+window.addEventListener("paste", (e) => 
+{
+  const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
+  if (typeof text === "string" && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
 });
-pasteSink.addEventListener("paste", (e) => {
-    const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
-    if (typeof text === "string" && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
+pasteSink.addEventListener("paste", (e) => 
+{
+  const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
+  if (typeof text === "string" && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
 });
 
 // Zoom / pan with wheel
-canvas.addEventListener("wheel",(e) => {
-    e.preventDefault();
+canvas.addEventListener("wheel",(e) => 
+{
+  e.preventDefault();
 
-    // Pinch-zoom on trackpad (Chrome/Safari typically set ctrlKey for pinch)
-    if (e.ctrlKey) {
-        const zoomFactor = Math.exp(-e.deltaY * 0.01);
-        scale = clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
-        updateUI();
-        draw();
-        return;
-    }
+  // Pinch-zoom on trackpad (Chrome/Safari typically set ctrlKey for pinch)
+  if (e.ctrlKey) {
+      const zoomFactor = Math.exp(-e.deltaY * 0.01);
+      scale = clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
+      updateUI();
+      draw();
+      return;
+  }
 
-    // Heuristic: treat "smooth, small deltas" as trackpad scrolling => PAN.
-    // Treat "large, stepped deltas" as mouse wheel => ZOOM.
-    const absX = Math.abs(e.deltaX || 0);
-    const absY = Math.abs(e.deltaY || 0);
-    const looksLikeTrackpad = absX > 0 || (e.deltaMode === 0 && absY > 0 && absY < 50);
+  // Heuristic: treat "smooth, small deltas" as trackpad scrolling => PAN.
+  // Treat "large, stepped deltas" as mouse wheel => ZOOM.
+  const absX = Math.abs(e.deltaX || 0);
+  const absY = Math.abs(e.deltaY || 0);
+  const looksLikeTrackpad = absX > 0 || (e.deltaMode === 0 && absY > 0 && absY < 50);
 
-    if (looksLikeTrackpad) {
-        // Two-finger scroll pans (KiCad-like)
-        panX += (e.deltaX || 0) / scale;
-        panY += (e.deltaY || 0) / scale;
-        updateUI();
-        draw();
-        return;
-    }
+  if (looksLikeTrackpad) {
+      // Two-finger scroll pans (KiCad-like)
+      panX += (e.deltaX || 0) / scale;
+      panY += (e.deltaY || 0) / scale;
+      updateUI();
+      draw();
+      return;
+  }
 
-    // Mouse wheel zooms
-    const zoomFactor = Math.exp(-e.deltaY * 0.01);
-    scale = clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
-    updateUI();
-    draw();
+  // Mouse wheel zooms
+  const zoomFactor = Math.exp(-e.deltaY * 0.01);
+  scale = clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
+  updateUI();
+  draw();
 },
 { passive: false }
 );
@@ -2298,85 +2320,85 @@ canvas.addEventListener("wheel",(e) => {
 // Mouse
 canvas.addEventListener("mousemove", (e) => 
 {
-    if (panDrag)
-    {
-        const dx = e.clientX - panDrag.x;
-        const dy = e.clientY - panDrag.y;
-        panX = panDrag.panX0 + dx / scale;
-        panY = panDrag.panY0 + dy / scale;
-        setHoverFromEvent(e);
-        draw();
-        return;
-    }
+  if (panDrag)
+  {
+      const dx = e.clientX - panDrag.x;
+      const dy = e.clientY - panDrag.y;
+      panX = panDrag.panX0 + dx / scale;
+      panY = panDrag.panY0 + dy / scale;
+      setHoverFromEvent(e);
+      draw();
+      return;
+  }
 
-    setHoverFromEvent(e);
-    const cell = canvasPointToCell(e.clientX, e.clientY);
+  setHoverFromEvent(e);
+  const cell = canvasPointToCell(e.clientX, e.clientY);
 
-    if (pasteDrag)
-    {
-        if (cell) pasteDrag.anchor = { r: cell.r, c: cell.c };
-        draw();
-        return;
-    }
+  if (pasteDrag)
+  {
+      if (cell) pasteDrag.anchor = { r: cell.r, c: cell.c };
+      draw();
+      return;
+  }
 
-    // TODO SERIALISE (MOVE functions) ??
-    if (tool === "modeFreeform")      moveFreeform(cell);
-    else if(tool === "modeSelect" || tool === "modeCopy" || tool === "modeBlank") moveSelect(cell)
-    else if (tool === "modeSLine")    moveLine(cell);
-    else if (tool === "modeTLine")    moveLine(cell);
-    else if (tool === "modeDLine")    moveLine(cell);
-    else if (tool === "modeSBox")     moveBox(cell);
-    else if (tool === "modeTBox")     moveBox(cell);
-    else if (tool === "modeDBox")     moveBox(cell);
-    else if (tool === "modeFreetext") beginFreetext(cell);
-    else console.error("tool mismatch (move)");
+  // TODO SERIALISE (MOVE functions) ??
+  if (tool === "modeFreeform")      moveFreeform(cell);
+  else if(tool === "modeSelect" || tool === "modeCopy" || tool === "modeBlank") moveSelect(cell)
+  else if (tool === "modeSLine")    moveLine(cell);
+  else if (tool === "modeTLine")    moveLine(cell);
+  else if (tool === "modeDLine")    moveLine(cell);
+  else if (tool === "modeSBox")     moveBox(cell);
+  else if (tool === "modeTBox")     moveBox(cell);
+  else if (tool === "modeDBox")     moveBox(cell);
+  else if (tool === "modeFreetext") beginFreetext(cell);
+  else console.error("tool mismatch (move)");
 
 });
 
 canvas.addEventListener("mousedown", (e) => 
 {
-    // Middle OR right mouse drag = pan
-    if (e.button === 1 || e.button === 2) 
-    {
-        e.preventDefault();
-        panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
-        canvas.style.cursor = "grabbing";
-        return;
-    }
+  // Middle OR right mouse drag = pan
+  if (e.button === 1 || e.button === 2) 
+  {
+      e.preventDefault();
+      panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
+      canvas.style.cursor = "grabbing";
+      return;
+  }
 
-    if (e.button !== 0) return;
+  if (e.button !== 0) return;
 
-    if (e.button === 1) {
-        e.preventDefault();
-        panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
-        canvas.style.cursor = "grabbing";
-        return;
-    }
+  if (e.button === 1) {
+      e.preventDefault();
+      panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
+      canvas.style.cursor = "grabbing";
+      return;
+  }
 
-    if (e.button !== 0) return;
-    canvas.focus();
-    setHoverFromEvent(e);
-    const cell = canvasPointToCell(e.clientX, e.clientY);
+  if (e.button !== 0) return;
+  canvas.focus();
+  setHoverFromEvent(e);
+  const cell = canvasPointToCell(e.clientX, e.clientY);
 
-    if (pasteDrag)
-    { 
-        commitPasteAt(cell); 
-        if(bDebug) console.log("setMode('"+modeRECALL+"')");
-        setMode(modeRECALL);
-        return;
-    }
+  if (pasteDrag)
+  { 
+      commitPasteAt(cell); 
+      if(bDebug) console.log("setMode('"+modeRECALL+"')");
+      setMode(modeRECALL);
+      return;
+  }
 
-    // TODO SERIALISE (BEGIN functions)??
-    if (tool === "modeFreeform")      beginFreeform(cell);
-    else if (tool === "modeSelect" || tool === "modeCopy" || tool === "modeBlank") beginSelect(cell);
-    else if (tool === "modeSLine")    beginLine(cell,"single");
-    else if (tool === "modeTLine")    beginLine(cell,"thick");
-    else if (tool === "modeDLine")    beginLine(cell,"double");
-    else if (tool === "modeSBox")     beginBox(cell, "single");
-    else if (tool === "modeTBox")     beginBox(cell, "thick");
-    else if (tool === "modeDBox")     beginBox(cell, "double");
-    else if (tool === "modeFreetext") beginFreetext(cell);
-    else console.error("tool mismatch (begin)");
+  // TODO SERIALISE (BEGIN functions)??
+  if (tool === "modeFreeform")      beginFreeform(cell);
+  else if (tool === "modeSelect" || tool === "modeCopy" || tool === "modeBlank") beginSelect(cell);
+  else if (tool === "modeSLine")    beginLine(cell,"single");
+  else if (tool === "modeTLine")    beginLine(cell,"thick");
+  else if (tool === "modeDLine")    beginLine(cell,"double");
+  else if (tool === "modeSBox")     beginBox(cell, "single");
+  else if (tool === "modeTBox")     beginBox(cell, "thick");
+  else if (tool === "modeDBox")     beginBox(cell, "double");
+  else if (tool === "modeFreetext") beginFreetext(cell);
+  else console.error("tool mismatch (begin)");
 
 });
 
@@ -2385,7 +2407,7 @@ window.addEventListener("mouseup", () =>
   if (panDrag) { panDrag = null; canvas.style.cursor = ''; return; }
   if (pasteDrag) return;
 
-// TODO SERIALISE (COMMIT functions)??
+  // TODO SERIALISE (COMMIT functions)??
   if ((tool == "modeSLine" || tool == "modeDLine" || tool == "modeTLine") && lineDrag!=null)
   { 
     commitLineWithOptionalMerge(lineDrag.merge, lineDrag.kind);
@@ -2399,28 +2421,29 @@ window.addEventListener("mouseup", () =>
   if (selectDrag || moveDrag) endSelect();
 });
 
-canvas.addEventListener("mouseleave", () => {
-    //if(bDebug) console.log("EVENT: mouseleave()");
+canvas.addEventListener("mouseleave", () => 
+{
+  //if(bDebug) console.log("EVENT: mouseleave()");
 
-    if (panDrag) { panDrag = null; canvas.style.cursor = ''; }
-    hoverCell = null;
-    updateUI();
-    if (pasteDrag) return;
+  if (panDrag) { panDrag = null; canvas.style.cursor = ''; }
+  hoverCell = null;
+  updateUI();
+  if (pasteDrag) return;
 
-    // TODO SERIALISE (CANCEL functions)??
-    //if (tool === "modeSLine" && lineDrag) { cancelLine(); return; }
-    //if (tool === "modeTLine" && lineDrag) { cancelLine(); return; }
-    //if (tool === "modeDLine" && lineDrag) { cancelLine(); return; }
-    //if (tool === "modeSBox" && boxDrag)  { cancelBox(); return; }
-    //if (tool === "modeTBox" && boxDrag)  { cancelBox(); return; }
-    //if (tool === "modeDBox" && boxDrag)  { cancelBox(); return; }
+  // TODO SERIALISE (CANCEL functions)??
+  //if (tool === "modeSLine" && lineDrag) { cancelLine(); return; }
+  //if (tool === "modeTLine" && lineDrag) { cancelLine(); return; }
+  //if (tool === "modeDLine" && lineDrag) { cancelLine(); return; }
+  //if (tool === "modeSBox" && boxDrag)  { cancelBox(); return; }
+  //if (tool === "modeTBox" && boxDrag)  { cancelBox(); return; }
+  //if (tool === "modeDBox" && boxDrag)  { cancelBox(); return; }
 });
-
 
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
 // Shortcuts
-window.addEventListener("keydown", (e) => {
+window.addEventListener("keydown", (e) => 
+{
   const isMac = /mac/i.test(navigator.platform);
   const mod = isMac ? e.metaKey : e.ctrlKey;
 
@@ -2470,7 +2493,6 @@ window.addEventListener("keydown", (e) => {
     return; // IMPORTANT: don't fall through to line/box shortcuts
   }
 
-
   // Rotate catalog paste preview (works in any mode, including Freeform)
   // Only applies when we're in paste preview and the paste came from a catalog item.
   if (pasteDrag && pasteDrag.item_data && pasteDrag.item_data.uid) 
@@ -2499,11 +2521,12 @@ window.addEventListener("keydown", (e) => {
     }
   }
 
-  // ... keep the rest of your existing handler here ...
+// ... keep the rest of your existing handler here ...
 }, { passive: false });
 
 
-window.addEventListener("keyup", (e) => {
+window.addEventListener("keyup", (e) => 
+{
   if (textDrag) return;
 
   if (e.key === "Shift") shiftDown = false;
@@ -2517,8 +2540,8 @@ window.addEventListener("keyup", (e) => {
   }
 });
 
-
-function isEditingTextTarget(e) {
+function isEditingTextTarget(e) 
+{
   const el = e.target;
   if (!el) return false;
   const tag = (el.tagName || "").toLowerCase();
@@ -2527,12 +2550,12 @@ function isEditingTextTarget(e) {
   return false;
 }
 
-
 // Resize observer (debounced via rAF)
 let resizeRaf = null;
-function scheduleResize() {
-if (resizeRaf != null) return;
-resizeRaf = requestAnimationFrame(() => {
+function scheduleResize() 
+{
+  if (resizeRaf != null) return;
+  resizeRaf = requestAnimationFrame(() => {
     resizeRaf = null;
     const next = computeStageSize();
     if (next.w === stageSize.w && next.h === stageSize.h) return;
@@ -2541,7 +2564,7 @@ resizeRaf = requestAnimationFrame(() => {
     stage.style.height = stageSize.h + "px";
     syncCanvasBufferToStage();
     draw();
-});
+  });
 }
 
 const ro = new ResizeObserver(() => scheduleResize());
