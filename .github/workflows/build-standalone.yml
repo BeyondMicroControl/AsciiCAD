@@ -27,6 +27,15 @@ jobs:
         with:
           node-version: 20
 
+      - name: Debug dist path
+          run: |
+            pwd
+            ls -la
+            echo "---- dist (if any) ----"
+            ls -la dist || true
+            echo "---- dist stat ----"
+            stat dist || true
+
       - name: Build dist/AsciiCAD.html
         run: node build/inline.cjs
 
