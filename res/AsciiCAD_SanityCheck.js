@@ -26,6 +26,10 @@
   });
 })();
 
+
+
+// TEST HELPERS
+
 function gridFromText(text) {
   const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   for (let r = 0; r < ROWS; r++) {
@@ -96,6 +100,30 @@ function applyHorizontalLine(r, c0, c1, kind, mergeEnabled) {
   return stroke; // in case you want to pushStrokeIfNonEmpty in tests
 }
 
+
+function setSmallGridFromLines(lines) {
+  for (let r = 0; r < lines.length; r++) {
+    for (let c = 0; c < lines[r].length; c++) ascii[r][c] = lines[r][c];
+  }
+}
+
+function getSmallGridText(h, w) {
+  let s = "";
+  for (let r = 0; r < h; r++) {
+    let line = "";
+    for (let c = 0; c < w; c++) line += ascii[r][c];
+    s += line + "\n";
+  }
+  return s;
+}
+
+function assertGrid(name, got, exp) {
+  console.assert(got === exp, name + "\nGOT:\n" + got + "\nEXP:\n" + exp);
+}
+
+
+
+// TEST DATA
 
 function runJunctionTests() {
   // Keep tests small: use top-left 5x5 of your big grid
@@ -187,25 +215,6 @@ function runJunctionTests() {
 }
 
 
-function setSmallGridFromLines(lines) {
-  for (let r = 0; r < lines.length; r++) {
-    for (let c = 0; c < lines[r].length; c++) ascii[r][c] = lines[r][c];
-  }
-}
-
-function getSmallGridText(h, w) {
-  let s = "";
-  for (let r = 0; r < h; r++) {
-    let line = "";
-    for (let c = 0; c < w; c++) line += ascii[r][c];
-    s += line + "\n";
-  }
-  return s;
-}
-
-function assertGrid(name, got, exp) {
-  console.assert(got === exp, name + "\nGOT:\n" + got + "\nEXP:\n" + exp);
-}
 
 function runMixedJunctionTests() {
   // Use a 5x5 window in the real grid
@@ -315,6 +324,7 @@ function testDoubleBusCross() {
 }
 
 
+// TEST RUNNER
 
 (function init() {
 stageSize = computeStageSize();
@@ -347,9 +357,9 @@ console.assert(!catalogTypes().includes(null), "catalogTypes contains null");
 console.assert(!catalogTypes().includes(""), "catalogTypes contains empty string");
 
 
-if (bDebug) { runJunctionTests(); wipeSelection(' '); }
-if (bDebug) { runMixedJunctionTests(); wipeSelection(' '); }
-if (bDebug) { testDoubleBusCross(); wipeSelection(' '); }
+runJunctionTests(); wipeSelection(' ');
+runMixedJunctionTests(); wipeSelection(' ');
+testDoubleBusCross(); wipeSelection(' ');
 
 updateUI();
 draw();
