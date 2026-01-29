@@ -5670,14 +5670,14 @@ window.addEventListener("keydown", (e) => {
     draw();
   }
 
-  // ✅ Always allow Undo/Redo (even while typing)
+  //  Always allow Undo/Redo (even while typing)
   if (mod) {
     const k = String(e.key || "").toLowerCase();
     if (k === "z" && !e.shiftKey) { e.preventDefault(); doUndo(); return; }
     if (k === "z" &&  e.shiftKey) { e.preventDefault(); doRedo(); return; }
   }
 
-  // ✅ If FreeText preview is active, handle ALL typing here and stop.
+  //  If FreeText preview is active, handle ALL typing here and stop.
   if (textDrag) {
     // Cancel
     if (e.key === "Escape") { e.preventDefault(); cancelFreetext(); return; }
@@ -5700,7 +5700,7 @@ window.addEventListener("keydown", (e) => {
     // Append printable character
     if (e.key && e.key.length === 1) {
       e.preventDefault();
-      textDrag.text += e.key;   // ✅ includes 'o'
+      textDrag.text += e.key;   //  includes 'o'
       draw();
     }
     return; // IMPORTANT: don't fall through to line/box shortcuts
