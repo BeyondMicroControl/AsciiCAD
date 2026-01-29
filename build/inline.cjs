@@ -76,8 +76,8 @@ function main() {
 
   fs.writeFileSync(outHtmlPath, built, "utf8");
 
-  const st = fs.statSync(outHtmlPath);
-  console.log(`Wrote ${outHtmlPath} (${st.size} bytes)`);
+  const outStat = fs.statSync(outHtmlPath);
+  console.log(`Wrote ${outHtmlPath} (${outStat.size} bytes)`);
   
   if (st.size < 1000) {
     throw new Error("Output looks too small—build likely failed or inlining did nothing.");
