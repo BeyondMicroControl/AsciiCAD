@@ -63,8 +63,9 @@ function main() {
   const srcHtml = readUtf8(srcHtmlPath);
   const built = inlineBuild(srcHtml);
 
-  fs.mkdirSync(outDir, { recursive: true });
-  fs.writeFileSync(outHtmlPath, built, "utf8");
+   fs.mkdirSync(outDir, { recursive: true });
+   fs.writeFileSync(outHtmlPath, built, "utf8");
+
 
   console.log(`Wrote ${path.relative(repoRoot, outHtmlPath)}`);
 }
