@@ -18,7 +18,7 @@
 <!-- - [refactoring.md](docs/refactoring.md) - When and how to refactor code -->
 <!-- - [design-patterns.md](docs/design-patterns.md) - Preferred design patterns -->
 <!-- - [domain-language.md](docs/domain-language.md) - Project-specific vocabulary and terms -->
-<!-- - [decisions.md](docs/decisions.md) - Key architectural and design decisions -->
+- [decisions.md](docs/decisions.md) - Key architectural and design decisions
 
 ---
 
