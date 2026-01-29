@@ -550,19 +550,19 @@ Double-line frame characters: ═ ║ ╔ ╗ ╚ ╝ ╢ ╟ ╠ ╣ ╬ ╤ �
 ### Status: Proposed
 ### Context: Repetitive code patterns across tools (line, box, text, select, etc.)
 ### Decision: Refactor to unified tool framework:
-'''javascript
+```javascript
 const dragTools = {
   modeSLine: { begin, move, end, cancel },
   modeTLine: { begin, move, end, cancel },
   // ... other tools
 };
-'''
+```
 ### Rationale:
 
-Reduce code duplication
-Prevent tool mismatch bugs
-Easier to add new tools
-Consistent behavior across tools
+- Reduce code duplication
+- Prevent tool mismatch bugs
+- Easier to add new tools
+- Consistent behavior across tools
 
 ### Consequences:
 
@@ -581,15 +581,15 @@ Consistent behavior across tools
 ### Context: Need to add labels and annotations
 ### Decision: Implement freetext mode that:
 
-Allows typing text directly on grid
-Positions text at specific grid location
-Commits as single undo stroke
+- Allows typing text directly on grid
+- Positions text at specific grid location
+- Commits as single undo stroke
 
 ### Rationale:
 
-Essential for labeling components
-Annotations and documentation
-Pin numbers, signal names, etc.
+- Essential for labeling components
+- Annotations and documentation
+- Pin numbers, signal names, etc.
 
 ### Consequences:
 
@@ -607,9 +607,9 @@ Pin numbers, signal names, etc.
 ### Decision: Use Map data structure to deduplicate stroke operations
 ### Rationale:
 
-Prevents overwriting same cell multiple times in one operation
-Cleaner undo history
-More efficient
+- Prevents overwriting same cell multiple times in one operation
+- Cleaner undo history
+- More efficient
 
 ### Consequences:
 
@@ -625,17 +625,17 @@ More efficient
 ### Context: Long editing sessions, readability
 ### Decision: Use light color scheme:
 
-Canvas: White (#FFFFFF)
-Grid: Light grey (#EEEEEE)
-Text: Black (default)
-Accent colors: Green (selection), Blue (preview), Red (highlights)
+- Canvas: White (#FFFFFF)
+- Grid: Light grey (#EEEEEE)
+- Text: Black (default)
+- Accent colors: Green (selection), Blue (preview), Red (highlights)
 
 ### Rationale:
 
-Better for extended use
-Standard for CAD/technical tools
-Good contrast for black text
-Reduces eye strain
+- Better for extended use
+- Standard for CAD/technical tools
+- Good contrast for black text
+- educes eye strain
 
 ### Consequences:
 
@@ -653,10 +653,10 @@ Reduces eye strain
 ### Decision: Use Roboto font family
 ### Rationale:
 
-Clean, modern appearance
-Good readability
-Wide character support
-Professional look
+- Clean, modern appearance
+- Good readability
+- Wide character support
+- Professional look
 
 ### Consequences:
 
@@ -673,15 +673,15 @@ Professional look
 ### Context: Need to start fresh or remove all content
 ### Decision: Add Clear button to Load & Save toolbar that:
 
-Wipes entire grid
-Adds to undo stack
-Requires no confirmation (relying on undo)
+- Wipes a selected area on the grid
+- Adds to undo stack
+- Requires no confirmation (relying on undo)
 
 ### Rationale:
 
-Quick reset functionality
-Grouped with file operations
-Undo provides safety net
+- Quick reset functionality
+- Grouped with file operations
+- Undo provides safety net
 
 ### Consequences:
 
@@ -697,17 +697,17 @@ Undo provides safety net
 ### Context: Complex edge cases in single/double line crossing
 ### Decision: Extract line conflict resolution to separate tool for:
 
-Identifying sensitive crossing cells
-Indicating which cells need modification
-Handling line endings (e.g., capacitor symbols)
-Human feedback and refinement
+- Identifying sensitive crossing cells
+- Indicating which cells need modification
+- Handling line endings (e.g., capacitor symbols)
+- Human feedback and refinement
 
 ### Rationale:
 
-Too many edge cases for automated solution
-Benefits from human oversight
-Cleaner separation of concerns
-Can iterate independently
+- Too many edge cases for automated solution
+- Benefits from human oversight
+- Cleaner separation of concerns
+- Can iterate independently
 
 ### Consequences:
 
@@ -725,17 +725,17 @@ Can iterate independently
 ### Context: Growing number of tools and features
 ### Decision: Organize tools into logical groups:
 
-Drawing: Freeform, Line (Single/Double), Box (Single/Double), Text
-Editing: Select, Move, Copy, Blank
-File: Load, Save, Clear, Undo, Redo
-Canvas: Pan, Zoom, Coordinates
-Analysis: Highlight, Match
+- Drawing: Freeform, Line (Single/Double), Box (Single/Double), Text
+- Editing: Select, Move, Copy, Blank
+- File: Load, Save, Clear, Undo, Redo
+- Canvas: Pan, Zoom, Coordinates
+- Analysis: Highlight, Match
 
 ### Rationale:
 
-Logical organization
-Easy to find tools
-Scalable for future additions
+- Logical organization
+- Easy to find tools
+- Scalable for future additions
 
 ### Consequences:
 
@@ -752,15 +752,15 @@ Scalable for future additions
 ### Context: Interactive canvas with multiple tools
 ### Decision: Use event-driven architecture with:
 
-Mouse events: mousedown, mousemove, mouseup
-Keyboard events: keydown for shortcuts
-Mode-based event handling (current tool determines behavior)
+- Mouse events: mousedown, mousemove, mouseup
+- Keyboard events: keydown for shortcuts
+- Mode-based event handling (current tool determines behavior)
 
 ### Rationale:
 
-Natural for interactive applications
-Clean separation of concerns
-Easy to extend with new tools
+- Natural for interactive applications
+- Clean separation of concerns
+- Easy to extend with new tools
 
 ### Consequences:
 
@@ -771,35 +771,27 @@ Easy to extend with new tools
 - (-) Potential for event handler conflicts
 
 
-Summary of Key Design Principles
+## Summary of Key Design Principles
 
-Simplicity: No frameworks, vanilla JavaScript
-Purposeful: Optimized for electronic schematics in code
-Portability: Plain text format for easy embedding
-Professional: Intelligent line merging, component catalog
-User-Friendly: Visual feedback, undo/redo, familiar shortcuts
-Extensible: Catalog system, organized tools, clear architecture
-Visual Clarity: Highlighting for structure and component matching
+- Simplicity: No frameworks, vanilla JavaScript
+- Purposeful: Optimized for electronic schematics in code
+- Portability: Plain text format for easy embedding
+- Professional: Intelligent line merging, component catalog
+- User-Friendly: Visual feedback, undo/redo, familiar shortcuts
+- Extensible: Catalog system, organized tools, clear architecture
+- Visual Clarity: Highlighting for structure and component matching
 
 
-Future Considerations
+## Future Considerations
 Based on the prompts, areas for potential future development:
 
-Refactoring: Unified tool lifecycle framework
-Performance: Optimization for very large grids
-Export: Additional format support (PNG, SVG)
-Collaboration: Multi-user editing
-Dark Mode: Alternative color scheme
-Mobile: Touch-optimized interface
-Component Catalog: Expanded library
-Templates: Pre-built schematic patterns
-Search: Find components in diagram
-Layers: Separate annotation/component layers
-
-
-Document History
-
-Created: 2026-01-29
-Based on: Development prompts from project inception through v0.95
-Purpose: Reconstruct architectural decisions from development history
-Author: Reconstructed from prompt archive
+- Refactoring: Unified tool lifecycle framework
+- Performance: Optimization for very large grids
+- Export: Additional format support (PNG, SVG)
+- Collaboration: Multi-user editing
+- Dark Mode: Alternative color scheme
+- Mobile: Touch-optimized interface
+- Component Catalog: Expanded library
+- Templates: Pre-built schematic patterns
+- Search: Find components in diagram
+- Layers: Separate annotation/component layers
