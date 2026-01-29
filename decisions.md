@@ -25,6 +25,7 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 (-) Need to implement common patterns manually
 (-) More boilerplate code for common functionality
 
+---
 
 ## ADR-002: Grid-Based Architecture with 2D Character Array
 ### Date: Initial project inception
@@ -47,6 +48,7 @@ Aligns with how ASCII art is actually stored and shared
 (-) Memory usage scales with grid size
 (-) Need to handle grid boundaries explicitly
 
+---
 
 ## ADR-003: Cell Aspect Ratio of 2:1
 ### Date: Early development
@@ -71,6 +73,7 @@ Related Changes:
 Multiple iterations to match character size to grid size (prompts about 256x128 grid)
 Adjustments for vertical spacing to accommodate characters like ╬
 
+---
 
 ## ADR-004: Full-Screen Canvas Experience
 ### Date: Initial project inception
@@ -91,6 +94,7 @@ Follows modern web application patterns
 (-) Need to handle window resize events
 (-) Requires responsive layout design
 
+---
 
 ## ADR-005: Pan and Zoom Functionality
 ### Date: Early development, extended mid-development
@@ -111,6 +115,7 @@ Accommodates increased work area size
 (-) Complexity in coordinate transformations
 (-) Need to handle zoom-relative mouse positions
 
+---
 
 ## ADR-006: Freeform Character Drawing with Continuous Mode
 ### Date: Early development
@@ -148,6 +153,7 @@ Places
 Recycling
 Number Forms
 
+---
 
 ## ADR-007: Intelligent Line Drawing with Automatic Merging
 ### Date: Mid-development
@@ -181,7 +187,7 @@ Single/double line crossing conflicts
 Line endings at component boundaries
 Special cases like capacitor symbols (⏊+⏉)
 
-Decision to Defer: Full line conflict resolution moved to separate tool due to complexity of all edge cases
+Decision to Defer: Full line conflict resolution moved to separate tool due to complexity of all edge cases---
 
 ## ADR-008: Box Drawing Mode
 ### Date: Mid-development
@@ -206,6 +212,7 @@ Ensures proper corner characters automatically
 (-) Needed separate handling for single vs double boxes
 (-) Intersection with existing content needs consideration
 
+---
 
 ## ADR-009: Select, Move, Copy, and Blank Operations
 ### Date: Mid-development
@@ -240,6 +247,7 @@ Consistent undo/redo behavior
 (-) Complex state management for drag operations
 (-) Edge cases with grid boundaries
 
+---
 
 ## ADR-010: Unrestricted Selection Beyond Grid Boundaries
 ### Date: Mid-development
@@ -259,6 +267,7 @@ Only enforce boundaries at commit time
 (-) Need to handle clipping logic on commit
 (-) More complex coordinate validation
 
+---
 
 ## ADR-011: Undo/Redo System
 ### Date: Mid-development
@@ -285,6 +294,7 @@ Grouped with load/save as related file operations
 (-) Memory usage for large diagrams
 (-) Need to track all state-changing operations
 
+---
 
 ## ADR-012: Plain Text File Format
 ### Date: Mid-development
@@ -313,6 +323,7 @@ Version control friendly
 (-) No metadata storage
 (-) Fixed grid size per file
 
+---
 
 ## ADR-013: URL Parameter Loading
 ### Date: Later development
@@ -333,6 +344,7 @@ Supports embedding in web pages
 (-) URL length limits for large diagrams
 (-) Need compression/encoding scheme
 
+---
 
 ## ADR-014: Clipboard Integration (Paste Mode)
 ### Date: Mid-development
@@ -359,6 +371,7 @@ Consistent with move/copy interaction
 (-) Need clipboard API access
 (-) Browser permission requirements
 
+---
 
 ## ADR-015: Real-Time Coordinate Display
 ### Date: Mid-development
@@ -377,6 +390,7 @@ Low implementation cost
 (+) Easier collaboration
 (-) Minimal screen space usage
 
+---
 
 ## ADR-016: Large Grid Size (256×128 cells)
 ### Date: Mid-development
@@ -397,6 +411,7 @@ Reduce need for multiple files
 (-) Required zoom up to 1000% for detail work
 (-) Character spacing calibration challenges
 
+---
 
 ## ADR-017: Component Catalog System
 ### Date: Later development
@@ -424,6 +439,7 @@ Reduce need to redraw common symbols
 (-) Need to maintain catalog content
 (-) Need UI for catalog selection
 
+---
 
 ## ADR-018: Wildcard Matching System for Catalog
 ### Date: Later development (v0.95)
@@ -449,6 +465,7 @@ Support schematic highlighting/matching features
 (-) Regex complexity
 (-) Need careful pattern design
 
+---
 
 ## ADR-019: Schema Highlighting Feature
 ### Date: v0.94
@@ -477,7 +494,7 @@ Non-destructive (doesn't modify actual data)
 (-) Performance consideration for large grids
 (-) Complex detection logic for enclosed areas
 
-Double-line frame characters: ═ ║ ╔ ╗ ╚ ╝ ╢ ╟ ╠ ╣ ╬ ╤ ╧ ╦ ╩ ╪ ╫
+Double-line frame characters: ═ ║ ╔ ╗ ╚ ╝ ╢ ╟ ╠ ╣ ╬ ╤ ╧ ╦ ╩ ╪ ╫---
 
 ## ADR-020: Catalog Matching Feature (Green Highlighting)
 ### Date: v0.95
@@ -505,6 +522,7 @@ Documentation aid
 (-) Performance considerations for large catalogs
 (-) Regex matching complexity
 
+---
 
 ## ADR-021: Collapsible Left Pane UI
 ### Date: Initial project inception
@@ -525,6 +543,7 @@ Standard UI pattern
 (-) Need toggle mechanism
 (-) Layout calculations for expand/collapse
 
+---
 
 ## ADR-022: Tool Life-Cycle Pattern Standardization
 ### Date: Later refactoring phase
@@ -552,6 +571,7 @@ Consistent behavior across tools
 (-) Upfront refactoring effort
 (-) Need to design generic interface
 
+---
 
 ## ADR-023: Freetext Mode
 ### Date: Mid-development
@@ -576,6 +596,7 @@ Pin numbers, signal names, etc.
 (-) Need cursor positioning
 (-) Text wrapping considerations
 
+---
 
 ## ADR-024: Stroke Deduplication with Map
 ### Date: Later development
@@ -594,6 +615,7 @@ More efficient
 (+) Better undo behavior
 (-) Not consistently applied across all tools (noted as refactoring need)
 
+---
 
 ## ADR-025: Light Color Scheme
 ### Date: Initial project inception
@@ -620,6 +642,7 @@ Reduces eye strain
 (+) Professional appearance
 (-) May not suit all user preferences (no dark mode)
 
+---
 
 ## ADR-026: Roboto Font Choice
 ### Date: Initial project inception
@@ -640,6 +663,7 @@ Professional look
 (+) Widely available
 (-) May need fallbacks for missing characters
 
+---
 
 ## ADR-027: Clear Function
 ### Date: Mid-development
@@ -663,6 +687,7 @@ Undo provides safety net
 (+) Recoverable via undo
 (-) No confirmation dialog (could be accidental)
 
+---
 
 ## ADR-028: Separate Line Conflict Resolution Tool (Deferred)
 ### Date: Mid-development
@@ -690,6 +715,7 @@ Can iterate independently
 (-) Separate tool maintenance
 (-) Two-step workflow for perfect crossings
 
+---
 
 ## ADR-029: Tool Organization and Grouping
 ### Date: Throughout development
@@ -716,6 +742,7 @@ Scalable for future additions
 (+) Scalable organization
 (-) Need UI space for all groups
 
+---
 
 ## ADR-030: Event-Driven Architecture
 ### Date: Initial implementation
