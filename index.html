@@ -292,7 +292,7 @@ const glyphToMask = new Map([
   ["┬", E|S|W], ["┴", E|N|W],
   ["┼", N|E|S|W],
 
-  //thick
+  // thick
   ["━", E|W], ["┃", N|S],
   ["┏", E|S], ["┓", W|S], ["┗", E|N], ["┛", W|N],
   ["┣", N|E|S], ["┫", N|W|S],
@@ -304,71 +304,29 @@ const glyphToMask = new Map([
   ["╔", E|S], ["╗", W|S], ["╚", E|N], ["╝", W|N],
   ["╠", N|E|S], ["╣", N|W|S],
   ["╦", E|S|W], ["╩", E|N|W],
-  ["╬", N|E|S|W]
+  ["╬", N|E|S|W],
 
+  // mixed crosses single/double
+  ["╪", N|E|S|W],["╫", N|E|S|W],
+
+  // mixed crosses single/thick
+  ["┿", N|E|S|W],["╂", N|E|S|W],
+  /*
+  ["┽", N|E|S|W],["┾", N|E|S|W],["╀", N|E|S|W],["╁", N|E|S|W],["╃", N|E|S|W],["╄", N|E|S|W],
+  ["╅", N|E|S|W],["╆", N|E|S|W],["╇", N|E|S|W],["╈", N|E|S|W],["╉", N|E|S|W],["╊", N|E|S|W],
+  */
+  // mixed tees single/double
+  ["╤", E|S|W],["╥", E|S|W],["╧", E|N|W],["╨", E|N|W],["╞", N|E|S],["╟", N|E|S],["╡", N|W|S],["╢", N|W|S],
+
+  // mixed tees single/thick
+  ["┯", E|S|W],["┰", E|S|W],["┷", E|N|W],["┸", E|N|W],["┝", N|E|S],["┠", N|E|S],["┥", N|W|S],["┨", N|W|S],
+
+  // mixed corners single/double
+  ["╒", E|S],["╓", E|S],["╕", W|S],["╖", W|S],["╘", E|N],["╙", E|N],["╛", W|N],["╜", W|N],
+
+  // mixed corners single/thick
+  ["┍", E|S],["┎", E|S],["┑", W|S],["┒", W|S],["┕", E|N],["┖", E|N],["┙", W|N],["┚", W|N]
 ]);
-
-// mixed crosses signle/double
-glyphToMask.set("╪", N|E|S|W);
-glyphToMask.set("╫", N|E|S|W);
-
-// mixed crosses signle/thick
-glyphToMask.set("┿", N|E|S|W);
-glyphToMask.set("╂", N|E|S|W);
-/*
-glyphToMask.set("┽", N|E|S|W);
-glyphToMask.set("┾", N|E|S|W);
-glyphToMask.set("╀", N|E|S|W);
-glyphToMask.set("╁", N|E|S|W);
-glyphToMask.set("╃", N|E|S|W);
-glyphToMask.set("╄", N|E|S|W);
-glyphToMask.set("╅", N|E|S|W);
-glyphToMask.set("╆", N|E|S|W);
-glyphToMask.set("╇", N|E|S|W);
-glyphToMask.set("╈", N|E|S|W);
-glyphToMask.set("╉", N|E|S|W);
-glyphToMask.set("╊", N|E|S|W);
-*/
-
-// mixed tees signle/double
-glyphToMask.set("╤", E|S|W);
-glyphToMask.set("╥", E|S|W);
-glyphToMask.set("╧", E|N|W);
-glyphToMask.set("╨", E|N|W);
-glyphToMask.set("╞", N|E|S);
-glyphToMask.set("╟", N|E|S);
-glyphToMask.set("╡", N|W|S);
-glyphToMask.set("╢", N|W|S);
-
-// mixed tees signle/thick
-glyphToMask.set("┯", E|S|W);
-glyphToMask.set("┰", E|S|W);
-glyphToMask.set("┷", E|N|W);
-glyphToMask.set("┸", E|N|W);
-glyphToMask.set("┝", N|E|S);
-glyphToMask.set("┠", N|E|S);
-glyphToMask.set("┥", N|W|S);
-glyphToMask.set("┨", N|W|S);
-
-// mixed corners signle/double
-glyphToMask.set("╒", E|S);
-glyphToMask.set("╓", E|S);
-glyphToMask.set("╕", W|S);
-glyphToMask.set("╖", W|S);
-glyphToMask.set("╘", E|N);
-glyphToMask.set("╙", E|N);
-glyphToMask.set("╛", W|N);
-glyphToMask.set("╜", W|N);
-
-// mixed corners signle/thick
-glyphToMask.set("┍", E|S);
-glyphToMask.set("┎", E|S);
-glyphToMask.set("┑", W|S);
-glyphToMask.set("┒", W|S);
-glyphToMask.set("┕", E|N);
-glyphToMask.set("┖", E|N);
-glyphToMask.set("┙", W|N);
-glyphToMask.set("┚", W|N);
 
 const maskToGlyph = new Map([
   [0, ' '],
