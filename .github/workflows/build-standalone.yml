@@ -37,6 +37,13 @@ jobs:
 
       - name: Build dist/AsciiCAD.html
         run: node build/inline.cjs
+
+      - name: Show dist contents
+        run: |
+          echo "PWD=$(pwd)"
+          ls -la
+          echo "---- dist ----"
+          ls -la dist || true
         
       - name: Verify output
         run: |
