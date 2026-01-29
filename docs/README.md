@@ -21,3 +21,7 @@
 - [decisions.md](decisions.md) - Key architectural and design decisions
 
 ---
+
+## Credits
+
+- [credits.md](credits.md) - Thanks to all inspiring people and projects
