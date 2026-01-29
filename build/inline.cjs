@@ -59,22 +59,19 @@ function inlineBuild(html) {
   return html;
 }
 
-function main() {
+function main()
+{
   const srcHtml = readUtf8(srcHtmlPath);
   const built = inlineBuild(srcHtml);
 
-   // Ensure dist exists and is a directory
-   try {
-     const st = fs.statSync(outDir);
+   if (fs.existsSync(outDir)) {
+     const st = fs.lstatSync(outDir);
      if (!st.isDirectory()) {
-       throw new Error(`'${outDir}' exists but is not a directory.`);
-     }
-   } catch (e) {
-     if (e && e.code === "ENOENT") {
+       fs.unlinkSync(outDir);            // remove file/symlink
        fs.mkdirSync(outDir, { recursive: true });
-     } else {
-       throw e;
      }
+   } else {
+     fs.mkdirSync(outDir, { recursive: true });
    }
 
 
