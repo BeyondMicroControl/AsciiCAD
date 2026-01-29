@@ -1,1 +1,43 @@
+name: Build standalone AsciiCAD.html
 
+on:
+  push:
+    branches: [ "main" ]
+    # Run only when build inputs change; ignore changes to dist to avoid loops.
+    paths:
+      - "index.html"
+      - "res/**"
+      - "build/**"
+      - ".github/workflows/build-standalone.yml"
+      - "!dist/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build dist/AsciiCAD.html
+        run: node build/inline.cjs
+
+      - name: Commit dist if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dist/AsciiCAD.html
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "Update dist/AsciiCAD.html [skip ci]"
+            git push
+          fi
