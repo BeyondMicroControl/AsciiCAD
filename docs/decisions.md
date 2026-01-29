@@ -818,7 +818,7 @@ const dragTools = {
 ### Consequences:
 
 - (+) Easy to copy the app from the web, and deploy offline
-- (-) Only appears/makes sense when running the <a href=https://beyondmicrocontrol.github.io/AsciiCAD/dist/AsciiCAD.html">one-file distribution</a>. It does so by a trick, detecting the filename: if filename = "AsciiCAD.html" the download link appears, otherwise not.
+- (-) Only appears/makes sense when running the <a href="https://beyondmicrocontrol.github.io/AsciiCAD/dist/AsciiCAD.html">one-file distribution</a>. It does so by a trick, detecting the filename: if filename = "AsciiCAD.html" the download link appears, otherwise not.
 
 
 ---
