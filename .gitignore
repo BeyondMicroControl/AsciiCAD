@@ -1,2 +1,10 @@
 .DS_Store
-dist/
+
+# Ignore everything in dist...
+dist/*
+
+# ...but keep the generated standalone file
+!dist/AsciiCAD.html
+
+# (optional) keep a placeholder file if you use one
+!dist/.keep
