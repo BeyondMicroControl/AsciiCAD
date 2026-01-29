@@ -6,7 +6,7 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 
 ## ADR-001: No Framework/Library Dependencies
 **Date**: Initial project inception
-### Status: Accepted
+**Status:** Accepted
 ### Context: Need for a lightweight, maintainable ASCII drawing tool
 ### Decision: Build the entire application using vanilla HTML/CSS/JavaScript without frameworks or libraries
 ### Rationale:
@@ -29,7 +29,7 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 
 ## ADR-002: Grid-Based Architecture with 2D Character Array
 ### Date: Initial project inception
-### Status: Accepted
+**Status:** Accepted
 ### Context: Need to represent ASCII art in a structured, editable format
 ### Decision: Implement a 2D array of characters where each grid cell contains exactly one character
 ### Rationale:
@@ -52,7 +52,7 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 
 ## ADR-003: Cell Aspect Ratio of 2:1
 ### Date: Early development
-### Status: Accepted, later refined
+**Status:** Accepted, later refined
 ### Context: Monospace fonts are typically taller than wide
 ### Decision: Implement grid cells with a 2:1 width-to-height aspect ratio
 ### Rationale:
@@ -77,7 +77,7 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 
 ## ADR-004: Full-Screen Canvas Experience
 ### Date: Initial project inception
-### Status: Accepted
+**Status:** Accepted
 ### Context: Maximize available workspace for diagram creation
 ### Decision: Canvas borders correspond to browser window borders, providing full-screen drawing area
 ### Rationale:
@@ -98,7 +98,7 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 
 ## ADR-005: Pan and Zoom Functionality
 ### Date: Early development, extended mid-development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Large diagrams (256x128 cells) need navigation and detail work
 ### Decision: Implement mouse/trackpad zoom (up to 1000%) and pan capabilities
 ### Rationale:
@@ -119,7 +119,7 @@ AsciiCAD is a browser-based ASCII drawing tool specifically designed for creatin
 
 ## ADR-006: Freeform Character Drawing with Continuous Mode
 ### Date: Early development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Need to place arbitrary UTF-8 characters on the grid
 ### Decision: Implement freeform drawing that:
 
@@ -157,7 +157,7 @@ Character Categories Implemented:
 
 ## ADR-007: Intelligent Line Drawing with Automatic Merging
 ### Date: Mid-development
-### Status: Accepted (with ongoing refinements)
+**Status:** Accepted (with ongoing refinements)
 ### Context: Need to create clean electronic schematics with connected lines
 ### Decision: Implement single and double line modes that:
 
@@ -191,7 +191,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 
 ## ADR-008: Box Drawing Mode
 ### Date: Mid-development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Need to create rectangular enclosures quickly
 ### Decision: Implement single and double box drawing modes that create rectangles with:
 
@@ -216,7 +216,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 
 ## ADR-009: Select, Move, Copy, and Blank Operations
 ### Date: Mid-development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Need editing capabilities for created content
 ### Decision: Implement four selection-based modes:
 
@@ -251,7 +251,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 
 ## ADR-010: Unrestricted Selection Beyond Grid Boundaries
 ### Date: Mid-development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Users need to move partially visible selections
 ### Decision: Allow selection origin to extend beyond grid boundaries; only trim content when committing to grid
 ### Rationale:
@@ -271,7 +271,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 
 ## ADR-011: Undo/Redo System
 ### Date: Mid-development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Need to support iterative editing and error recovery
 ### Decision: Implement undo/redo with:
 
@@ -298,7 +298,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 
 ## ADR-012: Plain Text File Format
 ### Date: Mid-development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Need save/load functionality
 ### Decision: Use plain text files (ROWS × COLS characters) with:
 
@@ -327,7 +327,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 
 ## ADR-013: URL Parameter Loading
 ### Date: Later development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Need to share diagrams via hyperlinks
 ### Decision: Support loading diagrams via URL parameter (?d=<encoded-data>)
 ### Rationale:
@@ -348,7 +348,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 
 ## ADR-014: Clipboard Integration (Paste Mode)
 ### Date: Mid-development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Need to import ASCII art from external sources
 ### Decision: Implement Cmd/Ctrl+V to trigger paste mode that:
 
@@ -375,7 +375,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 
 ## ADR-015: Real-Time Coordinate Display
 ### Date: Mid-development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Users need position feedback for precise placement
 ### Decision: Display current cell coordinates in Canvas toolbar
 ### Rationale:
@@ -394,7 +394,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 
 ## ADR-016: Large Grid Size (256×128 cells)
 ### Date: Mid-development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Complex electronic schematics need substantial workspace
 ### Decision: Expand grid to 256×128 cells (from original 128×128)
 ### Rationale:
@@ -415,7 +415,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 
 ## ADR-017: Component Catalog System
 ### Date: Later development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Electronic schematics use standard component symbols
 ### Decision: Implement component catalog with:
 
@@ -443,7 +443,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 
 ## ADR-018: Wildcard Matching System for Catalog
 ### Date: Later development (v0.95)
-### Status: Accepted
+**Status:** Accepted
 ### Context: Component symbols often contain labels/values that vary
 ### Decision: Implement wildcard system:
 
@@ -469,7 +469,7 @@ Decision to Defer: Full line conflict resolution moved to separate tool due to c
 
 ## ADR-019: Schema Highlighting Feature
 ### Date: v0.94
-### Status: Accepted
+**Status:** Accepted
 ### Context: Visual organization of complex schematics
 ### Decision: Implement toggleable highlighting mode:
 
@@ -498,7 +498,7 @@ Double-line frame characters: ═ ║ ╔ ╗ ╚ ╝ ╢ ╟ ╠ ╣ ╬ ╤ �
 
 ## ADR-020: Catalog Matching Feature (Green Highlighting)
 ### Date: v0.95
-### Status: Accepted
+**Status:** Accepted
 ### Context: Identify where catalog components are used in diagrams
 ### Decision: Implement "Match" button that:
 
@@ -526,7 +526,7 @@ Double-line frame characters: ═ ║ ╔ ╗ ╚ ╝ ╢ ╟ ╠ ╣ ╬ ╤ �
 
 ## ADR-021: Collapsible Left Pane UI
 ### Date: Initial project inception
-### Status: Accepted
+**Status:** Accepted
 ### Context: Balance between tools access and workspace
 ### Decision: Implement collapsible left pane for tools using Roboto font
 ### Rationale:
@@ -547,7 +547,7 @@ Double-line frame characters: ═ ║ ╔ ╗ ╚ ╝ ╢ ╟ ╠ ╣ ╬ ╤ �
 
 ## ADR-022: Tool Life-Cycle Pattern Standardization
 ### Date: Later refactoring phase
-### Status: Proposed
+**Status:** Proposed
 ### Context: Repetitive code patterns across tools (line, box, text, select, etc.)
 ### Decision: Refactor to unified tool framework:
 ```javascript
@@ -577,7 +577,7 @@ const dragTools = {
 
 ## ADR-023: Freetext Mode
 ### Date: Mid-development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Need to add labels and annotations
 ### Decision: Implement freetext mode that:
 
@@ -602,7 +602,7 @@ const dragTools = {
 
 ## ADR-024: Stroke Deduplication with Map
 ### Date: Later development
-### Status: Accepted (inconsistently applied)
+**Status:** Accepted (inconsistently applied)
 ### Context: Prevent duplicate characters in same cell during continuous drawing
 ### Decision: Use Map data structure to deduplicate stroke operations
 ### Rationale:
@@ -621,7 +621,7 @@ const dragTools = {
 
 ## ADR-025: Light Color Scheme
 ### Date: Initial project inception
-### Status: Accepted
+**Status:** Accepted
 ### Context: Long editing sessions, readability
 ### Decision: Use light color scheme:
 
@@ -648,7 +648,7 @@ const dragTools = {
 
 ## ADR-026: Roboto Font Choice
 ### Date: Initial project inception
-### Status: Accepted
+**Status:** Accepted
 ### Context: Need clean, readable monospace rendering
 ### Decision: Use Roboto font family
 ### Rationale:
@@ -669,7 +669,7 @@ const dragTools = {
 
 ## ADR-027: Clear Function
 ### Date: Mid-development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Need to start fresh or remove all content
 ### Decision: Add Clear button to Load & Save toolbar that:
 
@@ -693,7 +693,7 @@ const dragTools = {
 
 ## ADR-028: Separate Line Conflict Resolution Tool (Deferred)
 ### Date: Mid-development
-### Status: Deferred
+**Status:** Deferred
 ### Context: Complex edge cases in single/double line crossing
 ### Decision: Extract line conflict resolution to separate tool for:
 
@@ -721,7 +721,7 @@ const dragTools = {
 
 ## ADR-029: Tool Organization and Grouping
 ### Date: Throughout development
-### Status: Accepted
+**Status:** Accepted
 ### Context: Growing number of tools and features
 ### Decision: Organize tools into logical groups:
 
@@ -748,7 +748,7 @@ const dragTools = {
 
 ## ADR-030: Event-Driven Architecture
 ### Date: Initial implementation
-### Status: Accepted
+**Status:** Accepted
 ### Context: Interactive canvas with multiple tools
 ### Decision: Use event-driven architecture with:
 
