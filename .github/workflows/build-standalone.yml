@@ -45,12 +45,22 @@ jobs:
     
       - name: Commit dist if changed
         run: |
+          if [ ! -f dist/AsciiCAD.html ]; then
+            echo "dist/AsciiCAD.html was not generated. Failing."
+            ls -la
+            ls -la dist || true
+            exit 1
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
           git add dist/AsciiCAD.html
+
           if git diff --cached --quiet; then
             echo "No changes."
           else
             git commit -m "Update dist/AsciiCAD.html [skip ci]"
             git push
           fi
+
