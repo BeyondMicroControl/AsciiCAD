@@ -1868,8 +1868,6 @@ function draw( str )
     ctx.font = fontPx + "px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
     //ctx.font = fontPx + "px Menlo, monospace";
 
-    
-
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -1901,9 +1899,6 @@ function draw( str )
 
     const BLUE = "rgba(59,130,246,0.9)";
     const RED  = "rgba(239,68,68,0.9)";
-
-
-    
     const GREEN = "rgba(34,197,94,0.95)";
 
     if (schemaMatchOn && !matchCache) {
@@ -1951,7 +1946,6 @@ function draw( str )
         ctx.fillText(chx, snap(c * cw + cw / 2), snap(r * ch + ch / 2));
       }
     }
-
 
     // Selection overlay (stays after select; cleared after move mouseup)
     if (selection) {
@@ -2041,10 +2035,6 @@ function draw( str )
 
         ctx.fillStyle = old;
     }
-
-
-
-
 }
 
 function drawLinePreview() {
@@ -2523,7 +2513,7 @@ window.addEventListener("keydown", (e) => {
   }
 
 
-// Rotate catalog paste preview (works in any mode, including Freeform)
+  // Rotate catalog paste preview (works in any mode, including Freeform)
   // Only applies when we're in paste preview and the paste came from a catalog item.
   if (pasteDrag && pasteDrag.item_data && pasteDrag.item_data.uid) 
   {
@@ -2550,8 +2540,6 @@ window.addEventListener("keydown", (e) => {
       return;
     }
   }
-
-
 
   // ... keep the rest of your existing handler here ...
 }, { passive: false });
