@@ -803,7 +803,7 @@ const dragTools = {
 ---
 
 ## ADR-031: Self-downloading app
-**Date:** 29-Jan-2029\
+**Date:** 29-Jan-2029 v1.01\
 **Status:** Accepted\
 **Context** App portability\
 **Decision:** Self-downloading .html app
