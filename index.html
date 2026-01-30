@@ -117,13 +117,7 @@
         <button id="toggleCLI" class="btn" title="Switch to UI" aria-label="Toggle to UI sidebar">◀</button>
         <div class="sb-title"><big>AsciiCAD CLI</big><br><small>Type commands, press Enter</small></div>
       </div>
-      <!--
-      <div class="cli-container">
-        <textarea id="cliTerminal" class="cli-terminal" placeholder="Type 'help' for commands..." spellcheck="false"></textarea>
-      </div>
-      -->
-       <div id="vanilla-terminal"></div>
-     
+      <div id="vanilla-terminal"></div>
     </aside>
 
     <main class="main">
@@ -2675,8 +2669,7 @@ const term = new VanillaTerminal({
     exit: () => {},
 
   },
-
-  welcome: 'AsciiCAD CLI ready. Type <u>help</u> for terminal commands.',
+  welcome: sbTitle.querySelector('big').textContent + " CLI. Type <u>help</u> for terminal commands.",
   separator: '>',
 });
 
