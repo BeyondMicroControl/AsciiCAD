@@ -606,6 +606,7 @@ var VanillaTerminal = function VanillaTerminal(props) {
     var command = parts[0];
     var params = parts.slice(1);
 
+
     if (typeof self.onInputCallback === "function") {
       try {
         var handled = self.onInputCallback(command, params, commandLine);
@@ -622,6 +623,7 @@ var VanillaTerminal = function VanillaTerminal(props) {
 
     // Dispatch (built-ins / user commands)
     var callback = self.commands[command];
+
     if (typeof callback === "function") {
       callback(self, params);
     } else {
@@ -5679,7 +5681,6 @@ var VanillaTerminalBuiltins = (function () {
 // Two modes:
 //  1) Terminal mode (Linux-like): help, clear, history [-c], script, exec("..."), exit
 //  2) Script mode (CADScript): help(), clear(), undo(), redo(), freeform(col,row,char), exit()
-
 const term = new VanillaTerminal({
   // We handle all input via term.onInput; commands are kept for discoverability.
   commands: {
@@ -5689,14 +5690,14 @@ const term = new VanillaTerminal({
     script: () => {},
     exec: () => {},
     exit: () => {},
+
   },
+
   welcome: 'AsciiCAD CLI ready. Type <u>help</u> for terminal commands.',
   separator: '>',
 });
 
 let __cliMode = "terminal"; // "terminal" | "script"
-term.setPrompt("AsciiCAD");
-
 // --- helpers ---------------------------------------------------------------
 
 function __cliEscapeHtml(str) {
@@ -6142,9 +6143,8 @@ term.onInput((command, parameters, rawLine) => {
   }
   if (__cliMode === "terminal") return __cliHandleTerminal(line);
   return __cliHandleScript(line);
+
 });
-
-
 
 
 // Capture Mode button events
