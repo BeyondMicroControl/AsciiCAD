@@ -17,10 +17,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AsciiCAD</title>
   <link rel="stylesheet" href="res/AsciiCAD.css">
-      <script type="text/javascript"  src="res/AsciiCAD_helpers.js"></script>
-      <script stype="text/javascript" src="res/AsciiCAD_catalog.js"></script>
-      <script type="text/javascript"  src="res/pako.min.js"></script>
-      <script type="text/javascript"  src="res/COM_MAIN.js"></script>
+  <script type="text/javascript"  src="res/AsciiCAD_helpers.js"></script>
+  <script type="text/javascript"  src="res/AsciiCAD_catalog.js"></script>
+  <script type="text/javascript"  src="res/pako.min.js"></script>
+  <script type="text/javascript"  src="res/COM_MAIN.js"></script>
 </head>
 <body>
   <div class="app">
@@ -2572,14 +2572,14 @@ function __cliRunCADOps(ops) {
 function __cliTerminalHelp()
 {
   term.output(
-    "Terminal commands:<br>" +
-      "&nbsp;&lt;command&gt; -h - detailed help<br>" +
-      "&nbsp;&nbsp;clear &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- clear terminal screen<br>" +
-      "&nbsp;&nbsp;exec \"..\" &nbsp;&nbsp;- run CADScript<br>" +
-      "&nbsp;&nbsp;exit &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- exit CLI<br>"+
-      "&nbsp;&nbsp;help &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- terminal help<br>" +
-      "&nbsp;&nbsp;history &nbsp;&nbsp;&nbsp;&nbsp;- show command history<br>" +
-      "&nbsp;&nbsp;script &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- enter CADScript mode<br>"
+    __cliEscapeHtml("Terminal commands:\n" +
+      " <command> -h - detailed help\n" +
+      "  clear       - clear terminal screen\n" +
+      "  exec \"..\"   - run CADScript\n" +
+      "  exit       - exit CLI\n"+
+      "  help       - terminal help\n" +
+      "  history       - show command history\n" +
+      "  script       - enter CADScript mode\n")
   );
 }
 
