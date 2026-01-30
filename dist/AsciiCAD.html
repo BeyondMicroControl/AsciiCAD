@@ -110,7 +110,9 @@
   background-color: #222222;
   color: white;
   font-family: "Inconsolata", "Courier New", Courier, monospace;
+  text-underline-offset: 0.2em;
   font-weight: bold;
+  font-size:80%;
   overflow: hidden;
   padding: 0.1em 0.1em;
 }
@@ -3138,7 +3140,7 @@ oCOM = new COM();
       <div class="resize-handle" id="resizeHandleCLI"></div>
       <div class="sb-top">
         <button id="toggleCLI" class="btn" title="Switch to UI" aria-label="Toggle to UI sidebar">◀</button>
-        <div class="sb-title"><big>AsciiCAD CLI</big><br><small>Type commands, press Enter</small></div>
+        <div class="sb-title" id="titleCLI"><big>AsciiCAD CLI</big><br><small>Type commands, press Enter</small></div>
       </div>
       <div id="vanilla-terminal"></div>
     </aside>
@@ -3225,6 +3227,8 @@ const resizeHandle = document.getElementById("resizeHandle");
 // CLI refs
 const cliSidebar = document.getElementById("cliSidebar");
 const toggleCLI = document.getElementById("toggleCLI");
+const titleCLI = document.getElementById("titleCLI");
+
 const cliTerminal = document.getElementById("cliTerminal");
 const resizeHandleCLI = document.getElementById("resizeHandleCLI");
 
@@ -5100,7 +5104,7 @@ function switchToSidebar(newSidebar) {
   if (activeSidebar === 'cli') 
   {
 
-
+    titleCLI.innerHTML = "<big>"+sbTitle.querySelector('big').textContent+" CLI</big><br><small>Type commands, press Enter</small>";
     sidebar.classList.add('hidden');
     cliSidebar.classList.remove('hidden');
 
@@ -5692,7 +5696,7 @@ const term = new VanillaTerminal({
     exit: () => {},
 
   },
-  welcome: sbTitle.querySelector('big').textContent + " CLI. Type <u>help</u> for terminal commands.",
+  welcome: sbTitle.querySelector('big').textContent + " terminal - type <u>help</u>",
   separator: '>',
 });
 
@@ -5946,12 +5950,13 @@ function __cliRunCADOps(ops) {
     switch (op.type) {
       case "help":
         term.output(
-          "CADScript functions:<br>" +
-            "&nbsp;&nbsp;clear() &nbsp;&nbsp;- Clear the entire grid<br>" +
-            "&nbsp;&nbsp;undo() &nbsp;&nbsp;- Undo last action<br>" +
-            "&nbsp;&nbsp;redo() &nbsp;&nbsp;- Redo last undone action<br>" +
-            "&nbsp;&nbsp;freeform(col, row, char) - Place character at position<br>" +
-            "&nbsp;&nbsp;exit() &nbsp;&nbsp;- Return to Terminal mode"
+          "CADScript commands:<br>" +
+            "&nbsp;&nbsp;clear() &nbsp;- clear entire grid<br>" +
+            "&nbsp;&nbsp;exit() &nbsp;&nbsp;- return to Terminal mode<br>" +
+            "&nbsp;&nbsp;freeform(x,y,char) - put character<br>" +
+            "&nbsp;&nbsp;redo() &nbsp;&nbsp;- redo last undone action<br>" +
+            "&nbsp;&nbsp;undo() &nbsp;&nbsp;- undo last action"
+
         );
         break;
 
@@ -6004,13 +6009,13 @@ function __cliRunCADOps(ops) {
 function __cliTerminalHelp() {
   term.output(
     "Terminal commands:<br>" +
-      "&nbsp;&nbsp;help &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- This help (Terminal mode)<br>" +
-      "&nbsp;&nbsp;clear &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Clear the terminal screen<br>" +
-      "&nbsp;&nbsp;history &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Show command history<br>" +
-      "&nbsp;&nbsp;history -c &nbsp;- Clear command history<br>" +
-      "&nbsp;&nbsp;script &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Enter CADScript mode (prompt becomes CADScript>)<br>" +
-      "&nbsp;&nbsp;exec(\"...\") &nbsp;- Execute CADScript statements without switching modes<br>" +
-      "&nbsp;&nbsp;exit &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Exit CLI (switch back to UI sidebar)"
+      "&nbsp;&nbsp;clear &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- clear terminal screen<br>" +
+      "&nbsp;&nbsp;exec \"..\" &nbsp;&nbsp;- execute CADScript<br>" +
+      "&nbsp;&nbsp;exit &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- exit CLI<br>"+
+      //"&nbsp;&nbsp;help  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- terminal help<br>" +
+      "&nbsp;&nbsp;history &nbsp;&nbsp;&nbsp;&nbsp;- show command history<br>" +
+      "&nbsp;&nbsp;history -c &nbsp;- clear command history<br>" +
+      "&nbsp;&nbsp;script &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- enter CADScript mode<br>"
   );
 }
 
@@ -6069,7 +6074,7 @@ function __cliHandleTerminal(line) {
     }
     __cliMode = "script";
     term.setPrompt("CADScript");
-    term.output("Entered CADScript mode. Type <u>help()</u> for functions, <u>exit()</u> to return.");
+    term.output(sbTitle.querySelector('big').textContent+" script - type <u>help()</u>");
     return true;
   }
 
