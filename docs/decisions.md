@@ -834,6 +834,61 @@ const dragTools = {
 
 ---
 
+## ADR-032: Vanilla-Terminal CLI with dual modes and context-aware paste
+**Date:** 30-Jan-2026 (v1.03 CLI)\
+**Status:** Accepted\
+**Context:** The initial textarea-based CLI caused recurring issues with selection, copy/paste, and focus management as new features were added (sidebar resizing, grid paste hijacking, multi-command scripting).\
+**Decision:** Replace the textarea CLI with a dedicated terminal widget (vanilla-terminal) and introduce two explicit command languages (“Terminal mode” and “CADScript mode”). Keep the global paste-to-grid feature, but make it context-dependent so it never breaks copy/paste in the sidebars.
+
+### CLI Modes
+
+**1) Terminal mode (prompt `AsciiCAD>`)** — Linux-like commands and options:
+
+- `help` — list terminal commands only
+- `clear` — clear the terminal screen
+- `history` — show command history
+- `history -c` — clear command history
+- `script` — switch to CADScript mode (prompt becomes `CADScript>`)
+- `exec("...")` — execute one or more CADScript statements without switching mode
+- `exit` — leave the CLI and return to the UI sidebar (`switchToSidebar('ui')`)
+
+**2) CADScript mode (prompt `CADScript>`)** — function-call syntax:
+
+- `help()` — list CADScript functions only
+- `clear()` — clear the entire grid
+- `undo()` / `redo()` — invoke undo/redo (each as a single stroke)
+- `freeform(col,row,char)` — place a character
+- `exec("terminal-command ...")` — run exactly one terminal command (including options) from CADScript (e.g. `exec("clear")` clears the terminal)
+- `exit()` — leave CADScript mode and return to Terminal mode (prompt becomes `AsciiCAD>`)
+
+### Parsing & robustness rules
+
+- **Quote normalization:** smart quotes are normalized to ASCII quotes before parsing (so pasted `’+’` works as `'+'`).
+- **Multi-statement support:** CADScript input accepts multiple statements separated by `;` (semicolon-aware, respecting quotes/escapes).
+- **Strict separation of languages:**
+  - Terminal mode rejects CADScript-looking input and suggests `script` or `exec("...")`.
+  - CADScript mode rejects bare words and requires function calls.
+
+### Paste / selection policy
+
+- **Keep paste-to-grid hijack** (Cmd/Ctrl+V) for the drawing area, because it enables “paste preview” and commit-to-grid workflows.
+- **Context-dependent guard:** the global paste hijack must *not* run when paste originates from, or focus is inside, either sidebar (UI sidebar or CLI sidebar/terminal). In those cases, native browser paste/copy/selection behavior is preserved.
+- **Scrollbar track artifact:** the terminal container uses `overflow-y: auto` (not `scroll`) so the scrollbar track is not permanently reserved/visible.
+
+### Rationale
+
+- A dedicated terminal widget reduces ad-hoc event handling and improves consistency for selection/copy/paste.
+- Explicit modes avoid ambiguous parsing and allow both Linux-like commands and JS-like CADScript functions without collisions.
+- Context-aware paste preserves the CAD paste workflow without breaking sidebar text editing.
+
+### Consequences
+
+- (+) Reliable copy/select/paste inside the terminal and sidebars.
+- (+) Clear user mental model: commands vs functions.
+- (+) CADScript can batch actions via `;` and can call back into Terminal via `exec("...")`.
+- (-) Requires maintaining two small parsers/dispatchers (Terminal + CADScript), plus mode transitions.
+
+
 ## Summary of Key Design Principles
 
 1. Simplicity: No frameworks, vanilla JavaScript
