@@ -2304,9 +2304,6 @@ Misc: rangeChars(0x2320, 0x23FF).concat(['♀','♂','☯','☮','✌']),
     <script type="text/javascript">
 function COM()
 {
-  const hexLookupTable = new Array(256);
-  for (let i = 0; i < 256; i++) hexLookupTable[i] = i.toString(16).padStart(2, '0');
-
   const hex2tab=[
     "00","01","02","03","04","05","06","07","08","09","0A","0B","0C","0D","0E","0F","10","11","12","13","14","15","16","17","18","19","1A","1B","1C","1D","1E","1F",
     "20","21","22","23","24","25","26","27","28","29","2A","2B","2C","2D","2E","2F","30","31","32","33","34","35","36","37","38","39","3A","3B","3C","3D","3E","3F",
@@ -2579,33 +2576,6 @@ function COM()
     a.remove();
   };
 
-  this.UploadData = new Array();
-  this.Upload = function(elementId,callback)
-  {
-      this.UploadData = [];
-      var file = document.getElementById(elementId).files[0];
-      if (!file) return;
-      oCOM.UploadName = file.name;
-
-      this.fread = new FileReader();
-      this.fread.readAsArrayBuffer(file);
-      if(typeof(callback)!="function") callback = function() { alert("test") }; // override if needed
-      else this.callback = callback;
-
-      function handleEvent(obj)
-      {
-          return function(levent)
-          {
-            var data = new DataView(levent.target.result);
-            var size = levent.target.result.byteLength;
-            this.UploadData = Array(size);
-            for (var i = 0; i < size; i++)
-              obj.UploadData[i] = data.getUint8(i);
-            obj.callback(obj.UploadData);
-          }
-      }
-      this.fread.addEventListener('load',handleEvent(this));
-  }
     /////////////////////
     // URL PARSER      //
     /////////////////////
@@ -2662,50 +2632,7 @@ function COM()
       }
     }
   }
-
-  /////////////////////
-  // EVENT SEQUENCER //
-  /////////////////////
-
-  this.addToEventStack = function(event,func)
-  {
-    console.log("addToEventStack("+event+" "+func.name+")");
-    if(o_event==null) var o_event = {};
-    o_event[event] = window[event];
-    if (typeof window[event] != "function") window[event] = func;
-    else { window[event] = function() { if (o_event[event]) o_event[event](); func() } };
-  }
-
-    
-  /////////////////////////////////
-  // DASHBOARD REFRESH SEQUENCER //
-  /////////////////////////////////
-
-  // array of functions is called at the pace of EMU_DashboardRefresh_s = Dashboard updates per second   
-  this.RefreshEvent_arr = {};
-  this.bRefreshEvent = false;
-
-  this.addRefreshEvent = function(func,name,active)
-  {
-    console.log("addRefreshEvent("+name+")");
-    this.RefreshEvent_arr[ name ] = {"func":func,"active":active}
-    this.checkActiveEvents();
-  }
-
-  this.toggleRefreshEvent = function(name)
-  {
-    this.RefreshEvent_arr[ name ].active = !this.RefreshEvent_arr[ name ].active;
-    this.checkActiveEvents();
-    return this.RefreshEvent_arr[ name ].active;
-  }
-
-  this.checkActiveEvents = function()
-  {
-    var bActive = false;
-    for(var _o in this.RefreshEvent_arr)
-      if(this.RefreshEvent_arr[_o].active) bActive = true;
-    this.bRefreshEvent = bActive;
-  }
+  
 }
 
 oCOM = new COM();
