@@ -2314,13 +2314,12 @@ function COM()
     "C0","C1","C2","C3","C4","C5","C6","C7","C8","C9","CA","CB","CC","CD","CE","CF","D0","D1","D2","D3","D4","D5","D6","D7","D8","D9","DA","DB","DC","DD","DE","DF",
     "E0","E1","E2","E3","E4","E5","E6","E7","E8","E9","EA","EB","EC","ED","EE","EF","F0","F1","F2","F3","F4","F5","F6","F7","F8","F9","FA","FB","FC","FD","FE","FF"];
   
-  this.getHexByte    = function(v)   { return hex2tab[v&0xFF] }
-  this.getHexWord    = function(v)   { return hex2tab[v>>8] + hex2tab[v&0xFF] }
-  this.getHexMulti   = function(v,m) { return ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase() }
-  this.getBinMulti   = function(v,m) { return ("0".repeat(m)+v.toString(2)).slice(-m).toUpperCase() }
-  this.getNumByteArr = function(v)   { let y= Math.floor(v/2**32); return [(v<<24),(v<<16),(v<<8),v,(y<<24),(y<<16),(y<<8),y].map(z=> z>>>24) } // convert JS number to byte array
-  this.getByteArrNum = function(arr) { return arr.reduce((a,c,i)=> a+c*2**(56-i*8),0) } // convert byte array to JS number
-
+  this.getHexByte    = function(v)     { return hex2tab[v&0xFF] }
+  this.getHexWord    = function(v)     { return hex2tab[v>>8] + hex2tab[v&0xFF] }
+  this.getHexMulti   = function(v,m)   { return ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase() }
+  this.getBinMulti   = function(v,m)   { return ("0".repeat(m)+v.toString(2)).slice(-m).toUpperCase() }
+  this.getNumByteArr = function(v)     { let y= Math.floor(v/2**32); return [(v<<24),(v<<16),(v<<8),v,(y<<24),(y<<16),(y<<8),y].map(z=> z>>>24) } // convert JS number to byte array
+  this.getByteArrNum = function(arr)   { return arr.reduce((a,c,i)=> a+c*2**(56-i*8),0) } // convert byte array to JS number
   this.HEX2RGB       = function(hex)   { var n=parseInt(hex.slice(1),16); return [(n>>16)&0xFF,(n>>8)&0xFF,n&0xFF] }
   this.RGB2HEX       = function(color) { return [hex2tab[color[0]&0xFF],hex2tab[color[1]&0xFF],hex2tab[color[2]&0xFF]] }
 
@@ -2349,22 +2348,15 @@ function COM()
 
   this.ArrayBufferTobase64 = function(buffer) 
   {
-      //return btoa(String.fromCharCode.apply(null, new Uint8Array(bytes)));
-
       var binary = '';
       var bytes = new Uint8Array( buffer );
       var len = buffer.byteLength;
-      for (var i = 0; i < len; i++) {
-          binary += String.fromCharCode( bytes[ i ] );
-      }
+      for (var i = 0; i < len; i++) { binary += String.fromCharCode( bytes[ i ] ); }
       return window.btoa( binary );
   }
 
   this.b64EncodeUnicode = function(str)
   {
-    // first we use encodeURIComponent to get percent-encoded Unicode,
-    // then we convert the percent encodings into raw bytes which
-    // can be fed into btoa.
     return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
         function toSolidBytes(match, p1) {
             return String.fromCharCode('0x' + p1);
@@ -2516,8 +2508,7 @@ function COM()
 
   this.escapeREGEXP = function(str)
   {
-    return str
-    .replace(/([\.\^\$\*\+\-\?\(\)\[\]\{\}\\\|])/g, "\\$1")
+    return str.replace(/([\.\^\$\*\+\-\?\(\)\[\]\{\}\\\|])/g, "\\$1")
   }
 
   this.uuid = function()  // UUID v4
@@ -2530,7 +2521,6 @@ function COM()
   this.toASCIIarr = function(str){for(var a=[],i=0;i<str.length;i++)a.push(str.charCodeAt(i));return a;}  // convert string into array of ascii codes (numbers)
   this.crc16 = function(r){var crc=0xFFFF;var odd; for(var i=0;i<r.length;i++) { crc = crc ^ r[i]; for (var j = 0; j < 8; j++) { odd = crc & 0x0001; crc = crc >> 1; if (odd) { crc = crc ^ 0xA001 }}} return crc };
   this.crc32 = function(r){for(var a,o=[],c=0;c<256;c++){a=c;for(var f=0;f<8;f++)a=1&a?3988292384^a>>>1:a>>>1;o[c]=a}for(var n=-1,t=0;t<r.length;t++)n=n>>>8^o[255&(n^r[t])];return(-1^n)>>>0};
-
 
   /////// GUI FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2588,28 +2578,20 @@ function COM()
     merge: function (_uri1,_uri2)
     {
       var _o = new Array();
-      for(_i in _uri1)
-        _o[_i] = _uri1[_i];
-      for(_i in _uri2)
-        _o[_i] = _uri2[_i]; 
+      for(_i in _uri1) _o[_i] = _uri1[_i];
+      for(_i in _uri2) _o[_i] = _uri2[_i]; 
       return _o[_i];
     },
     addURI: function (_uri2)
     {
       for(_i in _uri2)
-        if(_uri2[_i])
-          this.uri[_i] = _uri2[_i]; // add or override
-        else
-          delete this.uri[_i];
+        if(_uri2[_i]) this.uri[_i] = _uri2[_i]; else delete this.uri[_i];
     },
     getURI: function ()
     {
       var _str = ""
       for(_i in this.uri)
-      {
-        if(this.uri[_i])
-          _str += (_str?"&":"?") + _i + "=" + this.uri[_i];
-      }
+        if(this.uri[_i]) _str += (_str?"&":"?") + _i + "=" + this.uri[_i];
       return _str;
     },
     parse: function (_url)
@@ -2620,7 +2602,6 @@ function COM()
       var _urlargs = _urlarr[1]?_urlarr[1].split("&"):new Array(_urlarr[0],"");
       this.url = _urlarr[0];
       this.filename = this.url.substring(this.url.lastIndexOf("/")+1,this.url.length);
-  
       this.uri = {};
       for(var _i=0;_i<_urlargs.length;_i++)
       {
