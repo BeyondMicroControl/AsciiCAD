@@ -4734,7 +4734,28 @@ function setCurrentCommand(cmd) {
 }
 
 function executeCLICommand(cmdLine) {
-  const trimmed = cmdLine.trim();
+  // Normalize smart quotes everywhere (not only on paste)
+  let normalized = (cmdLine || '')
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .trim();
+
+  if (!normalized) { cliPrint(''); return; }
+
+  // Allow multiple commands separated by ';'
+  const parts = normalized
+    .split(';')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  // If there are multiple statements, run each as its own command
+  if (parts.length > 1) {
+    for (const p of parts) executeCLICommand(p);   // recursion will hit single-command case
+    return;
+  }
+
+  // --- existing single-command implementation continues below ---
+  const trimmed = normalized;
   if (!trimmed) {
     cliPrint('');
     return;
@@ -4951,32 +4972,39 @@ cliTerminal.addEventListener('click', () => {
 
 // Clipboard Support for CLI
 cliTerminal.addEventListener('paste', (e) => {
+  const cd = e.clipboardData || window.clipboardData;
+  const pastedText = cd ? cd.getData('text/plain') || cd.getData('text') : '';
+
+  // If we can't read clipboard text, allow native paste (context-menu paste often works this way)
+  if (!pastedText) return;
+
   e.preventDefault();
-  
-  const pastedText = (e.clipboardData || window.clipboardData).getData('text');
-  
-  // Get current cursor position
+  e.stopPropagation(); // IMPORTANT: prevent window paste handler from stealing it
+
+  // Normalize smart quotes (see #2)
+  const normalized = pastedText
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"');
+
   const cursorPos = cliTerminal.selectionStart;
   const textBeforeCursor = cliTerminal.value.substring(0, cursorPos);
   const lastLineStart = textBeforeCursor.lastIndexOf('\n') + 1;
   const promptEnd = lastLineStart + 'AsciiCAD> '.length;
-  
-  // Only allow pasting after the prompt
-  if (cursorPos < promptEnd) {
-    return;
-  }
-  
-  // Insert pasted text at cursor position (single line only, ignore newlines)
-  const cleanText = pastedText.replace(/[\r\n]+/g, '');
+
+  if (cursorPos < promptEnd) return;
+
+  const cleanText = normalized.replace(/[\r\n]+/g, '');
   const before = cliTerminal.value.substring(0, cursorPos);
-  const after = cliTerminal.value.substring(cliTerminal.selectionEnd);
-  
+  const after  = cliTerminal.value.substring(cliTerminal.selectionEnd);
+
   cliTerminal.value = before + cleanText + after;
-  
-  // Position cursor after pasted text
+
   const newPos = cursorPos + cleanText.length;
   cliTerminal.setSelectionRange(newPos, newPos);
+  cliTerminal.focus();
 });
+
+
 
 // Copy support (Ctrl+C / Cmd+C) - allow default browser behavior
 cliTerminal.addEventListener('copy', (e) => {
