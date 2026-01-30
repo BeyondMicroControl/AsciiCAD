@@ -385,17 +385,31 @@ var VanillaTerminal = function VanillaTerminal(props) {
     self.DOM.command.classList.add("hidden");
     self.DOM.input.value = "";
 
-    // Dispatch
+    // Pre-dispatch hook: allow host to handle the raw line.
     var parts = commandLine.split(" ");
     var command = parts[0];
     var params = parts.slice(1);
+
+
+    if (typeof self.onInputCallback === "function") {
+      try {
+        var handled = self.onInputCallback(command, params, commandLine);
+        if (handled === true) {
+          resetCommand();
+          return;
+        }
+      } catch (err) {
+        self.output("[ERROR] " + escapeHtml(err && err.message ? err.message : String(err)));
+        resetCommand();
+        return;
+      }
+    }
+
+    // Dispatch (built-ins / user commands)
     var callback = self.commands[command];
 
     if (typeof callback === "function") {
       callback(self, params);
-      if (typeof self.onInputCallback === "function") {
-        self.onInputCallback(command, params);
-      }
     } else {
       self.output("<u>" + escapeHtml(command) + "</u>: command not found.");
     }
@@ -454,19 +468,16 @@ var VanillaTerminal = function VanillaTerminal(props) {
   });
   observer.observe(self.DOM.output, { childList: true, subtree: true });
 
-  // Focus handling
-  window.addEventListener(
-    "click",
-    function () {
-      self.DOM.input.focus();
-    },
-    false
-  );
-
-  self.DOM.output.addEventListener(
+  // Focus handling: focus the input when clicking inside the terminal,
+// but do NOT steal focus when selecting/copying text in the output.
+  self.DOM.root.addEventListener(
     "click",
     function (ev) {
-      ev.stopPropagation();
+      // Ignore clicks outside the terminal root
+      if (!self.DOM.root.contains(ev.target)) return;
+      // Don't steal focus when the user is interacting with the output area (selection/copy)
+      if (self.DOM.output.contains(ev.target)) return;
+      self.DOM.input.focus();
     },
     false
   );
@@ -481,16 +492,6 @@ var VanillaTerminal = function VanillaTerminal(props) {
 
   self.DOM.input.addEventListener("keyup", handleKeyUp, false);
   self.DOM.input.addEventListener("keydown", handleKeyDown, false);
-
-  window.addEventListener(
-    "keyup",
-    function (ev) {
-      self.DOM.input.focus();
-      ev.stopPropagation();
-      ev.preventDefault();
-    },
-    false
-  );
 
   // ---- initial output ------------------------------------------------------
 
