@@ -2530,83 +2530,6 @@ function COM()
     return btoa(a_s);
   }
 
-  this.DumpBase64 = function(b64body,maxlen,lf)
-  {
-    var lf = lf===undefined ? "\n" : lf;
-    var maxlen = maxlen===undefined ? 1024 : maxlen;
-    var re = RegExp(".{1,"+maxlen+"}","g");
-    return "var b64 ="+lf+" \""+b64body.match(re).join('"'+lf+'+"')+"\";"+lf
-  }
-
-  this.base_convert = function (str, fromBase, toBase)
-  {
-    if(typeof(fromBase)=='object') { this.fromSymbols = fromBase[0] }
-    if(typeof(toBase)  =='object') { this.toSymbols = toBase[0] }
-    fromBase = this.fromSymbols.length; toBase = this.toSymbols.length;
-
-    // PARSE INPUT DIGITS ARRAY
-    for(var _a = [0], str = str.split(''); str.length > 0 && _a[_a.push(this.fromSymbols.indexOf(str.pop())) - 1] >= 0;);
-    var _d = _a.shift() + _a[_a.length-1]>=0 ? _a : null; if (_d === null) return null;
-
-    // BASE CONVERSION
-    for (var _n = 0,_a = [],_p = [1]; _n < _d.length; _n++) { _a = add(_a, mul(_d[_n], _p, toBase), toBase); _p = mul(fromBase, _p, toBase) }
-
-    // PARSE OUTPUT DIGITS ARRAY
-    for (var _n = _a.length - 1, _o = ''; _n >= 0; _o += this.toSymbols[_a[_n--]]);
-
-    function add(x, y, base) {
-        var _m = Math.max(x.length, y.length);
-        for(var _c = 0,_n = 0,_r = [],_z; _n < _m || _c; _c = Math.floor(_z / base)) {
-          var _z = _c + (_n < x.length ? x[_n] : 0) + (_n < y.length ? y[_n] : 0);
-          var _n =  _r.push(_z % base);
-        }
-        return _r;
-    }
-
-    function mul (x, pow, base) {
-        for(var _r = x < 0 ? null : []; x > 0; x = x >> 1) {
-          if(x & 1) _r = add(_r, pow, base);
-          pow = add(pow, pow, base);
-        }
-        return _r;
-    }
-
-    return _o.length==0?this.toSymbols[0]:_o;
-  }
-
-  this.symbols = 
-  {
-    32:function(){return this.base32hex},
-    45:function(){return this["qr-alnum"]},
-    58:function(){return this.Bitcoin},
-    60:function(){return this.appleII},
-  "low hex":   ["[0-9][a-f]"],															 // base 16
-  "qr-alnum":  ["[0-9][A-Z] $%*+-./:"],                      // base 45
-  "Bitcoin":   ["[1-9][A-H]JKLMN[P-Z][a-k][m-z]"],           // base 58
-  "appleII":   ["[0-9][A-Z]![#-/][:-@]]^ "],                 // base 60
-  "Base64":    ["[A-Z][a-z][0-9]+/"],												 // base 64
-  "GUID64":    ["[A-Z][a-z][0-9]-_"]                        // base 64
-  }
-
-  this.getsymbols = function(base) {
-    if(typeof(base)=="undefined") return "";
-    if(typeof(this.symbols[base])=="undefined")
-      this.symbols[base] = base<95?
-        (this.rng(base<64?"[0-9][A-Z][a-z]+":"[A-Z][a-z][0-9][!-/][:-@][[-`][{-~]").substring(0,base))
-      :(this.symbols[base] = base<216?
-        this.rng("[\x20-\x7e]\x80[\x82-\x8c]\x8e[\x91-\x9c]\x9e\x9f[\xa1-\xac][\xae-\xff]").substring(0,base)
-        :this.rng("[\x00-\xff]").substring(256-base,256));
-    if(typeof(this.symbols[base])=="function")  this.symbols[base] = this.symbols[base]();             // process references
-    if(typeof(this.symbols[base])=="object")    this.symbols[base] = this.rng(this.symbols[base][0]);  // process range_replace
-    return this.symbols[base];
-  }
-
-  this.rng = function(recipe) {
-    var _a = recipe.match(/\[.-.\]/); if(_a==null) return recipe; else { _a=[_a[0].charCodeAt(1),_a[0].charCodeAt(3)];
-    return this.rng(recipe.replace(RegExp("\\[(\\x"+("0"+_a[0].toString(16)).slice(-2)+"-\\x"+_a[1].toString(16)+")\\]","g"),
-    String.fromCharCode(..." ".repeat(_a[1]-_a[0]+1).split("").map((_e,_i)=>_i+_a[0])) )) }
-  }
-
   this.ltrim = function(s) { return s.replace(/^ */,"") }
   this.rtrim = function(s) { return s.replace(/ *$/,"") }
   this.trim  = function(s) { return this.rtrim(this.ltrim(s)) }
@@ -2732,50 +2655,6 @@ function COM()
     }
   }
 
-  // https://stackoverflow.com/questions/1293147/how-to-parse-csv-data
-  this.CSVParser =
-  {
-    parse:
-    function(csv)
-    {
-      var arr = csv.match( /\s*(\"[^"]*\"|'[^']*'|[^,]*)\s*(,|$)/g ).map( 
-        function (csv)
-        {
-          let m;
-          if (m = csv.match(/^\s*,?$/)) return null; // null value
-          if (m = csv.match(/^\s*\"([^"]*)\"\s*,?$/)) return "\""+m[1]+"\""; // Double Quoted Text
-          if (m = csv.match(/^\s*'([^']*)'\s*,?$/)) return "'"+m[1]+"'"; // Single Quoted Text
-          if (m = csv.match(/^\s*(true|false)\s*,?$/)) return m[1] === "true"; // Boolean
-          if (m = csv.match(/^\s*((?:\+|\-)?\d+)\s*,?$/)) return parseInt(m[1]); // Integer Number
-          if (m = csv.match(/^\s*((?:\+|\-)?\d*\.\d*)\s*,?$/)) return parseFloat(m[1]); // Floating Number
-          if (m = csv.match(/^\s*(.*?)\s*,?$/)) return m[1]; // Unquoted Text
-        }
-      )
-      if(arr[arr.length-1]==null) arr.pop();
-      return arr;
-    }
-    ,
-    stringify:
-    function(table, replacer)
-    {
-        replacer = replacer || function(r, c, v) { return v; };
-        var csv = '', c, cc, r, rr = table.length, cell;
-        for (r = 0; r < rr; ++r)
-        {
-            if (r) csv += '\r\n';
-            for (c = 0, cc = table[r].length; c < cc; ++c)
-            {
-              if (c) csv += ',';
-              cell = replacer(r, c, table[r][c]);
-              if (/[,\r\n"]/.test(cell))
-                cell = '"' + cell.replace(/"/g, '""') + '"';
-              csv += (cell || 0 === cell) ? cell : '';
-            }
-        }
-        return csv;
-    }
-  }
-
   this.unescapeHTML = function(str)
   {
     return str
@@ -2823,55 +2702,6 @@ function COM()
 
   /////// GUI FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////
 
-  this.POPUP = {
-    create: function(target_id) 
-    { 
-      var obj = Object.create(this);
-      obj.target_id = target_id;
-      obj.id="";
-      obj.states={};
-      obj.rules={};
-      this.el(obj.target_id.dest).innerHTML += obj.target_html();
-      return obj 
-    },
-    id:"",
-    states:{},
-    rules:{},
-    target_id:{"html":"COM_popup","html_txt":"COM_popup_text","class":"appbut","float":false},
-    target_html:function(){return "<div class=appbox id=\""+this.target_id.html+"\" style=\""+(this.target_id.float?"position: absolute; z-index: 3; left: 0px; top: 120px;":"")+"\" hidden=\"\"><div id=\""+this.target_id.html_txt+"\"></div></div>"},
-    target_btn:function(arg){return "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+this.target_id.html+"');document.getElementById('"+this.target_id.html_txt+"').innerHTML='';"+(arg===undefined?"":arg.onclick)+"\" style=\"text-align:center;float:right;\">x</div>"},
-    el: function(id) { return document.getElementById(id) },
-    addRule: function(id,function_obj) { this.rules[id] = function_obj },
-    runRule: function(id) { this.id = id; this.rules[id](this) },
-    set_state: function(id,val){ this.states[id] = val },
-    get_state: function(id){ return this.states[id]===undefined?this.el(id).classList.item(1):this.states[id]},
-    update_state: function(id,el){ this.states[id] = el.hidden },
-    on: function(id) { this.states[id] = this.el(id).hidden = false },
-    off: function(id) { this.states[id] = this.el(id).hidden = true },
-    toggle: function(id) { var el=this.el(id); if(el===undefined && el.hidden==null) return null; this.states[id] = el.hidden = !el.hidden ;return el },
-    //get_class: function(el,idx) { el.classList.item(idx===undefined?0:idx) },
-    set_class: function(el,class1,class2,bool)
-    {
-      el.hidden = bool;
-      if(bool) {el.classList.replace(class2,class1);this.states[el.id]=class1}
-      else {el.classList.replace(class1,class2);this.states[el.id]=class2}
-      //if(bool) {el.classList.remove(class2);el.classList.add(class1);this.states[el.id]=class1}
-      //else {el.classList.remove(class1);el.classList.add(class2);this.states[el.id]=class2}
-    },
-    toggle_class: function(el,class1,class2)
-    {
-      this.toggle(el.id);
-      this.set_class(el,class1,class2,el.hidden);
-    },
-    html: function(html,ttl)
-    {
-      var e = oCOM.POPUP.toggle(this.target_id.html);
-      if(e==null) return null;
-      if(html==null) e.hidden = true;
-      if(ttl) { setTimeout( COM_PopupHTML,ttl*1000 ); e.hidden = false };
-      document.getElementById(this.target_id.html_txt).innerHTML += !e.hidden?(html+"<br>"):"";
-    }
-  }
  
   this.GetHTTP = function(url,responsetype,callback_function,arg)
   {
