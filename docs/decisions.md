@@ -848,13 +848,7 @@ const dragTools = {
 ## Future Considerations
 Based on the prompts, areas for potential future development:
 
-1. Refactoring: Unified tool lifecycle framework
-2. Performance: Optimization for very large grids
-3. Export: Additional format support (PNG, SVG)
-4. Collaboration: Multi-user editing
-5. Dark Mode: Alternative color scheme
-6. Mobile: Touch-optimized interface
-7. Component Catalog: Expanded library
-8. Templates: Pre-built schematic patterns
-9. Search: Find components in diagram
-10. Layers: Separate annotation/component layers
+1. Mobile: Touch-optimized interface
+2. Component Catalog: Expanded library
+2. Templates: Pre-built schematic patterns
+3. Search: Find components in diagram
