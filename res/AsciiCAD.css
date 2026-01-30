@@ -91,7 +91,9 @@
   background-color: #222222;
   color: white;
   font-family: "Inconsolata", "Courier New", Courier, monospace;
+  text-underline-offset: 0.2em;
   font-weight: bold;
+  font-size:80%;
   overflow: hidden;
   padding: 0.1em 0.1em;
 }
