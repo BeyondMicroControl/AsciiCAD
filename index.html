@@ -111,14 +111,19 @@
     </aside>
 
     <aside id="cliSidebar" class="sidebar hidden">
+   
       <div class="resize-handle" id="resizeHandleCLI"></div>
       <div class="sb-top">
         <button id="toggleCLI" class="btn" title="Switch to UI" aria-label="Toggle to UI sidebar">◀</button>
         <div class="sb-title"><big>AsciiCAD CLI</big><br><small>Type commands, press Enter</small></div>
       </div>
+      <!--
       <div class="cli-container">
         <textarea id="cliTerminal" class="cli-terminal" placeholder="Type 'help' for commands..." spellcheck="false"></textarea>
       </div>
+      -->
+       <div id="vanilla-terminal"></div>
+     
     </aside>
 
     <main class="main">
@@ -2075,10 +2080,14 @@ function switchToSidebar(newSidebar) {
   
   activeSidebar = newSidebar;
   
-  if (activeSidebar === 'cli') {
+  if (activeSidebar === 'cli') 
+  {
+
+
     sidebar.classList.add('hidden');
     cliSidebar.classList.remove('hidden');
-    
+
+        /*
     // Initialize terminal with welcome message if empty
     if (!cliTerminal.value) {
       // Extract title text from sbTitle (get text content of <big> tag)
@@ -2090,13 +2099,27 @@ function switchToSidebar(newSidebar) {
     
     cliTerminal.focus();
     cliTerminal.setSelectionRange(cliTerminal.value.length, cliTerminal.value.length);
+    */
+    //cliSidebar.innerHTML = "<div id='vanilla-terminal'></div>"
+     
+
+    
+
   } else {
     cliSidebar.classList.add('hidden');
     sidebar.classList.remove('hidden');
   }
 
+  
+
   scheduleResize();
   }
+
+
+  function isInSidebar(el) {
+  if (!el || !el.closest) return false;
+  return !!el.closest("#sidebar, #cliSidebar");
+}
 
   toggleSidebar.addEventListener("click", () => {
   switchToSidebar('cli');
@@ -2107,6 +2130,8 @@ toggleCLI.addEventListener("click", () => {
   switchToSidebar('ui');
 });
 
+
+/*
 //       ______  _____     _____    _________                              _                   __   
 //     .' ___  ||_   _|   |_   _|  |  _   _  |                            (_)                 [  |  
 //    / .'   \_|  | |       | |    |_/ | | \_|.---.  _ .--.  _ .--..--.   __   _ .--.   ,--.   | |  
@@ -2468,6 +2493,20 @@ cliTerminal.addEventListener('keydown', (e) => {
 
 }, true);
 
+
+
+
+
+// END CLI TERMINAL MANAGEMENT
+//     ________                __     ______  _____     _____  
+//    |_   __  |              |  ]  .' ___  ||_   _|   |_   _| 
+//      | |_ \_| _ .--.   .--.| |  / .'   \_|  | |       | |   
+//      |  _| _ [ `.-. |/ /'`\' |  | |         | |   _   | |   
+//     _| |__/ | | | | || \__/  |  \ `.___.'\ _| |__/ | _| |_  
+//    |________|[___||__]'.__.;__]  `.____ .'|________||_____| 
+//                                                             
+*/
+
 // Sidebar Resize Functionality
 let resizing = false;
 let resizeStartX = 0;
@@ -2545,16 +2584,111 @@ document.addEventListener('mousemove', doResize);
 document.addEventListener('mouseup', stopResize);
 
 
-// END CLI TERMINAL MANAGEMENT
-//     ________                __     ______  _____     _____  
-//    |_   __  |              |  ]  .' ___  ||_   _|   |_   _| 
-//      | |_ \_| _ .--.   .--.| |  / .'   \_|  | |       | |   
-//      |  _| _ [ `.-. |/ /'`\' |  | |         | |   _   | |   
-//     _| |__/ | | | | || \__/  |  \ `.___.'\ _| |__/ | _| |_  
-//    |________|[___||__]'.__.;__]  `.____ .'|________||_____| 
-//                                                             
+// VANILLA-TERMINAL COMMANDS
 
+var VanillaTerminalBuiltins = (function () {
+  "use strict";
 
+  var STORAGE_KEY = "VanillaTerm";
+  var VERSION = "0.0.11";
+
+  var HELP = {
+    clear: "clear the terminal screen",
+    version: "print the terminal version",
+    wipe: "Remove all your history of command lines",
+    help: "print this message",
+  };
+
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function createBuiltInCommands() {
+    return {
+      "clear": function (terminal) {
+        terminal.clear();
+      },
+
+      "help": function (terminal, params) {
+        params = params || [];
+        var command = params[0];
+
+        if (command) {
+          terminal.output(
+            "help: " +
+              (HELP[command] || ("no help topics match <u>" + escapeHtml(command) + "</u>"))
+          );
+          return;
+        }
+
+        terminal.output(
+          "These shell commands are defined internally. Type <u>help</u> for see the list."
+        );
+        terminal.output(
+          "Type <u>help name</u> to find out more about the function <u>name</u>."
+        );
+        terminal.output(Object.keys(terminal.commands).join(", "));
+      },
+
+      "version": function (terminal) {
+        terminal.output("Vanilla Terminal v" + VERSION);
+      },
+
+      "wipe": function (terminal) {
+        terminal.prompt("Are you sure remove all your commands history? Y/N", function (value) {
+          if (String(value).trim().toUpperCase() === "Y") {
+            try {
+              window.localStorage.removeItem(STORAGE_KEY);
+            } catch (_) {}
+            terminal.history = [];
+            terminal.historyCursor = 0;
+            terminal.output("History of commands wiped.");
+          }
+        });
+      },
+    };
+  }
+
+  return {
+    VERSION: VERSION,
+    createBuiltInCommands: createBuiltInCommands,
+  };
+})();
+
+// VANILLA-TERMINAL RUNTIME
+const term = new VanillaTerminal(
+{
+  commands: {
+    flavour: (terminal) => {
+      terminal.output('There is only one flavour for your favorite🍦and it is <b>vanilla<b>.')
+      terminal.setPrompt('@soyjavi <small>❤️</small> <u>vanilla</u> ');
+    },
+
+    async: (terminal) => {
+      terminal.idle();
+      setTimeout(() => terminal.output('Async 300'), 300);
+      setTimeout(() => terminal.output('Async 1300'), 1300);
+      setTimeout(() => {
+        terminal.output('Async 2000');
+        terminal.setPrompt();
+      }, 2000);
+    },
+  },
+
+  // welcome: 'Welcome...',
+  // prompt: 'soyjavi at <u>Macbook-Pro</u> ',
+  separator: '>',
+});
+
+term.setPrompt("AsciiCAD");
+term.onInput((command, parameters) => {
+  console.log('⚡️onInput', command, parameters);
+});
 
 
 
@@ -2764,11 +2898,44 @@ clearBtn.addEventListener("click", () =>
 
 
 // Paste capture (also allow direct paste anywhere)
-window.addEventListener("paste", (e) => 
-{
-  const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
-  if (typeof text === "string" && text.length > 0) { e.preventDefault(); startPasteWithText(text); canvas.focus(); }
+// Paste capture (context-dependent):
+// - If user is working in sidebars (UI or CLI), DO NOT hijack (let native paste work).
+// - Otherwise, hijack paste to paste-preview into the grid.
+window.addEventListener("paste", (e) => {
+  const t = e.target;
+  const ae = document.activeElement;
+
+  // If paste originates from (or focus is in) either sidebar, don't hijack.
+  if (isInSidebar(t) || isInSidebar(ae)) return;
+
+  // If user is editing any text field, don't hijack.
+  if (isEditingTextTarget({ target: t }) || isEditingTextTarget({ target: ae })) return;
+
+  const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : "";
+  if (typeof text === "string" && text.length > 0) {
+    e.preventDefault();
+    startPasteWithText(text);
+    canvas.focus();
+  }
 });
+
+pasteSink.addEventListener("paste", (e) => {
+  const t = e.target;
+  const ae = document.activeElement;
+
+  if (isInSidebar(t) || isInSidebar(ae)) return;
+  if (isEditingTextTarget({ target: t }) || isEditingTextTarget({ target: ae })) return;
+
+  const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : "";
+  if (typeof text === "string" && text.length > 0) {
+    e.preventDefault();
+    startPasteWithText(text);
+    canvas.focus();
+  }
+});
+
+
+
 pasteSink.addEventListener("paste", (e) => 
 {
   const text = e.clipboardData ? expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
