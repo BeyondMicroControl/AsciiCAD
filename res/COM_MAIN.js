@@ -13,7 +13,6 @@ function COM()
     "C0","C1","C2","C3","C4","C5","C6","C7","C8","C9","CA","CB","CC","CD","CE","CF","D0","D1","D2","D3","D4","D5","D6","D7","D8","D9","DA","DB","DC","DD","DE","DF",
     "E0","E1","E2","E3","E4","E5","E6","E7","E8","E9","EA","EB","EC","ED","EE","EF","F0","F1","F2","F3","F4","F5","F6","F7","F8","F9","FA","FB","FC","FD","FE","FF"];
   
-  this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; // TODO: remove from entire codebase
   this.getHexByte    = function(v)   { return hex2tab[v&0xFF] }
   this.getHexWord    = function(v)   { return hex2tab[v>>8] + hex2tab[v&0xFF] }
   this.getHexMulti   = function(v,m) { return ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase() }
@@ -97,20 +96,6 @@ function COM()
   this.rtrim = function(s) { return s.replace(/ *$/,"") }
   this.trim  = function(s) { return this.rtrim(this.ltrim(s)) }
   this.stripHTML = function(s) { return s.replace(/(&nbsp;|<([^>]+)>)/ig,"") }
- 
-  this.padding = function(word_arr, padding_arr) 
-  {
-    let result = [], lim_word;
-    for (let i = 0; i < word_arr.length; i++)
-    {
-      word_arr[i] = this.unescapeHTML(word_arr[i]);
-      lim_word = word_arr[i].length > padding_arr[i] ? word_arr[i].substring(0, padding_arr[i]) : word_arr[i];  // Limit the word to its padding width if it exceeds the available space
-      if (i > 0) result.push('&nbsp;'.repeat(Math.max(0, padding_arr[i-1] - result[result.length-1].length ))); // Calculate padding and ensure it's non-negative (no negative space)
-      result.push(lim_word);                                                                                    // Add the word to the result array
-    }
-    return result.join('');                                                                                     // Join the array into a single string
-  }
-
 
   this.MathParser = function()
   {
@@ -239,23 +224,6 @@ function COM()
     return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
       (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
     );
-  }
-
-  this.default = function(src_obj,default_obj,message)  // create default object when main object is missing
-  {
-    try
-    {
-      var cn = this.default.caller.name;
-      //if(cn!="EMU_init")
-      //oCOM.POPUP.html("default["+cn+"] typeof(src_obj)="+typeof(src_obj)+" Object.keys(src_obj).length="+Object.keys(src_obj).length+" = "+(typeof(src_obj)=="undefined" || Object.keys(src_obj).length==0 ? "default override" : "main"));
-
-      if(typeof(src_obj)=="undefined" || Object.keys(src_obj).length==0) { console.warn(cn+" : proceeding without "+message); return default_obj }
-      return src_obj;
-    }
-    catch({ name, message })
-    {
-        //oCOM.POPUP.html("error in oCOM.default ["+cn+"]: "+name+" "+message);
-    }
   }
 
   this.toASCIIarr = function(str){for(var a=[],i=0;i<str.length;i++)a.push(str.charCodeAt(i));return a;}  // convert string into array of ascii codes (numbers)
