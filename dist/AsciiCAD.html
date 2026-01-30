@@ -5545,11 +5545,23 @@ function __cliRunCADOps(ops) {
           const usage = "Usage:\n" +
           "\"<string>\" - run terminal command"
 
-          alert(op.str);
-          // TODO RUN terminal command (incl. options) in op.str
-
+        if (typeof op.str !== "string") {
+          term.output("[ERROR] " + __cliEscapeHtml(usage));
+          break;
+        }
+        const cmdLine = __cliNormalizeQuotes(op.str).trim();
+        if (!cmdLine) {
+          term.output("[ERROR] " + __cliEscapeHtml(usage));
+          break;
+        }
+        // Enforce "only one terminal command" (no ';' chaining or newlines)
+        if (/[;\r\n]/.test(cmdLine)) {
+          term.output("[ERROR] exec() accepts only one terminal command (no ';' or newlines)");
+          break;
+        }
+        // TODO RUN terminal command (incl. options) in op.str
+        __cliHandleTerminal(cmdLine);
         break;
-
 
       case "freeform":
         stageCell(op.row, op.col, op.ch);
