@@ -31,11 +31,11 @@ var VanillaTerminalBuiltins = (function () {
 
   function createBuiltInCommands() {
     return {
-      clear: function (terminal) {
+      "clear": function (terminal) {
         terminal.clear();
       },
 
-      help: function (terminal, params) {
+      "help": function (terminal, params) {
         params = params || [];
         var command = params[0];
 
@@ -56,11 +56,11 @@ var VanillaTerminalBuiltins = (function () {
         terminal.output(Object.keys(terminal.commands).join(", "));
       },
 
-      version: function (terminal) {
+      "version": function (terminal) {
         terminal.output("Vanilla Terminal v" + VERSION);
       },
 
-      wipe: function (terminal) {
+      "wipe": function (terminal) {
         terminal.prompt("Are you sure remove all your commands history? Y/N", function (value) {
           if (String(value).trim().toUpperCase() === "Y") {
             try {
