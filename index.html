@@ -17,10 +17,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AsciiCAD</title>
     <link rel="stylesheet" href="res/AsciiCAD.css">
+    <script type="text/javascript"  src="res/COM_MAIN.js"></script>
     <script type="text/javascript"  src="res/AsciiCAD_helpers.js"></script>
     <script type="text/javascript"  src="res/AsciiCAD_catalog.js"></script>
     <script type="text/javascript"  src="res/pako.min.js"></script>
-    <script type="text/javascript"  src="res/COM_MAIN.js"></script>
 </head>
 <body>
   <div class="app">
@@ -28,7 +28,7 @@
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.04</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.03</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -541,7 +541,7 @@ function buildCatalogVariants()
 
       // Use same wide-char expansion as paste/load to stay aligned with grid.
       const expanded = expandWideCharsForGrid(raw);
-      const lines = toLines(expanded);
+      const lines = oCOM.toLines(expanded);
       if (!lines || lines.length === 0) continue;
 
       const first = lines[0] ?? "";
@@ -1182,7 +1182,7 @@ function updateUI()
 function expandWideCharsForGrid(text) 
 {
   const outLines = [];
-  const lines = toLines(text); // your normalizeNewlines + split('\n')
+  const lines = oCOM.toLines(text); // your normalizeNewlines + split('\n')
   for (const line of lines)
   {
       let out = "";
@@ -1198,7 +1198,7 @@ function expandWideCharsForGrid(text)
 
 function collapseAfterWideCharsForSave(text)
 {
-  const lines = toLines(text);
+  const lines = oCOM.toLines(text);
   const out = [];
   for (const line of lines)
   {
@@ -2799,7 +2799,7 @@ window.addEventListener("load", function()
               // Expand wide chars (⬤ etc.) so the grid aligns with IDE rendering
               const expanded = expandWideCharsForGrid(txt);
               // Convert to lines (using your existing normalizeNewlines)
-              const lines = toLines(expanded); // <-- IMPORTANT
+              const lines = oCOM.toLines(expanded); // <-- IMPORTANT
               const stroke = [];
               for (let r = 0; r < ROWS; r++)
               {
@@ -2922,7 +2922,7 @@ fileInput.addEventListener("change", async (e) =>
     const expanded = expandWideCharsForGrid(raw);
 
     // Convert to lines (using your existing normalizeNewlines)
-    const lines = toLines(expanded); // <-- IMPORTANT
+    const lines = oCOM.toLines(expanded); // <-- IMPORTANT
 
     const stroke = [];
 
