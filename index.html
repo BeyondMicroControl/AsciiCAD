@@ -443,52 +443,7 @@ return true;
 }
 
 
-function computeHighlightOverlay() 
-{
-  const redSet = new Set();    // frame cells of valid double boxes
-  const insideSet = new Set(); // interior cells of valid double boxes
 
-  // Find boxes by scanning for ╔ and matching to a ╗ on same row + a ╚/╝ on lower row.
-  for (let r0 = 0; r0 < ROWS; r0++) 
-  {
-    for (let c0 = 0; c0 < COLS; c0++)
-    {
-      if (ascii[r0][c0] !== "╔") continue;
-
-      // find candidate top-right corners on same row
-      for (let c1 = c0 + 1; c1 < COLS; c1++) {
-        if (ascii[r0][c1] !== "╗") continue;
-
-        // find candidate bottom row
-        for (let r1 = r0 + 1; r1 < ROWS; r1++) {
-          // quick corner check before full validation
-          if (ascii[r1][c0] !== "╚") continue;
-          if (ascii[r1][c1] !== "╝") continue;
-
-          if (!isValidDoubleBox(r0, c0, r1, c1)) continue;
-
-          // frame: top/bottom
-          for (let c = c0; c <= c1; c++) {
-            redSet.add(keyRC(r0, c));
-            redSet.add(keyRC(r1, c));
-          }
-          // frame: left/right
-          for (let r = r0; r <= r1; r++) {
-            redSet.add(keyRC(r, c0));
-            redSet.add(keyRC(r, c1));
-          }
-          // interior
-          for (let r = r0 + 1; r <= r1 - 1; r++) {
-            for (let c = c0 + 1; c <= c1 - 1; c++) {
-              insideSet.add(keyRC(r, c));
-            }
-          }
-        }
-      }
-    }
-  }
-  return { redSet, insideSet };
-}
 
 // ===== Match overlay (catalog pattern matching) =====
 // Wildcards:
@@ -501,136 +456,17 @@ const WILD_D_SET = new Set(Array.from(WILDCARD_D));
 const WILD_S_SET = new Set(Array.from(WILDCARD_S));
 const WILD_U_SET = new Set(Array.from(WILDCARD_U));
 
-function charMatchesPatternCell(patCh, gridCh) {
-if (patCh === "#") return WILD_D_SET.has(gridCh);
-if (patCh === "$") return WILD_S_SET.has(gridCh);
-if (patCh === "§") return WILD_U_SET.has(gridCh);
-return patCh === gridCh;
-}
 
-function lineMatchesAt(gridLine, c0, patLine)
-{
-  // gridLine is a string of length COLS
-  // patLine is a string; must fit fully
-  if (c0 < 0) return false;
-  if (c0 + patLine.length > gridLine.length) return false;
 
-  for (let i = 0; i < patLine.length; i++) {
-    const pc = patLine[i];
-    const gc = gridLine[c0 + i] || " ";
-    if (!charMatchesPatternCell(pc, gc)) return false;
-  }
-  return true;
-}
 
-function buildCatalogVariants() 
-{
-  // Returns array of { lines:[string], first:string, w:int, h:int }
-  const out = [];
-  const items = (typeof CATALOG !== "undefined" && Array.isArray(CATALOG)) ? CATALOG : [];
-  for (let i = 0; i < items.length; i++)
-  {
-    const it = items[i];
-    const td = it && it.text_data;
-    if (!td) continue;
-    const variants = Array.isArray(td) ? td : [td];
-    for (let k = 0; k < variants.length; k++)
-    {
-      const raw = String(variants[k] ?? "");
-      if (!raw) continue;
 
-      // Use same wide-char expansion as paste/load to stay aligned with grid.
-      const expanded = expandWideCharsForGrid(raw);
-      const lines = oCOM.toLines(expanded);
-      if (!lines || lines.length === 0) continue;
-
-      const first = lines[0] ?? "";
-      if (first.length === 0) continue;
-
-      let w = 0;
-      for (let j = 0; j < lines.length; j++) w = Math.max(w, (lines[j] ?? "").length);
-
-      out.push({ lines, first, w, h: lines.length });
-    }
-  }
-  return out;
-}
 
 let catalogVariantsCache = null; // rebuilt on demand (CATALOG is static during a session)
 
-function computeMatchOverlay() 
-{
-  const greenSet = new Set();
-  if (!(typeof CATALOG !== "undefined" && Array.isArray(CATALOG))) return { greenSet };
 
-  if (!catalogVariantsCache) catalogVariantsCache = buildCatalogVariants();
 
-  // Build grid lines once for fast access
-  const gridLines = new Array(ROWS);
-  for (let r = 0; r < ROWS; r++) gridLines[r] = ascii[r].join("");
 
-  for (let v = 0; v < catalogVariantsCache.length; v++) 
-  {
-    const pat = catalogVariantsCache[v];
-    const first = pat.first;
-    const patLines = pat.lines;
 
-    // Stage 1: find first-line candidates across all rows
-    for (let r0 = 0; r0 < ROWS; r0++) 
-    {
-      const gl0 = gridLines[r0];
-      const maxC = COLS - first.length;
-      if (maxC < 0) continue;
-
-      for (let c0 = 0; c0 <= maxC; c0++) {
-        if (!lineMatchesAt(gl0, c0, first)) continue;
-
-        // Stage 2: verify full multi-line match (including spaces)
-        if (r0 + patLines.length > ROWS) continue;
-
-        let ok = true;
-        for (let rr = 0; rr < patLines.length; rr++) {
-          const pl = patLines[rr] ?? "";
-          const gl = gridLines[r0 + rr];
-
-          if (!lineMatchesAt(gl, c0, pl)) { ok = false; break; }
-        }
-        if (!ok) continue;
-
-        // Mark matched glyph cells in green (skip spaces to reduce noise)
-        for (let rr = 0; rr < patLines.length; rr++) {
-          const pl = patLines[rr] ?? "";
-          for (let cc = 0; cc < pl.length; cc++) {
-            const pc = pl[cc];
-            if (pc === " ") continue;
-            const r = r0 + rr;
-            const c = c0 + cc;
-            if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
-            greenSet.add(keyRC(r, c));
-          }
-        }
-      }
-    }
-  }
-
-  return { greenSet };
-}
-
-function isWireGlyph(ch) { return glyphToMask.has(ch); }
-
-function mergedWireGlyph(prevCh, nextCh, lineKind /* "single"|"double","thick" */)
-{
-  const pm = glyphToMask.get(prevCh) ?? 0;
-  const nm = glyphToMask.get(nextCh) ?? 0;
-  const m  = pm | nm;
-
-  // double wins:
-  const wantDouble = (lineKind === "double") || isDoubleWire(prevCh) || isDoubleWire(nextCh);
-  const wantThick  = (lineKind === "thick")  || isThickWire(prevCh)  || isThickWire(nextCh);
-
-  const out = wantDouble ? maskToDouble.get(m) : wantThick ? maskToThick.get(m) : maskToSingle.get(m);
-  return out ?? nextCh;
-}
 
 
 function cellMaskFromNeighbors(r, c)
@@ -665,7 +501,7 @@ function recomputeWireCell(r, c)
   const cur = ascii[r][c];
 
   // only touch blanks or wires
-  if (cur !== " " && !isWireGlyph(cur)) return cur;
+  if (cur !== " " && !oASC.isWireGlyph(cur)) return cur;
 
   let m = 0;
   let hDouble = false; // any double on horizontal axis
@@ -822,121 +658,6 @@ function normalizeAffected(affected, stroke)
   }
 }
 
-function buildOrthogonalPath(start, end, start_vleg, kind)
-{
-  const chset = kind === "double" ? BOX_DOUBLE : (kind === "thick" ? BOX_THICK : BOX_SINGLE);
-
-  const r0 = start.r, c0 = start.c;
-  const r1 = end.r, c1 = end.c;
-  const out = [];
-
-  // Same cell → nothing
-  if (r0 === r1 && c0 === c1) return out;
-
-  if (start_vleg) {
-    // ===== Vertical then Horizontal =====
-
-    // 1) Vertical segment at column c0
-    if (r0 !== r1) {
-      const stepR = r1 > r0 ? 1 : -1;
-      for (let r = r0; r !== r1; r += stepR) {
-        out.push({ r, c: c0, ch: chset.v });
-      }
-      out.push({ r: r1, c: c0, ch: chset.v });
-    }
-
-    // 2) Corner
-    if (r0 !== r1 && c0 !== c1)
-    {
-      out[out.length - 1].ch = cornerChar(r0, c0, r1, c1, start_vleg, chset);
-    }
-
-    // 3) Horizontal segment at row r1
-    if (c0 !== c1) {
-      const stepC = c1 > c0 ? 1 : -1;
-      let cStart = c0;
-      if (r0 !== r1) cStart = c0 + stepC;
-
-      for (let c = cStart; c !== c1; c += stepC) {
-        out.push({ r: r1, c, ch: chset.h });
-      }
-      out.push({ r: r1, c: c1, ch: chset.h });
-    }
-
-  } else {
-    // ===== Horizontal then Vertical =====
-
-    // 1) Horizontal segment at row r0
-    if (c0 !== c1) {
-      const stepC = c1 > c0 ? 1 : -1;
-      for (let c = c0; c !== c1; c += stepC) {
-        out.push({ r: r0, c, ch: chset.h });
-      }
-      out.push({ r: r0, c: c1, ch: chset.h });
-    }
-
-    // 2) Corner
-    if (c0 !== c1 && r0 !== r1)
-      out[out.length - 1].ch = cornerChar(r0, c0, r1, c1, start_vleg, chset);
-    else if (c0 !== c1) return out;  // purely horizontal
-
-    // 3) Vertical segment at column c1
-    if (r0 !== r1) {
-      const stepR = r1 > r0 ? 1 : -1;
-      let rStart = r0;
-      if (c0 !== c1) rStart = r0 + stepR;
-
-      for (let r = rStart; r !== r1; r += stepR) {
-        out.push({ r, c: c1, ch: chset.v });
-      }
-      out.push({ r: r1, c: c1, ch: chset.v });
-    }
-  }
-
-  return out;
-}
-
-function buildBoxPath(start, end, style) 
-{
-  const r0 = start.r, c0 = start.c;
-  const r1 = end.r, c1 = end.c;
-
-  const top   = Math.min(r0, r1);
-  const bot   = Math.max(r0, r1);
-  const left  = Math.min(c0, c1);
-  const right = Math.max(c0, c1);
-
-  const out = [];
-
-  // Degenerate: a line or a point — we still draw something useful
-  if (top === bot && left === right) {
-    out.push({ r: top, c: left, ch: style.tl }); // or '+'; your call
-    return out;
-  }
-
-  // Top edge
-  for (let c = left + 1; c <= right - 1; c++) out.push({ r: top, c, ch: style.h });
-  // Bottom edge
-  if (bot !== top) {
-    for (let c = left + 1; c <= right - 1; c++) out.push({ r: bot, c, ch: style.h });
-  }
-
-  // Left edge
-  for (let r = top + 1; r <= bot - 1; r++) out.push({ r, c: left, ch: style.v });
-  // Right edge
-  if (right !== left) {
-    for (let r = top + 1; r <= bot - 1; r++) out.push({ r, c: right, ch: style.v });
-  }
-
-  // Corners (only if box has width/height)
-  out.push({ r: top, c: left, ch: style.tl });
-  if (right !== left) out.push({ r: top, c: right, ch: style.tr });
-  if (bot !== top) out.push({ r: bot, c: left, ch: style.bl });
-  if (bot !== top && right !== left) out.push({ r: bot, c: right, ch: style.br });
-
-  return out;
-}
-
 function beginLine(cell,kind) 
 {
   if (!cell) return;
@@ -972,7 +693,7 @@ function endLine()
 {
   if (!lineDrag) return;
 
-  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+  const path = oASC.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
   const stroke = [];
 
   for (const p of path)
@@ -990,7 +711,7 @@ function endLine()
 
   if(bDebug) console.log("endLine()");
   lineDrag = null;
-  pushStrokeIfNonEmpty(stroke);
+  oASC.pushStrokeIfNonEmpty(stroke);
   draw("endLine");
 }
 
@@ -1022,7 +743,7 @@ function commitBox()
 
   const style = boxDrag.kind === "double" ? BOX_DOUBLE : boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE;
 
-  const path = buildBoxPath(boxDrag.start, boxDrag.cur, style);
+  const path = oASC.buildBoxPath(boxDrag.start, boxDrag.cur, style);
 
   // De-dup (corners overwrite edges)
   const m = new Map();
@@ -1042,7 +763,7 @@ function commitBox()
   for (const s of stroke) ascii[s.r][s.c] = s.next;
 
   boxDrag = null;
-  pushStrokeIfNonEmpty(stroke);
+  oASC.pushStrokeIfNonEmpty(stroke);
   draw("commitBox");
 }
 
@@ -1086,7 +807,7 @@ function commitFreetext()
   for (const s of stroke) ascii[s.r][s.c] = s.next;
 
   textDrag = null;
-  pushStrokeIfNonEmpty(stroke);
+  oASC.pushStrokeIfNonEmpty(stroke);
   draw("commitFreetext");
 }
 
@@ -1113,7 +834,7 @@ function canvasPointToCell(clientX, clientY)
   const cx = stageSize.w / 2;
   const cy = stageSize.h / 2;
 
-  const { cw, ch } = getCellSize();
+  const { cw, ch } = oASC.getCellSize();
   const c = Math.floor( oCOM.PanZoomSize(px,cx,scale,panX,cw) );
   const r = Math.floor( oCOM.PanZoomSize(py,cy,scale,panY,ch) );
 
@@ -1196,27 +917,6 @@ function expandWideCharsForGrid(text)
   return outLines.join('\n');
 }
 
-function collapseAfterWideCharsForSave(text)
-{
-  const lines = oCOM.toLines(text);
-  const out = [];
-  for (const line of lines)
-  {
-      // Work at code-point level but treat output as "cells"
-      const cells = Array.from(line); // code points
-      const filtered = [];
-      for (let i = 0; i < cells.length; i++)
-      {
-          const ch = cells[i];
-          filtered.push(ch);
-          if (oCOM.isDoubleWidthChar(ch)) i ++;  // Remove the following cell by skipping it
-      }
-      out.push(filtered.join(""));
-  }
-
-  return out.join('\n');
-}
-
 // Paste (preview + commit)
 function startPasteWithText(text) 
 {
@@ -1255,7 +955,7 @@ function commitLine()
 {
   if (!lineDrag) return;
 
-  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+  const path = oASC.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
 
   const stroke = [];
   for (const p of path) {
@@ -1271,7 +971,7 @@ function commitLine()
   }
 
   lineDrag = null;
-  pushStrokeIfNonEmpty(stroke);
+  oASC.pushStrokeIfNonEmpty(stroke);
   draw("commitLine");
 }
 
@@ -1289,7 +989,7 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
   if (bDebug) console.log("commitLineWithOptionalMerge() lineDrag=", lineDrag);
   if (!lineDrag) return;
 
-  const path = buildOrthogonalPath(lineDrag.start, lineDrag.cur, lineDrag.flip, lineDrag.kind);
+  const path = oASC.buildOrthogonalPath(lineDrag.start, lineDrag.cur, lineDrag.flip, lineDrag.kind);
 
   // De-dup: last char wins
   const cellMap = new Map();
@@ -1310,10 +1010,10 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
     const prev = ascii[r][c];
     let next = ch;
 
-    // Merge only if both are mergeable (and your mergedWireGlyph supports single/double)
+    // Merge only if both are mergeable (and your oASC.mergedWireGlyph supports single/double)
     if (mergeEnabled) {
-      const prevIsWire = (prev === " ") || isWireGlyph(prev);
-      const nextIsWire = (next === " ") || isWireGlyph(next);
+      const prevIsWire = (prev === " ") || oASC.isWireGlyph(prev);
+      const nextIsWire = (next === " ") || oASC.isWireGlyph(next);
 
       if (prevIsWire && nextIsWire) {
         // If styles differ and prev is not blank, keep prev style here.
@@ -1324,13 +1024,13 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
           // leave it for recompute to resolve as mixed junction; don't upgrade
           next = prev;
         } else {
-          next = mergedWireGlyph(prev, next, lineKind);
+          next = oASC.mergedWireGlyph(prev, next, lineKind);
         }
       }
     }
 
     if (prev === " ") next = ch;            // draw into blank
-    else if (!isWireGlyph(prev)) next = ch; // overwrite non-wire (optional: you may prefer keep prev)
+    else if (!oASC.isWireGlyph(prev)) next = ch; // overwrite non-wire (optional: you may prefer keep prev)
     else next = prev;                       // keep existing wire as-is; recompute will place junction
 
     if (prev !== next) {
@@ -1352,7 +1052,7 @@ function commitLineWithOptionalMerge(mergeEnabled, lineKind)
   }
 
   lineDrag = null;
-  pushStrokeIfNonEmpty(stroke);
+  oASC.pushStrokeIfNonEmpty(stroke);
   draw("commitLineWithOptionalMerge");
 }
 
@@ -1381,7 +1081,7 @@ function commitPasteAt(cell)
   }
 
   pasteDrag = null;
-  pushStrokeIfNonEmpty(stroke);
+  oASC.pushStrokeIfNonEmpty(stroke);
   updateUI();
   draw("commitPasteAt");
 }
@@ -1432,7 +1132,7 @@ function endFreeform()
   const stroke = currentStroke;
   currentStroke = [];
   lastCellKey = null;
-  pushStrokeIfNonEmpty(stroke);
+  oASC.pushStrokeIfNonEmpty(stroke);
 }
 
 // Select & move
@@ -1472,7 +1172,7 @@ function applyMove(baseRect, dr, dc, snapMap)
           }
       }
   }
-  pushStrokeIfNonEmpty(stroke);
+  oASC.pushStrokeIfNonEmpty(stroke);
 }
 
 function applyCopy(baseRect, dr, dc, snapMap) 
@@ -1499,7 +1199,7 @@ function applyCopy(baseRect, dr, dc, snapMap)
     }
   }
 
-  pushStrokeIfNonEmpty(stroke);
+  oASC.pushStrokeIfNonEmpty(stroke);
 }
 
 function applyBlankRect(rect)
@@ -1517,7 +1217,7 @@ function applyBlankRect(rect)
     }
   }
 
-  pushStrokeIfNonEmpty(stroke);
+  oASC.pushStrokeIfNonEmpty(stroke);
 }
 
 function beginSelect(cell) 
@@ -1525,17 +1225,15 @@ function beginSelect(cell)
   if (!cell) return;
   if (selection && cell.r >= selection.r0 && cell.r <= selection.r1 && cell.c >= selection.c0 && cell.c <= selection.c1)
   {
-      //moveDrag = { startCell: cell, offset: { dr: 0, dc: 0 }, baseRect: selection, snapshot: snapshotRect(selection) };
-
       moveDrag = {
         startCell: cell,
         offset: { dr: 0, dc: 0 },
         baseRect: selection,
-        snapshot: snapshotRect(selection),
+        snapshot: oASC.snapshotRect(selection),
         action: (tool === "modeCopy") ? "copy" : "move",
       };
 
-      draw("beginSelect");
+      draw("beginSelect (begin moveDrag)");
       return;
   }
   selection  = null;
@@ -1664,7 +1362,7 @@ function closeCatalog()
 function renderCatalogTabs()
 {
   catalogTabsEl.innerHTML = '';
-  const types = ["All", ...catalogTypes()];
+  const types = ["All", ...oASC.catalogTypes()];
 
   for (const t of types) {
       const b = document.createElement("button");
@@ -1678,7 +1376,7 @@ function renderCatalogTabs()
 function renderCatalogGrid()
 {
   catalogGridEl.innerHTML = '';
-  const items = catalogItemsForTab(catalogTab);
+  const items = oASC.catalogItemsForTab(catalogTab);
   for (const it of items)
   {
     if(it===undefined) return;
@@ -1803,7 +1501,7 @@ function draw( str )
   ctx.translate(-cx + panX, -cy + panY);
 
   const { snap, snapLine } = oCOM.getSnapFns(dpr, scale);
-  var { cw, ch } = getCellSize();
+  var { cw, ch } = oASC.getCellSize();
 
   // Visible bounds in WORLD coordinates (undo pan/zoom around center)
   const left   = (0 - cx) / scale + cx - panX;
@@ -1880,7 +1578,7 @@ function draw( str )
       ctx.restore();
   }
 
-  if (schemaHighlightOn && !highlightCache) highlightCache = computeHighlightOverlay();
+  if (schemaHighlightOn && !highlightCache) highlightCache = oASC.computeHighlightOverlay();
   const redSet = highlightCache ? highlightCache.redSet : null;
   const insideSet = highlightCache ? highlightCache.insideSet : null;
 
@@ -1889,7 +1587,7 @@ function draw( str )
   const GREEN = "rgba(34,197,94,0.95)";
 
   if (schemaMatchOn && !matchCache) {
-    matchCache = computeMatchOverlay();
+    matchCache = oASC.computeMatchOverlay();
   }
   const greenSet = matchCache ? matchCache.greenSet : null;
 // Draw all chars (skip base rect while moving)
@@ -1923,7 +1621,7 @@ function draw( str )
         // 2) Blue: single-line glyphs + crossings, but NOT inside double rectangles
         else if (!inside) {
           // single-line wires are: wire glyphs that are neither double nor thick
-          if (isWireGlyph(chx) && !isDoubleWire(chx) && !isThickWire(chx) && chx !== " ") {
+          if (oASC.isWireGlyph(chx) && !isDoubleWire(chx) && !isThickWire(chx) && chx !== " ") {
             color = BLUE;
           }
         }
@@ -1976,7 +1674,7 @@ function draw( str )
     const old = ctx.fillStyle;
     ctx.fillStyle = "rgba(59,130,246,0.9)";
 
-    const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+    const path = oASC.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
 
     for (const p of path) {
         if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
@@ -1992,7 +1690,7 @@ function draw( str )
     ctx.fillStyle = "rgba(59,130,246,0.9)";
 
     const style = boxDrag.kind === "double" ? BOX_DOUBLE : boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE;
-    const path = buildBoxPath(boxDrag.start, boxDrag.cur, style);
+    const path = oASC.buildBoxPath(boxDrag.start, boxDrag.cur, style);
 
     for (const p of path) {
         if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
@@ -2029,7 +1727,7 @@ function draw( str )
 function drawLinePreview() 
 {
   if (!lineDrag) return;
-  const path = buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+  const path = oASC.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
 }
 
 function drawCharAtCell(r, c, ch) { ascii[r][c] = ch; }
@@ -2047,7 +1745,7 @@ function wipeSelection(ch)
       }
   }
   selection = null; selectDrag = null; moveDrag = null; cancelPaste();
-  pushStrokeIfNonEmpty(stroke);
+  oASC.pushStrokeIfNonEmpty(stroke);
   draw();
 }
 
@@ -2108,7 +1806,7 @@ function switchToSidebar(newSidebar) {
 
   
 
-  scheduleResize();
+    oASC.scheduleResize();
   }
 
 
@@ -2185,7 +1883,7 @@ function stopResize(e) {
   activeSidebarElement = null;
   
   // Trigger canvas resize
-  scheduleResize();
+  oASC.scheduleResize();
 }
 
 // UI Sidebar resize handle
@@ -2219,6 +1917,9 @@ document.addEventListener('mouseup', stopResize);
 // Two modes:
 //  1) Terminal mode (Linux-like): help, clear, history [-c], script, exec("..."), exit
 //  2) Script mode (CADScript): help(), clear(), undo(), redo(), freeform(col,row,char), exit()
+
+
+// object instantiation/initialisation
 const oTERM = new TERMINAL({
   // We handle all input via oTERM.onInput; commands are kept for discoverability.
   commands: {
@@ -2485,7 +2186,7 @@ function __cliRunCADOps(ops) {
     if (!strokeMap.size) return;
     const stroke = Array.from(strokeMap.values());
     strokeMap.clear();
-    pushStrokeIfNonEmpty(stroke);
+    oASC.pushStrokeIfNonEmpty(stroke);
     draw(reason || "CADScript");
   }
 
@@ -2548,7 +2249,7 @@ function __cliRunCADOps(ops) {
         flush("CADScript-flush-before-undo");
         if (undoStack.length === 0) oTERM.output("[ERROR] Nothing to undo");
         else {
-          doUndo();
+          oASC.doUndo();
           oTERM.output("[OK] Undo applied");
         }
         break;
@@ -2557,7 +2258,7 @@ function __cliRunCADOps(ops) {
         flush("CADScript-flush-before-redo");
         if (redoStack.length === 0) oTERM.output("[ERROR] Nothing to redo");
         else {
-          doRedo();
+          oASC.doRedo();
           oTERM.output("[OK] Redo applied");
         }
         break;
@@ -2825,7 +2526,7 @@ window.addEventListener("load", function()
               boxDrag = null;
               cancelPaste();
 
-              pushStrokeIfNonEmpty(stroke);
+              oASC.pushStrokeIfNonEmpty(stroke);
               draw();
 
               fileInput.value = "";
@@ -2866,10 +2567,12 @@ schemaMatchBtn.addEventListener("click", () =>
 });
 
 // Invalidate overlay caches after any committed stroke (undo/redo uses same path).
-if (typeof pushStrokeIfNonEmpty === "function") 
+if (typeof oASC.pushStrokeIfNonEmpty === "function") 
 {
-  const _pushStrokeIfNonEmpty = pushStrokeIfNonEmpty;
-  pushStrokeIfNonEmpty = function(stroke) {
+  // TODO: review this construct: why override the original method at this point?
+  const _pushStrokeIfNonEmpty = oASC.pushStrokeIfNonEmpty;
+  oASC.pushStrokeIfNonEmpty = function(stroke) 
+  {
     highlightCache = null;
     matchCache = null;
     return _pushStrokeIfNonEmpty(stroke);
@@ -2877,21 +2580,21 @@ if (typeof pushStrokeIfNonEmpty === "function")
 }
 
 // Undo/redo
-undoBtn.addEventListener("click", doUndo);
-redoBtn.addEventListener("click", doRedo);
+undoBtn.addEventListener("click", oASC.doUndo);
+redoBtn.addEventListener("click", oASC.doRedo);
 
 // Save/load
 saveBtn.addEventListener("click", () => 
 {
-  const raw = serializeToText();
-  const cleaned = sanitizeForSave(raw);
-  downloadText(cleaned, "ascii-schema.txt");
+  const raw = oASC.serializeToText();
+  const cleaned = oASC.sanitizeForSave(raw);
+  oCOM.downloadText(cleaned, "ascii-schema.txt");
 });
 
 uriBtn.addEventListener("click", () => 
 {
-  const raw = serializeToText();
-  const cleaned = sanitizeForSave(raw);
+  const raw = oASC.serializeToText();
+  const cleaned = oASC.sanitizeForSave(raw);
 
   const encoder = new TextEncoder();      // UTF-8 by default
   const bin = encoder.encode(cleaned);
@@ -2947,7 +2650,7 @@ fileInput.addEventListener("change", async (e) =>
     boxDrag = null;
     cancelPaste();
 
-    pushStrokeIfNonEmpty(stroke);
+    oASC.pushStrokeIfNonEmpty(stroke);
     draw();
 
     fileInput.value = "";
@@ -3192,8 +2895,8 @@ window.addEventListener("keydown", (e) =>
   //  Always allow Undo/Redo (even while typing)
   if (mod) {
     const k = String(e.key || "").toLowerCase();
-    if (k === "z" && !e.shiftKey) { e.preventDefault(); doUndo(); return; }
-    if (k === "z" &&  e.shiftKey) { e.preventDefault(); doRedo(); return; }
+    if (k === "z" && !e.shiftKey) { e.preventDefault(); oASC.doUndo(); return; }
+    if (k === "z" &&  e.shiftKey) { e.preventDefault(); oASC.doRedo(); return; }
   }
 
   // If the user is typing in the sidebar (terminal / inputs), do not run canvas shortcuts.
@@ -3288,24 +2991,8 @@ function isEditingTextTarget(e)
   return false;
 }
 
-// Resize observer (debounced via rAF)
-let resizeRaf = null;
-function scheduleResize() 
-{
-  if (resizeRaf != null) return;
-  resizeRaf = requestAnimationFrame(() => {
-    resizeRaf = null;
-    const next = computeStageSize();
-    if (next.w === stageSize.w && next.h === stageSize.h) return;
-    stageSize = next;
-    stage.style.width = stageSize.w + "px";
-    stage.style.height = stageSize.h + "px";
-    syncCanvasBufferToStage();
-    draw();
-  });
-}
 
-const ro = new ResizeObserver(() => scheduleResize());
+const ro = new ResizeObserver(() => oASC.scheduleResize());
 ro.observe(container);
 
 function downloadThisFile() 

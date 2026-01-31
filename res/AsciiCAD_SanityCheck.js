@@ -83,9 +83,9 @@ function applyHorizontalLine(r, c0, c1, kind, mergeEnabled) {
     let next = hChar;
 
     if (mergeEnabled) {
-      const prevIsWire = (prev === " ") || isWireGlyph(prev);
-      const nextIsWire = (next === " ") || isWireGlyph(next);
-      if (prevIsWire && nextIsWire) next = mergedWireGlyph(prev, next, kind);
+      const prevIsWire = (prev === " ") || oASC.isWireGlyph(prev);
+      const nextIsWire = (next === " ") || oASC.isWireGlyph(next);
+      if (prevIsWire && nextIsWire) next = oASC.mergedWireGlyph(prev, next, kind);
     }
 
     if (prev !== next) {
@@ -341,34 +341,34 @@ function testDoubleBusCross() {
 // TEST RUNNER
 
 (function init() {
-stageSize = computeStageSize();
+stageSize = oASC.computeStageSize();
 stage.style.width = stageSize.w + 'px';
 stage.style.height = stageSize.h + 'px';
-syncCanvasBufferToStage();
+oASC.syncCanvasBufferToStage();
 
 // Light sanity checks
-console.assert(serializeToText().split('\n')[0].length === COLS, 'serializeToText -> COLS chars/line');
+console.assert(oASC.serializeToText().split('\n')[0].length === COLS, 'serializeToText -> COLS chars/line');
 console.assert(oCOM.toLines('A\r\nB\rC\nD').length === 4, 'newline normalization');
-console.assert(!serializeToText().includes("\\n"), "Save must not contain literal \\n");
+console.assert(!oASC.serializeToText().includes("\\n"), "Save must not contain literal \\n");
 
 console.assert(
-    sanitizeForSave("A\\nB\\rC\\r\\nD").split("\n").length === 4,
+    oASC.sanitizeForSave("A\\nB\\rC\\r\\nD").split("\n").length === 4,
     "Literal escape normalization failed"
 );
 
 console.assert(
-    sanitizeForSave("A   \nB\t\t\n\n").endsWith("A\nB"),
+    oASC.sanitizeForSave("A   \nB\t\t\n\n").endsWith("A\nB"),
     "Trailing whitespace or empty-line trimming failed"
 );
 
 console.assert(
-    !sanitizeForSave("A\\nB").includes("\\n"),
+    !oASC.sanitizeForSave("A\\nB").includes("\\n"),
     "Saved text must not contain literal \\n"
 );
 
-console.assert(!catalogTypes().includes(null), "catalogTypes contains null");
+console.assert(!oASC.catalogTypes().includes(null), "catalogTypes contains null");
 
-console.assert(!catalogTypes().includes(""), "catalogTypes contains empty string");
+console.assert(!oASC.catalogTypes().includes(""), "catalogTypes contains empty string");
 
 
 runJunctionTests(); wipeSelection(' ');
