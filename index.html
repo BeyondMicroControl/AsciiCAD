@@ -2219,8 +2219,8 @@ document.addEventListener('mouseup', stopResize);
 // Two modes:
 //  1) Terminal mode (Linux-like): help, clear, history [-c], script, exec("..."), exit
 //  2) Script mode (CADScript): help(), clear(), undo(), redo(), freeform(col,row,char), exit()
-const term = new VanillaTerminal({
-  // We handle all input via term.onInput; commands are kept for discoverability.
+const oTERM = new TERMINAL({
+  // We handle all input via oTERM.onInput; commands are kept for discoverability.
   commands: {
     help: () => {},
     clear: () => {},
@@ -2443,7 +2443,9 @@ function __cliCompileCADScript(src) {
           return { ok: false, err: "freeform(col,row,char): col and row must be integers" };
         if (typeof args[2] !== "string" || args[2].length !== 1)
           return { ok: false, err: "freeform(col,row,char): char must be a single character string" };
+
         ops.push({ type: "freeform", col: args[0], row: args[1], ch: args[2] });
+        
         break;
       case "exec":
         if (args.length !== 1) return { ok: false, err: "Usage: exec(\"..\")" };
@@ -2490,7 +2492,7 @@ function __cliRunCADOps(ops) {
   for (const op of ops) {
     switch (op.type) {
       case "help":
-        term.output(
+        oTERM.output(
           __cliEscapeHtml("CADScript commands:\n" +
             " clear()    - clear entire grid\n" +
             " exec(\"..\") - run terminal command\n" +
@@ -2504,8 +2506,8 @@ function __cliRunCADOps(ops) {
       case "exit":
         flush("CADScript-exit");
         __cliMode = "terminal";
-        term.setPrompt("AsciiCAD");
-        term.output("Exited CADScript mode.");
+        oTERM.setPrompt("AsciiCAD");
+        oTERM.output("Exited CADScript mode.");
         break;
 
       case "clear":
@@ -2521,17 +2523,17 @@ function __cliRunCADOps(ops) {
           "\"<string>\" - run terminal command"
 
         if (typeof op.str !== "string") {
-          term.output("[ERROR] " + __cliEscapeHtml(usage));
+          oTERM.output("[ERROR] " + __cliEscapeHtml(usage));
           break;
         }
         const cmdLine = __cliNormalizeQuotes(op.str).trim();
         if (!cmdLine) {
-          term.output("[ERROR] " + __cliEscapeHtml(usage));
+          oTERM.output("[ERROR] " + __cliEscapeHtml(usage));
           break;
         }
         // Enforce "only one terminal command" (no ';' chaining or newlines)
         if (/[;\r\n]/.test(cmdLine)) {
-          term.output("[ERROR] exec() accepts only one terminal command (no ';' or newlines)");
+          oTERM.output("[ERROR] exec() accepts only one terminal command (no ';' or newlines)");
           break;
         }
         // TODO RUN terminal command (incl. options) in op.str
@@ -2544,24 +2546,24 @@ function __cliRunCADOps(ops) {
 
       case "undo":
         flush("CADScript-flush-before-undo");
-        if (undoStack.length === 0) term.output("[ERROR] Nothing to undo");
+        if (undoStack.length === 0) oTERM.output("[ERROR] Nothing to undo");
         else {
           doUndo();
-          term.output("[OK] Undo applied");
+          oTERM.output("[OK] Undo applied");
         }
         break;
 
       case "redo":
         flush("CADScript-flush-before-redo");
-        if (redoStack.length === 0) term.output("[ERROR] Nothing to redo");
+        if (redoStack.length === 0) oTERM.output("[ERROR] Nothing to redo");
         else {
           doRedo();
-          term.output("[OK] Redo applied");
+          oTERM.output("[OK] Redo applied");
         }
         break;
 
       default:
-        term.output("[ERROR] Internal: unknown op " + __cliEscapeHtml(op.type));
+        oTERM.output("[ERROR] Internal: unknown op " + __cliEscapeHtml(op.type));
     }
   }
 
@@ -2571,22 +2573,22 @@ function __cliRunCADOps(ops) {
 
 function __cliTerminalHelp()
 {
-  term.output(
+  oTERM.output(
     __cliEscapeHtml("Terminal commands:\n" +
       " <command> -h - detailed help\n" +
       "  clear       - clear terminal screen\n" +
       "  exec \"..\"   - run CADScript\n" +
-      "  exit       - exit CLI\n"+
-      "  help       - terminal help\n" +
-      "  history       - show command history\n" +
-      "  script       - enter CADScript mode\n")
+      "  exit        - exit CLI\n"+
+      "  help        - terminal help\n" +
+      "  history     - show command history\n" +
+      "  script      - enter CADScript mode\n")
   );
 }
 
 function __cliHandleTerminal(line) {
   const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
   if (!m) {
-    term.output("[ERROR] Invalid command");
+    oTERM.output("[ERROR] Invalid command");
     return true;
   }
 
@@ -2606,9 +2608,9 @@ function __cliHandleTerminal(line) {
     " -h    - <command> help\n"
 
     const opt = rest.trim();
-    if (opt === "-h") term.output(__cliEscapeHtml(usage));
-    else if (opt == "") term.clear();
-    else  term.output("[ERROR] "+__cliEscapeHtml(usage));
+    if (opt === "-h") oTERM.output(__cliEscapeHtml(usage));
+    else if (opt == "") oTERM.clear();
+    else  oTERM.output("[ERROR] "+__cliEscapeHtml(usage));
     return true;
   }
 
@@ -2620,18 +2622,18 @@ function __cliHandleTerminal(line) {
        " -h    - <command> help\n"
 
     if (!opt) {
-      if (!term.history || term.history.length === 0) term.output("(history empty)");
+      if (!oTERM.history || oTERM.history.length === 0) oTERM.output("(history empty)");
       else {
-        const lines = term.history
+        const lines = oTERM.history
           .map((h, i) => String(i + 1) + ": " + __cliEscapeHtml(h))
           .join("<br>");
-        term.output(lines);
+        oTERM.output(lines);
       }
       return true;
     }
 
     if (opt === "-h") {
-      term.output(__cliEscapeHtml(usage));
+      oTERM.output(__cliEscapeHtml(usage));
       return true;
     }
 
@@ -2639,24 +2641,24 @@ function __cliHandleTerminal(line) {
       try {
         window.localStorage.removeItem("VanillaTerm");
       } catch (_) {}
-      term.history = [];
-      term.historyCursor = 0;
-      term.output("History cleared");
+      oTERM.history = [];
+      oTERM.historyCursor = 0;
+      oTERM.output("History cleared");
       return true;
     }
 
-    term.output("[ERROR] "+__cliEscapeHtml(usage));
+    oTERM.output("[ERROR] "+__cliEscapeHtml(usage));
     return true;
   }
 
   if (cmd === "script") {
     if (rest) {
-      term.output("[ERROR] Usage: script");
+      oTERM.output("[ERROR] Usage: script");
       return true;
     }
     __cliMode = "script";
-    term.setPrompt("CADScript");
-    term.output(sbTitle.querySelector('big').textContent+" script - type <u>help()</u>");
+    oTERM.setPrompt("CADScript");
+    oTERM.output(sbTitle.querySelector('big').textContent+" script - type <u>help()</u>");
     return true;
   }
 
@@ -2668,72 +2670,72 @@ function __cliHandleTerminal(line) {
 
     const opt = rest.trim();
 
-    if (opt === "-h") { term.output(__cliEscapeHtml(usage)); return true; }
+    if (opt === "-h") { oTERM.output(__cliEscapeHtml(usage)); return true; }
 
     const parsed = __cliParseExecArg(rest, usage);
     if (!parsed.ok) {
-      term.output("[PARSE ERROR] " + __cliEscapeHtml(parsed.err));
+      oTERM.output("[PARSE ERROR] " + __cliEscapeHtml(parsed.err));
       return true;
     }
 
     const compiled = __cliCompileCADScript(parsed.value);
     if (!compiled.ok) {
-      term.output("[COMPILE ERROR] " + __cliEscapeHtml(compiled.err));
+      oTERM.output("[COMPILE ERROR] " + __cliEscapeHtml(compiled.err));
       return true;
     }
 
     try {
       __cliRunCADOps(compiled.value);
-      term.output("[OK] exec() completed");
+      oTERM.output("[OK] exec() completed");
     } catch (e) {
-      term.output("[RUN ERROR] " + __cliEscapeHtml(e && e.message ? e.message : String(e)));
+      oTERM.output("[RUN ERROR] " + __cliEscapeHtml(e && e.message ? e.message : String(e)));
     }
     return true;
   }
 
   if (cmd === "exit") {
     if (typeof switchToSidebar === "function") switchToSidebar("ui");
-    term.output("Switched to UI sidebar");
+    oTERM.output("Switched to UI sidebar");
     return true;
   }
 
   // Hint when user types CADScript-style calls in terminal mode
   if (line.includes("(") && line.endsWith(")")) {
-    term.output(
+    oTERM.output(
       "[ERROR] CADScript syntax detected. Type <u>script</u> to enter CADScript mode, or use <u>exec(\"...\")</u>"
     );
     return true;
   }
 
-  term.output("[ERROR] Unknown command. Type <u>help</u>");
+  oTERM.output("[ERROR] Unknown command. Type <u>help</u>");
   return true;
 }
 
 function __cliHandleScript(line) {
   if (/^[A-Za-z_]\w*$/.test(line)) {
-    term.output("[ERROR] Script mode expects function calls, e.g. <u>help()</u>, <u>clear()</u>, <u>exit()</u>");
+    oTERM.output("[ERROR] Script mode expects function calls, e.g. <u>help()</u>, <u>clear()</u>, <u>exit()</u>");
     return true;
   }
 
   const compiled = __cliCompileCADScript(line);
   if (!compiled.ok) {
-    term.output("[ERROR] " + __cliEscapeHtml(compiled.err));
+    oTERM.output("[ERROR] " + __cliEscapeHtml(compiled.err));
     return true;
   }
 
   try {
     __cliRunCADOps(compiled.value);
   } catch (e) {
-    term.output("[ERROR] " + __cliEscapeHtml(e && e.message ? e.message : String(e)));
+    oTERM.output("[ERROR] " + __cliEscapeHtml(e && e.message ? e.message : String(e)));
   }
 
   return true;
 }
 
-term.onInput((command, parameters, rawLine) => {
+oTERM.onInput((command, parameters, rawLine) => {
   const line = __cliNormalizeQuotes(rawLine || "").trim();
   if (!line) {
-    term.output("&nbsp;");
+    oTERM.output("&nbsp;");
     return true;
   }
   if (__cliMode === "terminal") return __cliHandleTerminal(line);

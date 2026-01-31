@@ -11,6 +11,7 @@
 //    ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████                                                 
 
 
+
 function catalogTypes()
 {
   const set = new Set();
@@ -145,7 +146,8 @@ function snapshotRect(rect)
 //         \_/  \'-;__/[___||__][___][___][___]\'-;__/|_____|  '.__.'[___]   [___||__||__][___][___||__]\'-;__/[___] 
 
 
-var VanillaTerminal = function VanillaTerminal(props) {
+function TERMINAL(props) 
+{
   props = props || {};
 
   // ---- config --------------------------------------------------------------
@@ -411,7 +413,7 @@ var VanillaTerminal = function VanillaTerminal(props) {
   observer.observe(self.DOM.output, { childList: true, subtree: true });
 
   // Focus handling: focus the input when clicking inside the terminal,
-// but do NOT steal focus when selecting/copying text in the output.
+  // but do NOT steal focus when selecting/copying text in the output.
   self.DOM.root.addEventListener(
     "click",
     function (ev) {
