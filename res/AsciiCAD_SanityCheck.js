@@ -72,7 +72,19 @@ function assertEq(name, got, exp) {
 }
 
 
-function applyHorizontalLine(r, c0, c1, kind, mergeEnabled) {
+function applyHorizontalLine(r, c0, c1, kind, mergeEnabled) 
+{
+
+  // TODO: check and describe what this function does
+  function addNeighborsToSet(set, r, c) 
+  {
+    set.add(r + "," + c);
+    if (r > 0) set.add((r - 1) + "," + c);
+    if (r < ROWS - 1) set.add((r + 1) + "," + c);
+    if (c > 0) set.add(r + "," + (c - 1));
+    if (c < COLS - 1) set.add(r + "," + (c + 1));
+  }
+
   const hChar = (kind === "double") ? "═" : "─";
   const stroke = [];
   const touched = [];
@@ -103,7 +115,7 @@ function applyHorizontalLine(r, c0, c1, kind, mergeEnabled) {
       const rr = Number(parts[0]);
       const cc = Number(parts[1]);
       const prev = ascii[rr][cc];
-      const next = recomputeWireCell(rr, cc);
+      const next = oASC.recomputeWireCell(rr, cc);
       if (prev !== next) {
         stroke.push({ r: rr, c: cc, prev, next });
         ascii[rr][cc] = next;
@@ -243,7 +255,7 @@ function runMixedJunctionTests() {
     "  │  ",
   ]);
   // normalize center
-  recomputeWireCell(2,2);
+  oASC.recomputeWireCell(2,2);
   assertGrid("single×single => ┼", getSmallGridText(H,W),
     "  │  \n  │  \n──┼──\n  │  \n  │  \n"
   );
@@ -256,7 +268,7 @@ function runMixedJunctionTests() {
     "  ║  ",
     "  ║  ",
   ]);
-  recomputeWireCell(2,2);
+  oASC.recomputeWireCell(2,2);
   assertGrid("double×double => ╬", getSmallGridText(H,W),
     "  ║  \n  ║  \n══╬══\n  ║  \n  ║  \n"
   );
@@ -269,7 +281,7 @@ function runMixedJunctionTests() {
     "  │  ",
     "  │  ",
   ]);
-  recomputeWireCell(2,2);
+  oASC.recomputeWireCell(2,2);
   assertGrid("single vert × double horz => ╪", getSmallGridText(H,W),
     "  │  \n  │  \n══╪══\n  │  \n  │  \n"
   );
@@ -282,7 +294,7 @@ function runMixedJunctionTests() {
     "  ║  ",
     "  ║  ",
   ]);
-  recomputeWireCell(2,2);
+  oASC.recomputeWireCell(2,2);
   assertGrid("double vert × single horz => ╫", getSmallGridText(H,W),
     "  ║  \n  ║  \n──╫──\n  ║  \n  ║  \n"
   );
@@ -297,7 +309,7 @@ function runMixedJunctionTests() {
   ]);
   // draw the double line into row 1 (like your example), then normalize around
   for (let c=0;c<4;c++) ascii[1][c] = "═";
-  for (let c=0;c<4;c++) { recomputeWireCell(1,c); recomputeWireCell(0,c); recomputeWireCell(2,c); }
+  for (let c=0;c<4;c++) { oASC.recomputeWireCell(1,c); oASC.recomputeWireCell(0,c); oASC.recomputeWireCell(2,c); }
   assertGrid("two single verticals crossed by double horiz", getSmallGridText(3,4),
     " ││ \n═╪╪═\n ││ \n"
   );
@@ -323,7 +335,7 @@ function testDoubleBusCross() {
   for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) affected.add(r + "," + c);
 
   const stroke = [];
-  normalizeAffected(affected, stroke);
+  oASC.normalizeAffected(affected, stroke);
 
   const got = getSmallGridText(5,3);
   const exp =

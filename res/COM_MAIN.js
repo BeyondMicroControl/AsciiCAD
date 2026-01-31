@@ -315,14 +315,6 @@ function COM()
     return out;
   }
 
-  this.getSnapFns = function(dpr, scaleNow)
-  {
-    const pxScale = (dpr || 1) * (scaleNow || 1);
-    const snap = (v) => Math.round(v * pxScale) / pxScale;
-    const snapLine = (v) => (Math.round(v * pxScale) + 0.5) / pxScale;
-    return { snap, snapLine };
-  }
-
   this.PanZoomSize = function(pos, centre, scale, pan, size)
   {
     return ((pos - centre) / scale + centre - pan) / size;

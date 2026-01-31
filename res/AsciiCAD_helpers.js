@@ -57,8 +57,42 @@ function ASC()
       stage.style.width = stageSize.w + "px";
       stage.style.height = stageSize.h + "px";
       this.syncCanvasBufferToStage();
-      draw();
+      draw("scheduleResize");
     });
+  }
+
+  this.canvasPointToCell = function(clientX, clientY)
+  {
+    const rect = canvas.getBoundingClientRect();
+    const px = oCOM.PanZoomSize(clientX,rect.left,1/stageSize.w, 1/stageSize.w,rect.width)
+    const py = oCOM.PanZoomSize(clientY,rect.top,1/stageSize.h, 1/stageSize.h ,rect.height)
+
+    const cx = stageSize.w / 2;
+    const cy = stageSize.h / 2;
+
+    const { cw, ch } = this.getCellSize();
+    const c = Math.floor( oCOM.PanZoomSize(px,cx,scale,panX,cw) );
+    const r = Math.floor( oCOM.PanZoomSize(py,cy,scale,panY,ch) );
+
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
+    return { r, c };
+  }
+
+  this.expandWideCharsForGrid = function(text) 
+  {
+    const outLines = [];
+    const lines = oCOM.toLines(text); // your normalizeNewlines + split('\n')
+    for (const line of lines)
+    {
+        let out = "";
+        for (const ch of line)  // code-point safe
+        {
+            out += ch;
+            if (oCOM.isDoubleWidthChar(ch)) out += ' ';  // pad one cell
+        }
+        outLines.push(out);
+    }
+    return outLines.join('\n');
   }
 
   //     ______                               ___       _____                                      _
@@ -70,24 +104,127 @@ function ASC()
   //                                                                     \__.' 
   // SECTION: DRAW & LAYOUT
 
-  this.pushStrokeIfNonEmpty = function(stroke) 
+  // subsection: freeform
+  this.beginFreeform = function(cell) 
   {
-    if (!stroke || stroke.length === 0) return;
-    undoStack.push(stroke);
-    redoStack.length = 0;
-    updateUI();
-    if (schemaHighlightOn) highlightCache = null;
+    isDrawing = true;
+    lastCellKey = null;
+    currentStroke = [];
+    if (!cell) return;
+    lastCellKey = cell.r + ',' + cell.c;
+    this.applyOpAtCell(cell);
+    draw("beginFreeform");
   }
 
-  this.snapshotRect = function(rect) 
+  this.moveFreeform = function(cell) 
   {
-    const m = new Map();
-    for (let r = rect.r0; r <= rect.r1; r++) for (let c = rect.c0; c <= rect.c1; c++) m.set(r + ',' + c, ascii[r][c]);
-    return m;
+    if (!isDrawing || !cell) return;
+    const key = cell.r + ',' + cell.c;
+    if (key === lastCellKey) return;
+    lastCellKey = key;
+    this.applyOpAtCell(cell);
+    draw("moveFreeform");
+  }
+
+  this.endFreeform = function() 
+  {
+    if (!isDrawing) return;
+    isDrawing = false;
+    const stroke = currentStroke;
+    currentStroke = [];
+    lastCellKey = null;
+    this.pushStrokeIfNonEmpty(stroke);
+  }
+
+  // TODO: describe what it does, and check if this can be used as generic function or it should be a private function
+  // INFO: currently only used in beginFreeform(), moveFreeform(), endFreeform()
+  this.applyOpAtCell = function(cell)
+  {
+    const prev = ascii[cell.r][cell.c];
+    const next = (op.type === "place") ? op.ch : ' ';
+    if (prev === next) return;
+    currentStroke.push({ r: cell.r, c: cell.c, prev, next });
+    ascii[cell.r][cell.c] = next;
+  }
+
+  // subsection: lines
+
+  this.beginLine = function(cell,kind) 
+  {
+    if (!cell) return;
+    if(bDebug) console.log("beginLine()")
+
+    // hide selection box when starting a line tool action
+    selection = null; selectDrag = null; moveDrag = null;
+    lineDrag = {
+      kind,
+      flip: !shiftDown,      // Shift held => horizontal-first (no vertical leg)
+      merge: !oDown,         // 'o' held => override (no merge)
+      start: { r: cell.r, c: cell.c },
+      cur:   { r: cell.r, c: cell.c }
+    };
+
+    draw("beginLine");
+  }
+
+  this.moveLine = function(cell)
+  {
+    //if(bDebug) console.log("moveLine() "+lineDrag);
+    if (!lineDrag) return;
+    if (!cell) return;
+    if (cell.r === lineDrag.cur.r && cell.c === lineDrag.cur.c) return;
+    lineDrag.cur = { r: cell.r, c: cell.c };
+    // live modifiers during preview
+    lineDrag.flip  = !shiftDown;
+    lineDrag.merge = !oDown;
+    draw("moveLine");
+  }
+
+  // TODO: why is endLine() unused ? 
+  this.endLine = function()
+  {
+    if (!lineDrag) return;
+
+    const path = this.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+    const stroke = [];
+
+    for (const p of path)
+    {
+      if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+
+      const prev = ascii[p.r][p.c];
+      const next = p.ch;
+
+      if (prev !== next) {
+        stroke.push({ r: p.r, c: p.c, prev, next });
+        drawCharAtCell(p.r, p.c, next); // commit writes to ascii
+      }
+    }
+
+    if(bDebug) console.log("endLine()");
+    lineDrag = null;
+    this.pushStrokeIfNonEmpty(stroke);
+    draw("endLine");
+  }
+
+  // TODO: why is cancelLine() unused ? 
+  this.cancelLine = function() 
+  {
+    lineDrag = null;
+    draw("cancelLine");
   }
 
   this.buildOrthogonalPath = function(start, end, start_vleg, kind)
   {
+
+    var cornerChar = function(r0, c0, r1, c1, v_leg, chset)  // private helper for buildOrthogonalPath
+    {
+      if ( (c1 > c0) &&  (r1 > r0)) return v_leg?chset.bl:chset.tr;  // left + down  | up + right
+      if ( (c1 > c0) && !(r1 > r0)) return v_leg?chset.tl:chset.br;  // left + up    | up + left
+      if (!(c1 > c0) &&  (r1 > r0)) return v_leg?chset.br:chset.tl;  // right + down | down + right
+      return v_leg?chset.tr:chset.bl;                                // right + up   | down + left
+    }
+
     const chset = kind === "double" ? BOX_DOUBLE : (kind === "thick" ? BOX_THICK : BOX_SINGLE);
 
     const r0 = start.r, c0 = start.c;
@@ -160,6 +297,200 @@ function ASC()
     return out;
   }
 
+  // TODO: unused, check why
+  // INFO: likely replaced by commitLineWithOptionalMerge()
+  this.commitLine = function()
+  {
+    if (!lineDrag) return;
+
+    const path = this.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+
+    const stroke = [];
+    for (const p of path) {
+      if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+
+      const prev = ascii[p.r][p.c];
+      const next = p.ch;
+
+      if (prev !== next) {
+        stroke.push({ r: p.r, c: p.c, prev, next });
+        ascii[p.r][p.c] = next;
+      }
+    }
+
+    lineDrag = null;
+    this.pushStrokeIfNonEmpty(stroke);
+    draw("commitLine");
+  }
+
+
+  this.commitLineWithOptionalMerge = function(mergeEnabled, lineKind)
+  {
+    if (bDebug) console.log("commitLineWithOptionalMerge() lineDrag=", lineDrag);
+    if (!lineDrag) return;
+
+    // TODO: check and describe what this function does
+    function addNeighborsToSet(set, r, c) 
+    {
+      set.add(r + "," + c);
+      if (r > 0) set.add((r - 1) + "," + c);
+      if (r < ROWS - 1) set.add((r + 1) + "," + c);
+      if (c > 0) set.add(r + "," + (c - 1));
+      if (c < COLS - 1) set.add(r + "," + (c + 1));
+    }
+
+    const path = this.buildOrthogonalPath(lineDrag.start, lineDrag.cur, lineDrag.flip, lineDrag.kind);
+
+    // De-dup: last char wins
+    const cellMap = new Map();
+    for (const p of path) {
+      if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+      cellMap.set(p.r + "," + p.c, p.ch);
+    }
+
+    const stroke = [];
+    const touched = [];
+
+    // PASS 1: write the line characters
+    for (const [key, ch] of cellMap) {
+      const parts = key.split(",");
+      const r = Number(parts[0]);
+      const c = Number(parts[1]);
+
+      const prev = ascii[r][c];
+      let next = ch;
+
+      // Merge only if both are mergeable (and your this.mergedWireGlyph supports single/double)
+      if (mergeEnabled) {
+        const prevIsWire = (prev === " ") || this.isWireGlyph(prev);
+        const nextIsWire = (next === " ") || this.isWireGlyph(next);
+
+        if (prevIsWire && nextIsWire) {
+          // If styles differ and prev is not blank, keep prev style here.
+          const prevStyle = isDoubleWire(prev) ? "double" : isThickWire(prev) ? "thick" : (prev === " " ? null : "single");
+          const nextStyle = isDoubleWire(next) ? "double" : isThickWire(next) ? "thick" : (next === " " ? null : "single");
+
+          if (prev !== " " && prevStyle && nextStyle && prevStyle !== nextStyle) {
+            // leave it for recompute to resolve as mixed junction; don't upgrade
+            next = prev;
+          } else {
+            next = this.mergedWireGlyph(prev, next, lineKind);
+          }
+        }
+      }
+
+      if (prev === " ") next = ch;            // draw into blank
+      else if (!this.isWireGlyph(prev)) next = ch; // overwrite non-wire (optional: you may prefer keep prev)
+      else next = prev;                       // keep existing wire as-is; recompute will place junction
+
+      if (prev !== next) {
+      stroke.push({ r, c, prev, next });
+      ascii[r][c] = next;
+      touched.push({ r, c });
+      } else {
+      // even if unchanged, mark touched so recompute can update the crossing cell
+      touched.push({ r, c });
+      }
+
+    }
+
+    if (mergeEnabled && touched.length)
+    {
+      const affected = new Set();
+      for (let i = 0; i < touched.length; i++) addNeighborsToSet(affected, touched[i].r, touched[i].c);
+
+      this.normalizeAffected(affected, stroke);
+    }
+
+    lineDrag = null;
+    this.pushStrokeIfNonEmpty(stroke);
+    draw("commitLineWithOptionalMerge");
+  }
+
+  // subsection: boxes
+
+  this.beginBox = function(cell, kind) 
+  {
+    if (!cell) return;
+    selection = null; selectDrag = null; moveDrag = null;
+    boxDrag = { kind, start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
+    draw("beginBox");
+  }
+
+  this.moveBox = function(cell) 
+  {
+    if (!boxDrag || !cell) return;
+    if (cell.r === boxDrag.cur.r && cell.c === boxDrag.cur.c) return;
+    boxDrag.cur = { r: cell.r, c: cell.c };
+    draw("moveBox");
+  }
+
+  this.commitBox = function() 
+  {
+    if (!boxDrag) return;
+
+    const style = boxDrag.kind === "double" ? BOX_DOUBLE : boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE;
+
+    const path = this.buildBoxPath(boxDrag.start, boxDrag.cur, style);
+
+    // De-dup (corners overwrite edges)
+    const m = new Map();
+    for (const p of path) {
+      if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+      m.set(p.r + ',' + p.c, p.ch);
+    }
+
+    const stroke = [];
+    for (const [key, ch] of m) {
+      const [r, c] = key.split(',').map(Number);
+      const prev = ascii[r][c];
+      const next = ch;
+      if (prev !== next) stroke.push({ r, c, prev, next });
+    }
+
+    for (const s of stroke) ascii[s.r][s.c] = s.next;
+
+    boxDrag = null;
+    this.pushStrokeIfNonEmpty(stroke);
+    draw("commitBox");
+  }
+
+  // TODO: why is cancelBox() unused ? 
+  this.cancelBox = function() 
+  {
+    boxDrag = null;
+    draw("cancelBox");
+  }
+
+  this.hasDoubleH = function(ch) { return DOUBLE_H.has(ch); }
+  this.hasDoubleV = function(ch) { return DOUBLE_V.has(ch); }
+
+  // “double box” check: ╔══╗ / ║  ║ / ╚══╝ ... and intersected with single lines
+  this.isValidDoubleBox = function(r0, c0, r1, c1) 
+  {
+    if (r1 <= r0 || c1 <= c0) return false;
+
+    // Keep corners strict (recommended)
+    if (ascii[r0][c0] !== "╔") return false;
+    if (ascii[r0][c1] !== "╗") return false;
+    if (ascii[r1][c0] !== "╚") return false;
+    if (ascii[r1][c1] !== "╝") return false;
+
+    // Top & bottom edges must carry double-horizontal
+    for (let c = c0 + 1; c <= c1 - 1; c++) {
+      if (!this.hasDoubleH(ascii[r0][c])) return false;
+      if (!this.hasDoubleH(ascii[r1][c])) return false;
+    }
+
+    // Left & right edges must carry double-vertical
+    for (let r = r0 + 1; r <= r1 - 1; r++) {
+      if (!this.hasDoubleV(ascii[r][c0])) return false;
+      if (!this.hasDoubleV(ascii[r][c1])) return false;
+    }
+
+    return true;
+  }
+
   this.buildBoxPath = function(start, end, style) 
   {
     const r0 = start.r, c0 = start.c;
@@ -201,19 +532,22 @@ function ASC()
     return out;
   }
 
-  this.lineMatchesAt = function(gridLine, c0, patLine)
+  this.applyBlankRect = function(rect)
   {
-    // gridLine is a string of length COLS
-    // patLine is a string; must fit fully
-    if (c0 < 0) return false;
-    if (c0 + patLine.length > gridLine.length) return false;
+    if (!rect) return;
+    const stroke = [];
 
-    for (let i = 0; i < patLine.length; i++) {
-      const pc = patLine[i];
-      const gc = gridLine[c0 + i] || " ";
-      if (!this.charMatchesPatternCell(pc, gc)) return false;
+    for (let r = rect.r0; r <= rect.r1; r++) {
+      for (let c = rect.c0; c <= rect.c1; c++) {
+        const prev = ascii[r][c];
+        if (prev !== ' ') {
+          stroke.push({ r, c, prev, next: ' ' });
+          ascii[r][c] = ' ';
+        }
+      }
     }
-    return true;
+
+    this.pushStrokeIfNonEmpty(stroke);
   }
 
   this.isWireGlyph = function(ch) { return glyphToMask.has(ch); }
@@ -230,6 +564,413 @@ function ASC()
 
     const out = wantDouble ? maskToDouble.get(m) : wantThick ? maskToThick.get(m) : maskToSingle.get(m);
     return out ?? nextCh;
+  }
+
+  // TODO: describe what it does, benefits and likely use cases
+  // INFO: only used in commitLineWithOptionalMerge() and SanityCheck.js
+  this.normalizeAffected = function(affected, stroke) 
+  {
+    for (let pass = 0; pass < 2; pass++) {
+      let changed = false;
+      affected.forEach((key) => {
+        const [rs, cs] = key.split(",");
+        const r = Number(rs), c = Number(cs);
+        const prev = ascii[r][c];
+        const next = this.recomputeWireCell(r, c);
+        if (prev !== next) {
+          stroke.push({ r, c, prev, next });
+          ascii[r][c] = next;
+          changed = true;
+        }
+      });
+      if (!changed) break;
+    }
+  }
+  
+  // TODO: describe what it does, benefits and likely use cases
+  // INFO: only used in commitLineWithOptionalMerge() and SanityCheck.js (extensively)
+  this.recomputeWireCell = function(r, c) 
+  {
+    const cur = ascii[r][c];
+
+    // only touch blanks or wires
+    if (cur !== " " && !this.isWireGlyph(cur)) return cur;
+
+    let m = 0;
+    let hDouble = false; // any double on horizontal axis
+    let vDouble = false; // any double on vertical axis
+    let hThick  = false; // any thick on horizontal axis
+    let vThick  = false; // any thick on vertical axis
+
+      // earlier implemented in separate function cellMaskFromNeighbors() and axisStylesFromNeighbors()
+      // UP contributes N if it connects DOWN (S)
+      if (r > 0) {
+        const up = ascii[r - 1][c];
+        const um = glyphToMask.get(up) ?? 0;
+        if (um & S) { m |= N; if (isDoubleWire(up)) vDouble = true; else if (isThickWire(up)) vThick = true; }
+      }
+
+      // DOWN contributes S if it connects UP (N)
+      if (r < ROWS - 1) {
+        const dn = ascii[r + 1][c];
+        const dm = glyphToMask.get(dn) ?? 0;
+        if (dm & N) { m |= S; if (isDoubleWire(dn)) vDouble = true; else if (isThickWire(dn)) vThick = true; }
+      }
+
+      // LEFT contributes W if it connects RIGHT (E)
+      if (c > 0) {
+        const lt = ascii[r][c - 1];
+        const lm = glyphToMask.get(lt) ?? 0;
+        if (lm & E) { m |= W; if (isDoubleWire(lt)) hDouble = true; else if (isThickWire(lt)) hThick = true; }
+      }
+
+      // RIGHT contributes E if it connects LEFT (W)
+      if (c < COLS - 1) {
+        const rt = ascii[r][c + 1];
+        const rm = glyphToMask.get(rt) ?? 0;
+        if (rm & W) { m |= E; if (isDoubleWire(rt)) hDouble = true; else if (isThickWire(rt)) hThick = true; }
+      }
+
+    if (m === 0) { ascii[r][c] = " "; return " "; }
+
+    // Determine style per axis
+    const hStyle = hDouble ? "double" : (hThick ? "thick" : "single");
+    const vStyle = vDouble ? "double" : (vThick ? "thick" : "single");
+
+    const bothSingle = (hStyle === "single" && vStyle === "single");
+    const bothThick  = (hStyle === "thick"  && vStyle === "thick");
+    const bothDouble = (hStyle === "double" && vStyle === "double");
+
+    function cross() {
+      // same-style crosses
+      if (hStyle === "single" && vStyle === "single") return "┼";
+      if (hStyle === "thick"  && vStyle === "thick")  return "╋";
+      if (hStyle === "double" && vStyle === "double") return "╬";
+
+      // mixed-style crosses
+      // double × single
+      if (hStyle === "double" && vStyle === "single") return "╪";
+      if (hStyle === "single" && vStyle === "double") return "╫";
+
+      // double × thick
+      if (hStyle === "thick"  && vStyle === "double") return "╫";
+      if (hStyle === "double" && vStyle === "thick")  return "╪";
+
+      // thick × single
+      if (hStyle === "thick"  && vStyle === "single") return "┿";
+      if (hStyle === "single" && vStyle === "thick")  return "╂";
+
+      return "┼";
+    }
+
+    function horiz() { return hDouble ? "═" : (hThick ? "━" : "─"); }
+    function vert()  { return vDouble ? "║" : (vThick ? "┃" : "│"); }
+
+    function corner(mask) {
+      if (mask === (E|S)) return bothSingle ? "┌" : bothThick ? "┏" : bothDouble ? "╔" : hDouble ? "╒" : vDouble ? "╓" : hThick ? "┍" : "┎";
+      if (mask === (W|S)) return bothSingle ? "┐" : bothThick ? "┓" : bothDouble ? "╗" : hDouble ? "╕" : vDouble ? "╖" : hThick ? "┑" : "┒";
+      if (mask === (E|N)) return bothSingle ? "└" : bothThick ? "┗" : bothDouble ? "╚" : hDouble ? "╘" : vDouble ? "╙" : hThick ? "┕" : "┖";
+      if (mask === (W|N)) return bothSingle ? "┘" : bothThick ? "┛" : bothDouble ? "╝" : hDouble ? "╛" : vDouble ? "╜" : hThick ? "┙" : "┚";
+      return cur;
+    }
+
+    function tee(mask) {
+      if (mask === (E|S|W)) return bothSingle ? "┬" : bothThick ? "┳" : bothDouble ? "╦" : hDouble ? "╤" : vDouble ? "╥" : hThick ? "┯" : "┰";
+      if (mask === (E|N|W)) return bothSingle ? "┴" : bothThick ? "┻" : bothDouble ? "╩" : hDouble ? "╧" : vDouble ? "╨" : hThick ? "┷" : "┸";
+      if (mask === (N|E|S)) return bothSingle ? "├" : bothThick ? "┣" : bothDouble ? "╠" : hDouble ? "╞" : vDouble ? "╟" : hThick ? "┝" : "┠";
+      if (mask === (N|W|S)) return bothSingle ? "┤" : bothThick ? "┫" : bothDouble ? "╣" : hDouble ? "╡" : vDouble ? "╢" : hThick ? "┥" : "┨";
+      return cur;
+    }
+
+    let next = cur;
+
+    if (m === (E|W)) next = horiz();
+    else if (m === (N|S)) next = vert();
+    else if (m === (N|E|S|W)) next = cross();
+    else if (m === (E|S) || m === (W|S) || m === (E|N) || m === (W|N)) next = corner(m);
+    else if (m === (E|S|W) || m === (E|N|W) || m === (N|E|S) || m === (N|W|S)) next = tee(m);
+    else {
+      // endpoints (N only / S only / etc): DO NOT erase
+      next = cur;
+    }
+
+    ascii[r][c] = next;
+    return next;
+  }
+
+  // subsection: freetext
+
+  this.beginFreetext = function(cell)
+  {
+    if (!cell) return;
+    textDrag = { anchor: { r: cell.r, c: cell.c }, text: "" };        // Start a new preview at this anchor.
+    canvas.focus?.();                                                 // Ensure canvas can receive key events
+    draw("beginFreetext");
+  }
+
+  this.commitFreetext = function()
+  {
+    if (!textDrag) return;
+
+    const r = textDrag.anchor.r;
+    let   c = textDrag.anchor.c;
+    const stroke = [];
+
+    for (const ch of Array.from(textDrag.text)) {
+      if (ch === '\n' || ch === '\r') continue;
+      if (r < 0 || r >= ROWS) break;
+      if (c < 0) { c++; continue; }
+      if (c >= COLS) break;
+
+      const prev = ascii[r][c];
+      const next = ch;
+
+      if (prev !== next) stroke.push({ r, c, prev, next });
+      c++;
+    }
+
+    // apply after capturing prev
+    for (const s of stroke) ascii[s.r][s.c] = s.next;
+
+    textDrag = null;
+    this.pushStrokeIfNonEmpty(stroke);  // TODO: check out what it fixes
+    draw("commitFreetext");
+  }
+
+  this.cancelFreetext = function()
+  {
+    textDrag = null;
+    draw("cancelFreetext");
+  }
+
+  // subsection: select
+
+  this.beginSelect = function(cell) 
+  {
+    if (!cell) return;
+
+    const snapshotRect = function(rect)   // private helper for beginSelect
+    {
+      const m = new Map();
+      for (let r = rect.r0; r <= rect.r1; r++) for (let c = rect.c0; c <= rect.c1; c++) m.set(r + ',' + c, ascii[r][c]);
+      return m;
+    }
+
+    if (selection && cell.r >= selection.r0 && cell.r <= selection.r1 && cell.c >= selection.c0 && cell.c <= selection.c1)
+    {
+        moveDrag = {
+          startCell: cell,
+          offset: { dr: 0, dc: 0 },
+          baseRect: selection,
+          snapshot: snapshotRect(selection),
+          action: (tool === "modeCopy") ? "copy" : "move",
+        };
+
+        draw("beginSelect (begin moveDrag)");
+        return;
+    }
+    selection  = null;
+    moveDrag   = null;
+    selectDrag = { start: cell, current: cell };
+    draw("beginSelect");
+  }
+
+  this.moveSelect = function(cell)
+  {
+    if (!cell) return;
+    if (moveDrag) {
+        const dr = cell.r - moveDrag.startCell.r;
+        const dc = cell.c - moveDrag.startCell.c;
+        if (dr === moveDrag.offset.dr && dc === moveDrag.offset.dc) return;
+        moveDrag.offset = { dr, dc };
+        draw("moveSelect");
+        return;
+    }
+    if (selectDrag) {
+        selectDrag.current = cell;
+        draw("moveSelect");
+    }
+  }
+
+  this.endSelect = function() 
+  {
+    // Keep selection after selecting; clear after move commit.
+    if (moveDrag) {
+      const base = moveDrag.baseRect;
+      const snapMap = moveDrag.snapshot;
+      const { dr, dc } = moveDrag.offset;
+
+      if (moveDrag.action === "copy") this.applyCopy(base, dr, dc, snapMap);
+      else                            this.applyMove(base, dr, dc, snapMap);
+
+      moveDrag = null;
+      selectDrag = null;
+      selection = null; // disappear after mouseup (same behavior)
+      draw("endSelect");
+      return;
+    }
+
+    if (selectDrag) 
+    {
+        selection = oCOM.normRect(selectDrag.start, selectDrag.current);
+        selectDrag = null;
+
+        if (tool === "modeBlank") {
+          this.applyBlankRect(selection);
+          selection = null; // clear overlay after blanking
+        }
+
+        draw("endSelect");
+    }
+  }
+
+  this.applyMove = function(baseRect, dr, dc, snapMap) 
+  {
+    if (dr === 0 && dc === 0) return;
+    const stroke = [];
+
+    // Clear base rect
+    for (let r = baseRect.r0; r <= baseRect.r1; r++) {
+        for (let c = baseRect.c0; c <= baseRect.c1; c++)
+        {
+            const prev = ascii[r][c];
+            if (prev !== ' ')
+            {
+                stroke.push({ r, c, prev, next: ' ' });
+                ascii[r][c] = ' ';
+            }
+        }
+    }
+
+    // Paste moved snapshot (clip to grid)
+    for (let r = baseRect.r0; r <= baseRect.r1; r++)
+    {
+        for (let c = baseRect.c0; c <= baseRect.c1; c++)
+        {
+            const chx = snapMap.get(r + ',' + c) || ' ';
+            const rr = r + dr;
+            const cc = c + dc;
+            if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+            const prev = ascii[rr][cc];
+            const next = chx;
+            if (prev !== next)
+            {
+                stroke.push({ r: rr, c: cc, prev, next });
+                ascii[rr][cc] = next;
+            }
+        }
+    }
+    this.pushStrokeIfNonEmpty(stroke);
+  }
+
+  this.applyCopy = function(baseRect, dr, dc, snapMap) 
+  {
+    if (dr === 0 && dc === 0) return;
+    const stroke = [];
+
+    // Paste snapshot at offset (clip to grid) — DO NOT clear source
+    for (let r = baseRect.r0; r <= baseRect.r1; r++) {
+      for (let c = baseRect.c0; c <= baseRect.c1; c++) {
+        const chx = snapMap.get(r + ',' + c) || ' ';
+        if (chx === ' ') continue; // optional: keeps copy sparse
+
+        const rr = r + dr;
+        const cc = c + dc;
+        if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+
+        const prev = ascii[rr][cc];
+        const next = chx;
+        if (prev !== next) {
+          stroke.push({ r: rr, c: cc, prev, next });
+          ascii[rr][cc] = next;
+        }
+      }
+    }
+
+    this.pushStrokeIfNonEmpty(stroke);
+  }
+
+  this.commitPasteAt = function(cell) 
+  {
+    if (!pasteDrag || !cell) return;
+    const a = { r: cell.r, c: cell.c };
+    const stroke = [];
+
+    for (let rr = 0; rr < pasteDrag.h; rr++) {
+        const line = pasteDrag.lines[rr] || '';
+        for (let cc = 0; cc < pasteDrag.w; cc++) {
+        const chx = line[cc] || ' ';
+        if (pasteDrag.transparentSpaces && chx === ' ') continue;
+        const tr = a.r + rr;
+        const tc = a.c + cc;
+        if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) continue; // clip
+        const prev = ascii[tr][tc];
+        const next = chx;
+        if (prev === next) continue;
+        stroke.push({ r: tr, c: tc, prev, next });
+        ascii[tr][tc] = next;
+        }
+    }
+
+    pasteDrag = null;
+    this.pushStrokeIfNonEmpty(stroke);
+    updateUI();
+    draw("commitPasteAt");
+  }
+
+  this.cancelPaste = function() 
+  {
+    if (!pasteDrag) return;
+    pasteDrag = null;
+    updateUI();
+    draw("cancelPaste");
+  }
+
+  // subsection: generic draw helpers
+
+  this.pushStrokeIfNonEmpty = function(stroke) 
+  {
+    if (!stroke || stroke.length === 0) return;
+    undoStack.push(stroke);
+    redoStack.length = 0;
+    updateUI();
+    if (schemaHighlightOn) highlightCache = null;
+  }
+
+
+
+  // Paste (preview + commit)
+  this.startPasteWithText = function(text) 
+  {
+    const raw = oCOM.normalizeNewlines(text).split('\n');
+    while (raw.length > 0 && raw[raw.length - 1] === '') raw.pop();
+    if (raw.length === 0) { pasteDrag = null; updateUI(); draw("startPasteWithText"); return; }
+
+    let w = 0;
+    for (const ln of raw) w = Math.max(w, ln.length);
+
+    const maxH = Math.min(raw.length, ROWS);
+    const maxW = Math.min(w, COLS);
+    const lines = raw.slice(0, maxH).map(ln => ln.slice(0, maxW));
+
+    pasteDrag = {
+        lines,
+        h: lines.length,
+        w: maxW,
+        item_data: pasteDrag==null ? null : pasteDrag.item_data, // carry over item data if any 
+        anchor: hoverCell ? { r: hoverCell.r, c: hoverCell.c } : { r: Math.floor(ROWS/2), c: Math.floor(COLS/2) },
+        transparentSpaces: true,
+    };
+
+    // Paste mode implies Select tool (so cursor behavior matches your workflow)
+    setMode("modeSelect");
+    // Clear selection overlay while pasting
+    selection = null;
+    selectDrag = null;
+    moveDrag = null;
+
+    updateUI();
+    draw("startPasteWithText");
   }
 
   //       ______         _          __ 
@@ -278,7 +1019,7 @@ function ASC()
         if (!raw) continue;
 
         // Use same wide-char expansion as paste/load to stay aligned with grid.
-        const expanded = expandWideCharsForGrid(raw);
+        const expanded = this.expandWideCharsForGrid(raw);
         const lines = oCOM.toLines(expanded);
         if (!lines || lines.length === 0) continue;
 
@@ -300,6 +1041,17 @@ function ASC()
     if (patCh === "$") return WILD_S_SET.has(gridCh);
     if (patCh === "§") return WILD_U_SET.has(gridCh);
     return patCh === gridCh;
+  }
+
+  this.findCatalogItemByUID = function(uid) 
+  {
+    const items = (typeof CATALOG !== "undefined") ? CATALOG : [];
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      const itUID = it.name + "_" + it.type + "_" + it.MFR;
+      if (itUID === uid) return it;
+    }
+    return null;
   }
 
   //     _________               __
@@ -335,7 +1087,7 @@ function ASC()
             if (ascii[r1][c0] !== "╚") continue;
             if (ascii[r1][c1] !== "╝") continue;
 
-            if (!isValidDoubleBox(r0, c0, r1, c1)) continue;
+            if (!this.isValidDoubleBox(r0, c0, r1, c1)) continue;
 
             // frame: top/bottom
             for (let c = c0; c <= c1; c++) {
@@ -365,7 +1117,7 @@ function ASC()
     const greenSet = new Set();
     if (!(typeof CATALOG !== "undefined" && Array.isArray(CATALOG))) return { greenSet };
 
-    if (!catalogVariantsCache) catalogVariantsCache = oASC.buildCatalogVariants();
+    if (!catalogVariantsCache) catalogVariantsCache = this.buildCatalogVariants();
 
     // Build grid lines once for fast access
     const gridLines = new Array(ROWS);
@@ -385,7 +1137,7 @@ function ASC()
         if (maxC < 0) continue;
 
         for (let c0 = 0; c0 <= maxC; c0++) {
-          if (!oASC.lineMatchesAt(gl0, c0, first)) continue;
+          if (!this.lineMatchesAt(gl0, c0, first)) continue;
 
           // Stage 2: verify full multi-line match (including spaces)
           if (r0 + patLines.length > ROWS) continue;
@@ -395,7 +1147,7 @@ function ASC()
             const pl = patLines[rr] ?? "";
             const gl = gridLines[r0 + rr];
 
-            if (!oASC.lineMatchesAt(gl, c0, pl)) { ok = false; break; }
+            if (!this.lineMatchesAt(gl, c0, pl)) { ok = false; break; }
           }
           if (!ok) continue;
 
@@ -415,6 +1167,21 @@ function ASC()
       }
     }
     return { greenSet };
+  }
+
+  this.lineMatchesAt = function(gridLine, c0, patLine) // helper for computeMatchOverlay (TODO: useful to privatise or not?)
+  {
+    // gridLine is a string of length COLS
+    // patLine is a string; must fit fully
+    if (c0 < 0) return false;
+    if (c0 + patLine.length > gridLine.length) return false;
+
+    for (let i = 0; i < patLine.length; i++) {
+      const pc = patLine[i];
+      const gc = gridLine[c0 + i] || " ";
+      if (!this.charMatchesPatternCell(pc, gc)) return false;
+    }
+    return true;
   }
 
   //     ____  ____   _          _                              ___ 
@@ -514,6 +1281,8 @@ function ASC()
 }
 
 var oASC = new ASC();
+
+
 /////////////////////////////////////////////////////////////////////
 
 
