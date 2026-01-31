@@ -106,9 +106,7 @@ pin_data:
 "pin_num": 5,
 "port": "PB2",
 "PWM": true,
-"serial": null,
 "digital": true,
-"Power": null,
 "alt": ["PCINT10", "INT0", "OC0A", "CKOUT"]
 },
 {
