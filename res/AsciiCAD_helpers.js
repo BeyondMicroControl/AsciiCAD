@@ -87,32 +87,6 @@ while (lines.length > 0 && lines[lines.length - 1] === "") {
 return lines.join('\n');
 }
 
-
-function isDoubleWidthChar(ch)
-{
-    if (!ch) return false;
-    const cp = ch.codePointAt(0);
-
-    // Quick ASCII / Latin
-    if (cp <= 0x1FFF) return false;
-
-    // Common wide ranges (wcwidth-style; not exhaustive but good enough)
-    return (
-        (cp >= 0x1100 && cp <= 0x115F) || // Hangul Jamo init.
-        cp === 0x2329 || cp === 0x232A ||
-        (cp >= 0x2E80 && cp <= 0xA4CF) || // CJK, Yi, radicals...
-        (cp >= 0xAC00 && cp <= 0xD7A3) || // Hangul syllables
-        (cp >= 0xF900 && cp <= 0xFAFF) || // CJK compatibility ideographs
-        (cp >= 0xFE10 && cp <= 0xFE19) ||
-        (cp >= 0xFE30 && cp <= 0xFE6F) ||
-        (cp >= 0xFF00 && cp <= 0xFF60) || // Fullwidth forms
-        (cp >= 0xFFE0 && cp <= 0xFFE6) ||
-        (cp >= 0x1F300 && cp <= 0x1FAFF) || // emoji blocks (often wide)
-        (cp >= 0x20000 && cp <= 0x3FFFD) || // CJK ext
-        cp === 0x2B24 // ⬤ specifically
-    );
-}
-
 function doUndo() 
 {
   const stroke = undoStack.pop();
@@ -132,7 +106,6 @@ function doRedo()
   updateUI();
   draw("doRedo");
 }
-
 
 function downloadText(text, filename) 
 {
@@ -170,15 +143,6 @@ function snapshotRect(rect)
 //       \ \ / /`'_\ : [ `.-. | [  |  | |  | | `'_\ :   | |   / /__\\[ `/'`\][ `.-. .-. | [  | [ `.-. | `'_\ :  | |  
 //        \ ' / // | |, | | | |  | |  | |  | | // | |, _| |_  | \__., | |     | | | | | |  | |  | | | | // | |, | |  
 //         \_/  \'-;__/[___||__][___][___][___]\'-;__/|_____|  '.__.'[___]   [___||__||__][___][___||__]\'-;__/[___] 
-//       _       _       _     
-//      | |     | |     | |    
-//      | |     | |     | |    
-//      | |     | |     | |    
-//     _| |__  _| |__  _| |__  
-//    [ \_[  ][ \_[  ][ \_[  ] 
-//     \ \/ /  \ \/ /  \ \/ /  
-//      \__/    \__/    \__/   
-// 
 
 
 var VanillaTerminal = function VanillaTerminal(props) {
@@ -475,19 +439,3 @@ var VanillaTerminal = function VanillaTerminal(props) {
 
   if (welcome) this.output(welcome);
 };
-
-
-//      ___     ___     ___   
-//     / _ \   / _ \   / _ \  
-//    |_/ \_| |_/ \_| |_/ \_| 
-//      | |     | |     | |   
-//      | |     | |     | |   
-//      | |     | |     | |   
-//      |_|     |_|     |_|   
-// 
-//     ____   ____                _   __   __        _________                              _                   __   
-//    |_  _| |_  _|              (_) [  | [  |      |  _   _  |                            (_)                 [  |  
-//      \ \   / /,--.   _ .--.   __   | |  | |  ,--.|_/ | | \_|.---.  _ .--.  _ .--..--.   __   _ .--.   ,--.   | |  
-//       \ \ / /`'_\ : [ `.-. | [  |  | |  | | `'_\ :   | |   / /__\\[ `/'`\][ `.-. .-. | [  | [ `.-. | `'_\ :  | |  
-//        \ ' / // | |, | | | |  | |  | |  | | // | |, _| |_  | \__., | |     | | | | | |  | |  | | | | // | |, | |  
-//         \_/  \'-;__/[___||__][___][___][___]\'-;__/|_____|  '.__.'[___]   [___||__||__][___][___||__]\'-;__/[___]
