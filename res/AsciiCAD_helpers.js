@@ -3,32 +3,13 @@
 //    ███████ ██████  █████   ██      ██ █████   ██ ██        
 //         ██ ██      ██      ██      ██ ██      ██ ██        
 //    ███████ ██      ███████  ██████ ██ ██      ██  ██████   
-//                                                            
-//                                                            
+//                                                                                                                   
 //    ██   ██ ███████ ██      ██████  ███████ ██████  ███████ 
 //    ██   ██ ██      ██      ██   ██ ██      ██   ██ ██      
 //    ███████ █████   ██      ██████  █████   ██████  ███████ 
 //    ██   ██ ██      ██      ██      ██      ██   ██      ██ 
 //    ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████                                                 
-const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
-function normalizeNewlines(t) {
-return String(t ?? "")
-.replace(/\r\n/g, '\n') // real CRLF -> LF
-.replace(/\r/g, '\n');  // real CR   -> LF
-}
-
-function toLines(t) {
-return normalizeNewlines(t).split('\n'); // split on real LF
-}
-
-const normRect = (a, b) => ({ r0: Math.min(a.r,b.r), r1: Math.max(a.r,b.r), c0: Math.min(a.c,b.c), c1: Math.max(a.c,b.c) });
-
-const rangeChars = (start, end) => {
-    const out = [];
-    for (let cp = start; cp <= end; cp++) out.push(String.fromCharCode(cp));
-    return out;
-};
 
 function catalogTypes()
 {
@@ -140,17 +121,6 @@ function doUndo()
   redoStack.push(stroke);
   updateUI();
   draw("doUndo");
-function downloadText(text, filename) {
-const name = filename || "ascii-drawing.txt";
-const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-const url = URL.createObjectURL(blob);
-const a = document.createElement('a');
-a.href = url;
-a.download = name;
-a.rel = "noopener";
-a.style.display = "none";
-document.body.appendChild(a);
-try { a.click(); } finally { setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0); }
 }
 
 function doRedo() 
@@ -161,12 +131,30 @@ function doRedo()
   undoStack.push(stroke);
   updateUI();
   draw("doRedo");
-function pushStrokeIfNonEmpty(stroke) {
-if (!stroke || stroke.length === 0) return;
-undoStack.push(stroke);
-redoStack.length = 0;
-updateUI();
-if (schemaHighlightOn) highlightCache = null;
+}
+
+
+function downloadText(text, filename) 
+{
+  const name = filename || "ascii-drawing.txt";
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.rel = "noopener";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  try { a.click(); } finally { setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0); }
+}
+
+function pushStrokeIfNonEmpty(stroke) 
+{
+  if (!stroke || stroke.length === 0) return;
+  undoStack.push(stroke);
+  redoStack.length = 0;
+  updateUI();
+  if (schemaHighlightOn) highlightCache = null;
 }
 
 function snapshotRect(rect) 
@@ -174,30 +162,7 @@ function snapshotRect(rect)
   const m = new Map();
   for (let r = rect.r0; r <= rect.r1; r++) for (let c = rect.c0; c <= rect.c1; c++) m.set(r + ',' + c, ascii[r][c]);
   return m;
-function doUndo() {
-const stroke = undoStack.pop();
-if (!stroke) return;
-for (let i = stroke.length - 1; i >= 0; i--) ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
-redoStack.push(stroke);
-updateUI();
-draw("doUndo");
 }
-
-function doRedo() {
-const stroke = redoStack.pop();
-if (!stroke) return;
-for (let i = 0; i < stroke.length; i++) ascii[stroke[i].r][stroke[i].c] = stroke[i].next;
-undoStack.push(stroke);
-updateUI();
-draw("doRedo");
-}
-
-function snapshotRect(rect) {
-const m = new Map();
-for (let r = rect.r0; r <= rect.r1; r++) for (let c = rect.c0; c <= rect.c1; c++) m.set(r + ',' + c, ascii[r][c]);
-return m;
-}
-
 
 //     ____   ____                _   __   __        _________                              _                   __   
 //    |_  _| |_  _|              (_) [  | [  |      |  _   _  |                            (_)                 [  |  
