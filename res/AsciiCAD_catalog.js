@@ -22,48 +22,42 @@ description: '',
 MFR: 'ATTINY85V-10PU',
 pin_data: null,
 text_data:[
-'╔══╧═════╧═════╧═════╧══╗\n' +
-'║ GND   PB4   PB3   PB5 ║\n' +
-'║             TX      ● ║\n' +
-'║                       ║\n' +
-'║     [U# ATTiny85]     ║\n' +
-'║ SDA                   ║\n' +
-'║ MISO  MOSI  SCL       ║\n' +
-'║ PB0   PB1   PB2   VCC ║\n' +
-'╚══╤═════╤═════╤═════╤══╝\n'
+'╔══╧════╧════╧════╧══╗\n' +
+'║ GND  PB4  PB3  PB5 ║\n' +
+'║           TX     ● ║\n' +
+'║                    ║\n' +
+'║     [U# ATTiny85]  ║\n' +
+'║ SDA                ║\n' +
+'║ MISO MOSI SCL      ║\n' +
+'║ PB0  PB1  PB2  VCC ║\n' +
+'╚══╤════╤════╤════╤══╝\n'
 ,
-'╔════════════════════╗\n' +
-'║    [U# ATTiny85]   ║\n' +
-'║                    ║\n' +
-'╢ PB0 MISO SDA   GND ╟\n' +
-'║                    ║\n' +
-'╢ PB1 MOSI       PB4 ╟\n' +
-'║                    ║\n' +
-'╢ PB2 SCL     TX PB3 ╟\n' +
-'║                    ║\n' +
-'╢ VCC            PB5 ╟\n' +
-'║                 ●  ║\n' +
-'╚════════════════════╝'
+'╔═════════════════╗\n' +
+'║  [U# ATTiny85]  ║\n' +
+'║                 ║\n' +
+'╢PB0 MISO SDA  GND╟\n' +
+'╢PB1 MOSI      PB4╟\n' +
+'╢PB2 SCL    TX PB3╟\n' +
+'╢VCC           PB5╟\n' +
+'║              ●  ║\n' +
+'╚═════════════════╝'
 ,
-'╔══╧═════╧═════╧═════╧═══╗\n' +
-'║ VCC   PB2   PB1   PB0  ║\n' +
-'║       SCL   MOSI  MISO ║\n' +
-'║                   SDA  ║\n' +
-'║     [U# ATTiny85]      ║\n' +
-'║                        ║\n' +
-'║ ●     TX               ║\n' +
-'║ PB5   PB3   PB4   GND  ║\n' +
-'╚══╤═════╤═════╤═════╤═══╝\n'
+'╔══╧════╧════╧════╧═══╗\n' +
+'║ VCC  PB2  PB1  PB0  ║\n' +
+'║      SCL  MOSI MISO ║\n' +
+'║                SDA  ║\n' +
+'║  [U# ATTiny85]      ║\n' +
+'║                     ║\n' +
+'║ ●    TX             ║\n' +
+'║ PB5  PB3  PB4  GND  ║\n' +
+'╚══╤════╤════╤════╤═══╝\n'
 ,
 '╔════════════════════╗\n' +
 '║   [U# ATTiny85]    ║\n' +
 '║ ●                  ║\n' +
 '╢ PB5            VCC ╟\n' +
-'║                    ║\n' +
 '╢ PB3 TX     SCL PB2 ╟\n' +
-'║                    ║\n' +
 '╢ PB4       MOSI PB1 ╟\n' +
-'║                    ║\n' +
 '╢ GND   SDA MISO PB0 ╟\n' +
 '╚════════════════════╝'
 ],
@@ -85,68 +79,36 @@ pin_data:
 "pin_num": 1,
 "port": "VCC",
 "PWM": false,
-"digital_audio": null,
-"serial": null,
 "digital": false,
-"analog": null,
-"I2C": null,
-"SPI": null,
-"CAN_bus": null,
 "Power": "VCC"
 },
 {
 "pin_num": 2,
 "port": "PB0",
 "PWM": false,
-"digital_audio": null,
-"serial": null,
 "digital": true,
-"analog": null,
-"I2C": null,
-"SPI": null,
-"CAN_bus": null,
-"Power": null,
 "alt": ["PCINT8", "XTAL1", "CLKI"]
 },
 {
 "pin_num": 3,
 "port": "PB1",
 "PWM": false,
-"digital_audio": null,
-"serial": null,
 "digital": true,
-"analog": null,
-"I2C": null,
-"SPI": null,
-"CAN_bus": null,
-"Power": null,
 "alt": ["PCINT9", "XTAL2"]
 },
 {
 "pin_num": 4,
 "port": "PB3",
 "PWM": false,
-"digital_audio": null,
-"serial": null,
 "digital": true,
-"analog": null,
-"I2C": null,
-"SPI": null,
-"CAN_bus": null,
-"Power": null,
 "alt": ["PCINT11", "RESET", "dW"]
 },
 {
 "pin_num": 5,
 "port": "PB2",
 "PWM": true,
-"digital_audio": null,
 "serial": null,
 "digital": true,
-"analog": null,
-"I2C": null,
-"SPI": null,
-"CAN_bus": null,
 "Power": null,
 "alt": ["PCINT10", "INT0", "OC0A", "CKOUT"]
 },
@@ -154,125 +116,76 @@ pin_data:
 "pin_num": 6,
 "port": "PA7",
 "PWM": true,
-"digital_audio": null,
-"serial": null,
 "digital": true,
 "analog": "ADC7",
-"I2C": null,
-"SPI": null,
-"CAN_bus": null,
-"Power": null,
 "alt": ["PCINT7", "ICP", "OC0B"]
 },
 {
 "pin_num": 7,
 "port": "PA6",
 "PWM": true,
-"digital_audio": null,
-"serial": null,
 "digital": true,
 "analog": "ADC6",
 "I2C": "SDA",
 "SPI": "MOSI",
-"CAN_bus": null,
-"Power": null,
 "alt": ["PCINT6", "OC1A"]
 },
 {
 "pin_num": 8,
 "port": "PA5",
 "PWM": true,
-"digital_audio": null,
-"serial": null,
 "digital": true,
 "analog": "ADC5",
-"I2C": null,
 "SPI": "MISO",
-"CAN_bus": null,
-"Power": null,
 "alt": ["PCINT5", "OC1B", "DO"]
 },
 {
 "pin_num": 9,
 "port": "PA4",
 "PWM": false,
-"digital_audio": null,
-"serial": null,
 "digital": true,
 "analog": "ADC4",
 "I2C": "SCL",
 "SPI": "SCK",
-"CAN_bus": null,
-"Power": null,
 "alt": ["PCINT4", "USCK", "T1"]
 },
 {
 "pin_num": 10,
 "port": "PA3",
 "PWM": false,
-"digital_audio": null,
-"serial": null,
 "digital": true,
 "analog": "ADC3",
-"I2C": null,
-"SPI": null,
-"CAN_bus": null,
-"Power": null,
 "alt": ["PCINT3", "T0"]
 },
 {
 "pin_num": 11,
 "port": "PA2",
 "PWM": false,
-"digital_audio": null,
-"serial": null,
 "digital": true,
 "analog": "ADC2",
-"I2C": null,
-"SPI": null,
-"CAN_bus": null,
-"Power": null,
 "alt": ["PCINT2", "AIN1"]
 },
 {
 "pin_num": 12,
 "port": "PA1",
 "PWM": false,
-"digital_audio": null,
-"serial": null,
 "digital": true,
 "analog": "ADC1",
-"I2C": null,
-"SPI": null,
-"CAN_bus": null,
-"Power": null,
 "alt": ["PCINT1", "AIN0"]
 },
 {
 "pin_num": 13,
 "port": "PA0",
 "PWM": false,
-"digital_audio": null,
-"serial": null,
 "digital": true,
 "analog": "ADC0",
-"I2C": null,
-"SPI": null,
-"CAN_bus": null,
-"Power": null,
 "alt": ["PCINT0", "AREF"]
 },
 {
 "pin_num": 14,
 "port": "GND",
 "PWM": false,
-"digital_audio": null,
-"serial": null,
 "digital": false,
-"analog": null,
-"I2C": null,
-"SPI": null,
-"CAN_bus": null,
 "Power": "GND"
 }
 ],
