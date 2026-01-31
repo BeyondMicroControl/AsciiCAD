@@ -11,6 +11,8 @@
 //    ██   ██ ██      ██      ██      ██      ██   ██      ██ 
 //    ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
 
+/////// GENERIC (APP-AGNOSTIC) HELPERS /////////////////////////////////////////////////////////////////
+// NOTE: Keep these here so they can be reused from any project via oCOM.<fn>()
 
 function COM()
 {
@@ -275,11 +277,6 @@ function COM()
     a.click();
     a.remove();
   };
-
-
-
-  /////// GENERIC (APP-AGNOSTIC) HELPERS /////////////////////////////////////////////////////////////////
-  // NOTE: Keep these here so they can be reused from any project via oCOM.<fn>()
 
   this.clamp = function(n, a, b)
   {
