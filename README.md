@@ -22,7 +22,7 @@ Try online:
 
 ## Features at a glance
 
-- Drawing & Layout Tools
+- Drawing & Layout
   - Freeform drawing
   - Orthogonal line routing
   - Box drawing modes
