@@ -1189,7 +1189,7 @@ function expandWideCharsForGrid(text)
       for (const ch of line)  // code-point safe
       {
           out += ch;
-          if (isDoubleWidthChar(ch)) out += ' ';  // pad one cell
+          if (oCOM.isDoubleWidthChar(ch)) out += ' ';  // pad one cell
       }
       outLines.push(out);
   }
@@ -1209,7 +1209,7 @@ function collapseAfterWideCharsForSave(text)
       {
           const ch = cells[i];
           filtered.push(ch);
-          if (isDoubleWidthChar(ch)) i ++;  // Remove the following cell by skipping it
+          if (oCOM.isDoubleWidthChar(ch)) i ++;  // Remove the following cell by skipping it
       }
       out.push(filtered.join(""));
   }
@@ -1953,7 +1953,7 @@ function draw( str )
   // Drag-select marquee
   if (selectDrag) 
   {
-      const rr = normRect(selectDrag.start, selectDrag.current);
+      const rr = oCOM.normRect(selectDrag.start, selectDrag.current);
       const x0 = rr.c0 * cw;
       const y0 = rr.r0 * ch;
       const w = (rr.c1 - rr.c0 + 1) * cw;
