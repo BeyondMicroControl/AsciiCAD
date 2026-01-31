@@ -317,7 +317,7 @@ function COM()
     return ((pos - centre) / scale + centre - pan) / size;
   }
 
-  this.deEscapeLiteralNewlines = function(t)
+  this.deEscapeLiteralNewlines = function(t)   // OBSOLETE ?
   {
     // Convert strings containing literal \n / \r into real newlines.
     return String(t ?? "")
