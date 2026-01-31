@@ -262,6 +262,112 @@ function COM()
     a.remove();
   };
 
+
+
+  /////// GENERIC (APP-AGNOSTIC) HELPERS /////////////////////////////////////////////////////////////////
+  // NOTE: Keep these here so they can be reused from any project via oCOM.<fn>()
+
+  this.clamp = function(n, a, b)
+  {
+    return Math.max(a, Math.min(b, n));
+  }
+
+  this.normalizeNewlines = function(t)
+  {
+    // Normalize real CRLF/CR into LF
+    return String(t ?? "")
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n");
+  }
+
+  this.toLines = function(t)
+  {
+    return this.normalizeNewlines(t).split("\n");
+  }
+
+  this.normRect = function(a, b)
+  {
+    // a,b are points with {r,c}
+    return {
+      r0: Math.min(a.r, b.r),
+      r1: Math.max(a.r, b.r),
+      c0: Math.min(a.c, b.c),
+      c1: Math.max(a.c, b.c),
+    };
+  }
+
+  this.rangeChars = function(start, end)
+  {
+    // start/end are codepoints (integers)
+    const out = [];
+    for (let cp = start; cp <= end; cp++) out.push(String.fromCharCode(cp));
+    return out;
+  }
+
+  this.getSnapFns = function(dpr, scaleNow)
+  {
+    const pxScale = (dpr || 1) * (scaleNow || 1);
+    const snap = (v) => Math.round(v * pxScale) / pxScale;
+    const snapLine = (v) => (Math.round(v * pxScale) + 0.5) / pxScale;
+    return { snap, snapLine };
+  }
+
+  this.PanZoomSize = function(pos, centre, scale, pan, size)
+  {
+    return ((pos - centre) / scale + centre - pan) / size;
+  }
+
+  this.deEscapeLiteralNewlines = function(t)
+  {
+    // Convert strings containing literal \n / \r into real newlines.
+    return String(t ?? "")
+      .replace(/\\r\\n/g, "\n")
+      .replace(/\\n/g, "\n")
+      .replace(/\\r/g, "\n");
+  }
+
+  this.isDoubleWidthChar = function(ch)
+  {
+    if (!ch) return false;
+    const cp = ch.codePointAt(0);
+
+    // Quick ASCII / Latin
+    if (cp <= 0x1FFF) return false;
+
+    // Common wide ranges (wcwidth-style; not exhaustive but good enough)
+    return (
+      (cp >= 0x1100 && cp <= 0x115F) || // Hangul Jamo init.
+      cp === 0x2329 || cp === 0x232A ||
+      (cp >= 0x2E80 && cp <= 0xA4CF) || // CJK, Yi, radicals...
+      (cp >= 0xAC00 && cp <= 0xD7A3) || // Hangul syllables
+      (cp >= 0xF900 && cp <= 0xFAFF) || // CJK compatibility ideographs
+      (cp >= 0xFE10 && cp <= 0xFE19) ||
+      (cp >= 0xFE30 && cp <= 0xFE6F) ||
+      (cp >= 0xFF00 && cp <= 0xFF60) || // Fullwidth forms
+      (cp >= 0xFFE0 && cp <= 0xFFE6) ||
+      (cp >= 0x1F300 && cp <= 0x1FAFF) || // emoji blocks (often wide)
+      (cp >= 0x20000 && cp <= 0x3FFFD) || // CJK ext
+      cp === 0x2B24 // ⬤ specifically
+    );
+  }
+
+  // Text/HTML downloads (used by index.html "Download" and by Save-as-text)
+  this.download = function(content, filename, mimeType)
+  {
+    const name = filename || "download.txt";
+    const type = mimeType || "text/plain;charset=utf-8";
+    const blob = new Blob([content], { type });
+    const url = window.URL.createObjectURL(blob);
+    downloadURL(url, name);
+    setTimeout(function() { window.URL.revokeObjectURL(url); }, 2000);
+  }
+
+  this.downloadText = function(text, filename)
+  {
+    this.download(text, filename || "ascii-drawing.txt", "text/plain;charset=utf-8");
+  }
+
+
     /////////////////////
     // URL PARSER      //
     /////////////////////

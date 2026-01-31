@@ -16,11 +16,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AsciiCAD</title>
-    <link rel="stylesheet" href="res/AsciiCAD.css">
-    <script type="text/javascript"  src="res/AsciiCAD_helpers.js"></script>
-    <script type="text/javascript"  src="res/AsciiCAD_catalog.js"></script>
-    <script type="text/javascript"  src="res/pako.min.js"></script>
-    <script type="text/javascript"  src="res/COM_MAIN.js"></script>
+  <link rel="stylesheet" href="res/AsciiCAD.css">
+  <script type="text/javascript"  src="res/AsciiCAD_helpers.js"></script>
+  <script stype="text/javascript" src="res/AsciiCAD_catalog.js"></script>
+  <script type="text/javascript"  src="res/pako.min.js"></script>
 </head>
 <body>
   <div class="app">
@@ -28,7 +27,7 @@
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.04</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.02</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -115,9 +114,15 @@
       <div class="resize-handle" id="resizeHandleCLI"></div>
       <div class="sb-top">
         <button id="toggleCLI" class="btn" title="Switch to UI" aria-label="Toggle to UI sidebar">◀</button>
-        <div class="sb-title" id="titleCLI"><big>AsciiCAD CLI</big><br><small>Type commands, press Enter</small></div>
+        <div class="sb-title"><big>AsciiCAD CLI</big><br><small>Type commands, press Enter</small></div>
       </div>
-      <div id="vanilla-terminal"></div>
+      <!--
+      <div class="cli-container">
+        <textarea id="cliTerminal" class="cli-terminal" placeholder="Type 'help' for commands..." spellcheck="false"></textarea>
+      </div>
+      -->
+       <div id="vanilla-terminal"></div>
+     
     </aside>
 
     <main class="main">
@@ -202,8 +207,6 @@ const resizeHandle = document.getElementById("resizeHandle");
 // CLI refs
 const cliSidebar = document.getElementById("cliSidebar");
 const toggleCLI = document.getElementById("toggleCLI");
-const titleCLI = document.getElementById("titleCLI");
-
 const cliTerminal = document.getElementById("cliTerminal");
 const resizeHandleCLI = document.getElementById("resizeHandleCLI");
 
@@ -496,7 +499,7 @@ function computeHighlightOverlay()
 //   $  => one of [0-9A-Za-z +-*/%Ωπµ⍉⍵°.,;:?@&§_]
 const WILDCARD_D = "0123456789. ";
 const WILDCARD_S = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-*/%Ωπµ⍉⍵°.,;:?@&§_ ";
-const WILDCARD_U = /*rangeChars(0x0020, 0x007E)+*/rangeChars(0x2500, 0x257F);
+const WILDCARD_U = /*oCOM.rangeChars(0x0020, 0x007E)+*/oCOM.rangeChars(0x2500, 0x257F);
 const WILD_D_SET = new Set(Array.from(WILDCARD_D));
 const WILD_S_SET = new Set(Array.from(WILDCARD_S));
 const WILD_U_SET = new Set(Array.from(WILDCARD_U));
@@ -541,7 +544,7 @@ function buildCatalogVariants()
 
       // Use same wide-char expansion as paste/load to stay aligned with grid.
       const expanded = expandWideCharsForGrid(raw);
-      const lines = toLines(expanded);
+      const lines = oCOM.toLines(expanded);
       if (!lines || lines.length === 0) continue;
 
       const first = lines[0] ?? "";
@@ -1107,15 +1110,15 @@ function cornerChar(r0, c0, r1, c1, v_leg, chset)
 function canvasPointToCell(clientX, clientY)
 {
   const rect = canvas.getBoundingClientRect();
-  const px = PanZoomSize(clientX,rect.left,1/stageSize.w, 1/stageSize.w,rect.width)
-  const py = PanZoomSize(clientY,rect.top,1/stageSize.h, 1/stageSize.h ,rect.height)
+  const px = oCOM.PanZoomSize(clientX,rect.left,1/stageSize.w, 1/stageSize.w,rect.width)
+  const py = oCOM.PanZoomSize(clientY,rect.top,1/stageSize.h, 1/stageSize.h ,rect.height)
 
   const cx = stageSize.w / 2;
   const cy = stageSize.h / 2;
 
   const { cw, ch } = getCellSize();
-  const c = Math.floor( PanZoomSize(px,cx,scale,panX,cw) );
-  const r = Math.floor( PanZoomSize(py,cy,scale,panY,ch) );
+  const c = Math.floor( oCOM.PanZoomSize(px,cx,scale,panX,cw) );
+  const r = Math.floor( oCOM.PanZoomSize(py,cy,scale,panY,ch) );
 
   if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
   return { r, c };
@@ -1182,14 +1185,14 @@ function updateUI()
 function expandWideCharsForGrid(text) 
 {
   const outLines = [];
-  const lines = toLines(text); // your normalizeNewlines + split('\n')
+  const lines = oCOM.toLines(text); // your normalizeNewlines + split('\n')
   for (const line of lines)
   {
       let out = "";
       for (const ch of line)  // code-point safe
       {
           out += ch;
-          if (isDoubleWidthChar(ch)) out += ' ';  // pad one cell
+          if (oCOM.isDoubleWidthChar(ch)) out += ' ';  // pad one cell
       }
       outLines.push(out);
   }
@@ -1198,7 +1201,7 @@ function expandWideCharsForGrid(text)
 
 function collapseAfterWideCharsForSave(text)
 {
-  const lines = toLines(text);
+  const lines = oCOM.toLines(text);
   const out = [];
   for (const line of lines)
   {
@@ -1209,7 +1212,7 @@ function collapseAfterWideCharsForSave(text)
       {
           const ch = cells[i];
           filtered.push(ch);
-          if (isDoubleWidthChar(ch)) i ++;  // Remove the following cell by skipping it
+          if (oCOM.isDoubleWidthChar(ch)) i ++;  // Remove the following cell by skipping it
       }
       out.push(filtered.join(""));
   }
@@ -1220,7 +1223,7 @@ function collapseAfterWideCharsForSave(text)
 // Paste (preview + commit)
 function startPasteWithText(text) 
 {
-  const raw = normalizeNewlines(text).split('\n');
+  const raw = oCOM.normalizeNewlines(text).split('\n');
   while (raw.length > 0 && raw[raw.length - 1] === '') raw.pop();
   if (raw.length === 0) { pasteDrag = null; updateUI(); draw("startPasteWithText"); return; }
 
@@ -1581,7 +1584,7 @@ function endSelect()
 
   if (selectDrag) 
   {
-      selection = normRect(selectDrag.start, selectDrag.current);
+      selection = oCOM.normRect(selectDrag.start, selectDrag.current);
       selectDrag = null;
 
       if (tool === "modeBlank") {
@@ -1802,7 +1805,7 @@ function draw( str )
   ctx.scale(scale, scale);
   ctx.translate(-cx + panX, -cy + panY);
 
-  const { snap, snapLine } = getSnapFns(dpr, scale);
+  const { snap, snapLine } = oCOM.getSnapFns(dpr, scale);
   var { cw, ch } = getCellSize();
 
   // Visible bounds in WORLD coordinates (undo pan/zoom around center)
@@ -1814,13 +1817,13 @@ function draw( str )
 
   // Convert bounds -> grid indices (clamped)
   //const c0 = Math.max(0, Math.floor(left / cw));
-  const c0 = Math.max(0, Math.floor( PanZoomSize(0,cx,scale,panX,cw) ));
+  const c0 = Math.max(0, Math.floor( oCOM.PanZoomSize(0,cx,scale,panX,cw) ));
   //const r0 = Math.max(0, Math.floor(top / ch));
-  const r0 = Math.max(0, Math.floor( PanZoomSize(0,cy,scale,panY,ch) ));
+  const r0 = Math.max(0, Math.floor( oCOM.PanZoomSize(0,cy,scale,panY,ch) ));
   //const c1 = Math.min(COLS, Math.ceil(right / cw));
-  const c1 = Math.min(COLS, Math.ceil( PanZoomSize(wCss,cx,scale,panX,cw) ));
+  const c1 = Math.min(COLS, Math.ceil( oCOM.PanZoomSize(wCss,cx,scale,panX,cw) ));
   //const r1 = Math.min(ROWS, Math.ceil(bottom / ch));
-  const r1 = Math.min(ROWS, Math.ceil( PanZoomSize(hCss,cy,scale,panY,ch)  ));
+  const r1 = Math.min(ROWS, Math.ceil( oCOM.PanZoomSize(hCss,cy,scale,panY,ch)  ));
 
   ctx.beginPath();
   ctx.strokeStyle = GRID_LINE;
@@ -1953,7 +1956,7 @@ function draw( str )
   // Drag-select marquee
   if (selectDrag) 
   {
-      const rr = normRect(selectDrag.start, selectDrag.current);
+      const rr = oCOM.normRect(selectDrag.start, selectDrag.current);
       const x0 = rr.c0 * cw;
       const y0 = rr.r0 * ch;
       const w = (rr.c1 - rr.c0 + 1) * cw;
@@ -2071,60 +2074,34 @@ function setHoverFromEvent(e)
 }
 
 // Sidebar toggle between UI and CLI
-function switchToSidebar(newSidebar) {
+function switchToSidebar(newSidebar)
+{
   if (newSidebar === activeSidebar) return;
-  
+
   activeSidebar = newSidebar;
-  
+
   if (activeSidebar === 'cli') 
   {
-
-    titleCLI.innerHTML = "<big>"+sbTitle.querySelector('big').textContent+" CLI</big><br><small>Type commands, press Enter</small>";
     sidebar.classList.add('hidden');
     cliSidebar.classList.remove('hidden');
-
-        /*
-    // Initialize terminal with welcome message if empty
-    if (!cliTerminal.value) {
-      // Extract title text from sbTitle (get text content of <big> tag)
-      const titleElement = sbTitle.querySelector('big');
-      const titleText = titleElement ? titleElement.textContent : 'AsciiCAD CLI';
-      
-      cliTerminal.value = `${titleText} Command Line\nType "help" for basic help.\n\nAsciiCAD> `;
-    }
-    
-    cliTerminal.focus();
-    cliTerminal.setSelectionRange(cliTerminal.value.length, cliTerminal.value.length);
-    */
-    //cliSidebar.innerHTML = "<div id='vanilla-terminal'></div>"
-     
-
-    
 
   } else {
     cliSidebar.classList.add('hidden');
     sidebar.classList.remove('hidden');
   }
 
-  
-
   scheduleResize();
-  }
+}
 
 
-  function isInSidebar(el) {
+function isInSidebar(el) 
+{
   if (!el || !el.closest) return false;
   return !!el.closest("#sidebar, #cliSidebar");
 }
 
-  toggleSidebar.addEventListener("click", () => {
-  switchToSidebar('cli');
-});
-
-
-toggleCLI.addEventListener("click", () => {
-  switchToSidebar('ui');
-});
+toggleSidebar.addEventListener("click", () => { switchToSidebar('cli'); });
+toggleCLI.addEventListener("click", () => { switchToSidebar('ui'); });
 
 // Sidebar Resize Functionality
 let resizing = false;
@@ -2203,558 +2180,111 @@ document.addEventListener('mousemove', doResize);
 document.addEventListener('mouseup', stopResize);
 
 
+// VANILLA-TERMINAL COMMANDS
 
+var VanillaTerminalBuiltins = (function () {
+  "use strict";
 
-//     ______                   _             ______  _____     _____  
-//    |_   _ \                 (_)          .' ___  ||_   _|   |_   _| 
-//      | |_) |  .---.  .--./) __   _ .--. / .'   \_|  | |       | |   
-//      |  __'. / /__\\/ /'`\;[  | [ `.-. || |         | |   _   | |   
-//     _| |__) || \__.,\ \._// | |  | | | |\ `.___.'\ _| |__/ | _| |_  
-//    |_______/  '.__.'.',__` [___][___||__]`.____ .'|________||_____| 
-//                    ( ( __))                                         
+  var STORAGE_KEY = "VanillaTerm";
+  var VERSION = "0.0.11";
 
+  var HELP = {
+    clear: "clear the terminal screen",
+    version: "print the terminal version",
+    wipe: "Remove all your history of command lines",
+    help: "print this message",
+  };
 
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
 
-// VANILLA-TERMINAL RUNTIME (AsciiCAD CLI)
-// Two modes:
-//  1) Terminal mode (Linux-like): help, clear, history [-c], script, exec("..."), exit
-//  2) Script mode (CADScript): help(), clear(), undo(), redo(), freeform(col,row,char), exit()
-const term = new VanillaTerminal({
-  // We handle all input via term.onInput; commands are kept for discoverability.
+  function createBuiltInCommands() {
+    return {
+      "clear": function (terminal) {
+        terminal.clear();
+      },
+
+      "help": function (terminal, params) {
+        params = params || [];
+        var command = params[0];
+
+        if (command) {
+          terminal.output(
+            "help: " +
+              (HELP[command] || ("no help topics match <u>" + escapeHtml(command) + "</u>"))
+          );
+          return;
+        }
+
+        terminal.output(
+          "These shell commands are defined internally. Type <u>help</u> for see the list."
+        );
+        terminal.output(
+          "Type <u>help name</u> to find out more about the function <u>name</u>."
+        );
+        terminal.output(Object.keys(terminal.commands).join(", "));
+      },
+
+      "version": function (terminal) {
+        terminal.output("Vanilla Terminal v" + VERSION);
+      },
+
+      "wipe": function (terminal) {
+        terminal.prompt("Are you sure remove all your commands history? Y/N", function (value) {
+          if (String(value).trim().toUpperCase() === "Y") {
+            try {
+              window.localStorage.removeItem(STORAGE_KEY);
+            } catch (_) {}
+            terminal.history = [];
+            terminal.historyCursor = 0;
+            terminal.output("History of commands wiped.");
+          }
+        });
+      },
+    };
+  }
+
+  return {
+    VERSION: VERSION,
+    createBuiltInCommands: createBuiltInCommands,
+  };
+})();
+
+// VANILLA-TERMINAL RUNTIME
+const term = new VanillaTerminal(
+{
   commands: {
-    help: () => {},
-    clear: () => {},
-    history: () => {},
-    script: () => {},
-    exec: () => {},
-    exit: () => {},
+    flavour: (terminal) => {
+      terminal.output('There is only one flavour for your favorite🍦and it is <b>vanilla<b>.')
+      terminal.setPrompt('@soyjavi <small>❤️</small> <u>vanilla</u> ');
+    },
 
+    async: (terminal) => {
+      terminal.idle();
+      setTimeout(() => terminal.output('Async 300'), 300);
+      setTimeout(() => terminal.output('Async 1300'), 1300);
+      setTimeout(() => {
+        terminal.output('Async 2000');
+        terminal.setPrompt();
+      }, 2000);
+    },
   },
-  welcome: sbTitle.querySelector('big').textContent + " terminal - type <u>help</u>",
-  prompt: "AsciiCAD",
+
+  // welcome: 'Welcome...',
+  // prompt: 'soyjavi at <u>Macbook-Pro</u> ',
   separator: '>',
 });
 
-let __cliMode = "terminal"; // "terminal" | "script"
-// --- helpers ---------------------------------------------------------------
-
-function __cliEscapeHtml(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;")
-    .replaceAll("\n", "<br>")
-    .replaceAll(" ", "&nbsp;");
-}
-
-function __cliNormalizeQuotes(s) {
-  return String(s || "")
-    .replace(/[‘’‚‛]/g, "'")
-    .replace(/[“”„‟]/g, '"');
-}
-
-function __cliSplitStatements(src) {
-  const out = [];
-  let cur = "";
-  let q = null;
-  let esc = false;
-
-  for (let i = 0; i < src.length; i++) {
-    const ch = src[i];
-
-    if (esc) {
-      cur += ch;
-      esc = false;
-      continue;
-    }
-
-    if (ch === "\\") {
-      cur += ch;
-      esc = true;
-      continue;
-    }
-
-    if (q) {
-      cur += ch;
-      if (ch === q) q = null;
-      continue;
-    }
-
-    if (ch === "'" || ch === '"') {
-      q = ch;
-      cur += ch;
-      continue;
-    }
-
-    if (ch === ";") {
-      const t = cur.trim();
-      if (t) out.push(t);
-      cur = "";
-      continue;
-    }
-
-    cur += ch;
-  }
-
-  const t = cur.trim();
-  if (t) out.push(t);
-  return out;
-}
-
-function __cliSplitArgs(argStr) {
-  const args = [];
-  let cur = "";
-  let q = null;
-  let esc = false;
-
-  for (let i = 0; i < argStr.length; i++) {
-    const ch = argStr[i];
-
-    if (esc) {
-      cur += ch;
-      esc = false;
-      continue;
-    }
-
-    if (ch === "\\") {
-      cur += ch;
-      esc = true;
-      continue;
-    }
-
-    if (q) {
-      cur += ch;
-      if (ch === q) q = null;
-      continue;
-    }
-
-    if (ch === "'" || ch === '"') {
-      q = ch;
-      cur += ch;
-      continue;
-    }
-
-    if (ch === ",") {
-      args.push(cur.trim());
-      cur = "";
-      continue;
-    }
-
-    cur += ch;
-  }
-
-  if (cur.trim() !== "") args.push(cur.trim());
-  return args;
-}
-
-function __cliParseStringLiteral(tok) {
-  tok = tok.trim();
-  if (tok.length < 2) return null;
-
-  const q = tok[0];
-  if ((q !== "'" && q !== '"') || tok[tok.length - 1] !== q) return null;
-
-  let inner = tok.slice(1, -1);
-
-  // Minimal unescape support
-  inner = inner.replaceAll("\\n", "\n").replaceAll("\\r", "\r").replaceAll("\\t", "\t");
-  inner = inner.replaceAll("\\\"", '"').replaceAll("\\'", "'").replaceAll("\\\\", "\\");
-  return inner;
-}
-
-function __cliParseExecArg(rest, usage) 
-{
-  // rest may be: ("...") or ('...') with optional whitespace
-  let s = rest.trim();
-  // Allow a trailing semicolon: exec("...");
-  if (s.endsWith(";")) s = s.slice(0, -1).trim();
-  if (!s) return { ok: false, err: usage };
-
-  if (s.startsWith("\"")) {
-    if (!s.endsWith("\"")) return { ok: false, err: usage };
-    //s = s.slice(1, -1).trim();
-  }
-
-  const lit = __cliParseStringLiteral(s);
-  if (lit === null) return { ok: false, err: usage };
-
-  return { ok: true, value: lit };
-}
-
-function __cliParseCADStatement(stmt) {
-  const m = stmt.match(/^([A-Za-z_]\w*)\s*\((.*)\)\s*$/);
-  if (!m) return { ok: false, err: "Invalid CADScript syntax: " + stmt };
-
-  const name = m[1];
-  const argStr = (m[2] || "").trim();
-  const rawArgs = argStr ? __cliSplitArgs(argStr) : [];
-
-  const args = [];
-  for (const a of rawArgs) {
-    if (a === "") continue;
-
-    const lit = __cliParseStringLiteral(a);
-    if (lit !== null) {
-      args.push(lit);
-      continue;
-    }
-
-    const n = Number(a);
-    if (!Number.isNaN(n) && /^[+-]?(?:\d+\.?\d*|\d*\.?\d+)$/.test(a)) {
-      args.push(n);
-      continue;
-    }
-
-    // Bare words are not allowed in CADScript
-    return { ok: false, err: "Invalid argument: " + a };
-  }
-
-  return { ok: true, value: { name, args } };
-}
-
-function __cliCompileCADScript(src) {
-  const s = __cliNormalizeQuotes(src);
-  const stmts = __cliSplitStatements(s);
-  if (!stmts.length) return { ok: true, value: [] };
-
-  const ops = [];
-  for (const st of stmts) {
-    const parsed = __cliParseCADStatement(st);
-    if (!parsed.ok) return parsed;
-
-    const { name, args } = parsed.value;
-    const lname = String(name || "").toLowerCase();
-
-    switch (lname) {
-      case "help":
-      case "exit":
-      case "clear":
-      case "undo":
-      case "redo":
-        if (args.length !== 0) return { ok: false, err: name + "() takes no arguments" };
-        ops.push({ type: lname });
-        break;
-
-      case "freeform":
-        if (args.length !== 3) return { ok: false, err: "Usage: freeform(col, row, char)" };
-        if (!Number.isInteger(args[0]) || !Number.isInteger(args[1]))
-          return { ok: false, err: "freeform(col,row,char): col and row must be integers" };
-        if (typeof args[2] !== "string" || args[2].length !== 1)
-          return { ok: false, err: "freeform(col,row,char): char must be a single character string" };
-        ops.push({ type: "freeform", col: args[0], row: args[1], ch: args[2] });
-        break;
-      case "exec":
-        if (args.length !== 1) return { ok: false, err: "Usage: exec(\"..\")" };
-        ops.push({ type: "exec", str: args[0] });
-        break;
-      default:
-        return { ok: false, err: "Unknown CADScript function: " + name + "()" };
-    }
-  }
-
-  return { ok: true, value: ops };
-}
-
-function __cliRunCADOps(ops) {
-  // Stage grid mutations so one script line becomes a single undo stroke,
-  // but flush before undo/redo to preserve expected semantics.
-  let strokeMap = new Map();
-
-  function stageCell(r, c, next) {
-    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) {
-      throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
-    }
-
-    const key = r + "," + c;
-    const cur = ascii[r][c];
-
-    if (cur === next) return;
-
-    const rec = strokeMap.get(key);
-    if (!rec) strokeMap.set(key, { r, c, prev: cur, next });
-    else rec.next = next;
-
-    ascii[r][c] = next;
-  }
-
-  function flush(reason) {
-    if (!strokeMap.size) return;
-    const stroke = Array.from(strokeMap.values());
-    strokeMap.clear();
-    pushStrokeIfNonEmpty(stroke);
-    draw(reason || "CADScript");
-  }
-
-  for (const op of ops) {
-    switch (op.type) {
-      case "help":
-        term.output(
-          __cliEscapeHtml("CADScript commands:\n" +
-            " clear()    - clear entire grid\n" +
-            " exec(\"..\") - run terminal command\n" +
-            " exit()     - return to terminal\n" +
-            " freeform(x,y,char) - put character\n" +
-            " redo()     - redo last undone action\n" +
-            " undo()     - undo last action")
-        );
-        break;
-
-      case "exit":
-        flush("CADScript-exit");
-        __cliMode = "terminal";
-        term.setPrompt("AsciiCAD");
-        term.output("Exited CADScript mode.");
-        break;
-
-      case "clear":
-        for (let r = 0; r < ROWS; r++) {
-          for (let c = 0; c < COLS; c++) {
-            if (ascii[r][c] !== " ") stageCell(r, c, " ");
-          }
-        }
-        break;
-
-      case "exec":
-          const usage = "Usage:\n" +
-          "\"<string>\" - run terminal command"
-
-        if (typeof op.str !== "string") {
-          term.output("[ERROR] " + __cliEscapeHtml(usage));
-          break;
-        }
-        const cmdLine = __cliNormalizeQuotes(op.str).trim();
-        if (!cmdLine) {
-          term.output("[ERROR] " + __cliEscapeHtml(usage));
-          break;
-        }
-        // Enforce "only one terminal command" (no ';' chaining or newlines)
-        if (/[;\r\n]/.test(cmdLine)) {
-          term.output("[ERROR] exec() accepts only one terminal command (no ';' or newlines)");
-          break;
-        }
-        // TODO RUN terminal command (incl. options) in op.str
-        __cliHandleTerminal(cmdLine);
-        break;
-
-      case "freeform":
-        stageCell(op.row, op.col, op.ch);
-        break;
-
-      case "undo":
-        flush("CADScript-flush-before-undo");
-        if (undoStack.length === 0) term.output("[ERROR] Nothing to undo");
-        else {
-          doUndo();
-          term.output("[OK] Undo applied");
-        }
-        break;
-
-      case "redo":
-        flush("CADScript-flush-before-redo");
-        if (redoStack.length === 0) term.output("[ERROR] Nothing to redo");
-        else {
-          doRedo();
-          term.output("[OK] Redo applied");
-        }
-        break;
-
-      default:
-        term.output("[ERROR] Internal: unknown op " + __cliEscapeHtml(op.type));
-    }
-  }
-
-  flush("CADScript");
-  updateUI();
-}
-
-function __cliTerminalHelp()
-{
-  term.output(
-    __cliEscapeHtml("Terminal commands:\n" +
-      " <command> -h - detailed help\n" +
-      "  clear       - clear terminal screen\n" +
-      "  exec \"..\"   - run CADScript\n" +
-      "  exit       - exit CLI\n"+
-      "  help       - terminal help\n" +
-      "  history       - show command history\n" +
-      "  script       - enter CADScript mode\n")
-  );
-}
-
-function __cliHandleTerminal(line) {
-  const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
-  if (!m) {
-    term.output("[ERROR] Invalid command");
-    return true;
-  }
-
-  const cmd = m[1].toLowerCase();
-  const rest = (m[2] || "").trim();
-
-  if (cmd === "help")
-  {
-    __cliTerminalHelp();
-    return true;
-  }
-
-  if (cmd === "clear")
-  {
-    const usage = "Usage:\n" +
-    "<bare> - clear terminal screen\n" +
-    " -h    - <command> help\n"
-
-    const opt = rest.trim();
-    if (opt === "-h") term.output(__cliEscapeHtml(usage));
-    else if (opt == "") term.clear();
-    else  term.output("[ERROR] "+__cliEscapeHtml(usage));
-    return true;
-  }
-
-  if (cmd === "history") {
-    const opt = rest.trim();
-    const usage = "Usage:\n" +
-       "<bare> - show command history\n" +
-       " -c    - clear command history\n" +
-       " -h    - <command> help\n"
-
-    if (!opt) {
-      if (!term.history || term.history.length === 0) term.output("(history empty)");
-      else {
-        const lines = term.history
-          .map((h, i) => String(i + 1) + ": " + __cliEscapeHtml(h))
-          .join("<br>");
-        term.output(lines);
-      }
-      return true;
-    }
-
-    if (opt === "-h") {
-      term.output(__cliEscapeHtml(usage));
-      return true;
-    }
-
-    if (opt === "-c") {
-      try {
-        window.localStorage.removeItem("VanillaTerm");
-      } catch (_) {}
-      term.history = [];
-      term.historyCursor = 0;
-      term.output("History cleared");
-      return true;
-    }
-
-    term.output("[ERROR] "+__cliEscapeHtml(usage));
-    return true;
-  }
-
-  if (cmd === "script") {
-    if (rest) {
-      term.output("[ERROR] Usage: script");
-      return true;
-    }
-    __cliMode = "script";
-    term.setPrompt("CADScript");
-    term.output(sbTitle.querySelector('big').textContent+" script - type <u>help()</u>");
-    return true;
-  }
-
-  if (cmd === "exec")
-  {
-    const usage = "Usage:\n" +
-    "\"<string>\" - execute string as script\n" +
-    " -h        - <command> help\n";
-
-    const opt = rest.trim();
-
-    if (opt === "-h") { term.output(__cliEscapeHtml(usage)); return true; }
-
-    const parsed = __cliParseExecArg(rest, usage);
-    if (!parsed.ok) {
-      term.output("[PARSE ERROR] " + __cliEscapeHtml(parsed.err));
-      return true;
-    }
-
-    const compiled = __cliCompileCADScript(parsed.value);
-    if (!compiled.ok) {
-      term.output("[COMPILE ERROR] " + __cliEscapeHtml(compiled.err));
-      return true;
-    }
-
-    try {
-      __cliRunCADOps(compiled.value);
-      term.output("[OK] exec() completed");
-    } catch (e) {
-      term.output("[RUN ERROR] " + __cliEscapeHtml(e && e.message ? e.message : String(e)));
-    }
-    return true;
-  }
-
-  if (cmd === "exit") {
-    if (typeof switchToSidebar === "function") switchToSidebar("ui");
-    term.output("Switched to UI sidebar");
-    return true;
-  }
-
-  // Hint when user types CADScript-style calls in terminal mode
-  if (line.includes("(") && line.endsWith(")")) {
-    term.output(
-      "[ERROR] CADScript syntax detected. Type <u>script</u> to enter CADScript mode, or use <u>exec(\"...\")</u>"
-    );
-    return true;
-  }
-
-  term.output("[ERROR] Unknown command. Type <u>help</u>");
-  return true;
-}
-
-function __cliHandleScript(line) {
-  if (/^[A-Za-z_]\w*$/.test(line)) {
-    term.output("[ERROR] Script mode expects function calls, e.g. <u>help()</u>, <u>clear()</u>, <u>exit()</u>");
-    return true;
-  }
-
-  const compiled = __cliCompileCADScript(line);
-  if (!compiled.ok) {
-    term.output("[ERROR] " + __cliEscapeHtml(compiled.err));
-    return true;
-  }
-
-  try {
-    __cliRunCADOps(compiled.value);
-  } catch (e) {
-    term.output("[ERROR] " + __cliEscapeHtml(e && e.message ? e.message : String(e)));
-  }
-
-  return true;
-}
-
-term.onInput((command, parameters, rawLine) => {
-  const line = __cliNormalizeQuotes(rawLine || "").trim();
-  if (!line) {
-    term.output("&nbsp;");
-    return true;
-  }
-  if (__cliMode === "terminal") return __cliHandleTerminal(line);
-  return __cliHandleScript(line);
-
+term.setPrompt("AsciiCAD");
+term.onInput((command, parameters) => {
+  console.log('⚡️onInput', command, parameters);
 });
-
-
-
-
-
-
-
-// END CLI TERMINAL MANAGEMENT
-//     ________                __     ______  _____     _____  
-//    |_   __  |              |  ]  .' ___  ||_   _|   |_   _| 
-//      | |_ \_| _ .--.   .--.| |  / .'   \_|  | |       | |   
-//      |  _| _ [ `.-. |/ /'`\' |  | |         | |   _   | |   
-//     _| |__/ | | | | || \__/  |  \ `.___.'\ _| |__/ | _| |_  
-//    |________|[___||__]'.__.;__]  `.____ .'|________||_____| 
-
 
 
 
@@ -2799,7 +2329,7 @@ window.addEventListener("load", function()
               // Expand wide chars (⬤ etc.) so the grid aligns with IDE rendering
               const expanded = expandWideCharsForGrid(txt);
               // Convert to lines (using your existing normalizeNewlines)
-              const lines = toLines(expanded); // <-- IMPORTANT
+              const lines = oCOM.toLines(expanded); // <-- IMPORTANT
               const stroke = [];
               for (let r = 0; r < ROWS; r++)
               {
@@ -2830,7 +2360,7 @@ window.addEventListener("load", function()
           } catch (err)
           {
               console.error("Load failed:", err);
-              alert("Load failed. See console for details");
+              alert("Load failed. See console for details.");
           }
         }
       } 
@@ -2883,7 +2413,7 @@ saveBtn.addEventListener("click", () =>
 {
   const raw = serializeToText();
   const cleaned = sanitizeForSave(raw);
-  downloadText(cleaned, "ascii-schema.txt");
+  oCOM.downloadText(cleaned, "ascii-schema.txt");
 });
 
 uriBtn.addEventListener("click", () => 
@@ -2922,7 +2452,7 @@ fileInput.addEventListener("change", async (e) =>
     const expanded = expandWideCharsForGrid(raw);
 
     // Convert to lines (using your existing normalizeNewlines)
-    const lines = toLines(expanded); // <-- IMPORTANT
+    const lines = oCOM.toLines(expanded); // <-- IMPORTANT
 
     const stroke = [];
 
@@ -3016,7 +2546,7 @@ canvas.addEventListener("wheel",(e) =>
   // Pinch-zoom on trackpad (Chrome/Safari typically set ctrlKey for pinch)
   if (e.ctrlKey) {
       const zoomFactor = Math.exp(-e.deltaY * 0.01);
-      scale = clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
+      scale = oCOM.clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
       updateUI();
       draw();
       return;
@@ -3039,7 +2569,7 @@ canvas.addEventListener("wheel",(e) =>
 
   // Mouse wheel zooms
   const zoomFactor = Math.exp(-e.deltaY * 0.01);
-  scale = clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
+  scale = oCOM.clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
   updateUI();
   draw();
 },
@@ -3192,12 +2722,6 @@ window.addEventListener("keydown", (e) =>
     const k = String(e.key || "").toLowerCase();
     if (k === "z" && !e.shiftKey) { e.preventDefault(); doUndo(); return; }
     if (k === "z" &&  e.shiftKey) { e.preventDefault(); doRedo(); return; }
-  }
-
-  // If the user is typing in the sidebar (terminal / inputs), do not run canvas shortcuts.
-  // Undo/Redo is handled above and remains available.
-  if (isEditingTextTarget(e) || isInSidebar(e.target) || isInSidebar(document.activeElement)) {
-    return;
   }
 
   //  If FreeText preview is active, handle ALL typing here and stop.

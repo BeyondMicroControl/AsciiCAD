@@ -334,7 +334,7 @@ syncCanvasBufferToStage();
 
 // Light sanity checks
 console.assert(serializeToText().split('\n')[0].length === COLS, 'serializeToText -> COLS chars/line');
-console.assert(toLines('A\r\nB\rC\nD').length === 4, 'newline normalization');
+console.assert(oCOM.toLines('A\r\nB\rC\nD').length === 4, 'newline normalization');
 console.assert(!serializeToText().includes("\\n"), "Save must not contain literal \\n");
 
 console.assert(
