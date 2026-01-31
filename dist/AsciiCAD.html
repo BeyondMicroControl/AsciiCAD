@@ -984,7 +984,22 @@ oCOM = new COM();
 
 </script>
   <script stype="text/javascript">
+
+//     ██████  ██████  ███    ███ ██████   ██████  ███    ██ ███████ ███    ██ ████████ 
+//    ██      ██    ██ ████  ████ ██   ██ ██    ██ ████   ██ ██      ████   ██    ██    
+//    ██      ██    ██ ██ ████ ██ ██████  ██    ██ ██ ██  ██ █████   ██ ██  ██    ██    
+//    ██      ██    ██ ██  ██  ██ ██      ██    ██ ██  ██ ██ ██      ██  ██ ██    ██    
+//     ██████  ██████  ██      ██ ██       ██████  ██   ████ ███████ ██   ████    ██    
+//                                                                                      
+//                                                                                      
+//     ██████  █████  ████████  █████  ██       ██████   ██████                         
+//    ██      ██   ██    ██    ██   ██ ██      ██    ██ ██                              
+//    ██      ███████    ██    ███████ ██      ██    ██ ██   ███                        
+//    ██      ██   ██    ██    ██   ██ ██      ██    ██ ██    ██                        
+//     ██████ ██   ██    ██    ██   ██ ███████  ██████   ██████  
+
 // Hardcoded catalog (extend freely)
+
 const CATALOG = [
 {
 name: 'ATTiny85',
@@ -2664,15 +2679,16 @@ Motor:     ─Ⓜ─
 ⎝
 */
 // https://www.charset.org/utf-8/10
-const PICKER_TABS = {
-Box: oCOM.rangeChars(0x2500, 0x257F).concat(oCOM.rangeChars(0x0331,0x0338)).concat(oCOM.rangeChars(0x035C,0x0361)).concat(oCOM.rangeChars(0x2010, 0x2017)).concat(['‗','ᙿ','᐀','͇','̿','⟋','⟍','≻','≺','⅄','ү','⌎','⌏','⌍','⌌','⎩','⌠','⎠','⎡','⎢','⎣','⎤','⎥','⎦','⎧','⎨','⎩','⌈','⌉','⌊','⌋','⌌','⌍','⌎','⌏','⌐','⌙','⌜','⌝','⌞','⌟','⊢','⊣','⊤','⟝','⟞','⋮','⋯','⋰','⋱','⵰','᯿','⸜','⸝','⸌','⸍','⦧','⦦','⎸ ⎹','▏','▕','⎽']),
-Arrows: oCOM.rangeChars(0x2190, 0x21FF).concat(oCOM.rangeChars(0x27F0, 0x27FF).concat(oCOM.rangeChars(0x2B00, 0x2B11)).concat(oCOM.rangeChars(0x2B60,0x2B65)).concat(['☚','☛','☜','☝','☞','☟','⎉','⎊','⎋','⎌','⏎','⏏','⏩','⏪','⏫','⏬','⏭','⏮','⏯'])),
-Geometric: oCOM.rangeChars(0x2580, 0x25FF).concat(oCOM.rangeChars(0x20D8, 0x20E4)).concat(oCOM.rangeChars(0x2B12, 0x2B2F)).concat(['❘','❙','❚']),
-Icons1: oCOM.rangeChars(0x2600, 0x26FF),
-Icons2: oCOM.rangeChars(0x2701, 0x2775).concat(oCOM.rangeChars(0x2794, 0x27C1)).concat([]),
-AlphaNumeric: oCOM.rangeChars(0x0021, 0x007A).concat(oCOM.rangeChars(0x2460, 0x24FF)),
-Technical: ['⌁','⌂','⌇','⌖','⌗','⌚','⌛','⍾','⎆','⎈','⎍','⎎','⏚','⏛','⏦','⏻','⏼','⏱','⏲','⏚','⎓','⌁','⊕','⊖','⊗','⊘','⊞','⊟','⊠','☐','☑','☒','≈','≠','∞','⚠','⚡','⛶','⛝','⛌','·','•','●','Ω','π','µ','⍉','⍵','☼','✈','✉','✔','✖','✚','✥','✦','✧','★','☆','⏄','⅏','➰','➿','𐦫','⟁','⨨','𐺊','⎓','ᯤ'].concat(oCOM.rangeChars(0x2400,0x2424)),
-Misc: oCOM.rangeChars(0x2320, 0x23FF).concat(['♀','♂','☯','☮','✌']),
+const PICKER_TABS = 
+{
+    Box: oCOM.rangeChars(0x2500, 0x257F).concat(oCOM.rangeChars(0x0331,0x0338)).concat(oCOM.rangeChars(0x035C,0x0361)).concat(oCOM.rangeChars(0x2010, 0x2017)).concat(['‗','ᙿ','᐀','͇','̿','⟋','⟍','≻','≺','⅄','ү','⌎','⌏','⌍','⌌','⎩','⌠','⎠','⎡','⎢','⎣','⎤','⎥','⎦','⎧','⎨','⎩','⌈','⌉','⌊','⌋','⌌','⌍','⌎','⌏','⌐','⌙','⌜','⌝','⌞','⌟','⊢','⊣','⊤','⟝','⟞','⋮','⋯','⋰','⋱','⵰','᯿','⸜','⸝','⸌','⸍','⦧','⦦','⎸ ⎹','▏','▕','⎽']),
+    Arrows: oCOM.rangeChars(0x2190, 0x21FF).concat(oCOM.rangeChars(0x27F0, 0x27FF).concat(oCOM.rangeChars(0x2B00, 0x2B11)).concat(oCOM.rangeChars(0x2B60,0x2B65)).concat(['☚','☛','☜','☝','☞','☟','⎉','⎊','⎋','⎌','⏎','⏏','⏩','⏪','⏫','⏬','⏭','⏮','⏯'])),
+    Geometric: oCOM.rangeChars(0x2580, 0x25FF).concat(oCOM.rangeChars(0x20D8, 0x20E4)).concat(oCOM.rangeChars(0x2B12, 0x2B2F)).concat(['❘','❙','❚']),
+    Icons1: oCOM.rangeChars(0x2600, 0x26FF),
+    Icons2: oCOM.rangeChars(0x2701, 0x2775).concat(oCOM.rangeChars(0x2794, 0x27C1)).concat([]),
+    AlphaNumeric: oCOM.rangeChars(0x0021, 0x007A).concat(oCOM.rangeChars(0x2460, 0x24FF)),
+    Technical: ['⌁','⌂','⌇','⌖','⌗','⌚','⌛','⍾','⎆','⎈','⎍','⎎','⏚','⏛','⏦','⏻','⏼','⏱','⏲','⏚','⎓','⌁','⊕','⊖','⊗','⊘','⊞','⊟','⊠','☐','☑','☒','≈','≠','∞','⚠','⚡','⛶','⛝','⛌','·','•','●','Ω','π','µ','⍉','⍵','☼','✈','✉','✔','✖','✚','✥','✦','✧','★','☆','⏄','⅏','➰','➿','𐦫','⟁','⨨','𐺊','⎓','ᯤ'].concat(oCOM.rangeChars(0x2400,0x2424)),
+    Misc: oCOM.rangeChars(0x2320, 0x23FF).concat(['♀','♂','☯','☮','✌']),
 };
 </script>
   <script type="text/javascript">
