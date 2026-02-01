@@ -106,7 +106,7 @@
         <script>
           oCOM.URL.parse(document.location.toString());
           if(oCOM.URL.filename == "AsciiCAD.html")
-            document.getElementById("DonwloadLink").innerHTML = "&nbsp;• <a href=\"#\" id=\"downloadSelfLink\" onclick=\"{ downloadThisFile(); history.back(); return false; }\">Download</a>";
+            document.getElementById("DonwloadLink").innerHTML = "&nbsp;• <a href=\"#\" id=\"downloadSelfLink\" onclick=\"downloadThisFile(); return false;\">Download</a>";
         </script>
 
 
@@ -1667,6 +1667,7 @@ window.addEventListener("load", function()
       case "download":
         // TODO download
         downloadThisFile( history.back );
+        history.back();
       break; 
     }  
   }
