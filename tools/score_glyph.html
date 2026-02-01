@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Glyph Matcher Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/h5wasm@0.4.11/dist/h5wasm.js"></script>
+    <style>
+        body { font-family: monospace; background: #1a1a1a; color: #00ff00; padding: 20px; }
+        .controls { background: #333; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #444; }
+        tr:hover { background: #222; }
+        .status { color: #ffcc00; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <h2>Glyph Matcher (JS Port v0.5)</h2>
+    
+    <div class="controls">
+        <label>1. Load Dataset (.h5):</label>
+        <input type="file" id="h5-input" accept=".h5"><br><br>
+        
+        <label>2. Load Query (BMP):</label>
+        <input type="file" id="bmp-input" accept="image/*" disabled><br><br>
+
+        <label><input type="checkbox" id="dilate-check"> Dilate Query (1px)</label> | 
+        <label>Radius: <input type="number" id="radius" value="3" style="width:40px"></label>
+    </div>
+
+    <div id="status" class="status">Waiting for Dataset...</div>
+    <div id="results"></div>
+
+<script>
+/**
+ * BITWISE CORE: This replicates the Python IoU logic but 64x faster.
+ * Each 64x64 image is stored as an array of 64 BigUint64 integers.
+ */
+const popcount64 = (n) => {
+    n = n - ((n >> 1n) & 0x5555555555555555n);
+    n = (n & 0x3333333333333333n) + ((n >> 2n) & 0x3333333333333333n);
+    return Number(((n + (n >> 4n) & 0x0F0F0F0F0F0F0F0Fn) * 0x0101010101010101n) >> 56n);
+};
+
+// Global Data
+let dataset = { images: null, labels: null, bitpacked: null };
+
+// 1. Handle H5 Loading
+document.getElementById('h5-input').onchange = async (e) => {
+    const file = e.target.files[0];
+    const status = document.getElementById('status');
+    status.innerText = "Loading HDF5...";
+
+    const { FS } = await h5wasm.ready;
+    const buf = await file.arrayBuffer();
+    FS.writeFile("data.h5", new Uint8Array(buf));
+    
+    const h5 = new h5wasm.File("data.h5", "r");
+    const imgs = h5.get("images").value; // Uint8 (N, 64, 64)
+    const lbls = h5.get("labels").value; // Int32 (N)
+    
+    status.innerText = "Bit-packing templates for performance...";
+    
+    // Convert templates to Bit-Packed format for Stage B
+    const N = imgs.shape[0];
+    const packed = new BigUint64Array(N * 64);
+    for (let i = 0; i < N; i++) {
+        const offset = i * 64 * 64;
+        for (let y = 0; y < 64; y++) {
+            let row = 0n;
+            for (let x = 0; x < 64; x++) {
+                if (imgs.data[offset + y * 64 + x] < 128) row |= (1n << BigInt(x));
+            }
+            packed[i * 64 + y] = row;
+        }
+    }
+
+    dataset = { images: imgs.data, labels: lbls, bitpacked: packed, N: N };
+    status.innerText = `Dataset Ready: ${N} glyphs loaded.`;
+    document.getElementById('bmp-input').disabled = false;
+};
+
+// 2. Handle Image Processing
+document.getElementById('bmp-input').onchange = async (e) => {
+    if (!dataset.bitpacked) return;
+    const file = e.target.files[0];
+    const status = document.getElementById('status');
+    const radius = parseInt(document.getElementById('radius').value);
+    const doDilate = document.getElementById('dilate-check').checked;
+
+    const img = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, 64, 64);
+    const pixels = ctx.getImageData(0, 0, 64, 64).data;
+
+    // Convert to Boolean Mask (Sparse check)
+    let blackCount = 0;
+    for (let i = 0; i < 4096; i++) if (pixels[i * 4] < 128) blackCount++;
+    const useBlack = blackCount <= 2048; // to_bool_ink logic
+
+    let queryBits = new BigUint64Array(64);
+    for (let y = 0; y < 64; y++) {
+        let row = 0n;
+        for (let x = 0; x < 64; x++) {
+            const val = pixels[(y * 64 + x) * 4];
+            const isInk = useBlack ? (val < 128) : (val > 128);
+            if (isInk) row |= (1n << BigInt(x));
+        }
+        queryBits[y] = row;
+    }
+
+    if (doDilate) {
+        // Simple 3x3 dilation on bitmask
+        let dilated = new BigUint64Array(64);
+        for(let y=0; y<64; y++) {
+            let r = queryBits[y] | (queryBits[y] << 1n) | (queryBits[y] >> 1n);
+            if (y > 0) dilated[y-1] |= r;
+            dilated[y] |= r;
+            if (y < 63) dilated[y+1] |= r;
+        }
+        queryBits = dilated;
+    }
+
+    // 3. Stage B Scoring (Refinement with shifts)
+    status.innerText = "Matching...";
+    const start = performance.now();
+    
+    const results = [];
+    for (let i = 0; i < dataset.N; i++) {
+        let bestIoU = 0;
+        const templateOffset = i * 64;
+
+        // Shift logic: Replicating best_iou_over_shifts
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                let inter = 0, union = 0;
+                
+                for (let y = 0; y < 64; y++) {
+                    const ty = y + dy;
+                    if (ty < 0 || ty >= 64) {
+                        union += popcount64(queryBits[y]);
+                        continue;
+                    }
+                    
+                    const qRow = queryBits[y];
+                    let tRow = dataset.bitpacked[templateOffset + ty];
+                    
+                    // Horizontal shift
+                    if (dx > 0) tRow <<= BigInt(dx);
+                    else if (dx < 0) tRow >>= BigInt(-dx);
+
+                    inter += popcount64(qRow & tRow);
+                    union += popcount64(qRow | tRow);
+                }
+                const iou = union === 0 ? 0 : inter / union;
+                if (iou > bestIoU) bestIoU = iou;
+            }
+        }
+        results.push({ label: dataset.labels[i], score: bestIoU });
+    }
+
+    // Sort and Display
+    results.sort((a, b) => b.score - a.score);
+    const top = results.slice(0, 20);
+    const end = performance.now();
+
+    status.innerText = `Matched in ${(end - start).toFixed(1)}ms`;
+    
+    let html = `<table><tr><th>Rank</th><th>Char</th><th>Hex</th><th>IoU %</th></tr>`;
+    top.forEach((res, idx) => {
+        const char = String.fromCharCode(res.label);
+        html += `<tr><td>${idx+1}</td><td>${char}</td><td>U+${res.label.toString(16).toUpperCase()}</td><td>${(res.score * 100).toFixed(2)}%</td></tr>`;
+    });
+    document.getElementById('results').innerHTML = html + `</table>`;
+};
+</script>
+</body>
+</html>
