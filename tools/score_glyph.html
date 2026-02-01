@@ -1,180 +1,660 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Glyph Matcher Pro</title>
-    <script src="https://cdn.jsdelivr.net/npm/h5wasm@0.4.11/dist/h5wasm.js"></script>
-    <style>
-        body { font-family: monospace; background: #1a1a1a; color: #00ff00; padding: 20px; }
-        .controls { background: #333; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #444; }
-        tr:hover { background: #222; }
-        .status { color: #ffcc00; margin-bottom: 10px; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Glyph Match (HDF5 + Workers)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
+    label { display:block; font-size: 12px; opacity: .8; margin-bottom: 4px; }
+    input[type="number"] { width: 100px; }
+    pre { white-space: pre-wrap; background: #0b1020; color: #d7e2ff; padding: 12px; border-radius: 10px; }
+    canvas { border: 1px solid #ddd; border-radius: 8px; }
+    button { padding: 10px 14px; border-radius: 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .muted { opacity: .75; font-size: 12px; }
+  </style>
 </head>
 <body>
+  <h2>Glyph Matcher (browser)</h2>
+  <div class="muted">
+    Implements the same 2-stage approach as your Python script: Stage A shortlist, Stage B shifted IoU refinement.
+  </div>
 
-    <h2>Glyph Matcher (JS Port v0.5)</h2>
-    
-    <div class="controls">
-        <label>1. Load Dataset (.h5):</label>
-        <input type="file" id="h5-input" accept=".h5"><br><br>
-        
-        <label>2. Load Query (BMP):</label>
-        <input type="file" id="bmp-input" accept="image/*" disabled><br><br>
-
-        <label><input type="checkbox" id="dilate-check"> Dilate Query (1px)</label> | 
-        <label>Radius: <input type="number" id="radius" value="3" style="width:40px"></label>
+  <div class="row" style="margin-top:12px;">
+    <div class="card">
+      <label>HDF5 dataset (.h5)</label>
+      <input id="h5" type="file" accept=".h5,.hdf5,.nxs,.hdf" />
+      <div class="muted">Must contain datasets: <code>/images</code> (N,64,64) uint8 and <code>/labels</code> (N) ints.</div>
     </div>
 
-    <div id="status" class="status">Waiting for Dataset...</div>
-    <div id="results"></div>
+    <div class="card">
+      <label>Query image (bmp/png/jpg)</label>
+      <input id="query" type="file" accept="image/*" />
+      <div style="margin-top:8px;">
+        <canvas id="qprev" width="128" height="128"></canvas>
+      </div>
+      <div class="muted">Will be resized to 64×64 (nearest) and binarized.</div>
+    </div>
 
-<script>
-/**
- * BITWISE CORE: This replicates the Python IoU logic but 64x faster.
- * Each 64x64 image is stored as an array of 64 BigUint64 integers.
- */
-const popcount64 = (n) => {
-    n = n - ((n >> 1n) & 0x5555555555555555n);
-    n = (n & 0x3333333333333333n) + ((n >> 2n) & 0x3333333333333333n);
-    return Number(((n + (n >> 4n) & 0x0F0F0F0F0F0F0F0Fn) * 0x0101010101010101n) >> 56n);
-};
+    <div class="card">
+      <div class="row">
+        <div>
+          <label>Top N</label>
+          <input id="topN" type="number" min="1" max="512" value="64" />
+        </div>
+        <div>
+          <label>StageA size</label>
+          <input id="stageAsize" type="number" min="4" max="32" value="16" />
+        </div>
+        <div>
+          <label>StageA topK</label>
+          <input id="stageAtopk" type="number" min="100" max="20000" value="2000" />
+        </div>
+        <div>
+          <label>StageB radius</label>
+          <input id="stageBr" type="number" min="0" max="10" value="3" />
+        </div>
+      </div>
 
-// Global Data
-let dataset = { images: null, labels: null, bitpacked: null };
+      <div class="row" style="margin-top:10px;">
+        <label style="display:flex;gap:8px;align-items:center;">
+          <input id="dilate" type="checkbox" />
+          Dilate query (3×3, 1px)
+        </label>
+        <div>
+          <label>Density prefilter</label>
+          <input id="dens" type="number" min="0" step="0.1" value="2.5" />
+          <div class="muted">0 disables</div>
+        </div>
+        <div>
+          <label>Workers</label>
+          <input id="workers" type="number" min="1" max="32" value="0" />
+          <div class="muted">0 = auto</div>
+        </div>
+      </div>
 
-// 1. Handle H5 Loading
-document.getElementById('h5-input').onchange = async (e) => {
-    const file = e.target.files[0];
-    const status = document.getElementById('status');
-    status.innerText = "Loading HDF5...";
+      <div style="margin-top:12px;">
+        <button id="run" disabled>Run match</button>
+      </div>
+    </div>
+  </div>
 
-    const { FS } = await h5wasm.ready;
-    const buf = await file.arrayBuffer();
-    FS.writeFile("data.h5", new Uint8Array(buf));
-    
-    const h5 = new h5wasm.File("data.h5", "r");
-    const imgs = h5.get("images").value; // Uint8 (N, 64, 64)
-    const lbls = h5.get("labels").value; // Int32 (N)
-    
-    status.innerText = "Bit-packing templates for performance...";
-    
-    // Convert templates to Bit-Packed format for Stage B
-    const N = imgs.shape[0];
-    const packed = new BigUint64Array(N * 64);
-    for (let i = 0; i < N; i++) {
-        const offset = i * 64 * 64;
-        for (let y = 0; y < 64; y++) {
-            let row = 0n;
-            for (let x = 0; x < 64; x++) {
-                if (imgs.data[offset + y * 64 + x] < 128) row |= (1n << BigInt(x));
+  <h3>Results</h3>
+  <pre id="out">Select a dataset + query image.</pre>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+
+  const state = {
+    h5File: null,
+    queryRGBA: null,
+    queryBool64: null
+  };
+
+  function drawPreview(imageBitmap) {
+    const c = $("qprev");
+    const ctx = c.getContext("2d");
+    ctx.clearRect(0,0,c.width,c.height);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(imageBitmap, 0, 0, c.width, c.height);
+  }
+
+  async function loadQueryFile(file) {
+    const bmp = await createImageBitmap(file);
+    drawPreview(bmp);
+
+    // Convert to 64x64 grayscale with nearest
+    const c = document.createElement("canvas");
+    c.width = 64; c.height = 64;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(bmp, 0, 0, 64, 64);
+    const img = ctx.getImageData(0,0,64,64).data; // RGBA
+
+    // grayscale u8
+    const g = new Uint8Array(64*64);
+    for (let i=0, p=0; i<g.length; i++, p+=4) {
+      // simple luma
+      g[i] = (0.299*img[p] + 0.587*img[p+1] + 0.114*img[p+2]) | 0;
+    }
+
+    return g;
+  }
+
+  function toBoolInk64(grayU8, preferSparse=true) {
+    // replicate Python logic:
+    // white_ink = arr > 128; black_ink = arr < 128; pick sparser if preferSparse
+    let whiteCount = 0, blackCount = 0;
+    for (let i=0;i<grayU8.length;i++){
+      if (grayU8[i] > 128) whiteCount++;
+      if (grayU8[i] < 128) blackCount++;
+    }
+    const pickBlack = !preferSparse ? true : (blackCount <= whiteCount);
+    const out = new Uint8Array(grayU8.length);
+    if (pickBlack) {
+      for (let i=0;i<grayU8.length;i++) out[i] = grayU8[i] < 128 ? 1 : 0;
+    } else {
+      for (let i=0;i<grayU8.length;i++) out[i] = grayU8[i] > 128 ? 1 : 0;
+    }
+    return out;
+  }
+
+  function dilate3x3Bool64(x) {
+    // x: Uint8Array len=4096 (0/1)
+    const out = new Uint8Array(64*64);
+    for (let y=0;y<64;y++){
+      for (let x0=0;x0<64;x0++){
+        let v = 0;
+        for (let dy=-1; dy<=1 && !v; dy++){
+          const yy = y+dy;
+          if (yy<0 || yy>=64) continue;
+          for (let dx=-1; dx<=1; dx++){
+            const xx = x0+dx;
+            if (xx<0 || xx>=64) continue;
+            if (x[yy*64+xx]) { v = 1; break; }
+          }
+        }
+        out[y*64+x0] = v;
+      }
+    }
+    return out;
+  }
+
+  function canRun() {
+    $("run").disabled = !(state.h5File && state.queryBool64);
+  }
+
+  $("h5").addEventListener("change", (e) => {
+    state.h5File = e.target.files?.[0] || null;
+    canRun();
+  });
+
+  $("query").addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) { state.queryBool64 = null; canRun(); return; }
+    const g = await loadQueryFile(f);
+    let qb = toBoolInk64(g, true);
+    if ($("dilate").checked) qb = dilate3x3Bool64(qb);
+    state.queryBool64 = qb;
+    canRun();
+  });
+
+  $("dilate").addEventListener("change", async () => {
+    // reprocess query if already loaded
+    const f = $("query").files?.[0];
+    if (!f) return;
+    const g = await loadQueryFile(f);
+    let qb = toBoolInk64(g, true);
+    if ($("dilate").checked) qb = dilate3x3Bool64(qb);
+    state.queryBool64 = qb;
+    canRun();
+  });
+
+  function makeWorkerURL() {
+    const workerSrc = `
+      // Worker: loads h5wasm (iife) and scores a chunk of templates
+      self.importScripts('https://cdn.jsdelivr.net/npm/h5wasm@0latest/dist/iife/h5wasm.js');
+
+      function downsampleBoolNearest64(x, outSize) {
+        // x: Uint8Array 4096 (0/1)
+        if (outSize === 64) return x;
+        const idx = new Int32Array(outSize);
+        for (let i=0;i<outSize;i++){
+          idx[i] = Math.round(i * (63 / (outSize - 1)));
+        }
+        const out = new Uint8Array(outSize*outSize);
+        for (let y=0;y<outSize;y++){
+          for (let x0=0;x0<outSize;x0++){
+            out[y*outSize+x0] = x[idx[y]*64 + idx[x0]];
+          }
+        }
+        return out;
+      }
+
+      function stageA_score_chunk(imagesU8, queryBool64, stageASize) {
+        // imagesU8: Uint8Array len = n*4096, each pixel 0..255
+        const n = (imagesU8.length / 4096) | 0;
+        const qSmall = downsampleBoolNearest64(queryBool64, stageASize);
+
+        // precompute nearest indices from 64 -> stageASize
+        const idx = new Int32Array(stageASize);
+        for (let i=0;i<stageASize;i++){
+          idx[i] = Math.round(i * (63 / (stageASize - 1)));
+        }
+
+        const scores = new Float32Array(n);
+
+        for (let t=0;t<n;t++){
+          const base = t*4096;
+
+          let interW=0, unionW=0;
+          let interB=0, unionB=0;
+
+          for (let yy=0; yy<stageASize; yy++){
+            const y64 = idx[yy]*64;
+            const yS  = yy*stageASize;
+            for (let xx=0; xx<stageASize; xx++){
+              const pix = imagesU8[base + y64 + idx[xx]];
+              const q   = qSmall[yS + xx] ? 1 : 0;
+
+              const tW = (pix > 128) ? 1 : 0;
+              const tB = (pix < 128) ? 1 : 0;
+
+              // IoU for white polarity
+              if (tW & q) interW++;
+              if (tW | q) unionW++;
+
+              // IoU for black polarity
+              if (tB & q) interB++;
+              if (tB | q) unionB++;
             }
-            packed[i * 64 + y] = row;
+          }
+
+          const sW = unionW ? (interW / unionW) : 0;
+          const sB = unionB ? (interB / unionB) : 0;
+          scores[t] = sW >= sB ? sW : sB;
         }
-    }
 
-    dataset = { images: imgs.data, labels: lbls, bitpacked: packed, N: N };
-    status.innerText = `Dataset Ready: ${N} glyphs loaded.`;
-    document.getElementById('bmp-input').disabled = false;
-};
+        return scores;
+      }
 
-// 2. Handle Image Processing
-document.getElementById('bmp-input').onchange = async (e) => {
-    if (!dataset.bitpacked) return;
-    const file = e.target.files[0];
-    const status = document.getElementById('status');
-    const radius = parseInt(document.getElementById('radius').value);
-    const doDilate = document.getElementById('dilate-check').checked;
+      function bestIoUOverShifts(templateBool, queryBool, radius) {
+        // both Uint8Array 4096 (0/1)
+        let best = 0.0;
 
-    const img = await createImageBitmap(file);
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, 64, 64);
-    const pixels = ctx.getImageData(0, 0, 64, 64).data;
+        for (let dy=-radius; dy<=radius; dy++){
+          const y0 = Math.max(0, dy);
+          const y1 = Math.min(64, 64+dy);
+          const by0 = Math.max(0, -dy);
 
-    // Convert to Boolean Mask (Sparse check)
-    let blackCount = 0;
-    for (let i = 0; i < 4096; i++) if (pixels[i * 4] < 128) blackCount++;
-    const useBlack = blackCount <= 2048; // to_bool_ink logic
+          for (let dx=-radius; dx<=radius; dx++){
+            const x0 = Math.max(0, dx);
+            const x1 = Math.min(64, 64+dx);
+            const bx0 = Math.max(0, -dx);
 
-    let queryBits = new BigUint64Array(64);
-    for (let y = 0; y < 64; y++) {
-        let row = 0n;
-        for (let x = 0; x < 64; x++) {
-            const val = pixels[(y * 64 + x) * 4];
-            const isInk = useBlack ? (val < 128) : (val > 128);
-            if (isInk) row |= (1n << BigInt(x));
-        }
-        queryBits[y] = row;
-    }
-
-    if (doDilate) {
-        // Simple 3x3 dilation on bitmask
-        let dilated = new BigUint64Array(64);
-        for(let y=0; y<64; y++) {
-            let r = queryBits[y] | (queryBits[y] << 1n) | (queryBits[y] >> 1n);
-            if (y > 0) dilated[y-1] |= r;
-            dilated[y] |= r;
-            if (y < 63) dilated[y+1] |= r;
-        }
-        queryBits = dilated;
-    }
-
-    // 3. Stage B Scoring (Refinement with shifts)
-    status.innerText = "Matching...";
-    const start = performance.now();
-    
-    const results = [];
-    for (let i = 0; i < dataset.N; i++) {
-        let bestIoU = 0;
-        const templateOffset = i * 64;
-
-        // Shift logic: Replicating best_iou_over_shifts
-        for (let dy = -radius; dy <= radius; dy++) {
-            for (let dx = -radius; dx <= radius; dx++) {
-                let inter = 0, union = 0;
-                
-                for (let y = 0; y < 64; y++) {
-                    const ty = y + dy;
-                    if (ty < 0 || ty >= 64) {
-                        union += popcount64(queryBits[y]);
-                        continue;
-                    }
-                    
-                    const qRow = queryBits[y];
-                    let tRow = dataset.bitpacked[templateOffset + ty];
-                    
-                    // Horizontal shift
-                    if (dx > 0) tRow <<= BigInt(dx);
-                    else if (dx < 0) tRow >>= BigInt(-dx);
-
-                    inter += popcount64(qRow & tRow);
-                    union += popcount64(qRow | tRow);
-                }
-                const iou = union === 0 ? 0 : inter / union;
-                if (iou > bestIoU) bestIoU = iou;
+            let inter=0, uni=0;
+            for (let y=y0, by=by0; y<y1; y++, by++){
+              let a = y*64 + x0;
+              let b = by*64 + bx0;
+              for (let x=x0; x<x1; x++, a++, b++){
+                const A = templateBool[a];
+                const B = queryBool[b];
+                if (A & B) inter++;
+                if (A | B) uni++;
+              }
             }
+            const s = uni ? (inter/uni) : 0.0;
+            if (s > best) best = s;
+          }
         }
-        results.push({ label: dataset.labels[i], score: bestIoU });
+        return best;
+      }
+
+      function templateToBool(templateU8, polarity /* 'white'|'black' */) {
+        const out = new Uint8Array(4096);
+        if (polarity === 'white') {
+          for (let i=0;i<4096;i++) out[i] = templateU8[i] > 128 ? 1 : 0;
+        } else {
+          for (let i=0;i<4096;i++) out[i] = templateU8[i] < 128 ? 1 : 0;
+        }
+        return out;
+      }
+
+      function popcountBool(x) {
+        let s=0;
+        for (let i=0;i<x.length;i++) s += x[i] ? 1 : 0;
+        return s;
+      }
+
+      self.onmessage = async (e) => {
+        const msg = e.data;
+
+        if (msg.type === 'init') {
+          // Mount file into worker FS using WORKERFS, as shown in h5wasm docs
+          const { FS } = await h5wasm.ready;
+          FS.mkdir('/work');
+          FS.mount(FS.filesystems.WORKERFS, { files: [msg.h5File] }, '/work');
+
+          const f = new h5wasm.File('/work/' + msg.h5File.name, 'r');
+          const images = f.get('images');
+          const labels = f.get('labels');
+
+          // Read our chunk [start:end)
+          const start = msg.start;
+          const end = msg.end;
+
+          const imagesChunk = images.slice([[start, end], [], []]).value; // Uint8Array or TypedArray
+          const labelsChunk = labels.slice([[start, end]]).value;
+
+          // Normalize to Uint8Array for images
+          const imgU8 = (imagesChunk instanceof Uint8Array) ? imagesChunk : new Uint8Array(imagesChunk.buffer);
+          const labI32 = (labelsChunk instanceof Int32Array) ? labelsChunk : new Int32Array(labelsChunk.buffer);
+
+          self._chunk = {
+            start, end,
+            imagesU8: imgU8,
+            labelsI32: labI32
+          };
+
+          postMessage({ type:'inited', start, end, n: end-start });
+          return;
+        }
+
+        if (msg.type === 'stageA') {
+          const { imagesU8, labelsI32, start } = self._chunk;
+          const scores = stageA_score_chunk(imagesU8, msg.queryBool64, msg.stageASize);
+
+          // Return local topM candidates (oversample a bit for better global merge)
+          const localTake = msg.localTake;
+          // simple partial selection: keep best localTake via insertion (localTake small)
+          const best = [];
+          for (let i=0;i<scores.length;i++){
+            const s = scores[i];
+            const gi = start + i;
+            const cp = labelsI32[i];
+            if (best.length < localTake) {
+              best.push({ s, gi, cp });
+              if (best.length === localTake) best.sort((a,b)=>a.s-b.s);
+            } else if (s > best[0].s) {
+              best[0] = { s, gi, cp };
+              // bubble smallest to correct place
+              best.sort((a,b)=>a.s-b.s);
+            }
+          }
+          // send descending
+          best.sort((a,b)=>b.s-a.s);
+          postMessage({ type:'stageA_done', best });
+          return;
+        }
+
+        if (msg.type === 'stageB') {
+          const { imagesU8, labelsI32, start } = self._chunk;
+          const radius = msg.stageBRadius;
+          const densityPrefilter = msg.densityPrefilter;
+
+          const q = msg.queryBool64;
+          const dq = popcountBool(q);
+
+          // best-per-codepoint
+          const bestScore = new Map(); // cp -> score
+
+          for (const gi of msg.indicesGlobal) {
+            const i = gi - start;
+            if (i < 0 || i >= (labelsI32.length)) continue;
+
+            const cp = labelsI32[i];
+
+            // extract template u8 (4096)
+            const base = i*4096;
+            const tU8 = imagesU8.subarray(base, base+4096);
+
+            if (densityPrefilter > 0 && dq > 0) {
+              // match python: dt = min(sum(white), sum(black))
+              let dtW=0, dtB=0;
+              for (let k=0;k<4096;k++){
+                const pix = tU8[k];
+                if (pix > 128) dtW++;
+                if (pix < 128) dtB++;
+              }
+              const dt = Math.min(dtW, dtB);
+              if (dt === 0) continue;
+              const ratio = Math.max(dq/dt, dt/dq);
+              if (ratio > densityPrefilter) continue;
+            }
+
+            const tW = templateToBool(tU8, 'white');
+            const tB = templateToBool(tU8, 'black');
+
+            const s1 = bestIoUOverShifts(tW, q, radius);
+            const s2 = bestIoUOverShifts(tB, q, radius);
+            const s  = s1 >= s2 ? s1 : s2;
+
+            const prev = bestScore.get(cp);
+            if (prev === undefined || s > prev) bestScore.set(cp, s);
+          }
+
+          // serialize map to array
+          const out = [];
+          for (const [cp, s] of bestScore.entries()) out.push([cp, s]);
+          out.sort((a,b)=>b[1]-a[1]);
+
+          postMessage({ type:'stageB_done', best: out });
+          return;
+        }
+
+        postMessage({ type:'error', message:'Unknown message type' });
+      };
+    `;
+    const blob = new Blob([workerSrc], { type: "text/javascript" });
+    return URL.createObjectURL(blob);
+  }
+
+  function formatResults(pairs, topN) {
+    let out = "";
+    out += "Rank  Char   Hex Code   Match % (IoU)\\n";
+    out += "-".repeat(72) + "\\n";
+    for (let i=0;i<Math.min(topN, pairs.length); i++){
+      const [cp, s] = pairs[i];
+      const ch = String.fromCodePoint(cp);
+      const disp = (ch.length && ch >= " " && ch !== "\\u007f") ? ch : " ";
+      out += `${String(i+1).padEnd(5)} ${disp.padEnd(6)} U+${cp.toString(16).toUpperCase().padStart(4,"0")}     ${(s*100).toFixed(2).padStart(7)}%\\n`;
+    }
+    return out;
+  }
+
+  $("run").addEventListener("click", async () => {
+    const h5File = state.h5File;
+    const queryBool64 = state.queryBool64;
+    if (!h5File || !queryBool64) return;
+
+    const topN = parseInt($("topN").value, 10);
+    const stageASize = parseInt($("stageAsize").value, 10);
+    const stageAtopk = parseInt($("stageAtopk").value, 10);
+    const stageBRadius = parseInt($("stageBr").value, 10);
+    const densityPrefilter = parseFloat($("dens").value);
+
+    let workers = parseInt($("workers").value, 10);
+    if (!workers || workers <= 0) workers = Math.max(1, (navigator.hardwareConcurrency || 4) - 1);
+
+    $("out").textContent = "Loading + scoring…";
+
+    const workerURL = makeWorkerURL();
+    const ws = [];
+    for (let i=0;i<workers;i++) ws.push(new Worker(workerURL));
+
+    // We need N to split ranges. We'll ask worker0 to open and get dataset length by reading labels metadata quickly.
+    // Easiest in single-file: just initialize workers with guess ranges after we discover N from worker0.
+    // We'll do a tiny init in worker0 that reads labels length by reading the whole labels dataset once (small).
+    // Then we re-init all workers with proper slices.
+
+    async function getNFromWorker0() {
+      return await new Promise((resolve, reject) => {
+        const w0 = ws[0];
+        const t = setTimeout(() => reject(new Error("Timeout getting N")), 60000);
+
+        const handler = (ev) => {
+          const m = ev.data;
+          if (m.type === "inited") {
+            // we don't actually know N here; we'll send a special request:
+            // (hack) We'll ask it to stageA with localTake=1 and infer its n, but that only gives chunk size.
+          }
+        };
+        w0.addEventListener("message", handler);
+
+        // Instead, we simply initialize worker0 with [0, 1] and then ask it to re-open and read labels length.
+        // We'll implement a quick solution: initialize with [0, 1], then re-init properly after probing by reading labels slice [0,0] is impossible.
+        // So: we choose a safe approach: split by file size and do load in each worker using ranges computed after we ask user for N? Not ideal.
+        // Better: set all workers to load the full labels dataset to get its length? labels is small.
+        // We'll do it: init all workers with [0,0] and let them read labels length? slice [0,0] is empty but still valid; some libs dislike it.
+        // We'll avoid: init worker0 with [0, 1], then request stageA and ignore; then we can't know N.
+
+        clearTimeout(t);
+        w0.removeEventListener("message", handler);
+        resolve(null);
+      });
     }
 
-    // Sort and Display
-    results.sort((a, b) => b.score - a.score);
-    const top = results.slice(0, 20);
-    const end = performance.now();
+    // Simpler + robust (and labels is small): read labels length in main thread by spinning up a dedicated worker that returns labels length,
+    // then terminate it. We'll just do it inline using the same worker script:
+    async function probeN() {
+      return await new Promise((resolve, reject) => {
+        const w = new Worker(workerURL);
+        const timeout = setTimeout(() => reject(new Error("Timeout probing N")), 60000);
 
-    status.innerText = `Matched in ${(end - start).toFixed(1)}ms`;
-    
-    let html = `<table><tr><th>Rank</th><th>Char</th><th>Hex</th><th>IoU %</th></tr>`;
-    top.forEach((res, idx) => {
-        const char = String.fromCharCode(res.label);
-        html += `<tr><td>${idx+1}</td><td>${char}</td><td>U+${res.label.toString(16).toUpperCase()}</td><td>${(res.score * 100).toFixed(2)}%</td></tr>`;
+        w.onmessage = async (ev) => {
+          const m = ev.data;
+          if (m.type === "inited") {
+            // not enough
+          }
+          if (m.type === "error") {
+            clearTimeout(timeout);
+            w.terminate();
+            reject(new Error(m.message));
+          }
+        };
+
+        // We'll send a special "probe" by initializing [0,1], then running stageA with localTake=1,
+        // and in the worker we don't have N. So we need another plan:
+        // We'll instead estimate N from file size is unsafe with compression.
+        // Therefore: for production you’d add a "probe" message to worker that reads labels.metadata.shape[0].
+        // For this single-file demo, we’ll assume labels is readable by slice and use a binary search strategy:
+        // try slices with increasing end until it fails—too hacky.
+
+        // OK: We'll take the straightforward path: for real use, add a 'probe' in worker.
+        // Here, we'll implement it now: (since worker code is generated above, easiest is: accept that demo assumes N known)
+        reject(new Error("This demo needs a tiny 'probe' addition to the worker to read labels.shape[0]. See note in output."));
+      });
+    }
+
+    // Since we don't want to block you with that complexity here, we’ll do the simplest practical thing for your 14.5MB file:
+    // load the entire dataset in EACH worker’s chunk by splitting the index space AFTER reading labels length in ONE worker,
+    // but to read labels length we add a minimal 'probe' call by recreating workers with a slightly different script.
+    // We'll just do the probe in main thread by creating a new worker URL with a probe handler.
+
+    function makeProbeWorkerURL() {
+      const src = `
+        self.importScripts('https://cdn.jsdelivr.net/npm/h5wasm@0latest/dist/iife/h5wasm.js');
+        self.onmessage = async (e) => {
+          const { FS } = await h5wasm.ready;
+          FS.mkdir('/work');
+          FS.mount(FS.filesystems.WORKERFS, { files: [e.data.h5File] }, '/work');
+          const f = new h5wasm.File('/work/' + e.data.h5File.name, 'r');
+          const labels = f.get('labels');
+          // labels.shape is available per docs (from metadata)
+          const n = labels.shape[0];
+          postMessage({ type:'probe', n });
+        };
+      `;
+      return URL.createObjectURL(new Blob([src], {type:"text/javascript"}));
+    }
+
+    const probeURL = makeProbeWorkerURL();
+    const probeW = new Worker(probeURL);
+    const N = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(()=>reject(new Error("Timeout probing labels length")), 60000);
+      probeW.onmessage = (ev) => {
+        if (ev.data?.type === "probe") {
+          clearTimeout(timeout);
+          resolve(ev.data.n);
+        }
+      };
+      probeW.onerror = (err) => reject(err);
+      probeW.postMessage({ h5File });
     });
-    document.getElementById('results').innerHTML = html + `</table>`;
-};
+    probeW.terminate();
+
+    // Init workers with ranges
+    const ranges = [];
+    for (let i=0;i<workers;i++){
+      const start = Math.floor((i * N) / workers);
+      const end   = Math.floor(((i+1) * N) / workers);
+      if (end > start) ranges.push([start,end]);
+    }
+
+    // Recreate workers matching ranges (to keep it clean)
+    ws.forEach(w => w.terminate());
+    const workersArr = ranges.map(() => new Worker(workerURL));
+
+    await Promise.all(workersArr.map((w, idx) => {
+      const [start,end] = ranges[idx];
+      return new Promise((resolve, reject) => {
+        w.onmessage = (ev) => {
+          if (ev.data?.type === "inited") resolve();
+          if (ev.data?.type === "error") reject(new Error(ev.data.message));
+        };
+        w.onerror = (err) => reject(err);
+        w.postMessage({ type:"init", h5File, start, end });
+      });
+    }));
+
+    // Stage A in parallel
+    const localTake = Math.max(50, Math.ceil(stageAtopk / ranges.length) * 3);
+
+    const stageALists = await Promise.all(workersArr.map((w) => {
+      return new Promise((resolve, reject) => {
+        w.onmessage = (ev) => {
+          if (ev.data?.type === "stageA_done") resolve(ev.data.best);
+          if (ev.data?.type === "error") reject(new Error(ev.data.message));
+        };
+        w.onerror = (err) => reject(err);
+        w.postMessage({ type:"stageA", queryBool64, stageASize, localTake });
+      });
+    }));
+
+    // Merge to global topK
+    const allCandidates = stageALists.flat();
+    allCandidates.sort((a,b)=>b.s-a.s);
+    const shortlist = allCandidates.slice(0, Math.min(stageAtopk, allCandidates.length));
+
+    // Split shortlist indices by worker range
+    const perWorkerIndices = ranges.map(([start,end]) => {
+      const arr = [];
+      for (const c of shortlist) if (c.gi >= start && c.gi < end) arr.push(c.gi);
+      return arr;
+    });
+
+    // Stage B in parallel
+    const stageBLists = await Promise.all(workersArr.map((w, idx) => {
+      return new Promise((resolve, reject) => {
+        w.onmessage = (ev) => {
+          if (ev.data?.type === "stageB_done") resolve(ev.data.best);
+          if (ev.data?.type === "error") reject(new Error(ev.data.message));
+        };
+        w.onerror = (err) => reject(err);
+        w.postMessage({
+          type:"stageB",
+          queryBool64,
+          stageBRadius,
+          densityPrefilter,
+          indicesGlobal: perWorkerIndices[idx]
+        });
+      });
+    }));
+
+    // Merge best-per-codepoint like Python script
+    const best = new Map(); // cp -> score
+    for (const arr of stageBLists) {
+      for (const [cp, s] of arr) {
+        const prev = best.get(cp);
+        if (prev === undefined || s > prev) best.set(cp, s);
+      }
+    }
+    const ranked = Array.from(best.entries()).sort((a,b)=>b[1]-a[1]);
+
+    // Render
+    $("out").textContent =
+      `N=${N}  workers=${ranges.length}\\n` +
+      `StageA: ${stageASize}x${stageASize}, topK=${shortlist.length}\\n` +
+      `StageB: radius=${stageBRadius}, dilate=${$("dilate").checked}, densityPrefilter=${densityPrefilter}\\n\\n` +
+      formatResults(ranked, topN);
+
+    workersArr.forEach(w => w.terminate());
+    URL.revokeObjectURL(workerURL);
+    URL.revokeObjectURL(probeURL);
+  });
 </script>
 </body>
 </html>
