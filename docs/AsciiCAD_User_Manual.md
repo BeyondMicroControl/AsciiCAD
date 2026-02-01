@@ -30,7 +30,7 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
 ## Quick start
 
 ### 1) Open AsciiCAD
-- Run the <a href="https://beyondmicrocontrol.github.io/AsciiCAD/index.html" target=_blank>hosted version on GitHub</a>, or <a href="https://beyondmicrocontrol.github.io/AsciiCAD/dist/AsciiCAD.html?download=self">download</a> the portable “single-file” distribution (a standalone `AsciiCAD.html` that runs offline).
+- Run the <a href="https://beyondmicrocontrol.github.io/AsciiCAD/index.html" target="_blank">hosted version on GitHub</a>, or <a href="https://beyondmicrocontrol.github.io/AsciiCAD/dist/AsciiCAD.html?download=self">download</a> the portable “single-file” distribution (a standalone `AsciiCAD.html` that runs offline).
 - When AsciiCAD loads, you’ll see:
   - A large grid canvas (your drawing area)
   - A left sidebar with tools (UI)
