@@ -43,6 +43,101 @@
       background:#fff;
     }
     .check label { margin: 0; opacity: 1; font-size: 13px; }
+
+    /* --- Character picker modal --- */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .overlay.open { display: flex; }
+    .picker {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 14px;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.25);
+      width: min(820px, 92vw);
+      height: min(640px, 86vh);
+      resize: both;              /* resizable popup */
+      overflow: hidden;          /* needed for resize handle behavior */
+      display: flex;
+      flex-direction: column;
+    }
+    .pickerHeader {
+      padding: 12px 14px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .pickerHeader .title {
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .pickerHeader .hint {
+      font-size: 12px;
+      opacity: 0.75;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .pickerHeader .actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .pickerHeader button {
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .pickerHeader button:hover { background: #f7f7f7; }
+    .pickerBody {
+      flex: 1;
+      overflow: auto;            /* scrolling happens here */
+      position: relative;
+      background: #fafafa;
+    }
+    .pickerSpacer {
+      width: 1px;
+      opacity: 0;
+    }
+    .pickerViewport {
+      position: absolute;
+      left: 0; right: 0; top: 0;
+    }
+    .cpRow {
+      height: 30px;
+      display: grid;
+      grid-template-columns: 120px 1fr 110px;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      border-bottom: 1px solid #eee;
+      background: #fff;
+      cursor: pointer;
+      user-select: none;
+    }
+    .cpRow:hover { background: #f3f7ff; }
+    .cpCode { font-variant-numeric: tabular-nums; font-size: 12px; opacity: 0.8; }
+    .cpGlyph { font-size: 18px; font-family: "Noto Sans Mono", "Menlo", "Euphemia UCAS", "Arial Unicode MS", monospace; }
+    .cpMeta { font-size: 12px; opacity: 0.7; text-align: right; }
+    .cpRow.disabled { opacity: 0.55; cursor: not-allowed; background: #f6f6f6; }
+    .cpRow.disabled:hover { background: #f6f6f6; }
+    .charBox {
+      display:flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .charBox input[type="text"] { padding: 8px; width: 220px; }
+    .charBox button { padding: 8px 10px; border-radius: 10px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
+    .charBox button:hover { background: #f7f7f7; }
   </style>
 </head>
 <body>
@@ -51,7 +146,11 @@
   <div class="row">
     <div>
       <label>Character (exactly 1 code point)</label>
-      <input id="charInput" type="text" value="A" maxlength="4" style="padding:8px; width:220px;" />
+      <div class="charBox">
+        <input id="charInput" type="text" value="A" maxlength="4" />
+        <button id="openPickerBtn" type="button">Pick…</button>
+      </div>
+      <div class="muted">Tip: You can also paste a single character here.</div>
     </div>
 
     <div class="control">
@@ -134,8 +233,7 @@
     <label>Font fallback chain (CSS font-family list; earlier = higher priority)</label>
     <textarea id="fontListInput">"Noto Sans Mono","Menlo","Euphemia UCAS","Arial Unicode MS",monospace</textarea>
     <div class="muted">
-      Preview updates live on any parameter change.
-      Download uses a best-effort font selection (browsers do not expose glyph-index APIs).
+      Preview updates live on any parameter change. Download uses a best-effort font selection.
     </div>
   </div>
 
@@ -157,11 +255,30 @@
     </div>
   </div>
 
+  <!-- Character Picker Modal -->
+  <div id="pickerOverlay" class="overlay" aria-hidden="true">
+    <div class="picker" role="dialog" aria-modal="true" aria-label="Character Picker">
+      <div class="pickerHeader">
+        <div style="min-width:0;">
+          <div class="title">Character Picker</div>
+          <div class="hint" id="pickerHint">Scroll U+0000 → U+ABF9. Click a row to select. (Resizable corner.)</div>
+        </div>
+        <div class="actions">
+          <button id="pickerTopBtn" type="button">Top</button>
+          <button id="pickerCloseBtn" type="button">Close</button>
+        </div>
+      </div>
+      <div id="pickerBody" class="pickerBody">
+        <div id="pickerSpacer" class="pickerSpacer"></div>
+        <div id="pickerViewport" class="pickerViewport"></div>
+      </div>
+    </div>
+  </div>
+
 <script>
-/* Live-preview version:
- * - All numeric params are range sliders.
- * - Any change triggers a re-render (debounced).
- * - Flip is applied first in the transform pipeline.
+/* Live-preview version + resizable character picker (virtualized list)
+ * Scrolls code points from 0x0000 to 0xABF9 (inclusive).
+ * Note: surrogate range U+D800–U+DFFF is not valid Unicode scalar values; rows are shown disabled.
  */
 
 // ---------- Utilities ----------
@@ -182,8 +299,11 @@ function hexCodePoint(ch) {
   const cp = ch.codePointAt(0);
   return "0x" + cp.toString(16).toUpperCase().padStart(4, "0");
 }
-
+function cpHex(cp) {
+  return "U+" + cp.toString(16).toUpperCase().padStart(4, "0");
+}
 function degToRad(deg) { return (deg * Math.PI) / 180; }
+function isSurrogate(cp) { return cp >= 0xD800 && cp <= 0xDFFF; }
 
 // ---------- Slider UI plumbing ----------
 function bindSliderValue(sliderId, valueId, suffix="") {
@@ -193,7 +313,6 @@ function bindSliderValue(sliderId, valueId, suffix="") {
   s.addEventListener("input", update);
   update();
 }
-
 bindSliderValue("sizeInput", "sizeVal", " px");
 bindSliderValue("fontSizeInput", "fontSizeVal", " px");
 bindSliderValue("thresholdInput", "thresholdVal", "");
@@ -203,15 +322,13 @@ bindSliderValue("offsetXInput", "offsetXVal", " px");
 bindSliderValue("offsetYInput", "offsetYVal", " px");
 bindSliderValue("rotationInput", "rotationVal", " °");
 
-// Make offset ranges adapt when bitmap size changes
 function updateOffsetRanges() {
   const size = Number(document.getElementById("sizeInput").value);
-  const span = Math.max(16, Math.floor(size * 2)); // generous
+  const span = Math.max(16, Math.floor(size * 2));
   for (const id of ["offsetXInput","offsetYInput"]) {
     const el = document.getElementById(id);
     el.min = String(-span);
     el.max = String(span);
-    // keep value in range
     const val = Number(el.value);
     if (val < -span) el.value = String(-span);
     if (val >  span) el.value = String(span);
@@ -275,7 +392,7 @@ function renderGlyphToCanvas(ctx, ch, size, fontSize, fontFamily, raster) {
   const sy = heightPct / 100;
   const ang = degToRad(rotation);
 
-  // Flip first in the pipeline => call flip LAST.
+  // Flip must be done first => call flip last.
   const fx = flipH ? -1 : 1;
   const fy = flipV ? -1 : 1;
 
@@ -283,7 +400,7 @@ function renderGlyphToCanvas(ctx, ch, size, fontSize, fontFamily, raster) {
   ctx.translate(size / 2 + offsetX, size / 2 + offsetY);
   ctx.rotate(ang);
   ctx.scale(sx, sy);
-  ctx.scale(fx, fy); // flip first (rightmost)
+  ctx.scale(fx, fy); // flip first in pipeline (rightmost)
   ctx.fillText(ch, x0, y0);
   ctx.restore();
 }
@@ -330,13 +447,11 @@ function parseFontList(fontListStr) {
   if (cur.trim()) parts.push(cur.trim());
   return parts.filter(Boolean);
 }
-
 function normalizeFamilyToken(t) {
   const s = t.trim();
   if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) return s.slice(1, -1);
   return s;
 }
-
 function computeInkBBoxFromRGBA(rgba, w, h) {
   let minX = w, minY = h, maxX = -1, maxY = -1;
   for (let y = 0; y < h; y++) {
@@ -355,14 +470,11 @@ function computeInkBBoxFromRGBA(rgba, w, h) {
   if (maxX < minX || maxY < minY) return null;
   return {minX, minY, maxX, maxY};
 }
-
 function getCanvasRGBA(ctx, size) {
   return ctx.getImageData(0, 0, size, size).data;
 }
-
 async function fontSeemsToHaveGlyph(ctx, ch, size, fontSize, familyToken, raster) {
   const fam = normalizeFamilyToken(familyToken);
-
   try {
     if (document.fonts && document.fonts.check) {
       const ok = document.fonts.check(`${fontSize}px "${fam}"`, ch);
@@ -392,10 +504,8 @@ async function fontSeemsToHaveGlyph(ctx, ch, size, fontSize, familyToken, raster
     }
     return s >>> 0;
   }
-
   return sig(a) !== sig(b);
 }
-
 async function pickFontFamilyChainForChar(ctx, ch, size, fontSize, fontListStr, raster) {
   const tokens = parseFontList(fontListStr);
   for (const t of tokens) {
@@ -406,7 +516,6 @@ async function pickFontFamilyChainForChar(ctx, ch, size, fontSize, fontListStr, 
       return { chosen: normalizeFamilyToken(t), chain };
     }
   }
-  // fallback: use whatever chain user gave (browser will fallback anyway)
   return { chosen: "(browser fallback)", chain: fontListStr };
 }
 
@@ -461,10 +570,8 @@ function encodeBMP1bpp(bits, width, height) {
     while ((rowPos - dataPos) < rowBytesPadded) out[rowPos++] = 0x00;
     dataPos += rowBytesPadded;
   }
-
   return new Blob([buf], { type: "image/bmp" });
 }
-
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -480,12 +587,10 @@ function downloadBlob(blob, filename) {
 let previewTimer = null;
 function schedulePreview() {
   if (previewTimer) clearTimeout(previewTimer);
-  previewTimer = setTimeout(() => { renderPreview().catch(e => setStatus(String(e.message ?? e), "err")); }, 50);
+  previewTimer = setTimeout(() => { renderPreview().catch(e => setStatus(String(e.message ?? e), "err")); }, 30);
 }
-
 async function renderPreview() {
   setStatus("Rendering preview…", "muted");
-
   const { ch, size, fontSize, threshold, fontListStr, raster } = readParams();
 
   const workCanvas = document.getElementById("workCanvas");
@@ -493,7 +598,6 @@ async function renderPreview() {
   workCanvas.height = size;
   const wctx = workCanvas.getContext("2d", { willReadFrequently: true });
 
-  // For live preview: use user's chain directly (fast), no probing.
   renderGlyphToCanvas(wctx, ch, size, fontSize, fontListStr, raster);
 
   const bits = thresholdCanvasToBitMatrix(wctx, size, threshold);
@@ -502,10 +606,9 @@ async function renderPreview() {
   setStatus(`Preview OK (${hexCodePoint(ch)}).`, "ok");
 }
 
-// ---------- Download (does best-effort font pick) ----------
+// ---------- Download ----------
 async function downloadBMP() {
   setStatus("Preparing BMP…", "muted");
-
   const { ch, size, fontSize, threshold, fontListStr, raster } = readParams();
 
   const workCanvas = document.getElementById("workCanvas");
@@ -527,7 +630,7 @@ async function downloadBMP() {
   setStatus(`Downloaded BMP using ${chosen}.`, "ok");
 }
 
-// ---------- Wire up events ----------
+// ---------- Wire up live listeners ----------
 function addLiveListeners() {
   const sliders = [
     "sizeInput","fontSizeInput","thresholdInput",
@@ -539,17 +642,139 @@ function addLiveListeners() {
       schedulePreview();
     });
   }
-
   document.getElementById("charInput").addEventListener("input", schedulePreview);
   document.getElementById("fontListInput").addEventListener("input", schedulePreview);
   document.getElementById("flipHInput").addEventListener("change", schedulePreview);
   document.getElementById("flipVInput").addEventListener("change", schedulePreview);
-
   document.getElementById("downloadBtn").addEventListener("click", () => {
     downloadBMP().catch(e => setStatus(String(e.message ?? e), "err"));
   });
 }
 
+// ---------------- Character Picker (virtualized scrolling) ----------------
+const CP_START = 0x0000;
+const CP_END   = 0xABF9;
+const CP_COUNT = (CP_END - CP_START + 1);
+
+const overlayEl = document.getElementById("pickerOverlay");
+const pickerBodyEl = document.getElementById("pickerBody");
+const spacerEl = document.getElementById("pickerSpacer");
+const viewportEl = document.getElementById("pickerViewport");
+const ROW_H = 30;
+const OVERSCAN = 12;
+
+function openPicker() {
+  overlayEl.classList.add("open");
+  overlayEl.setAttribute("aria-hidden", "false");
+  // ensure spacer height matches
+  spacerEl.style.height = (CP_COUNT * ROW_H) + "px";
+  // render immediately at current scroll
+  renderPickerViewport();
+  // focus for ESC handling
+  pickerBodyEl.focus?.();
+}
+
+function closePicker() {
+  overlayEl.classList.remove("open");
+  overlayEl.setAttribute("aria-hidden", "true");
+}
+
+function setCharFromCodePoint(cp) {
+  if (isSurrogate(cp)) return; // disabled
+  const ch = String.fromCodePoint(cp);
+  document.getElementById("charInput").value = ch;
+  closePicker();
+  schedulePreview();
+}
+
+function displayGlyphForCP(cp) {
+  // control chars: show a visible placeholder (still selectable)
+  if (cp <= 0x001F) return "␀";
+  if (cp === 0x007F) return "␡";
+  // other: attempt real char (may render as tofu if font lacks it)
+  try { return String.fromCodePoint(cp); } catch { return "�"; }
+}
+
+function renderPickerViewport() {
+  const scrollTop = pickerBodyEl.scrollTop;
+  const height = pickerBodyEl.clientHeight || 1;
+
+  const firstIndex = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
+  const visibleCount = Math.ceil(height / ROW_H) + OVERSCAN * 2;
+  const lastIndex = Math.min(CP_COUNT - 1, firstIndex + visibleCount);
+
+  const topPx = firstIndex * ROW_H;
+  viewportEl.style.transform = `translateY(${topPx}px)`;
+
+  // Build rows
+  const frag = document.createDocumentFragment();
+  for (let i = firstIndex; i <= lastIndex; i++) {
+    const cp = CP_START + i;
+
+    const row = document.createElement("div");
+    row.className = "cpRow";
+    row.style.height = ROW_H + "px";
+
+    const code = document.createElement("div");
+    code.className = "cpCode";
+    code.textContent = cpHex(cp);
+
+    const glyph = document.createElement("div");
+    glyph.className = "cpGlyph";
+    glyph.textContent = isSurrogate(cp) ? "⟂" : displayGlyphForCP(cp);
+
+    const meta = document.createElement("div");
+    meta.className = "cpMeta";
+    meta.textContent = isSurrogate(cp) ? "surrogate" : "";
+
+    if (isSurrogate(cp)) {
+      row.classList.add("disabled");
+    } else {
+      row.addEventListener("click", () => setCharFromCodePoint(cp));
+    }
+
+    row.appendChild(code);
+    row.appendChild(glyph);
+    row.appendChild(meta);
+    frag.appendChild(row);
+  }
+
+  // Replace viewport content
+  viewportEl.replaceChildren(frag);
+}
+
+let pickerRaf = null;
+function schedulePickerRender() {
+  if (pickerRaf) cancelAnimationFrame(pickerRaf);
+  pickerRaf = requestAnimationFrame(() => {
+    renderPickerViewport();
+    pickerRaf = null;
+  });
+}
+
+pickerBodyEl.addEventListener("scroll", schedulePickerRender);
+window.addEventListener("resize", () => {
+  if (overlayEl.classList.contains("open")) schedulePickerRender();
+});
+
+// Close on overlay click (but not when clicking inside the picker)
+overlayEl.addEventListener("click", (e) => {
+  if (e.target === overlayEl) closePicker();
+});
+
+// ESC to close
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && overlayEl.classList.contains("open")) closePicker();
+});
+
+document.getElementById("openPickerBtn").addEventListener("click", openPicker);
+document.getElementById("pickerCloseBtn").addEventListener("click", closePicker);
+document.getElementById("pickerTopBtn").addEventListener("click", () => {
+  pickerBodyEl.scrollTop = 0;
+  schedulePickerRender();
+});
+
+// ---------- Init ----------
 updateOffsetRanges();
 addLiveListeners();
 renderPreview().catch(e => setStatus(String(e.message ?? e), "err"));
