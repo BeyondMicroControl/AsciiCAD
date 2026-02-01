@@ -16,6 +16,10 @@
     .ok { color: #0a7; }
     .err { color: #c33; }
 
+    /* replace fixed 16px with CSS variables if you want, or just let inline styles win */
+    .cpGlyphCanvas { image-rendering: pixelated; display:block; }
+    .cpGlyphBox { border: 0px; border-radius: 4px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+
     .control {
       min-width: 240px;
       border: 1px solid #e2e2e2;
@@ -139,8 +143,8 @@
     .cpCell.disabled:hover { background:#f2f2f2; border-color:#e2e2e2; }
 
     .cpGlyphBox {
-      width: 16px; height: 16px;
-      border: 1px solid #ddd;
+      width: 32px; height: 32px;
+      border: 0px solid #ddd;
       border-radius: 4px;
       background: #fff;
       display:flex;
@@ -149,7 +153,7 @@
       overflow: hidden;
     }
     .cpGlyphCanvas {
-      width: 16px; height: 16px;
+      width: 32px; height: 32px;
       image-rendering: pixelated;
       display:block;
     }
@@ -303,6 +307,9 @@
  * Scrolls code points from 0x0000 to 0xABF9 (inclusive).
  * Surrogates U+D800–U+DFFF are disabled.
  */
+
+ // --- add near the top of the Character Picker section ---
+const PICKER_GLYPH_PX = 48; // default glyph canvas size (was hardcoded 16)
 
 // ---------- Utilities ----------
 function setStatus(msg, cls="muted") {
@@ -730,6 +737,8 @@ function setCharFromCodePoint(cp) {
   schedulePreview();
 }
 
+
+
 function drawGlyph16(canvas, cp, fontChain) {
   const ctx = canvas.getContext("2d");
   ctx.setTransform(1,0,0,1,0,0);
@@ -754,6 +763,30 @@ function drawGlyph16(canvas, cp, fontChain) {
   // small font to fit 16x16; tweak if you want larger/smaller
   ctx.font = `12px ${fontChain}`;
   ctx.fillText(ch, 8, 8);
+}
+
+
+// change signature + implementation
+function drawGlyphCanvas(canvas, cp, fontChain) {
+  const S = PICKER_GLYPH_PX;
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,S,S);
+
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0,0,S,S);
+
+  let ch;
+  if (isSurrogate(cp)) ch = "⟂";
+  else if (cp <= 0x001F) ch = "·";
+  else if (cp === 0x007F) ch = "·";
+  else { try { ch = String.fromCodePoint(cp); } catch { ch = "�"; } }
+
+  ctx.fillStyle = "#000";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `${Math.floor(S * 0.75)}px ${fontChain}`; // scales with S
+  ctx.fillText(ch, S/2, S/2);
 }
 
 function renderPickerViewport() {
@@ -803,7 +836,18 @@ function renderPickerViewport() {
     canv.height = 16;
 
     // draw glyph
-    drawGlyph16(canv, cp, fontChain);
+    //drawGlyph16(canv, cp, fontChain);
+
+    // CSS-sized square stays controlled by PICKER_GLYPH_PX too (minimal)
+    glyphBox.style.width  = PICKER_GLYPH_PX + "px";
+    glyphBox.style.height = PICKER_GLYPH_PX + "px";
+
+    canv.width  = PICKER_GLYPH_PX;
+    canv.height = PICKER_GLYPH_PX;
+
+    // draw
+    drawGlyphCanvas(canv, cp, fontChain);
+
 
     glyphBox.appendChild(canv);
 
