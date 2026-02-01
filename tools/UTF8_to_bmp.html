@@ -44,6 +44,11 @@
     }
     .check label { margin: 0; opacity: 1; font-size: 13px; }
 
+    .charBox { display:flex; gap: 8px; align-items: center; }
+    .charBox input[type="text"] { padding: 8px; width: 220px; }
+    .charBox button { padding: 8px 10px; border-radius: 10px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
+    .charBox button:hover { background: #f7f7f7; }
+
     /* --- Character picker modal --- */
     .overlay {
       position: fixed; inset: 0;
@@ -59,10 +64,10 @@
       border: 1px solid #ddd;
       border-radius: 14px;
       box-shadow: 0 18px 60px rgba(0,0,0,0.25);
-      width: min(820px, 92vw);
-      height: min(640px, 86vh);
-      resize: both;              /* resizable popup */
-      overflow: hidden;          /* needed for resize handle behavior */
+      width: min(920px, 94vw);
+      height: min(700px, 88vh);
+      resize: both;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
     }
@@ -74,10 +79,7 @@
       justify-content: space-between;
       gap: 10px;
     }
-    .pickerHeader .title {
-      font-weight: 600;
-      white-space: nowrap;
-    }
+    .pickerHeader .title { font-weight: 600; white-space: nowrap; }
     .pickerHeader .hint {
       font-size: 12px;
       opacity: 0.75;
@@ -85,11 +87,7 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .pickerHeader .actions {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
+    .pickerHeader .actions { display: flex; gap: 8px; align-items: center; }
     .pickerHeader button {
       padding: 8px 10px;
       border: 1px solid #ddd;
@@ -98,46 +96,69 @@
       cursor: pointer;
     }
     .pickerHeader button:hover { background: #f7f7f7; }
+
     .pickerBody {
       flex: 1;
-      overflow: auto;            /* scrolling happens here */
+      overflow: auto;
       position: relative;
-      background: #fafafa;
+      background: #f6f6f6;
     }
-    .pickerSpacer {
-      width: 1px;
-      opacity: 0;
-    }
+    .pickerSpacer { width: 1px; opacity: 0; }
     .pickerViewport {
       position: absolute;
       left: 0; right: 0; top: 0;
+      padding: 10px; /* matches JS padding */
+      box-sizing: border-box;
     }
-    .cpRow {
-      height: 30px;
+
+    /* Grid cell */
+    .cpGrid {
       display: grid;
-      grid-template-columns: 120px 1fr 110px;
-      align-items: center;
       gap: 10px;
-      padding: 0 12px;
-      border-bottom: 1px solid #eee;
+    }
+    .cpCell {
+      width: 72px;
+      height: 72px;
+      border: 1px solid #e2e2e2;
+      border-radius: 12px;
       background: #fff;
+      display:flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
       cursor: pointer;
       user-select: none;
     }
-    .cpRow:hover { background: #f3f7ff; }
-    .cpCode { font-variant-numeric: tabular-nums; font-size: 12px; opacity: 0.8; }
-    .cpGlyph { font-size: 18px; font-family: "Noto Sans Mono", "Menlo", "Euphemia UCAS", "Arial Unicode MS", monospace; }
-    .cpMeta { font-size: 12px; opacity: 0.7; text-align: right; }
-    .cpRow.disabled { opacity: 0.55; cursor: not-allowed; background: #f6f6f6; }
-    .cpRow.disabled:hover { background: #f6f6f6; }
-    .charBox {
-      display:flex;
-      gap: 8px;
-      align-items: center;
+    .cpCell:hover { background: #f3f7ff; border-color: #c9d7ff; }
+    .cpCell.disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      background: #f2f2f2;
     }
-    .charBox input[type="text"] { padding: 8px; width: 220px; }
-    .charBox button { padding: 8px 10px; border-radius: 10px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
-    .charBox button:hover { background: #f7f7f7; }
+    .cpCell.disabled:hover { background:#f2f2f2; border-color:#e2e2e2; }
+
+    .cpGlyphBox {
+      width: 16px; height: 16px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow: hidden;
+    }
+    .cpGlyphCanvas {
+      width: 16px; height: 16px;
+      image-rendering: pixelated;
+      display:block;
+    }
+    .cpCaption {
+      font-size: 10px;
+      opacity: 0.75;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
   </style>
 </head>
 <body>
@@ -261,7 +282,7 @@
       <div class="pickerHeader">
         <div style="min-width:0;">
           <div class="title">Character Picker</div>
-          <div class="hint" id="pickerHint">Scroll U+0000 → U+ABF9. Click a row to select. (Resizable corner.)</div>
+          <div class="hint" id="pickerHint">Grid: left→right, top→down. Scroll U+0000 → U+ABF9. Click to select. (Resizable corner.)</div>
         </div>
         <div class="actions">
           <button id="pickerTopBtn" type="button">Top</button>
@@ -276,9 +297,11 @@
   </div>
 
 <script>
-/* Live-preview version + resizable character picker (virtualized list)
+/* Live-preview version + resizable character picker (VIRTUALIZED GRID)
+ * Grid fills left-to-right, top-to-bottom.
+ * Each cell shows a 16x16 glyph in a tiny square + caption "0xXXXX".
  * Scrolls code points from 0x0000 to 0xABF9 (inclusive).
- * Note: surrogate range U+D800–U+DFFF is not valid Unicode scalar values; rows are shown disabled.
+ * Surrogates U+D800–U+DFFF are disabled.
  */
 
 // ---------- Utilities ----------
@@ -287,20 +310,18 @@ function setStatus(msg, cls="muted") {
   el.className = cls;
   el.textContent = msg;
 }
-
 function getSingleCodePoint(str) {
   const s = str ?? "";
   const cps = Array.from(s);
   if (cps.length !== 1) throw new Error(`Expected exactly 1 Unicode code point; got ${cps.length}.`);
   return cps[0];
 }
-
 function hexCodePoint(ch) {
   const cp = ch.codePointAt(0);
   return "0x" + cp.toString(16).toUpperCase().padStart(4, "0");
 }
-function cpHex(cp) {
-  return "U+" + cp.toString(16).toUpperCase().padStart(4, "0");
+function cpHex0x(cp) {
+  return "0x" + cp.toString(16).toUpperCase().padStart(4, "0");
 }
 function degToRad(deg) { return (deg * Math.PI) / 180; }
 function isSurrogate(cp) { return cp >= 0xD800 && cp <= 0xDFFF; }
@@ -551,6 +572,7 @@ function encodeBMP1bpp(bits, width, height) {
   dv.setUint32(p, 2, true); p += 4;
   dv.setUint32(p, 0, true); p += 4;
 
+  // Palette: 0 black, 1 white (BGRA)
   dv.setUint8(p++, 0x00); dv.setUint8(p++, 0x00); dv.setUint8(p++, 0x00); dv.setUint8(p++, 0x00);
   dv.setUint8(p++, 0xFF); dv.setUint8(p++, 0xFF); dv.setUint8(p++, 0xFF); dv.setUint8(p++, 0x00);
 
@@ -651,7 +673,7 @@ function addLiveListeners() {
   });
 }
 
-// ---------------- Character Picker (virtualized scrolling) ----------------
+// ---------------- Character Picker (VIRTUALIZED GRID) ----------------
 const CP_START = 0x0000;
 const CP_END   = 0xABF9;
 const CP_COUNT = (CP_END - CP_START + 1);
@@ -660,18 +682,39 @@ const overlayEl = document.getElementById("pickerOverlay");
 const pickerBodyEl = document.getElementById("pickerBody");
 const spacerEl = document.getElementById("pickerSpacer");
 const viewportEl = document.getElementById("pickerViewport");
-const ROW_H = 30;
-const OVERSCAN = 12;
+
+const CELL = 72;          // cell size (square)
+const GAP = 10;           // grid gap
+const PAD = 10;           // viewport padding (matches CSS)
+const ROW_H = CELL + GAP; // virtual row height
+const OVERSCAN_ROWS = 3;
+
+let currentCols = 1;
+let currentRowCount = 1;
+
+function calcCols() {
+  const w = pickerBodyEl.clientWidth || 1;
+  const usable = Math.max(1, w - PAD*2);
+  // columns based on cell + gap (gap between items, not after last)
+  const cols = Math.max(1, Math.floor((usable + GAP) / (CELL + GAP)));
+  return cols;
+}
+
+function updatePickerGeometry() {
+  const cols = calcCols();
+  currentCols = cols;
+  currentRowCount = Math.ceil(CP_COUNT / currentCols);
+
+  // spacer sets scroll height; include padding + last row height (without extra trailing GAP is fine)
+  const totalH = PAD*2 + currentRowCount * (CELL + GAP);
+  spacerEl.style.height = totalH + "px";
+}
 
 function openPicker() {
   overlayEl.classList.add("open");
   overlayEl.setAttribute("aria-hidden", "false");
-  // ensure spacer height matches
-  spacerEl.style.height = (CP_COUNT * ROW_H) + "px";
-  // render immediately at current scroll
+  updatePickerGeometry();
   renderPickerViewport();
-  // focus for ESC handling
-  pickerBodyEl.focus?.();
 }
 
 function closePicker() {
@@ -680,67 +723,110 @@ function closePicker() {
 }
 
 function setCharFromCodePoint(cp) {
-  if (isSurrogate(cp)) return; // disabled
+  if (isSurrogate(cp)) return;
   const ch = String.fromCodePoint(cp);
   document.getElementById("charInput").value = ch;
   closePicker();
   schedulePreview();
 }
 
-function displayGlyphForCP(cp) {
-  // control chars: show a visible placeholder (still selectable)
-  if (cp <= 0x001F) return "␀";
-  if (cp === 0x007F) return "␡";
-  // other: attempt real char (may render as tofu if font lacks it)
-  try { return String.fromCodePoint(cp); } catch { return "�"; }
+function drawGlyph16(canvas, cp, fontChain) {
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,16,16);
+
+  // white background (keeps it "pixel" consistent)
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0,0,16,16);
+
+  // pick a visible placeholder for non-printing / surrogate
+  let ch;
+  if (isSurrogate(cp)) ch = "⟂";
+  else if (cp <= 0x001F) ch = "·";   // control chars -> dot
+  else if (cp === 0x007F) ch = "·";
+  else {
+    try { ch = String.fromCodePoint(cp); } catch { ch = "�"; }
+  }
+
+  ctx.fillStyle = "#000";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  // small font to fit 16x16; tweak if you want larger/smaller
+  ctx.font = `12px ${fontChain}`;
+  ctx.fillText(ch, 8, 8);
 }
 
 function renderPickerViewport() {
-  const scrollTop = pickerBodyEl.scrollTop;
-  const height = pickerBodyEl.clientHeight || 1;
-
-  const firstIndex = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
-  const visibleCount = Math.ceil(height / ROW_H) + OVERSCAN * 2;
-  const lastIndex = Math.min(CP_COUNT - 1, firstIndex + visibleCount);
-
-  const topPx = firstIndex * ROW_H;
-  viewportEl.style.transform = `translateY(${topPx}px)`;
-
-  // Build rows
-  const frag = document.createDocumentFragment();
-  for (let i = firstIndex; i <= lastIndex; i++) {
-    const cp = CP_START + i;
-
-    const row = document.createElement("div");
-    row.className = "cpRow";
-    row.style.height = ROW_H + "px";
-
-    const code = document.createElement("div");
-    code.className = "cpCode";
-    code.textContent = cpHex(cp);
-
-    const glyph = document.createElement("div");
-    glyph.className = "cpGlyph";
-    glyph.textContent = isSurrogate(cp) ? "⟂" : displayGlyphForCP(cp);
-
-    const meta = document.createElement("div");
-    meta.className = "cpMeta";
-    meta.textContent = isSurrogate(cp) ? "surrogate" : "";
-
-    if (isSurrogate(cp)) {
-      row.classList.add("disabled");
-    } else {
-      row.addEventListener("click", () => setCharFromCodePoint(cp));
-    }
-
-    row.appendChild(code);
-    row.appendChild(glyph);
-    row.appendChild(meta);
-    frag.appendChild(row);
+  // If resized, columns might change.
+  const newCols = calcCols();
+  if (newCols !== currentCols) {
+    updatePickerGeometry();
   }
 
-  // Replace viewport content
-  viewportEl.replaceChildren(frag);
+  const scrollTop = pickerBodyEl.scrollTop;
+  const viewH = pickerBodyEl.clientHeight || 1;
+
+  // Convert scrollTop into "virtual rows" (account for top padding)
+  const st = Math.max(0, scrollTop - PAD);
+  const firstRow = Math.max(0, Math.floor(st / ROW_H) - OVERSCAN_ROWS);
+  const rowsVisible = Math.ceil(viewH / ROW_H) + OVERSCAN_ROWS*2;
+  const lastRow = Math.min(currentRowCount - 1, firstRow + rowsVisible);
+
+  // Position viewport to firstRow (include PAD)
+  const topPx = PAD + firstRow * ROW_H;
+  viewportEl.style.transform = `translateY(${topPx}px)`;
+
+  // Build a grid that contains (lastRow-firstRow+1) rows worth of cells
+  const fontChain = document.getElementById("fontListInput").value || 'monospace';
+
+  const grid = document.createElement("div");
+  grid.className = "cpGrid";
+  grid.style.gridTemplateColumns = `repeat(${currentCols}, ${CELL}px)`;
+
+  const startIndex = firstRow * currentCols;
+  const endIndex = Math.min(CP_COUNT - 1, (lastRow + 1) * currentCols - 1);
+
+  const frag = document.createDocumentFragment();
+
+  for (let i = startIndex; i <= endIndex; i++) {
+    const cp = CP_START + i;
+
+    const cell = document.createElement("div");
+    cell.className = "cpCell";
+
+    const glyphBox = document.createElement("div");
+    glyphBox.className = "cpGlyphBox";
+
+    const canv = document.createElement("canvas");
+    canv.className = "cpGlyphCanvas";
+    canv.width = 16;
+    canv.height = 16;
+
+    // draw glyph
+    drawGlyph16(canv, cp, fontChain);
+
+    glyphBox.appendChild(canv);
+
+    const cap = document.createElement("div");
+    cap.className = "cpCaption";
+    cap.textContent = cpHex0x(cp);
+
+    cell.appendChild(glyphBox);
+    cell.appendChild(cap);
+
+    if (isSurrogate(cp)) {
+      cell.classList.add("disabled");
+      cell.title = "Surrogate (not selectable)";
+    } else {
+      cell.title = cpHex0x(cp);
+      cell.addEventListener("click", () => setCharFromCodePoint(cp));
+    }
+
+    frag.appendChild(cell);
+  }
+
+  grid.appendChild(frag);
+  viewportEl.replaceChildren(grid);
 }
 
 let pickerRaf = null;
@@ -757,7 +843,7 @@ window.addEventListener("resize", () => {
   if (overlayEl.classList.contains("open")) schedulePickerRender();
 });
 
-// Close on overlay click (but not when clicking inside the picker)
+// Close on overlay click (but not when clicking inside)
 overlayEl.addEventListener("click", (e) => {
   if (e.target === overlayEl) closePicker();
 });
@@ -772,6 +858,11 @@ document.getElementById("pickerCloseBtn").addEventListener("click", closePicker)
 document.getElementById("pickerTopBtn").addEventListener("click", () => {
   pickerBodyEl.scrollTop = 0;
   schedulePickerRender();
+});
+
+// Keep picker glyphs in sync when font list changes (while open)
+document.getElementById("fontListInput").addEventListener("input", () => {
+  if (overlayEl.classList.contains("open")) schedulePickerRender();
 });
 
 // ---------- Init ----------
