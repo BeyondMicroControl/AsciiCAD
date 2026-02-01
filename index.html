@@ -1666,8 +1666,9 @@ window.addEventListener("load", function()
       break;
       case "download":
         // TODO download
-        downloadThisFile( history.back );
-        history.back();
+        downloadThisFile();
+        setTimeout(function() { history.back(); }, 2000);
+        
       break; 
     }  
   }
