@@ -26,6 +26,7 @@ SOFTWARE.
   Text ASCII Art Generator, used [ANSI Regular](https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=ANSI%20Regular) & [Varsity](https://patorjk.com/software/taag/#p=display&c=c%2B%2B&f=Varsity) for helping us make visible titles in codebase
 * [Lewis Hemens](https://asciiflow.com)<br/>
   Author of Asciiflow - credits to him, for being a great source of inspiration
+* The maker of [charset.org](https://www.charset.org/utf-8)
 
 
 # About the author
