@@ -4586,22 +4586,7 @@ function drawLinePreview()
 
 function drawCharAtCell(r, c, ch) { ascii[r][c] = ch; }
 
-function wipeSelection(ch)
-{
-  // TODO use range selection as parameter
-  const stroke = [];
-  for (let r = 0; r < ROWS; r++)
-  {
-      for (let c = 0; c < COLS; c++)
-      {
-        const prev = ascii[r][c];
-        if (prev !== ' ') { stroke.push({ r, c, prev, next: ' ' }); drawCharAtCell(r,c,ch);}
-      }
-  }
-  selection = null; selectDrag = null; moveDrag = null; oASC.cancelPaste();
-  oASC.pushStrokeIfNonEmpty(stroke);
-  draw();
-}
+
 
 
 

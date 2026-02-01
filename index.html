@@ -28,7 +28,7 @@
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.03</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.04</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -594,7 +594,6 @@ function draw( str )
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.setTransform(dpr,0,0,dpr,0,0);
-
   ctx.fillStyle = GRID_BG;
   ctx.fillRect(0,0,wCss,hCss);
 
@@ -618,76 +617,66 @@ function draw( str )
   // Visible bounds in WORLD coordinates (undo pan/zoom around center)
   const left   = (0 - cx) / scale + cx - panX;
   const top    = (0 - cy) / scale + cy - panY;
-
   const right  = (wCss - cx) / scale + cx - panX;
   const bottom = (hCss - cy) / scale + cy - panY;
 
   // Convert bounds -> grid indices (clamped)
-  //const c0 = Math.max(0, Math.floor(left / cw));
   const c0 = Math.max(0, Math.floor( oCOM.PanZoomSize(0,cx,scale,panX,cw) ));
-  //const r0 = Math.max(0, Math.floor(top / ch));
   const r0 = Math.max(0, Math.floor( oCOM.PanZoomSize(0,cy,scale,panY,ch) ));
-  //const c1 = Math.min(COLS, Math.ceil(right / cw));
   const c1 = Math.min(COLS, Math.ceil( oCOM.PanZoomSize(wCss,cx,scale,panX,cw) ));
-  //const r1 = Math.min(ROWS, Math.ceil(bottom / ch));
   const r1 = Math.min(ROWS, Math.ceil( oCOM.PanZoomSize(hCss,cy,scale,panY,ch)  ));
 
   ctx.beginPath();
   ctx.strokeStyle = GRID_LINE;
   ctx.lineWidth = 1 / scale;
 
-  // vertical lines
-  for (let c = c0; c <= c1; c++) {
-  const x = snapLine(c * cw);
-  ctx.moveTo(x, snapLine(r0 * ch));
-  ctx.lineTo(x, snapLine(r1 * ch));
+  for (let c = c0; c <= c1; c++)  // vertical lines
+  {
+    const x = snapLine(c * cw);
+    ctx.moveTo(x, snapLine(r0 * ch));
+    ctx.lineTo(x, snapLine(r1 * ch));
   }
 
-  // horizontal lines
-  for (let r = r0; r <= r1; r++) {
-  const y = snapLine(r * ch);
-  ctx.moveTo(snapLine(c0 * cw), y);
-  ctx.lineTo(snapLine(c1 * cw), y);
+  for (let r = r0; r <= r1; r++)   // horizontal lines
+  {
+    const y = snapLine(r * ch);
+    ctx.moveTo(snapLine(c0 * cw), y);
+    ctx.lineTo(snapLine(c1 * cw), y);
   }
 
   ctx.stroke();
-
-  // Font sized to cell
-  ctx.fillStyle = "#000";
+  ctx.fillStyle = "#000";     // Font sized to cell
 
   const cwr = 0.62;   // 0.62
-
   const maxByHeight = ch * 0.98;
   const maxByWidth = (cw / cwr) * 0.98;
   const fontPx = Math.max(4, Math.floor(Math.min(maxByHeight, maxByWidth)));
 
   ctx.font = fontPx + "px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
-  //ctx.font = fontPx + "px Menlo, monospace";
-
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
   // Move preview
   if (moveDrag)
   {
-      const b = moveDrag.baseRect;
-      const o = moveDrag.offset;
-      const snapMap = moveDrag.snapshot;
-      ctx.save();
-      ctx.globalAlpha = 0.9;
-      for (let r = b.r0; r <= b.r1; r++)
+    const b = moveDrag.baseRect;
+    const o = moveDrag.offset;
+    const snapMap = moveDrag.snapshot;
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    for (let r = b.r0; r <= b.r1; r++)
+    {
+      for (let c = b.c0; c <= b.c1; c++)
       {
-        for (let c = b.c0; c <= b.c1; c++)
-        {
-            const chx = snapMap.get(r + ',' + c) || ' ';
-            if (chx === ' ') continue;
-            const rr = r + o.dr;
-            const cc = c + o.dc;
-            if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
-            ctx.fillText(chx, snap(cc * cw + cw/2), snap(rr * ch + ch/2));
-        }
+        const chx = snapMap.get(r + ',' + c) || ' ';
+        if (chx === ' ') continue;
+        const rr = r + o.dr;
+        const cc = c + o.dc;
+        if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+        ctx.fillText(chx, snap(cc * cw + cw/2), snap(rr * ch + ch/2));
       }
-      ctx.restore();
+    }
+    ctx.restore();
   }
 
   if (schemaHighlightOn && !highlightCache) highlightCache = oASC.computeHighlightOverlay();
@@ -698,17 +687,17 @@ function draw( str )
   const RED  = "rgba(239,68,68,0.9)";
   const GREEN = "rgba(34,197,94,0.95)";
 
-  if (schemaMatchOn && !matchCache) {
-    matchCache = oASC.computeMatchOverlay();
-  }
+  if (schemaMatchOn && !matchCache) matchCache = oASC.computeMatchOverlay();
+
   const greenSet = matchCache ? matchCache.greenSet : null;
-// Draw all chars (skip base rect while moving)
+  // Draw all chars (skip base rect while moving)
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const chx = ascii[r][c];
       if (chx === " ") continue;
 
-      if (moveDrag) {
+      if (moveDrag)
+      {
         const b = moveDrag.baseRect;
         if (r >= b.r0 && r <= b.r1 && c >= b.c0 && c <= b.c1) continue;
       }
@@ -717,25 +706,25 @@ function draw( str )
       let color = "#000";
 
       // Match overlay has priority (green)
-      if (schemaMatchOn && greenSet) {
+      if (schemaMatchOn && greenSet) 
+      {
         const k = keyRC(r, c);
         if (greenSet.has(k)) color = GREEN;
       }
 
-      if (schemaHighlightOn && color === "#000") {
+      if (schemaHighlightOn && color === "#000") 
+      {
         const k = keyRC(r, c);
         const inside = insideSet && insideSet.has(k);
 
         // 1) Red: only double-line frame cells of enclosed rectangles
-        if (redSet && redSet.has(k) && (oASC.hasDoubleH(chx) || oASC.hasDoubleV(chx) || chx==="╔"||chx==="╗"||chx==="╚"||chx==="╝")) {
-          color = RED;
-        }
         // 2) Blue: single-line glyphs + crossings, but NOT inside double rectangles
-        else if (!inside) {
-          // single-line wires are: wire glyphs that are neither double nor thick
-          if (oASC.isWireGlyph(chx) && !isDoubleWire(chx) && !isThickWire(chx) && chx !== " ") {
+        if (redSet && redSet.has(k) && (oASC.hasDoubleH(chx) || oASC.hasDoubleV(chx) || chx==="╔"||chx==="╗"||chx==="╚"||chx==="╝"))
+          color = RED;
+        else if (!inside) // single-line wires are: wire glyphs that are neither double nor thick
+        {
+          if (oASC.isWireGlyph(chx) && !isDoubleWire(chx) && !isThickWire(chx) && chx !== " ")
             color = BLUE;
-          }
         }
       }
 
@@ -778,19 +767,19 @@ function draw( str )
 
   if (pasteDrag) drawPastePreview(cw, ch, snap);
 
-  drawLinePreview();
+  oASC.drawLinePreview();
 
   // Line preview overlay
   if (lineDrag)
   {
     const old = ctx.fillStyle;
     ctx.fillStyle = "rgba(59,130,246,0.9)";
-
     const path = oASC.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
 
-    for (const p of path) {
-        if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-        renderCharAtCell(ctx, p.r, p.c, p.ch);
+    for (const p of path)
+    {
+      if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+      renderCharAtCell(ctx, p.r, p.c, p.ch);
     }
 
     ctx.fillStyle = old;
@@ -800,11 +789,11 @@ function draw( str )
   {
     const old = ctx.fillStyle;
     ctx.fillStyle = "rgba(59,130,246,0.9)";
-
     const style = boxDrag.kind === "double" ? BOX_DOUBLE : boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE;
     const path = oASC.buildBoxPath(boxDrag.start, boxDrag.cur, style);
 
-    for (const p of path) {
+    for (const p of path)
+    {
         if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
         renderCharAtCell(ctx, p.r, p.c, p.ch); // canvas-only renderer
     }
@@ -818,7 +807,6 @@ function draw( str )
     ctx.fillStyle = "rgba(59,130,246,0.9)";
     const r = textDrag.anchor.r;
     let c = textDrag.anchor.c;
-
     renderCharAtCell(ctx, r, c-1, '█');
 
     for (const ch of Array.from(textDrag.text)) 
@@ -881,32 +869,6 @@ function draw( str )
 
 
 
-function drawLinePreview() 
-{
-  if (!lineDrag) return;
-  const path = oASC.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
-}
-
-function drawCharAtCell(r, c, ch) { ascii[r][c] = ch; }
-
-function wipeSelection(ch)
-{
-  // TODO use range selection as parameter
-  const stroke = [];
-  for (let r = 0; r < ROWS; r++)
-  {
-      for (let c = 0; c < COLS; c++)
-      {
-        const prev = ascii[r][c];
-        if (prev !== ' ') { stroke.push({ r, c, prev, next: ' ' }); drawCharAtCell(r,c,ch);}
-      }
-  }
-  selection = null; selectDrag = null; moveDrag = null; oASC.cancelPaste();
-  oASC.pushStrokeIfNonEmpty(stroke);
-  draw();
-}
-
-
 
 
 //    ██    ██ ██     ██   ██  █████  ███    ██ ██████  ██      ███████ ██████  ███████ 
@@ -915,7 +877,7 @@ function wipeSelection(ch)
 //    ██    ██ ██     ██   ██ ██   ██ ██  ██ ██ ██   ██ ██      ██      ██   ██      ██ 
 //     ██████  ██     ██   ██ ██   ██ ██   ████ ██████  ███████ ███████ ██   ██ ███████ 
 
-// INITIALISE LISTENERS focused on drawing modes
+// INITIALISE LISTENERS - capturing drawing modes
 for(var i in mode_el)
 {
   mode_el[i].addEventListener("click", (e) => 
@@ -926,7 +888,6 @@ for(var i in mode_el)
       updateUI(); draw();
   });
 }
-
 
 function setMode(mode)
 {
@@ -986,8 +947,6 @@ function updateUI()
   historyLine.textContent = "Undo stack: " + undoStack.length + " · Redo stack: " + redoStack.length;
 }
 
-
-
 // Events
 function setHoverFromEvent(e)
 {
@@ -997,60 +956,35 @@ function setHoverFromEvent(e)
 }
 
 // Sidebar toggle between UI and CLI
-function switchToSidebar(newSidebar) {
+function switchToSidebar(newSidebar)
+{
   if (newSidebar === activeSidebar) return;
-  
+
   activeSidebar = newSidebar;
-  
   if (activeSidebar === 'cli') 
   {
-
     titleCLI.innerHTML = "<big>"+sbTitle.querySelector('big').textContent+" CLI</big><br><small>Type commands, press Enter</small>";
     sidebar.classList.add('hidden');
     cliSidebar.classList.remove('hidden');
-
-        /*
-    // Initialize terminal with welcome message if empty
-    if (!cliTerminal.value) {
-      // Extract title text from sbTitle (get text content of <big> tag)
-      const titleElement = sbTitle.querySelector('big');
-      const titleText = titleElement ? titleElement.textContent : 'AsciiCAD CLI';
-      
-      cliTerminal.value = `${titleText} Command Line\nType "help" for basic help.\n\nAsciiCAD> `;
-    }
-    
-    cliTerminal.focus();
-    cliTerminal.setSelectionRange(cliTerminal.value.length, cliTerminal.value.length);
-    */
-    //cliSidebar.innerHTML = "<div id='vanilla-terminal'></div>"
-     
-
-    
-
-  } else {
+  }
+  else 
+  {
     cliSidebar.classList.add('hidden');
     sidebar.classList.remove('hidden');
   }
 
-  
+  oASC.scheduleResize();
+}
 
-    oASC.scheduleResize();
-  }
-
-
-  function isInSidebar(el) {
+function isInSidebar(el)
+{
   if (!el || !el.closest) return false;
   return !!el.closest("#sidebar, #cliSidebar");
 }
 
-  toggleSidebar.addEventListener("click", () => {
-  switchToSidebar('cli');
-});
-
-
-toggleCLI.addEventListener("click", () => {
-  switchToSidebar('ui');
-});
+// LISTENERS - capture slider bar clicks
+toggleSidebar.addEventListener("click", () => { switchToSidebar('cli'); });
+toggleCLI.addEventListener("click", () => { switchToSidebar('ui'); });
 
 // Sidebar Resize Functionality
 let resizing = false;
@@ -1058,7 +992,8 @@ let resizeStartX = 0;
 let resizeStartWidth = 0;
 let activeSidebarElement = null;
 
-function startResize(e, sidebarEl) {
+function startResize(e, sidebarEl)
+{
   e.preventDefault();
   resizing = true;
   resizeStartX = e.clientX;
@@ -1076,7 +1011,8 @@ function startResize(e, sidebarEl) {
   document.body.style.userSelect = 'none';
 }
 
-function doResize(e) {
+function doResize(e) 
+{
   if (!resizing || !activeSidebarElement) return;
   
   const deltaX = e.clientX - resizeStartX;
@@ -1090,7 +1026,8 @@ function doResize(e) {
   activeSidebarElement.style.width = clampedWidth + 'px';
 }
 
-function stopResize(e) {
+function stopResize(e) 
+{
   if (!resizing) return;
   
   resizing = false;
@@ -1115,14 +1052,10 @@ function stopResize(e) {
 }
 
 // UI Sidebar resize handle
-resizeHandle.addEventListener('mousedown', (e) => {
-  startResize(e, sidebar);
-});
+resizeHandle.addEventListener('mousedown', (e) => { startResize(e, sidebar); });
 
 // CLI Sidebar resize handle
-resizeHandleCLI.addEventListener('mousedown', (e) => {
-  startResize(e, cliSidebar);
-});
+resizeHandleCLI.addEventListener('mousedown', (e) => { startResize(e, cliSidebar); });
 
 // Global mouse move and up handlers
 document.addEventListener('mousemove', doResize);
@@ -1167,115 +1100,42 @@ const oTERM = new TERMINAL({
 let __cliMode = "terminal"; // "terminal" | "script"
 // --- helpers ---------------------------------------------------------------
 
-function __cliEscapeHtml(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;")
-    .replaceAll("\n", "<br>")
-    .replaceAll(" ", "&nbsp;");
-}
-
-function __cliNormalizeQuotes(s) {
+function __cliNormalizeQuotes(s) 
+{
   return String(s || "")
     .replace(/[‘’‚‛]/g, "'")
     .replace(/[“”„‟]/g, '"');
 }
 
-function __cliSplitStatements(src) {
+function __cliSplitDelimited(src, delimiter, { keepEmpty = false } = {})
+{
   const out = [];
   let cur = "";
   let q = null;
   let esc = false;
 
-  for (let i = 0; i < src.length; i++) {
+  for (let i = 0; i < src.length; i++)
+  {
     const ch = src[i];
 
-    if (esc) {
-      cur += ch;
-      esc = false;
-      continue;
-    }
+    if (esc) { cur += ch; esc = false; continue; }
+    if (ch === "\\") { cur += ch; esc = true; continue; }
+    if (q) { cur += ch; if (ch === q) q = null; continue; }
+    if (ch === "'" || ch === '"') { q = ch; cur += ch; continue; }
 
-    if (ch === "\\") {
-      cur += ch;
-      esc = true;
-      continue;
-    }
-
-    if (q) {
-      cur += ch;
-      if (ch === q) q = null;
-      continue;
-    }
-
-    if (ch === "'" || ch === '"') {
-      q = ch;
-      cur += ch;
-      continue;
-    }
-
-    if (ch === ";") {
+    if (ch === delimiter)
+    {
       const t = cur.trim();
-      if (t) out.push(t);
-      cur = "";
-      continue;
+      if (keepEmpty || t !== "") out.push(t);
+      cur = ""; continue;
     }
 
     cur += ch;
   }
 
   const t = cur.trim();
-  if (t) out.push(t);
+  if (keepEmpty || t !== "") out.push(t);
   return out;
-}
-
-function __cliSplitArgs(argStr) {
-  const args = [];
-  let cur = "";
-  let q = null;
-  let esc = false;
-
-  for (let i = 0; i < argStr.length; i++) {
-    const ch = argStr[i];
-
-    if (esc) {
-      cur += ch;
-      esc = false;
-      continue;
-    }
-
-    if (ch === "\\") {
-      cur += ch;
-      esc = true;
-      continue;
-    }
-
-    if (q) {
-      cur += ch;
-      if (ch === q) q = null;
-      continue;
-    }
-
-    if (ch === "'" || ch === '"') {
-      q = ch;
-      cur += ch;
-      continue;
-    }
-
-    if (ch === ",") {
-      args.push(cur.trim());
-      cur = "";
-      continue;
-    }
-
-    cur += ch;
-  }
-
-  if (cur.trim() !== "") args.push(cur.trim());
-  return args;
 }
 
 function __cliParseStringLiteral(tok) {
@@ -1318,7 +1178,7 @@ function __cliParseCADStatement(stmt) {
 
   const name = m[1];
   const argStr = (m[2] || "").trim();
-  const rawArgs = argStr ? __cliSplitArgs(argStr) : [];
+  const rawArgs = argStr ? __cliSplitDelimited(argStr, ",", { keepEmpty: false }) : [];
 
   const args = [];
   for (const a of rawArgs) {
@@ -1343,9 +1203,10 @@ function __cliParseCADStatement(stmt) {
   return { ok: true, value: { name, args } };
 }
 
-function __cliCompileCADScript(src) {
+function __cliCompileCADScript(src) 
+{
   const s = __cliNormalizeQuotes(src);
-  const stmts = __cliSplitStatements(s);
+  const stmts = __cliSplitDelimited(s, ";", { keepEmpty: false });
   if (!stmts.length) return { ok: true, value: [] };
 
   const ops = [];
@@ -1356,8 +1217,8 @@ function __cliCompileCADScript(src) {
     const { name, args } = parsed.value;
     const lname = String(name || "").toLowerCase();
 
-    switch (lname) {
-      case "help":
+    switch (lname) 
+    {
       case "exit":
       case "clear":
       case "undo":
@@ -1380,6 +1241,12 @@ function __cliCompileCADScript(src) {
         if (args.length !== 1) return { ok: false, err: "Usage: exec(\"..\")" };
         ops.push({ type: "exec", str: args[0] });
         break;
+
+      case "help":
+        if (args.length > 1) return { ok: false, err: "Usage: help(\"..\")" };
+        ops.push({ type: "help", str: args[0] });
+        break;
+
       default:
         return { ok: false, err: "Unknown CADScript function: " + name + "()" };
     }
@@ -1388,7 +1255,8 @@ function __cliCompileCADScript(src) {
   return { ok: true, value: ops };
 }
 
-function __cliRunCADOps(ops) {
+function __cliRunCADOps(ops)
+{
   // Stage grid mutations so one script line becomes a single undo stroke,
   // but flush before undo/redo to preserve expected semantics.
   let strokeMap = new Map();
@@ -1410,7 +1278,8 @@ function __cliRunCADOps(ops) {
     ascii[r][c] = next;
   }
 
-  function flush(reason) {
+  function flush(reason) 
+  {
     if (!strokeMap.size) return;
     const stroke = Array.from(strokeMap.values());
     strokeMap.clear();
@@ -1418,18 +1287,15 @@ function __cliRunCADOps(ops) {
     draw(reason || "CADScript");
   }
 
-  for (const op of ops) {
+  for (const op of ops) 
+  {
     switch (op.type) {
       case "help":
-        oTERM.output(
-          __cliEscapeHtml("CADScript commands:\n" +
-            " clear()    - clear entire grid\n" +
-            " exec(\"..\") - run terminal command\n" +
-            " exit()     - return to terminal\n" +
-            " freeform(x,y,char) - put character\n" +
-            " redo()     - redo last undone action\n" +
-            " undo()     - undo last action")
-        );
+          // call native function
+          const q = "\"";
+          var argument = ops[0].str ? (q + ops[0].str + q) : "";
+          var statement = "a.help("+arg+")";
+          eval(statement);
         break;
 
       case "exit":
@@ -1452,12 +1318,12 @@ function __cliRunCADOps(ops) {
           "\"<string>\" - run terminal command"
 
         if (typeof op.str !== "string") {
-          oTERM.output("[ERROR] " + __cliEscapeHtml(usage));
+          oTERM.output("[ERROR] " + oCOM.escapeHTML(usage));
           break;
         }
         const cmdLine = __cliNormalizeQuotes(op.str).trim();
         if (!cmdLine) {
-          oTERM.output("[ERROR] " + __cliEscapeHtml(usage));
+          oTERM.output("[ERROR] " + oCOM.escapeHTML(usage));
           break;
         }
         // Enforce "only one terminal command" (no ';' chaining or newlines)
@@ -1492,7 +1358,7 @@ function __cliRunCADOps(ops) {
         break;
 
       default:
-        oTERM.output("[ERROR] Internal: unknown op " + __cliEscapeHtml(op.type));
+        oTERM.output("[ERROR] Internal: unknown op " + oCOM.escapeHTML(op.type));
     }
   }
 
@@ -1503,7 +1369,7 @@ function __cliRunCADOps(ops) {
 function __cliTerminalHelp()
 {
   oTERM.output(
-    __cliEscapeHtml("Terminal commands:\n" +
+    oCOM.escapeHTML("Terminal commands:\n" +
       " <command> -h - detailed help\n" +
       "  clear       - clear terminal screen\n" +
       "  exec \"..\"   - run CADScript\n" +
@@ -1514,7 +1380,39 @@ function __cliTerminalHelp()
   );
 }
 
-function __cliHandleTerminal(line) {
+
+//       ______  _____     _____     _____                            _    
+//     .' ___  ||_   _|   |_   _|   |_   _|                          / |_  
+//    / .'   \_|  | |       | |       | |   _ .--.  _ .--.   __   _ `| |-' 
+//    | |         | |   _   | |       | |  [ `.-. |[ '/'`\ \[  | | | | |   
+//    \ `.___.'\ _| |__/ | _| |_     _| |_  | | | | | \__/ | | \_/ |,| |,  
+//     `.____ .'|________||_____|   |_____|[___||__]| ;.__/  '.__.'_/\__/  
+
+
+oTERM.onInput((command, parameters, rawLine) => 
+{
+  const line = __cliNormalizeQuotes(rawLine || "").trim();
+  if (!line) { oTERM.output("&nbsp;"); return true; }
+
+  switch(__cliMode)
+  {
+    case "terminal": return __cliHandleTerminal(line);
+    case "script":   return __cliHandleScript(line);
+  }
+
+});
+
+
+//     _________                              _                   __   
+//    |  _   _  |                            (_)                 [  |  
+//    |_/ | | \_|.---.  _ .--.  _ .--..--.   __   _ .--.   ,--.   | |  
+//        | |   / /__\\[ `/'`\][ `.-. .-. | [  | [ `.-. | `'_\ :  | |  
+//       _| |_  | \__., | |     | | | | | |  | |  | | | | // | |, | |  
+//      |_____|  '.__.'[___]   [___||__||__][___][___||__]\'-;__/[___] 
+//  
+
+function __cliHandleTerminal(line) 
+{
   const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
   if (!m) {
     oTERM.output("[ERROR] Invalid command");
@@ -1524,12 +1422,7 @@ function __cliHandleTerminal(line) {
   const cmd = m[1].toLowerCase();
   const rest = (m[2] || "").trim();
 
-  if (cmd === "help")
-  {
-    __cliTerminalHelp();
-    return true;
-  }
-
+  if (cmd === "help") { __cliTerminalHelp(); return true; }
   if (cmd === "clear")
   {
     const usage = "Usage:\n" +
@@ -1537,24 +1430,26 @@ function __cliHandleTerminal(line) {
     " -h    - <command> help\n"
 
     const opt = rest.trim();
-    if (opt === "-h") oTERM.output(__cliEscapeHtml(usage));
+    if (opt === "-h") oTERM.output(oCOM.escapeHTML(usage));
     else if (opt == "") oTERM.clear();
-    else  oTERM.output("[ERROR] "+__cliEscapeHtml(usage));
+    else  oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
     return true;
   }
 
-  if (cmd === "history") {
+  if (cmd === "history") 
+  {
     const opt = rest.trim();
     const usage = "Usage:\n" +
        "<bare> - show command history\n" +
        " -c    - clear command history\n" +
        " -h    - <command> help\n"
 
-    if (!opt) {
+    if (!opt) 
+    {
       if (!oTERM.history || oTERM.history.length === 0) oTERM.output("(history empty)");
       else {
         const lines = oTERM.history
-          .map((h, i) => String(i + 1) + ": " + __cliEscapeHtml(h))
+          .map((h, i) => String(i + 1) + ": " + oCOM.escapeHTML(h))
           .join("<br>");
         oTERM.output(lines);
       }
@@ -1562,7 +1457,7 @@ function __cliHandleTerminal(line) {
     }
 
     if (opt === "-h") {
-      oTERM.output(__cliEscapeHtml(usage));
+      oTERM.output(oCOM.escapeHTML(usage));
       return true;
     }
 
@@ -1576,7 +1471,7 @@ function __cliHandleTerminal(line) {
       return true;
     }
 
-    oTERM.output("[ERROR] "+__cliEscapeHtml(usage));
+    oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
     return true;
   }
 
@@ -1599,26 +1494,23 @@ function __cliHandleTerminal(line) {
 
     const opt = rest.trim();
 
-    if (opt === "-h") { oTERM.output(__cliEscapeHtml(usage)); return true; }
+    if (opt === "-h") { oTERM.output(oCOM.escapeHTML(usage)); return true; }
 
     const parsed = __cliParseExecArg(rest, usage);
     if (!parsed.ok) {
-      oTERM.output("[PARSE ERROR] " + __cliEscapeHtml(parsed.err));
+      oTERM.output("[PARSE ERROR] " + oCOM.escapeHTML(parsed.err));
       return true;
     }
 
     const compiled = __cliCompileCADScript(parsed.value);
     if (!compiled.ok) {
-      oTERM.output("[COMPILE ERROR] " + __cliEscapeHtml(compiled.err));
+      oTERM.output("[COMPILE ERROR] " + oCOM.escapeHTML(compiled.err));
       return true;
     }
 
-    try {
-      __cliRunCADOps(compiled.value);
-      oTERM.output("[OK] exec() completed");
-    } catch (e) {
-      oTERM.output("[RUN ERROR] " + __cliEscapeHtml(e && e.message ? e.message : String(e)));
-    }
+    try { __cliRunCADOps(compiled.value); oTERM.output("[OK] exec() completed");
+    } catch (e) { oTERM.output("[RUN ERROR] " + oCOM.escapeHTML(e && e.message ? e.message : String(e))); }
+
     return true;
   }
 
@@ -1640,39 +1532,56 @@ function __cliHandleTerminal(line) {
   return true;
 }
 
-function __cliHandleScript(line) {
-  if (/^[A-Za-z_]\w*$/.test(line)) {
-    oTERM.output("[ERROR] Script mode expects function calls, e.g. <u>help()</u>, <u>clear()</u>, <u>exit()</u>");
-    return true;
-  }
+
+//       ______       _       ______     ______                   _           _    
+//     .' ___  |     / \     |_   _ `. .' ____ \                 (_)         / |_  
+//    / .'   \_|    / _ \      | | `. \| (___ \_| .---.  _ .--.  __  _ .--. `| |-' 
+//    | |          / ___ \     | |  | | _.____`. / /'`\][ `/'`\][  |[ '/'`\ \| |   
+//    \ `.___.'\ _/ /   \ \_  _| |_.' /| \____) || \__.  | |     | | | \__/ || |,  
+//     `.____ .'|____| |____||______.'  \______.''.___.'[___]   [___]| ;.__/ \__/  
+//                                                                  [__|           
+
+function __cliHandleScript(line)
+{
+  if (/^[A-Za-z_]\w*$/.test(line))  { oTERM.output("[ERROR] Script mode expects function calls, e.g. <u>help()</u>"); return true; }
 
   const compiled = __cliCompileCADScript(line);
-  if (!compiled.ok) {
-    oTERM.output("[ERROR] " + __cliEscapeHtml(compiled.err));
-    return true;
-  }
+  if (!compiled.ok)                 { oTERM.output("[ERROR] " + oCOM.escapeHTML(compiled.err)); return true; }
 
-  try {
-    __cliRunCADOps(compiled.value);
-  } catch (e) {
-    oTERM.output("[ERROR] " + __cliEscapeHtml(e && e.message ? e.message : String(e)));
-  }
+  try { __cliRunCADOps(compiled.value); } 
+  catch (e)                         { oTERM.output("[ERROR] " + oCOM.escapeHTML(e && e.message ? e.message : String(e))); }
 
   return true;
 }
 
-oTERM.onInput((command, parameters, rawLine) => {
-  const line = __cliNormalizeQuotes(rawLine || "").trim();
-  if (!line) {
-    oTERM.output("&nbsp;");
-    return true;
+
+
+// TODO: expland scope of help, accept arguments that will find help on other functions
+
+// create a function containter
+oASC.f = {};
+var a = oASC.f; // a = shorthand object for oASC.f
+
+oASC.f["help"] = function (statementID)
+{
+  if(statementID == null || statementID == "help")
+  {
+      oTERM.output(
+      oCOM.escapeHTML("CADScript commands:\n" +
+        " clear()    - clear entire grid\n" +
+        " exec(\"..\") - run terminal command\n" +
+        " exit()     - return to terminal\n" +
+        " freeform(x,y,char) - put character\n" +
+        " redo()     - redo last undone action\n" +
+        " undo()     - undo last action")
+    );
   }
-  if (__cliMode === "terminal") return __cliHandleTerminal(line);
-  return __cliHandleScript(line);
+  else
+  {
+    oTERM.output("[ERROR] no help found on this topic");
+  }
 
-});
-
-
+}
 
 
 
@@ -1685,10 +1594,6 @@ oTERM.onInput((command, parameters, rawLine) => {
 //      |  _| _ [ `.-. |/ /'`\' |  | |         | |   _   | |   
 //     _| |__/ | | | | || \__/  |  \ `.___.'\ _| |__/ | _| |_  
 //    |________|[___||__]'.__.;__]  `.____ .'|________||_____| 
-
-
-
-
 
 
 
@@ -1877,19 +1782,15 @@ fileInput.addEventListener("change", async (e) =>
   }
 });
 
-
 // Clear
-clearBtn.addEventListener("click", () =>
-{
-  wipeSelection(' ');
-});
-
+clearBtn.addEventListener("click", () => { oASC.wipeSelection(' '); });
 
 // Paste capture (also allow direct paste anywhere)
 // Paste capture (context-dependent):
 // - If user is working in sidebars (UI or CLI), DO NOT hijack (let native paste work).
 // - Otherwise, hijack paste to paste-preview into the grid.
-window.addEventListener("paste", (e) => {
+window.addEventListener("paste", (e) => 
+{
   const t = e.target;
   const ae = document.activeElement;
 
@@ -1907,7 +1808,8 @@ window.addEventListener("paste", (e) => {
   }
 });
 
-pasteSink.addEventListener("paste", (e) => {
+pasteSink.addEventListener("paste", (e) => 
+{
   const t = e.target;
   const ae = document.activeElement;
 
@@ -1922,8 +1824,6 @@ pasteSink.addEventListener("paste", (e) => {
   }
 });
 
-
-
 pasteSink.addEventListener("paste", (e) => 
 {
   const text = e.clipboardData ? oASC.expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
@@ -1935,13 +1835,13 @@ canvas.addEventListener("wheel",(e) =>
 {
   e.preventDefault();
 
-  // Pinch-zoom on trackpad (Chrome/Safari typically set ctrlKey for pinch)
-  if (e.ctrlKey) {
-      const zoomFactor = Math.exp(-e.deltaY * 0.01);
-      scale = oCOM.clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
-      updateUI();
-      draw();
-      return;
+  if (e.ctrlKey)   // Pinch-zoom on trackpad (Chrome/Safari typically set ctrlKey for pinch)
+  {
+    const zoomFactor = Math.exp(-e.deltaY * 0.01);
+    scale = oCOM.clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
+    updateUI();
+    draw();
+    return;
   }
 
   // Heuristic: treat "smooth, small deltas" as trackpad scrolling => PAN.
@@ -1950,13 +1850,14 @@ canvas.addEventListener("wheel",(e) =>
   const absY = Math.abs(e.deltaY || 0);
   const looksLikeTrackpad = absX > 0 || (e.deltaMode === 0 && absY > 0 && absY < 50);
 
-  if (looksLikeTrackpad) {
-      // Two-finger scroll pans (KiCad-like)
-      panX += (e.deltaX || 0) / scale;
-      panY += (e.deltaY || 0) / scale;
-      updateUI();
-      draw();
-      return;
+  if (looksLikeTrackpad) 
+  {
+    // Two-finger scroll pans (KiCad-like)
+    panX += (e.deltaX || 0) / scale;
+    panY += (e.deltaY || 0) / scale;
+    updateUI();
+    draw();
+    return;
   }
 
   // Mouse wheel zooms
@@ -2009,8 +1910,7 @@ canvas.addEventListener("mousemove", (e) =>
 
 canvas.addEventListener("mousedown", (e) => 
 {
-  // Middle OR right mouse drag = pan
-  if (e.button === 1 || e.button === 2) 
+  if (e.button === 1 || e.button === 2)   // Middle OR right mouse drag = pan
   {
       e.preventDefault();
       panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
@@ -2020,7 +1920,8 @@ canvas.addEventListener("mousedown", (e) =>
 
   if (e.button !== 0) return;
 
-  if (e.button === 1) {
+  if (e.button === 1)
+  {
       e.preventDefault();
       panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
       canvas.style.cursor = "grabbing";
@@ -2076,7 +1977,6 @@ window.addEventListener("mouseup", () =>
 canvas.addEventListener("mouseleave", () => 
 {
   //if(bDebug) console.log("EVENT: mouseleave()");
-
   if (panDrag) { panDrag = null; canvas.style.cursor = ''; }
   hoverCell = null;
   updateUI();
@@ -2099,11 +1999,10 @@ window.addEventListener("keydown", (e) =>
   const isMac = /mac/i.test(navigator.platform);
   const mod = isMac ? e.metaKey : e.ctrlKey;
 
-  // Track live modifiers for Line mode (so Shift affects preview + commit)
-  if (e.key === "Shift") shiftDown = true;
+  if (e.key === "Shift") shiftDown = true;    // Track live modifiers for Line mode (so Shift affects preview + commit)
   if (String(e.key || "").toLowerCase() === "o") oDown = true;
-
-  if (lineDrag && (e.key === "Shift" || String(e.key || "").toLowerCase() === "o")) {
+  if (lineDrag && (e.key === "Shift" || String(e.key || "").toLowerCase() === "o"))
+  {
     lineDrag.flip  = !shiftDown;
     lineDrag.merge = !oDown;
     draw();
@@ -2123,27 +2022,20 @@ window.addEventListener("keydown", (e) =>
   }
 
   //  If FreeText preview is active, handle ALL typing here and stop.
-  if (textDrag) {
-    // Cancel
-    if (e.key === "Escape") { e.preventDefault(); oASC.cancelFreetext(); return; }
-
-    // Commit
-    if (e.key === "Enter") { e.preventDefault(); oASC.commitFreetext(); return; }
-
-    // Edit
-    if (e.key === "Backspace") {
+  if (textDrag) 
+  {
+    if (e.key === "Escape") { e.preventDefault(); oASC.cancelFreetext(); return; }     // Cancel
+    if (e.key === "Enter") { e.preventDefault(); oASC.commitFreetext(); return; }      // Commit
+    if (e.key === "Backspace")                                                         // Edit
+    {
       e.preventDefault();
       textDrag.text = textDrag.text.slice(0, -1);
       draw();
       return;
     }
-
-    // Ignore only OS/app command chords while typing.
-    // IMPORTANT: On macOS (e.g. Belgian layout), Option+Shift is used to type chars like '[' '{' etc.
-    if (e.ctrlKey || e.metaKey) return;
-
-    // Append printable character
-    if (e.key && e.key.length === 1) {
+    if (e.ctrlKey || e.metaKey) return;     // Ignore only OS/app command chords while typing. IMPORTANT: On macOS (e.g. Belgian layout), Option+Shift is used to type chars like '[' '{' etc.
+    if (e.key && e.key.length === 1)        // Append printable character
+    {
       e.preventDefault();
       textDrag.text += e.key;   //  includes 'o'
       draw();
@@ -2156,40 +2048,31 @@ window.addEventListener("keydown", (e) =>
   if (pasteDrag && pasteDrag.item_data && pasteDrag.item_data.uid) 
   {
     const k = String(e.key || "").toLowerCase();
-    if (k === "r") {
+    if (k === "r")
+    {
       e.preventDefault();
-
       const uid = pasteDrag.item_data.uid;
       const it = oASC.findCatalogItemByUID(uid);
       if (!it || !it.text_data || !it.text_data.length) return;
-
       const oldAnchor = pasteDrag.anchor ? { ...pasteDrag.anchor } : null;
-
       const n = it.text_data.length;
       pasteDrag.item_data.rotation = ((pasteDrag.item_data.rotation || 0) + 1) % n;
-
       const text_data = it.text_data[pasteDrag.item_data.rotation] || "";
       oASC.startPasteWithText(oASC.expandWideCharsForGrid(text_data));
-
-      // keep anchor stable while rotating
-      if (oldAnchor && pasteDrag) pasteDrag.anchor = oldAnchor;
-
+      if (oldAnchor && pasteDrag) pasteDrag.anchor = oldAnchor; // keep anchor stable while rotating
       draw();
       return;
     }
   }
-
-// ... keep the rest of your existing handler here ...
+  // ... keep the rest of your existing handler here ...
 }, { passive: false });
 
 
 window.addEventListener("keyup", (e) => 
 {
   if (textDrag) return;
-
   if (e.key === "Shift") shiftDown = false;
   if (String(e.key || "").toLowerCase() === "o") oDown = false;
-
   if (lineDrag) {
     lineDrag.flip  = !shiftDown;
     lineDrag.merge = !oDown;
@@ -2207,7 +2090,6 @@ function isEditingTextTarget(e)
   if (el.isContentEditable) return true;
   return false;
 }
-
 
 const ro = new ResizeObserver(() => oASC.scheduleResize());
 ro.observe(container);

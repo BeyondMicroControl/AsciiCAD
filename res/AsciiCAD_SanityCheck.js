@@ -383,9 +383,9 @@ console.assert(!oASC.catalogTypes().includes(null), "catalogTypes contains null"
 console.assert(!oASC.catalogTypes().includes(""), "catalogTypes contains empty string");
 
 
-runJunctionTests(); wipeSelection(' ');
-runMixedJunctionTests(); wipeSelection(' ');
-testDoubleBusCross(); wipeSelection(' ');
+runJunctionTests(); oASC.wipeSelection(' ');
+runMixedJunctionTests(); oASC.wipeSelection(' ');
+testDoubleBusCross(); oASC.wipeSelection(' ');
 
 updateUI();
 draw();

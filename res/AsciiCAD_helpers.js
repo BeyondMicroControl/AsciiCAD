@@ -197,7 +197,7 @@ function ASC()
 
       if (prev !== next) {
         stroke.push({ r: p.r, c: p.c, prev, next });
-        drawCharAtCell(p.r, p.c, next); // commit writes to ascii
+        this.drawCharAtCell(p.r, p.c, next); // commit writes to ascii
       }
     }
 
@@ -212,6 +212,14 @@ function ASC()
   {
     lineDrag = null;
     draw("cancelLine");
+  }
+
+  this.drawCharAtCell = function(r, c, ch) { ascii[r][c] = ch; }
+
+  this.drawLinePreview = function() 
+  {
+    if (!lineDrag) return;
+    const path = this.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
   }
 
   this.buildOrthogonalPath = function(start, end, start_vleg, kind)
@@ -824,6 +832,23 @@ function ASC()
     }
   }
 
+  this.wipeSelection = function(ch)
+  {
+    // TODO use range selection as parameter
+    const stroke = [];
+    for (let r = 0; r < ROWS; r++)
+    {
+        for (let c = 0; c < COLS; c++)
+        {
+          const prev = ascii[r][c];
+          if (prev !== ' ') { stroke.push({ r, c, prev, next: ' ' }); this.drawCharAtCell(r,c,ch);}
+        }
+    }
+    selection = null; selectDrag = null; moveDrag = null; this.cancelPaste();
+    this.pushStrokeIfNonEmpty(stroke);
+    draw();
+  }
+
   this.applyMove = function(baseRect, dr, dc, snapMap) 
   {
     if (dr === 0 && dc === 0) return;
@@ -1209,11 +1234,11 @@ function ASC()
   this.sanitizeForSave = function(text) 
   {
     let t = String(text ?? "")
-        .replace(/\\r\\n/g, '\n')         // 1) Convert literal escape sequences to real newlines
-        .replace(/\\n/g, '\n')
-        .replace(/\\r/g, '\n')
-        .replace(/\r\n/g, '\n')           // 2) Normalize real CRLF / CR to LF
-        .replace(/\r/g, '\n');
+        .replace(/\\r\\n/g, '\n')           // 1) Convert literal escape sequences to real newlines
+        .replace(/\\n/g,    '\n')
+        .replace(/\\r/g,    '\n')
+        .replace(/\r\n/g,   '\n')           // 2) Normalize real CRLF / CR to LF
+        .replace(/\r/g,     '\n');
 
     t = this.collapseAfterWideCharsForSave(t);
 

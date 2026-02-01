@@ -208,14 +208,29 @@ function COM()
     }
   }
 
+  // new
+  this.escapeHTML = function(str) 
+  {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;")
+      .replaceAll("\n","<br>")
+      .replaceAll(" ", "&nbsp;");
+  }
+
   this.unescapeHTML = function(str)
   {
-    return str
+    return String(str)
+    .replace(/&nbsp;/g, " ")
+    .replace(/<br>/g,   "\n")
+    .replace(/&#039;/g, "'")
     .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&nbsp;/g, '\u00A0')
-    .replace(/&amp;/g, '&');
+    .replace(/&gt;/g,   ">")
+    .replace(/&lt;/g,   "<")
+    .replace(/&amp;/g,  "&");
   }
 
   this.escapeREGEXP = function(str)
@@ -318,15 +333,6 @@ function COM()
   this.PanZoomSize = function(pos, centre, scale, pan, size)
   {
     return ((pos - centre) / scale + centre - pan) / size;
-  }
-
-  this.deEscapeLiteralNewlines = function(t)   // OBSOLETE ?
-  {
-    // Convert strings containing literal \n / \r into real newlines.
-    return String(t ?? "")
-      .replace(/\\r\\n/g, "\n")
-      .replace(/\\n/g, "\n")
-      .replace(/\\r/g, "\n");
   }
 
   this.isDoubleWidthChar = function(ch)
