@@ -361,14 +361,14 @@ function COM()
   }
 
   // Text/HTML downloads (used by index.html "Download" and by Save-as-text)
-  this.download = function(content, filename, mimeType)
+  this.download = function(content, filename, mimeType, callback)
   {
     const name = filename || "download.txt";
     const type = mimeType || "text/plain;charset=utf-8";
     const blob = new Blob([content], { type });
     const url = window.URL.createObjectURL(blob);
     downloadURL(url, name);
-    setTimeout(function() { window.URL.revokeObjectURL(url); }, 2000);
+    setTimeout(function() { window.URL.revokeObjectURL(url); if(typeof(callback)=="object") callback(); }, 2000);
   }
 
   this.downloadText = function(text, filename)

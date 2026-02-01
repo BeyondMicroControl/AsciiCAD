@@ -1662,8 +1662,7 @@ window.addEventListener("load", function()
       break;
       case "download":
         // TODO download
-        downloadThisFile();
-        history.back();
+        downloadThisFile( history.back );
       break; 
     }  
   }
@@ -2100,13 +2099,13 @@ function isEditingTextTarget(e)
 const ro = new ResizeObserver(() => oASC.scheduleResize());
 ro.observe(container);
 
-function downloadThisFile() 
+function downloadThisFile( callback ) 
 {
   // Prepare the data: get the complete HTML source including current state
   const htmlContent = document.documentElement.outerHTML;
   const filename = 'AsciiCAD.html';
   const mimeType = 'text/html';
-  oCOM.download(htmlContent, filename, mimeType);
+  oCOM.download(htmlContent, filename, mimeType, callback );
 }
 
 
