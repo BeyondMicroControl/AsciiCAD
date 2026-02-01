@@ -452,14 +452,14 @@ function COM()
   }
 
   // Text/HTML downloads (used by index.html "Download" and by Save-as-text)
-  this.download = function(content, filename, mimeType)
+  this.download = function(content, filename, mimeType, callback)
   {
     const name = filename || "download.txt";
     const type = mimeType || "text/plain;charset=utf-8";
     const blob = new Blob([content], { type });
     const url = window.URL.createObjectURL(blob);
     downloadURL(url, name);
-    setTimeout(function() { window.URL.revokeObjectURL(url); }, 2000);
+    setTimeout(function() { window.URL.revokeObjectURL(url); if(typeof(callback)=="object") callback(); }, 2000);
   }
 
   this.downloadText = function(text, filename)
@@ -5390,8 +5390,7 @@ window.addEventListener("load", function()
       break;
       case "download":
         // TODO download
-        downloadThisFile();
-        history.back();
+        downloadThisFile( history.back );
       break; 
     }  
   }
@@ -5828,13 +5827,13 @@ function isEditingTextTarget(e)
 const ro = new ResizeObserver(() => oASC.scheduleResize());
 ro.observe(container);
 
-function downloadThisFile() 
+function downloadThisFile( callback ) 
 {
   // Prepare the data: get the complete HTML source including current state
   const htmlContent = document.documentElement.outerHTML;
   const filename = 'AsciiCAD.html';
   const mimeType = 'text/html';
-  oCOM.download(htmlContent, filename, mimeType);
+  oCOM.download(htmlContent, filename, mimeType, callback );
 }
 
 
