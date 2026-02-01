@@ -459,7 +459,8 @@ function COM()
     const blob = new Blob([content], { type });
     const url = window.URL.createObjectURL(blob);
     downloadURL(url, name);
-    setTimeout(function() { window.URL.revokeObjectURL(url); if(typeof(callback)=="object") callback(); }, 2000);
+    setTimeout(function() { window.URL.revokeObjectURL(url); }, 2000);
+    if(typeof(callback)=="object") callback();
   }
 
   this.downloadText = function(text, filename)
