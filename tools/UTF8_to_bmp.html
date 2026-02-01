@@ -7,16 +7,41 @@
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 20px; }
     .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: end; }
-    label { display: block; font-size: 12px; opacity: 0.8; margin-bottom: 6px; }
-    input, textarea, button { font: inherit; padding: 8px; }
-    input[type="number"] { width: 120px; }
-    input[type="text"] { width: 220px; }
-    textarea { width: 520px; height: 72px; }
+    label { display: block; font-size: 12px; opacity: 0.85; margin-bottom: 6px; }
+    input, textarea, button { font: inherit; }
+    textarea { width: 520px; height: 72px; padding: 8px; }
+    button { padding: 10px 12px; }
     canvas { border: 1px solid #ccc; image-rendering: pixelated; }
     .muted { opacity: 0.75; font-size: 12px; line-height: 1.35; }
     .ok { color: #0a7; }
     .err { color: #c33; }
-    .check { display:flex; align-items:center; gap:8px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 8px; }
+
+    .control {
+      min-width: 240px;
+      border: 1px solid #e2e2e2;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #fff;
+    }
+    .control .topline {
+      display:flex;
+      align-items:baseline;
+      justify-content:space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+    .control .value {
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      opacity: 0.85;
+      white-space: nowrap;
+    }
+    .control input[type="range"] { width: 100%; }
+    .check {
+      display:flex; align-items:center; gap:8px;
+      padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px;
+      background:#fff;
+    }
     .check label { margin: 0; opacity: 1; font-size: 13px; }
   </style>
 </head>
@@ -26,49 +51,75 @@
   <div class="row">
     <div>
       <label>Character (exactly 1 code point)</label>
-      <input id="charInput" type="text" value="A" maxlength="4" />
+      <input id="charInput" type="text" value="A" maxlength="4" style="padding:8px; width:220px;" />
     </div>
 
-    <div>
-      <label>Bitmap size (px)</label>
-      <input id="sizeInput" type="number" value="64" min="1" max="1024" />
+    <div class="control">
+      <div class="topline">
+        <label>Bitmap size (px)</label>
+        <div class="value" id="sizeVal"></div>
+      </div>
+      <input id="sizeInput" type="range" min="8" max="512" step="1" value="64" />
     </div>
 
-    <div>
-      <label>Font size (px)</label>
-      <input id="fontSizeInput" type="number" value="48" min="1" max="512" />
+    <div class="control">
+      <div class="topline">
+        <label>Font size (px)</label>
+        <div class="value" id="fontSizeVal"></div>
+      </div>
+      <input id="fontSizeInput" type="range" min="4" max="256" step="1" value="48" />
     </div>
 
-    <div>
-      <label>Threshold (0–255)</label>
-      <input id="thresholdInput" type="number" value="128" min="0" max="255" />
+    <div class="control">
+      <div class="topline">
+        <label>Threshold (0–255)</label>
+        <div class="value" id="thresholdVal"></div>
+      </div>
+      <input id="thresholdInput" type="range" min="0" max="255" step="1" value="128" />
     </div>
   </div>
 
-  <!-- Rasterisation parameters -->
   <div class="row" style="margin-top: 14px;">
-    <div>
-      <label>width % (1–400)</label>
-      <input id="widthPctInput" type="number" value="100" min="1" max="400" />
-    </div>
-    <div>
-      <label>height % (1–400)</label>
-      <input id="heightPctInput" type="number" value="100" min="1" max="400" />
-    </div>
-    <div>
-      <label>offsetX (px)</label>
-      <input id="offsetXInput" type="number" value="0" min="-4096" max="4096" />
-    </div>
-    <div>
-      <label>offsetY (px)</label>
-      <input id="offsetYInput" type="number" value="0" min="-4096" max="4096" />
-    </div>
-    <div>
-      <label>rotation (° 0–360)</label>
-      <input id="rotationInput" type="number" value="0" min="0" max="360" />
+    <div class="control">
+      <div class="topline">
+        <label>width % (1–400)</label>
+        <div class="value" id="widthPctVal"></div>
+      </div>
+      <input id="widthPctInput" type="range" min="1" max="400" step="1" value="100" />
     </div>
 
-    <!-- NEW: flip checkboxes -->
+    <div class="control">
+      <div class="topline">
+        <label>height % (1–400)</label>
+        <div class="value" id="heightPctVal"></div>
+      </div>
+      <input id="heightPctInput" type="range" min="1" max="400" step="1" value="100" />
+    </div>
+
+    <div class="control">
+      <div class="topline">
+        <label>offsetX (px)</label>
+        <div class="value" id="offsetXVal"></div>
+      </div>
+      <input id="offsetXInput" type="range" min="-256" max="256" step="1" value="0" />
+    </div>
+
+    <div class="control">
+      <div class="topline">
+        <label>offsetY (px)</label>
+        <div class="value" id="offsetYVal"></div>
+      </div>
+      <input id="offsetYInput" type="range" min="-256" max="256" step="1" value="0" />
+    </div>
+
+    <div class="control">
+      <div class="topline">
+        <label>rotation (° 0–360)</label>
+        <div class="value" id="rotationVal"></div>
+      </div>
+      <input id="rotationInput" type="range" min="0" max="360" step="1" value="0" />
+    </div>
+
     <div class="check" title="Mirror left/right">
       <input id="flipHInput" type="checkbox" />
       <label for="flipHInput">Horizontal flip</label>
@@ -83,14 +134,13 @@
     <label>Font fallback chain (CSS font-family list; earlier = higher priority)</label>
     <textarea id="fontListInput">"Noto Sans Mono","Menlo","Euphemia UCAS","Arial Unicode MS",monospace</textarea>
     <div class="muted">
-      Tip: If you need a specific font, install it locally or load it as a webfont in this page.
-      Browsers don’t let JS enumerate system fonts, so we rely on this fallback list.
+      Preview updates live on any parameter change.
+      Download uses a best-effort font selection (browsers do not expose glyph-index APIs).
     </div>
   </div>
 
   <div class="row" style="margin-top: 14px;">
-    <button id="renderBtn">Render + Download BMP</button>
-    <button id="previewBtn">Preview Only</button>
+    <button id="downloadBtn">Download BMP</button>
     <div id="status" class="muted"></div>
   </div>
 
@@ -108,6 +158,12 @@
   </div>
 
 <script>
+/* Live-preview version:
+ * - All numeric params are range sliders.
+ * - Any change triggers a re-render (debounced).
+ * - Flip is applied first in the transform pipeline.
+ */
+
 // ---------- Utilities ----------
 function setStatus(msg, cls="muted") {
   const el = document.getElementById("status");
@@ -129,8 +185,47 @@ function hexCodePoint(ch) {
 
 function degToRad(deg) { return (deg * Math.PI) / 180; }
 
-// ---------- Read raster params (now includes flips) ----------
-function readRasterParams() {
+// ---------- Slider UI plumbing ----------
+function bindSliderValue(sliderId, valueId, suffix="") {
+  const s = document.getElementById(sliderId);
+  const v = document.getElementById(valueId);
+  const update = () => v.textContent = `${s.value}${suffix}`;
+  s.addEventListener("input", update);
+  update();
+}
+
+bindSliderValue("sizeInput", "sizeVal", " px");
+bindSliderValue("fontSizeInput", "fontSizeVal", " px");
+bindSliderValue("thresholdInput", "thresholdVal", "");
+bindSliderValue("widthPctInput", "widthPctVal", " %");
+bindSliderValue("heightPctInput", "heightPctVal", " %");
+bindSliderValue("offsetXInput", "offsetXVal", " px");
+bindSliderValue("offsetYInput", "offsetYVal", " px");
+bindSliderValue("rotationInput", "rotationVal", " °");
+
+// Make offset ranges adapt when bitmap size changes
+function updateOffsetRanges() {
+  const size = Number(document.getElementById("sizeInput").value);
+  const span = Math.max(16, Math.floor(size * 2)); // generous
+  for (const id of ["offsetXInput","offsetYInput"]) {
+    const el = document.getElementById(id);
+    el.min = String(-span);
+    el.max = String(span);
+    // keep value in range
+    const val = Number(el.value);
+    if (val < -span) el.value = String(-span);
+    if (val >  span) el.value = String(span);
+  }
+  document.getElementById("offsetXVal").textContent = `${document.getElementById("offsetXInput").value} px`;
+  document.getElementById("offsetYVal").textContent = `${document.getElementById("offsetYInput").value} px`;
+}
+
+// ---------- Read params ----------
+function readParams() {
+  const size = Number(document.getElementById("sizeInput").value);
+  const fontSize = Number(document.getElementById("fontSizeInput").value);
+  const threshold = Number(document.getElementById("thresholdInput").value);
+
   const widthPct  = Number(document.getElementById("widthPctInput").value);
   const heightPct = Number(document.getElementById("heightPctInput").value);
   const offsetX   = Number(document.getElementById("offsetXInput").value);
@@ -140,12 +235,13 @@ function readRasterParams() {
   const flipH = document.getElementById("flipHInput").checked;
   const flipV = document.getElementById("flipVInput").checked;
 
-  if (!Number.isFinite(widthPct)  || widthPct  < 1 || widthPct  > 400) throw new Error("width% must be 1–400.");
-  if (!Number.isFinite(heightPct) || heightPct < 1 || heightPct > 400) throw new Error("height% must be 1–400.");
-  if (!Number.isFinite(offsetX) || !Number.isFinite(offsetY)) throw new Error("offsetX/offsetY must be numbers.");
-  if (!Number.isFinite(rotation) || rotation < 0 || rotation > 360) throw new Error("rotation must be 0–360 degrees.");
+  const ch = getSingleCodePoint(document.getElementById("charInput").value);
+  const fontListStr = document.getElementById("fontListInput").value;
 
-  return { widthPct, heightPct, offsetX, offsetY, rotation, flipH, flipV };
+  return {
+    ch, size, fontSize, threshold, fontListStr,
+    raster: { widthPct, heightPct, offsetX, offsetY, rotation, flipH, flipV }
+  };
 }
 
 // ---------- Rendering + transforms ----------
@@ -155,29 +251,23 @@ function renderGlyphToCanvas(ctx, ch, size, fontSize, fontFamily, raster) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, size, size);
 
-  // White background
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, size, size);
 
-  // Text styling
   ctx.fillStyle = "#000";
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
   ctx.font = `${fontSize}px ${fontFamily}`;
 
-  // Measure metrics
   const m = ctx.measureText(ch);
   const L = (m.actualBoundingBoxLeft ?? 0);
   const R = (m.actualBoundingBoxRight ?? m.width ?? 0);
   const A = (m.actualBoundingBoxAscent ?? fontSize * 0.8);
   const D = (m.actualBoundingBoxDescent ?? fontSize * 0.2);
 
-  // bbox relative to (x,y baseline) when x=0,y=0:
-  // minX=-L, maxX=R, minY=-A, maxY=D
   const centerX = (R - L) / 2;
   const centerY = (D - A) / 2;
 
-  // baseline so bbox center is at origin
   const x0 = -centerX;
   const y0 = -centerY;
 
@@ -185,21 +275,66 @@ function renderGlyphToCanvas(ctx, ch, size, fontSize, fontFamily, raster) {
   const sy = heightPct / 100;
   const ang = degToRad(rotation);
 
-  // IMPORTANT: flipping must be done first.
-  // Canvas applies transforms right-to-left on points.
-  // We want: flip -> scale -> rotate -> translate
-  // Therefore we CALL them: translate, rotate, scale, flip (flip last).
-  const fx = flipH ? -1 : 1; // horizontal mirror
-  const fy = flipV ? -1 : 1; // vertical mirror
+  // Flip first in the pipeline => call flip LAST.
+  const fx = flipH ? -1 : 1;
+  const fy = flipV ? -1 : 1;
 
   ctx.save();
   ctx.translate(size / 2 + offsetX, size / 2 + offsetY);
   ctx.rotate(ang);
   ctx.scale(sx, sy);
-  ctx.scale(fx, fy); // flip FIRST in the pipeline (rightmost transform)
-
+  ctx.scale(fx, fy); // flip first (rightmost)
   ctx.fillText(ch, x0, y0);
   ctx.restore();
+}
+
+// ---------- Threshold to 1-bit ----------
+function thresholdCanvasToBitMatrix(ctx, size, threshold) {
+  const rgba = ctx.getImageData(0, 0, size, size).data;
+  const bits = new Uint8Array(size * size);
+  for (let i = 0; i < size * size; i++) {
+    const r = rgba[i*4], g = rgba[i*4+1], b = rgba[i*4+2], a = rgba[i*4+3];
+    const lum = (a === 0) ? 255 : Math.round(0.2126*r + 0.7152*g + 0.0722*b);
+    bits[i] = (lum >= threshold) ? 1 : 0;
+  }
+  return bits;
+}
+
+// ---------- Preview ----------
+function drawPreview(bitMatrix, size, previewCanvas) {
+  const pctx = previewCanvas.getContext("2d");
+  const scale = Math.max(1, Math.floor(previewCanvas.width / size));
+
+  pctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+  pctx.fillStyle = "#fff";
+  pctx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+
+  pctx.fillStyle = "#000";
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (bitMatrix[y * size + x] === 0) pctx.fillRect(x * scale, y * scale, scale, scale);
+    }
+  }
+}
+
+// ---------- Font selection (best-effort) ----------
+function parseFontList(fontListStr) {
+  const parts = [];
+  let cur = "", inQuotes = false;
+  for (let i = 0; i < fontListStr.length; i++) {
+    const c = fontListStr[i];
+    if (c === '"') inQuotes = !inQuotes;
+    if (c === "," && !inQuotes) { parts.push(cur.trim()); cur = ""; }
+    else cur += c;
+  }
+  if (cur.trim()) parts.push(cur.trim());
+  return parts.filter(Boolean);
+}
+
+function normalizeFamilyToken(t) {
+  const s = t.trim();
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) return s.slice(1, -1);
+  return s;
 }
 
 function computeInkBBoxFromRGBA(rgba, w, h) {
@@ -225,28 +360,9 @@ function getCanvasRGBA(ctx, size) {
   return ctx.getImageData(0, 0, size, size).data;
 }
 
-// ---------- Font fallback (best-effort) ----------
-function parseFontList(fontListStr) {
-  const parts = [];
-  let cur = "", inQuotes = false;
-  for (let i = 0; i < fontListStr.length; i++) {
-    const c = fontListStr[i];
-    if (c === '"') inQuotes = !inQuotes;
-    if (c === "," && !inQuotes) { parts.push(cur.trim()); cur = ""; }
-    else cur += c;
-  }
-  if (cur.trim()) parts.push(cur.trim());
-  return parts.filter(Boolean);
-}
-
-function normalizeFamilyToken(t) {
-  const s = t.trim();
-  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) return s.slice(1, -1);
-  return s;
-}
-
 async function fontSeemsToHaveGlyph(ctx, ch, size, fontSize, familyToken, raster) {
   const fam = normalizeFamilyToken(familyToken);
+
   try {
     if (document.fonts && document.fonts.check) {
       const ok = document.fonts.check(`${fontSize}px "${fam}"`, ch);
@@ -290,19 +406,8 @@ async function pickFontFamilyChainForChar(ctx, ch, size, fontSize, fontListStr, 
       return { chosen: normalizeFamilyToken(t), chain };
     }
   }
-  throw new Error(`No font in your list seems to contain a real glyph for ${hexCodePoint(ch)}.`);
-}
-
-// ---------- Threshold to 1-bit ----------
-function thresholdCanvasToBitMatrix(ctx, size, threshold) {
-  const rgba = ctx.getImageData(0, 0, size, size).data;
-  const bits = new Uint8Array(size * size);
-  for (let i = 0; i < size * size; i++) {
-    const r = rgba[i*4], g = rgba[i*4+1], b = rgba[i*4+2], a = rgba[i*4+3];
-    const lum = (a === 0) ? 255 : Math.round(0.2126*r + 0.7152*g + 0.0722*b);
-    bits[i] = (lum >= threshold) ? 1 : 0; // 1=white, 0=black
-  }
-  return bits;
+  // fallback: use whatever chain user gave (browser will fallback anyway)
+  return { chosen: "(browser fallback)", chain: fontListStr };
 }
 
 // ---------- BMP encoder (1bpp) ----------
@@ -337,7 +442,6 @@ function encodeBMP1bpp(bits, width, height) {
   dv.setUint32(p, 2, true); p += 4;
   dv.setUint32(p, 0, true); p += 4;
 
-  // Palette BGRA: 0 black, 1 white
   dv.setUint8(p++, 0x00); dv.setUint8(p++, 0x00); dv.setUint8(p++, 0x00); dv.setUint8(p++, 0x00);
   dv.setUint8(p++, 0xFF); dv.setUint8(p++, 0xFF); dv.setUint8(p++, 0xFF); dv.setUint8(p++, 0x00);
 
@@ -347,7 +451,6 @@ function encodeBMP1bpp(bits, width, height) {
   for (let y = height - 1; y >= 0; y--) {
     let byte = 0, bitCount = 0;
     let rowPos = dataPos;
-
     for (let x = 0; x < width; x++) {
       const bit = bits[y * width + x] & 1;
       byte = (byte << 1) | bit;
@@ -373,69 +476,83 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
-// ---------- Preview ----------
-function drawPreview(bitMatrix, size, previewCanvas) {
-  const pctx = previewCanvas.getContext("2d");
-  const scale = Math.max(1, Math.floor(previewCanvas.width / size));
-
-  pctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-  pctx.fillStyle = "#fff";
-  pctx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
-
-  pctx.fillStyle = "#000";
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      if (bitMatrix[y * size + x] === 0) pctx.fillRect(x * scale, y * scale, scale, scale);
-    }
-  }
+// ---------- Live preview (debounced) ----------
+let previewTimer = null;
+function schedulePreview() {
+  if (previewTimer) clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => { renderPreview().catch(e => setStatus(String(e.message ?? e), "err")); }, 50);
 }
 
-// ---------- Main ----------
-async function generate({download}) {
-  const ch = getSingleCodePoint(document.getElementById("charInput").value);
-  const size = Number(document.getElementById("sizeInput").value);
-  const fontSize = Number(document.getElementById("fontSizeInput").value);
-  const threshold = Number(document.getElementById("thresholdInput").value);
-  const fontListStr = document.getElementById("fontListInput").value;
+async function renderPreview() {
+  setStatus("Rendering preview…", "muted");
 
-  if (!Number.isFinite(size) || size < 1) throw new Error("Invalid bitmap size.");
-  if (!Number.isFinite(fontSize) || fontSize < 1) throw new Error("Invalid font size.");
-  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 255) throw new Error("Invalid threshold.");
-
-  const raster = readRasterParams();
+  const { ch, size, fontSize, threshold, fontListStr, raster } = readParams();
 
   const workCanvas = document.getElementById("workCanvas");
   workCanvas.width = size;
   workCanvas.height = size;
   const wctx = workCanvas.getContext("2d", { willReadFrequently: true });
 
-  setStatus(`Picking font for ${hexCodePoint(ch)}…`, "muted");
-  const { chosen, chain } = await pickFontFamilyChainForChar(wctx, ch, size, fontSize, fontListStr, raster);
-
-  renderGlyphToCanvas(wctx, ch, size, fontSize, chain, raster);
+  // For live preview: use user's chain directly (fast), no probing.
+  renderGlyphToCanvas(wctx, ch, size, fontSize, fontListStr, raster);
 
   const bits = thresholdCanvasToBitMatrix(wctx, size, threshold);
   drawPreview(bits, size, document.getElementById("previewCanvas"));
 
-  setStatus(`OK: Using "${chosen}". (Flip applied first.)`, "ok");
-
-  if (download) {
-    const fh = raster.flipH ? "H" : "nH";
-    const fv = raster.flipV ? "V" : "nV";
-    const blob = encodeBMP1bpp(bits, size, size);
-    const filename = `char_${size}x${size}_${hexCodePoint(ch)}_w${raster.widthPct}_h${raster.heightPct}_r${raster.rotation}_${fh}_${fv}.bmp`;
-    downloadBlob(blob, filename);
-  }
+  setStatus(`Preview OK (${hexCodePoint(ch)}).`, "ok");
 }
 
-document.getElementById("renderBtn").addEventListener("click", async () => {
-  try { await generate({download: true}); }
-  catch (e) { setStatus(String(e.message ?? e), "err"); }
-});
-document.getElementById("previewBtn").addEventListener("click", async () => {
-  try { await generate({download: false}); }
-  catch (e) { setStatus(String(e.message ?? e), "err"); }
-});
+// ---------- Download (does best-effort font pick) ----------
+async function downloadBMP() {
+  setStatus("Preparing BMP…", "muted");
+
+  const { ch, size, fontSize, threshold, fontListStr, raster } = readParams();
+
+  const workCanvas = document.getElementById("workCanvas");
+  workCanvas.width = size;
+  workCanvas.height = size;
+  const wctx = workCanvas.getContext("2d", { willReadFrequently: true });
+
+  const { chosen, chain } = await pickFontFamilyChainForChar(wctx, ch, size, fontSize, fontListStr, raster);
+  renderGlyphToCanvas(wctx, ch, size, fontSize, chain, raster);
+
+  const bits = thresholdCanvasToBitMatrix(wctx, size, threshold);
+  const blob = encodeBMP1bpp(bits, size, size);
+
+  const fh = raster.flipH ? "H" : "nH";
+  const fv = raster.flipV ? "V" : "nV";
+  const filename = `char_${size}x${size}_${hexCodePoint(ch)}_w${raster.widthPct}_h${raster.heightPct}_r${raster.rotation}_${fh}_${fv}.bmp`;
+
+  downloadBlob(blob, filename);
+  setStatus(`Downloaded BMP using ${chosen}.`, "ok");
+}
+
+// ---------- Wire up events ----------
+function addLiveListeners() {
+  const sliders = [
+    "sizeInput","fontSizeInput","thresholdInput",
+    "widthPctInput","heightPctInput","offsetXInput","offsetYInput","rotationInput"
+  ];
+  for (const id of sliders) {
+    document.getElementById(id).addEventListener("input", () => {
+      if (id === "sizeInput") updateOffsetRanges();
+      schedulePreview();
+    });
+  }
+
+  document.getElementById("charInput").addEventListener("input", schedulePreview);
+  document.getElementById("fontListInput").addEventListener("input", schedulePreview);
+  document.getElementById("flipHInput").addEventListener("change", schedulePreview);
+  document.getElementById("flipVInput").addEventListener("change", schedulePreview);
+
+  document.getElementById("downloadBtn").addEventListener("click", () => {
+    downloadBMP().catch(e => setStatus(String(e.message ?? e), "err"));
+  });
+}
+
+updateOffsetRanges();
+addLiveListeners();
+renderPreview().catch(e => setStatus(String(e.message ?? e), "err"));
 </script>
 </body>
 </html>
