@@ -27,6 +27,7 @@ SOFTWARE.
 * [Lewis Hemens](https://asciiflow.com)<br/>
   Author of Asciiflow - credits to him, for being a great source of inspiration
 * The maker of [charset.org](https://www.charset.org/utf-8)
+* The maker of [myhdf5](https://myhdf5.hdfgroup.org) online h5 file viewer)
 
 
 # About the author
