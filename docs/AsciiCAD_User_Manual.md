@@ -283,4 +283,4 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 ## Reference
 
 - Project overview and features: see the project README.
-- Design decisions and rationale: see <a hre="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/docs/decisions.md">`docs/decisions.md`</a>.
+- Design decisions and rationale: see <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/docs/decisions.md">`docs/decisions.md`</a>.
