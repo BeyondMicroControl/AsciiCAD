@@ -1,0 +1,894 @@
+<!--
+//.   ██   ██ ████████ ███    ███ ██          ██  ██████ ███████ ███████ 
+//    ██   ██    ██    ████  ████ ██         ██  ██      ██      ██      
+//    ███████    ██    ██ ████ ██ ██        ██   ██      ███████ ███████ 
+//    ██   ██    ██    ██  ██  ██ ██       ██    ██           ██      ██ 
+//    ██   ██    ██    ██      ██ ███████ ██      ██████ ███████ ███████ 
+-->                                                                      
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>🍦terminal</title>
+    <meta name="description" content="🍦A simple and lightweight Javascript web browser terminal">
+    <meta charset="utf-8">
+    <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="theme-color" content="#000">
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      #vanilla-terminal {
+        width: 100vw;
+        height: 100vh;
+      }
+    </style>
+    <link rel="stylesheet" href="vanilla-terminal/VanillaTerminal.css">
+</head>
+  <body>
+    <div id="vanilla-terminal"></div>
+
+
+<script>
+
+//     ██████  ██████  ███    ███ ███    ███  █████  ███    ██ ██████  ███████         ██ ███████ 
+//    ██      ██    ██ ████  ████ ████  ████ ██   ██ ████   ██ ██   ██ ██              ██ ██      
+//    ██      ██    ██ ██ ████ ██ ██ ████ ██ ███████ ██ ██  ██ ██   ██ ███████         ██ ███████ 
+//    ██      ██    ██ ██  ██  ██ ██  ██  ██ ██   ██ ██  ██ ██ ██   ██      ██    ██   ██      ██ 
+//     ██████  ██████  ██      ██ ██      ██ ██   ██ ██   ████ ██████  ███████ ██  █████  ███████ 
+
+
+
+
+
+
+
+
+// VANILLA-TERMINAL RUNTIME (AsciiCAD CLI)
+// Two modes:
+//  1) Terminal mode (Linux-like): help, clear, history [-c], script, exec("..."), exit
+//  2) Script mode (CADScript): help(), clear(), undo(), redo(), freeform(col,row,char), exit()
+
+
+// object instantiation/initialisation
+const oTERM = new TERMINAL({
+  // We handle all input via oTERM.onInput; commands are kept for discoverability.
+  commands: {
+    help: () => {},
+    clear: () => {},
+    history: () => {},
+    script: () => {},
+    exec: () => {},
+    exit: () => {},
+
+  },
+  welcome: sbTitle.querySelector('big').textContent + " terminal - type <u>help</u>",
+  prompt: "AsciiCAD",
+  separator: '>',
+});
+
+let __cliMode = "terminal"; // "terminal" | "script"
+// --- helpers ---------------------------------------------------------------
+
+function __cliNormalizeQuotes(s) 
+{
+  return String(s || "")
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[“”„‟]/g, '"');
+}
+
+function __cliSplitDelimited(src, delimiter, { keepEmpty = false } = {})
+{
+  const out = [];
+  let cur = "";
+  let q = null;
+  let esc = false;
+
+  for (let i = 0; i < src.length; i++)
+  {
+    const ch = src[i];
+
+    if (esc) { cur += ch; esc = false; continue; }
+    if (ch === "\\") { cur += ch; esc = true; continue; }
+    if (q) { cur += ch; if (ch === q) q = null; continue; }
+    if (ch === "'" || ch === '"') { q = ch; cur += ch; continue; }
+
+    if (ch === delimiter)
+    {
+      const t = cur.trim();
+      if (keepEmpty || t !== "") out.push(t);
+      cur = ""; continue;
+    }
+
+    cur += ch;
+  }
+
+  const t = cur.trim();
+  if (keepEmpty || t !== "") out.push(t);
+  return out;
+}
+
+function __cliParseStringLiteral(tok) {
+  tok = tok.trim();
+  if (tok.length < 2) return null;
+
+  const q = tok[0];
+  if ((q !== "'" && q !== '"') || tok[tok.length - 1] !== q) return null;
+
+  let inner = tok.slice(1, -1);
+
+  // Minimal unescape support
+  inner = inner.replaceAll("\\n", "\n").replaceAll("\\r", "\r").replaceAll("\\t", "\t");
+  inner = inner.replaceAll("\\\"", '"').replaceAll("\\'", "'").replaceAll("\\\\", "\\");
+  return inner;
+}
+
+function __cliParseExecArg(rest, usage) 
+{
+  // rest may be: ("...") or ('...') with optional whitespace
+  let s = rest.trim();
+  // Allow a trailing semicolon: exec("...");
+  if (s.endsWith(";")) s = s.slice(0, -1).trim();
+  if (!s) return { ok: false, err: usage };
+
+  if (s.startsWith("\"")) {
+    if (!s.endsWith("\"")) return { ok: false, err: usage };
+    //s = s.slice(1, -1).trim();
+  }
+
+  const lit = __cliParseStringLiteral(s);
+  if (lit === null) return { ok: false, err: usage };
+
+  return { ok: true, value: lit };
+}
+
+function __cliParseCADStatement(stmt) {
+  const m = stmt.match(/^([A-Za-z_]\w*)\s*\((.*)\)\s*$/);
+  if (!m) return { ok: false, err: "Invalid CADScript syntax: " + stmt };
+
+  const name = m[1];
+  const argStr = (m[2] || "").trim();
+  const rawArgs = argStr ? __cliSplitDelimited(argStr, ",", { keepEmpty: false }) : [];
+
+  const args = [];
+  for (const a of rawArgs) {
+    if (a === "") continue;
+
+    const lit = __cliParseStringLiteral(a);
+    if (lit !== null) {
+      args.push(lit);
+      continue;
+    }
+
+    const n = Number(a);
+    if (!Number.isNaN(n) && /^[+-]?(?:\d+\.?\d*|\d*\.?\d+)$/.test(a)) {
+      args.push(n);
+      continue;
+    }
+
+    // Bare words are not allowed in CADScript
+    return { ok: false, err: "Invalid argument: " + a };
+  }
+
+  return { ok: true, value: { name, args } };
+}
+
+function __cliCompileCADScript(src) 
+{
+  const s = __cliNormalizeQuotes(src);
+  const stmts = __cliSplitDelimited(s, ";", { keepEmpty: false });
+  if (!stmts.length) return { ok: true, value: [] };
+
+  const ops = [];
+  for (const st of stmts) {
+    const parsed = __cliParseCADStatement(st);
+    if (!parsed.ok) return parsed;
+
+    const { name, args } = parsed.value;
+    const lname = String(name || "").toLowerCase();
+
+    switch (lname) 
+    {
+      case "exit":
+      case "clear":
+      case "undo":
+      case "redo":
+        if (args.length !== 0) return { ok: false, err: name + "() takes no arguments" };
+        ops.push({ type: lname });
+        break;
+
+      case "freeform":
+        if (args.length !== 3) return { ok: false, err: "Usage: freeform(col, row, char)" };
+        if (!Number.isInteger(args[0]) || !Number.isInteger(args[1]))
+          return { ok: false, err: "freeform(col,row,char): col and row must be integers" };
+        if (typeof args[2] !== "string" || args[2].length !== 1)
+          return { ok: false, err: "freeform(col,row,char): char must be a single character string" };
+
+        ops.push({ type: "freeform", col: args[0], row: args[1], ch: args[2] });
+        
+        break;
+      case "exec":
+        if (args.length !== 1) return { ok: false, err: "Usage: exec(\"..\")" };
+        ops.push({ type: "exec", str: args[0] });
+        break;
+
+      case "help":
+        if (args.length > 1) return { ok: false, err: "Usage: help(\"..\")" };
+        ops.push({ type: "help", str: args[0] });
+        break;
+
+      default:
+        return { ok: false, err: "Unknown CADScript function: " + name + "()" };
+    }
+  }
+
+  return { ok: true, value: ops };
+}
+
+function __cliRunCADOps(ops)
+{
+  // Stage grid mutations so one script line becomes a single undo stroke,
+  // but flush before undo/redo to preserve expected semantics.
+  let strokeMap = new Map();
+
+  function stageCell(r, c, next) {
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) {
+      throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
+    }
+
+    const key = r + "," + c;
+    const cur = ascii[r][c];
+
+    if (cur === next) return;
+
+    const rec = strokeMap.get(key);
+    if (!rec) strokeMap.set(key, { r, c, prev: cur, next });
+    else rec.next = next;
+
+    ascii[r][c] = next;
+  }
+
+  function flush(reason) 
+  {
+    if (!strokeMap.size) return;
+    const stroke = Array.from(strokeMap.values());
+    strokeMap.clear();
+    oASC.pushStrokeIfNonEmpty(stroke);
+    draw(reason || "CADScript");
+  }
+
+  for (const op of ops) 
+  {
+    switch (op.type) {
+      case "help":
+          // call native function
+          const q = "\"";
+          var argument = ops[0].str ? (q + ops[0].str + q) : "";
+          var statement = "a.help("+arg+")";
+          eval(statement);
+        break;
+
+      case "exit":
+        flush("CADScript-exit");
+        __cliMode = "terminal";
+        oTERM.setPrompt("AsciiCAD");
+        oTERM.output("Exited CADScript mode.");
+        break;
+
+      case "clear":
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            if (ascii[r][c] !== " ") stageCell(r, c, " ");
+          }
+        }
+        break;
+
+      case "exec":
+          const usage = "Usage:\n" +
+          "\"<string>\" - run terminal command"
+
+        if (typeof op.str !== "string") {
+          oTERM.output("[ERROR] " + oCOM.escapeHTML(usage));
+          break;
+        }
+        const cmdLine = __cliNormalizeQuotes(op.str).trim();
+        if (!cmdLine) {
+          oTERM.output("[ERROR] " + oCOM.escapeHTML(usage));
+          break;
+        }
+        // Enforce "only one terminal command" (no ';' chaining or newlines)
+        if (/[;\r\n]/.test(cmdLine)) {
+          oTERM.output("[ERROR] exec() accepts only one terminal command (no ';' or newlines)");
+          break;
+        }
+        // TODO RUN terminal command (incl. options) in op.str
+        __cliHandleTerminal(cmdLine);
+        break;
+
+      case "freeform":
+        stageCell(op.row, op.col, op.ch);
+        break;
+
+      case "undo":
+        flush("CADScript-flush-before-undo");
+        if (undoStack.length === 0) oTERM.output("[ERROR] Nothing to undo");
+        else {
+          oASC.doUndo();
+          oTERM.output("[OK] Undo applied");
+        }
+        break;
+
+      case "redo":
+        flush("CADScript-flush-before-redo");
+        if (redoStack.length === 0) oTERM.output("[ERROR] Nothing to redo");
+        else {
+          oASC.doRedo();
+          oTERM.output("[OK] Redo applied");
+        }
+        break;
+
+      default:
+        oTERM.output("[ERROR] Internal: unknown op " + oCOM.escapeHTML(op.type));
+    }
+  }
+
+  flush("CADScript");
+  updateUI();
+}
+
+function __cliTerminalHelp()
+{
+  oTERM.output(
+    oCOM.escapeHTML("Terminal commands:\n" +
+      " <command> -h - detailed help\n" +
+      "  clear       - clear terminal screen\n" +
+      "  exec \"..\"   - run CADScript\n" +
+      "  exit        - exit CLI\n"+
+      "  help        - terminal help\n" +
+      "  history     - show command history\n" +
+      "  script      - enter CADScript mode\n")
+  );
+}
+
+
+//       ______  _____     _____     _____                            _    
+//     .' ___  ||_   _|   |_   _|   |_   _|                          / |_  
+//    / .'   \_|  | |       | |       | |   _ .--.  _ .--.   __   _ `| |-' 
+//    | |         | |   _   | |       | |  [ `.-. |[ '/'`\ \[  | | | | |   
+//    \ `.___.'\ _| |__/ | _| |_     _| |_  | | | | | \__/ | | \_/ |,| |,  
+//     `.____ .'|________||_____|   |_____|[___||__]| ;.__/  '.__.'_/\__/  
+
+
+oTERM.onInput((command, parameters, rawLine) => 
+{
+  const line = __cliNormalizeQuotes(rawLine || "").trim();
+  if (!line) { oTERM.output("&nbsp;"); return true; }
+
+  switch(__cliMode)
+  {
+    case "terminal": return __cliHandleTerminal(line);
+    case "script":   return __cliHandleScript(line);
+  }
+
+});
+
+
+//     _________                              _                   __   
+//    |  _   _  |                            (_)                 [  |  
+//    |_/ | | \_|.---.  _ .--.  _ .--..--.   __   _ .--.   ,--.   | |  
+//        | |   / /__\\[ `/'`\][ `.-. .-. | [  | [ `.-. | `'_\ :  | |  
+//       _| |_  | \__., | |     | | | | | |  | |  | | | | // | |, | |  
+//      |_____|  '.__.'[___]   [___||__||__][___][___||__]\'-;__/[___] 
+//  
+
+function __cliHandleTerminal(line) 
+{
+  const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
+  if (!m) {
+    oTERM.output("[ERROR] Invalid command");
+    return true;
+  }
+
+  const cmd = m[1].toLowerCase();
+  const rest = (m[2] || "").trim();
+
+  if (cmd === "help") { __cliTerminalHelp(); return true; }
+  if (cmd === "clear")
+  {
+    const usage = "Usage:\n" +
+    "<bare> - clear terminal screen\n" +
+    " -h    - <command> help\n"
+
+    const opt = rest.trim();
+    if (opt === "-h") oTERM.output(oCOM.escapeHTML(usage));
+    else if (opt == "") oTERM.clear();
+    else  oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
+    return true;
+  }
+
+  if (cmd === "history") 
+  {
+    const opt = rest.trim();
+    const usage = "Usage:\n" +
+       "<bare> - show command history\n" +
+       " -c    - clear command history\n" +
+       " -h    - <command> help\n"
+
+    if (!opt) 
+    {
+      if (!oTERM.history || oTERM.history.length === 0) oTERM.output("(history empty)");
+      else {
+        const lines = oTERM.history
+          .map((h, i) => String(i + 1) + ": " + oCOM.escapeHTML(h))
+          .join("<br>");
+        oTERM.output(lines);
+      }
+      return true;
+    }
+
+    if (opt === "-h") {
+      oTERM.output(oCOM.escapeHTML(usage));
+      return true;
+    }
+
+    if (opt === "-c") {
+      try {
+        window.localStorage.removeItem("VanillaTerm");
+      } catch (_) {}
+      oTERM.history = [];
+      oTERM.historyCursor = 0;
+      oTERM.output("History cleared");
+      return true;
+    }
+
+    oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
+    return true;
+  }
+
+  if (cmd === "script") {
+    if (rest) {
+      oTERM.output("[ERROR] Usage: script");
+      return true;
+    }
+    __cliMode = "script";
+    oTERM.setPrompt("CADScript");
+    oTERM.output(sbTitle.querySelector('big').textContent+" script - type <u>help()</u>");
+    return true;
+  }
+
+  if (cmd === "exec")
+  {
+    const usage = "Usage:\n" +
+    "\"<string>\" - execute string as script\n" +
+    " -h        - <command> help\n";
+
+    const opt = rest.trim();
+
+    if (opt === "-h") { oTERM.output(oCOM.escapeHTML(usage)); return true; }
+
+    const parsed = __cliParseExecArg(rest, usage);
+    if (!parsed.ok) {
+      oTERM.output("[PARSE ERROR] " + oCOM.escapeHTML(parsed.err));
+      return true;
+    }
+
+    const compiled = __cliCompileCADScript(parsed.value);
+    if (!compiled.ok) {
+      oTERM.output("[COMPILE ERROR] " + oCOM.escapeHTML(compiled.err));
+      return true;
+    }
+
+    try { __cliRunCADOps(compiled.value); oTERM.output("[OK] exec() completed");
+    } catch (e) { oTERM.output("[RUN ERROR] " + oCOM.escapeHTML(e && e.message ? e.message : String(e))); }
+
+    return true;
+  }
+
+  if (cmd === "exit") {
+    if (typeof switchToSidebar === "function") switchToSidebar("ui");
+    oTERM.output("Switched to UI sidebar");
+    return true;
+  }
+
+  // Hint when user types CADScript-style calls in terminal mode
+  if (line.includes("(") && line.endsWith(")")) {
+    oTERM.output(
+      "[ERROR] CADScript syntax detected. Type <u>script</u> to enter CADScript mode, or use <u>exec(\"...\")</u>"
+    );
+    return true;
+  }
+
+  oTERM.output("[ERROR] Unknown command. Type <u>help</u>");
+  return true;
+}
+
+
+//       ______       _       ______     ______                   _           _    
+//     .' ___  |     / \     |_   _ `. .' ____ \                 (_)         / |_  
+//    / .'   \_|    / _ \      | | `. \| (___ \_| .---.  _ .--.  __  _ .--. `| |-' 
+//    | |          / ___ \     | |  | | _.____`. / /'`\][ `/'`\][  |[ '/'`\ \| |   
+//    \ `.___.'\ _/ /   \ \_  _| |_.' /| \____) || \__.  | |     | | | \__/ || |,  
+//     `.____ .'|____| |____||______.'  \______.''.___.'[___]   [___]| ;.__/ \__/  
+//                                                                  [__|           
+
+function __cliHandleScript(line)
+{
+  if (/^[A-Za-z_]\w*$/.test(line))  { oTERM.output("[ERROR] Script mode expects function calls, e.g. <u>help()</u>"); return true; }
+
+  const compiled = __cliCompileCADScript(line);
+  if (!compiled.ok)                 { oTERM.output("[ERROR] " + oCOM.escapeHTML(compiled.err)); return true; }
+
+  try { __cliRunCADOps(compiled.value); } 
+  catch (e)                         { oTERM.output("[ERROR] " + oCOM.escapeHTML(e && e.message ? e.message : String(e))); }
+
+  return true;
+}
+
+
+
+
+
+
+
+
+//    ████████ ███████ ██████  ███    ███ ██ ███    ██  █████  ██              ██ ███████ 
+//       ██    ██      ██   ██ ████  ████ ██ ████   ██ ██   ██ ██              ██ ██      
+//       ██    █████   ██████  ██ ████ ██ ██ ██ ██  ██ ███████ ██              ██ ███████ 
+//       ██    ██      ██   ██ ██  ██  ██ ██ ██  ██ ██ ██   ██ ██         ██   ██      ██ 
+//       ██    ███████ ██   ██ ██      ██ ██ ██   ████ ██   ██ ███████ ██  █████  ███████ 
+//                                                                                        
+//                                                                                        
+
+
+function TERMINAL(props) 
+{
+  props = props || {};
+
+  // ---- config --------------------------------------------------------------
+  var containerId = props.container || "vanilla-terminal";
+  var userCommands = props.commands || {};
+  var welcome =
+    props.welcome !== undefined ? props.welcome : 'Welcome to <a href="">Vanilla</a> terminal.';
+  var prompt = props.prompt || "";
+  var separator = props.separator || "&gt;";
+
+  // ---- constants -----------------------------------------------------------
+  var STORAGE_KEY = "VanillaTerm";
+  var ROOT_CLASS = "VanillaTerm";
+
+  // ---- helpers -------------------------------------------------------------
+
+  function renderMarkup(shell) {
+    return (
+      '\n      <div class="container">\n' +
+      "        <output></output>\n" +
+      '        <div class="command">\n' +
+      '          <div class="prompt">' +
+      shell.prompt +
+      shell.separator +
+      "</div>\n" +
+      '          <input class="input" spellcheck="false" autofocus />\n' +
+      "        </div>\n" +
+      "      </div>\n    "
+    );
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function cloneCommandNode(commandEl) {
+    var line = commandEl.cloneNode(true);
+    var input = line.querySelector(".input");
+
+    input.autofocus = false;
+    input.readOnly = true;
+    input.insertAdjacentHTML("beforebegin", escapeHtml(input.value));
+    input.parentNode.removeChild(input);
+
+    line.classList.add("line");
+    return line;
+  }
+
+  function loadHistory() {
+    try {
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveHistory(history) {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    } catch (_) {
+      // ignore quota / privacy mode errors
+    }
+  }
+
+  // ---- instance state ------------------------------------------------------
+
+  var builtins =
+    window.VanillaTerminalBuiltins &&
+    typeof window.VanillaTerminalBuiltins.createBuiltInCommands === "function"
+      ? window.VanillaTerminalBuiltins.createBuiltInCommands()
+      : {};
+
+  this.commands = Object.assign({}, userCommands, builtins);
+
+  this.history = loadHistory();
+  this.historyCursor = this.history.length;
+
+  this.shell = { prompt: prompt, separator: separator };
+
+  this.state = {
+    prompt: false, // prompt mode = next ENTER answers a question
+    idle: false,
+  };
+
+  this.onAskCallback = function () {};
+  this.onInputCallback = null;
+
+  // ---- DOM -----------------------------------------------------------------
+
+  var root = document.getElementById(containerId);
+  if (!root) {
+    throw new Error("Container #" + containerId + " doesn't exists.");
+  }
+
+  // Cache DOM
+  root.classList.add(ROOT_CLASS);
+  root.insertAdjacentHTML("beforeEnd", renderMarkup(this.shell));
+
+  var container = root.querySelector(".container");
+  this.DOM = {
+    root: root,
+    container: container,
+    output: container.querySelector("output"),
+    command: container.querySelector(".command"),
+    input: container.querySelector(".command .input"),
+    prompt: container.querySelector(".command .prompt"),
+  };
+
+  // ---- internal methods that need `this` -----------------------------------
+
+  var self = this;
+
+  function resetCommand() {
+    self.DOM.input.value = "";
+    self.DOM.command.classList.remove("input");
+    self.DOM.command.classList.remove("hidden");
+
+    if (typeof self.DOM.input.scrollIntoView === "function") {
+      self.DOM.input.scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  function handleKeyUp(event) {
+    var key = event.key || "";
+    var code = event.keyCode;
+
+    if (key === "Escape" || code === 27) {
+      self.DOM.input.value = "";
+      event.stopPropagation();
+      event.preventDefault();
+      return;
+    }
+
+    var isUp = key === "ArrowUp" || code === 38;
+    var isDown = key === "ArrowDown" || code === 40;
+    if (!isUp && !isDown) return;
+
+    if (isUp && self.historyCursor > 0) self.historyCursor -= 1;
+    if (isDown && self.historyCursor < self.history.length - 1) self.historyCursor += 1;
+
+    var value = self.history[self.historyCursor];
+    if (value !== undefined) self.DOM.input.value = value;
+  }
+
+  function handleKeyDown(event) {
+    var key = event.key || "";
+    var code = event.keyCode;
+
+    var isEnter = key === "Enter" || code === 13;
+    if (!isEnter) return;
+
+    var commandLine = self.DOM.input.value.trim();
+    if (!commandLine) return;
+
+    // Prompt mode: answer a question instead of dispatching a command
+    if (self.state.prompt) {
+      self.state.prompt = false;
+      self.onAskCallback(commandLine);
+      self.setPrompt(); // restore normal prompt
+      resetCommand();
+      return;
+    }
+
+    // Save in history
+    self.history.push(commandLine);
+    saveHistory(self.history);
+    self.historyCursor = self.history.length;
+
+    // Echo command as output line
+    self.DOM.output.appendChild(cloneCommandNode(self.DOM.command));
+
+    // Hide live command line while processing
+    self.DOM.command.classList.add("hidden");
+    self.DOM.input.value = "";
+
+    // Pre-dispatch hook: allow host to handle the raw line.
+    var parts = commandLine.split(" ");
+    var command = parts[0];
+    var params = parts.slice(1);
+
+
+    if (typeof self.onInputCallback === "function") {
+      try {
+        var handled = self.onInputCallback(command, params, commandLine);
+        if (handled === true) {
+          resetCommand();
+          return;
+        }
+      } catch (err) {
+        self.output("[ERROR] " + escapeHtml(err && err.message ? err.message : String(err)));
+        resetCommand();
+        return;
+      }
+    }
+
+    // Dispatch (built-ins / user commands)
+    var callback = self.commands[command];
+
+    if (typeof callback === "function") {
+      callback(self, params);
+    } else {
+      self.output("<u>" + escapeHtml(command) + "</u>: command not found.");
+    }
+  }
+
+  // ---- public API (instance methods defined here) ---------------------------
+
+  this.clear = function () {
+    self.DOM.output.innerHTML = "";
+    resetCommand();
+  };
+
+  this.idle = function () {
+    self.state.idle = true;
+    self.DOM.command.classList.add("idle");
+    self.DOM.prompt.innerHTML = '<div class="spinner"></div>';
+  };
+
+  this.prompt = function (question, callback) {
+    self.state.prompt = true;
+    self.onAskCallback = typeof callback === "function" ? callback : function () {};
+
+    self.DOM.prompt.innerHTML = String(question) + ":";
+    resetCommand();
+    self.DOM.command.classList.add("input");
+  };
+
+  this.onInput = function (callback) {
+    self.onInputCallback = callback;
+  };
+
+  this.output = function (html) {
+    if (html === undefined) html = "&nbsp;";
+    self.DOM.output.insertAdjacentHTML("beforeEnd", "<span>" + html + "</span>");
+    resetCommand();
+  };
+
+  this.setPrompt = function (newPrompt) {
+    if (newPrompt === undefined) newPrompt = self.shell.prompt;
+
+    self.shell = { prompt: newPrompt, separator: self.shell.separator };
+    self.state.idle = false;
+
+    self.DOM.command.classList.remove("idle");
+    self.DOM.prompt.innerHTML = String(newPrompt) + self.shell.separator;
+    self.DOM.input.focus();
+  };
+
+  // ---- listeners -----------------------------------------------------------
+
+  // Auto-scroll when new output is appended.
+  var observer = new MutationObserver(function () 
+  {
+    setTimeout(function () {
+      self.DOM.input.scrollIntoView({ block: "nearest" });
+    }, 0);
+  });
+  observer.observe(self.DOM.output, { childList: true, subtree: true });
+
+  // Focus handling: focus the input when clicking inside the terminal,
+  // but do NOT steal focus when selecting/copying text in the output.
+  self.DOM.root.addEventListener(
+    "click",
+    function (ev) {
+      // Ignore clicks outside the terminal root
+      if (!self.DOM.root.contains(ev.target)) return;
+      // Don't steal focus when the user is interacting with the output area (selection/copy)
+      if (self.DOM.output.contains(ev.target)) return;
+      self.DOM.input.focus();
+    },
+    false
+  );
+
+  self.DOM.command.addEventListener(
+    "click",
+    function () {
+      self.DOM.input.focus();
+    },
+    false
+  );
+
+  self.DOM.input.addEventListener("keyup", handleKeyUp, false);
+  self.DOM.input.addEventListener("keydown", handleKeyDown, false);
+
+  // ---- initial output ------------------------------------------------------
+
+  if (welcome) this.output(welcome);
+};
+
+
+
+
+//    ███    ███  █████  ██ ███    ██ 
+//    ████  ████ ██   ██ ██ ████   ██ 
+//    ██ ████ ██ ███████ ██ ██ ██  ██ 
+//    ██  ██  ██ ██   ██ ██ ██  ██ ██ 
+//    ██      ██ ██   ██ ██ ██   ████ 
+//                                    
+//                                    
+
+
+
+      const term = new VanillaTerminal({
+        commands: {
+          flavour: (terminal) => {
+            terminal.output('There is only one flavour for your favorite🍦and it is <b>vanilla<b>.')
+            terminal.setPrompt('@soyjavi <small>❤️</small> <u>vanilla</u> ');
+          },
+
+          async: (terminal) => {
+            terminal.idle();
+            setTimeout(() => terminal.output('Async 300'), 300);
+            setTimeout(() => terminal.output('Async 1300'), 1300);
+            setTimeout(() => {
+              terminal.output('Async 2000');
+              terminal.setPrompt();
+            }, 2000);
+          },
+        },
+
+        // welcome: 'Welcome...',
+        // prompt: 'soyjavi at <u>Macbook-Pro</u> ',
+        separator: '>',
+      });
+
+
+      term.setPrompt("AsciiCAD");
+      
+      term.onInput((command, parameters) => {
+        console.log('⚡️onInput', command, parameters);
+      });
+
+      /*
+      term.prompt('Your name', (name) => {
+        term.output(`Hi ${name}!`);
+        term.setPrompt(`${name} `);
+      });
+      */
+
+    </script>
+  </body>
+</html>
