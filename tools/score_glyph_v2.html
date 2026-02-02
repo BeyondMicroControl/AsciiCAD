@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Glyph Match (HDF5 + Workers)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
+    label { display:block; font-size: 12px; opacity: .8; margin-bottom: 4px; }
+    input[type="number"] { width: 110px; }
+    pre { white-space: pre-wrap; background: #0b1020; color: #d7e2ff; padding: 12px; border-radius: 10px; }
+    canvas { border: 1px solid #ddd; border-radius: 8px; }
+    button { padding: 10px 14px; border-radius: 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .muted { opacity: .75; font-size: 12px; }
+    progress { width: 100%; height: 16px; }
+    code { background: #f6f6f6; padding: 0 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h2>Glyph Matcher v0.42</h2>
+  <div class="muted">
+    Single-file app: load HDF5 (/images, /labels) + query image → Stage A shortlist → Stage B shifted IoU refine.
+    Includes minimal progress, worker status, and error logging.
+  </div>
+
+  <div class="row" style="margin-top:12px;">
+    <div class="card">
+      <label>HDF5 dataset (.h5)</label>
+      <input id="h5" type="file" accept=".h5,.hdf5,.nxs,.hdf" />
+      <div class="muted">Must contain <code>/images</code> (N,64,64) uint8 and <code>/labels</code> (N) ints.</div>
+    </div>
+
+    <div class="card">
+      <label>Query image (bmp/png/jpg)</label>
+      <input id="query" type="file" accept="image/*" />
+      <div style="margin-top:8px;">
+        <canvas id="qprev" width="128" height="128"></canvas>
+      </div>
+      <div class="muted">Resized to 64×64 (nearest) and binarized; optionally dilated.</div>
+    </div>
+
+    <div class="card" style="min-width: 520px;">
+      <div class="row">
+        <div>
+          <label>Top N</label>
+          <input id="topN" type="number" min="1" max="512" value="64" />
+        </div>
+        <div>
+          <label>Stage A size</label>
+          <input id="stageAsize" type="number" min="4" max="32" value="16" />
+        </div>
+        <div>
+          <label>Stage A topK</label>
+          <input id="stageAtopk" type="number" min="100" max="50000" value="2000" />
+        </div>
+        <div>
+          <label>Stage B radius</label>
+          <input id="stageBr" type="number" min="0" max="10" value="3" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <label style="display:flex;gap:8px;align-items:center;">
+          <input id="dilate" type="checkbox" />
+          Dilate query (3×3, 1px)
+        </label>
+        <div>
+          <label>Density prefilter</label>
+          <input id="dens" type="number" min="0" step="0.1" value="2.5" />
+          <div class="muted">0 disables</div>
+        </div>
+        <div>
+          <label>Workers</label>
+          <input id="workers" type="number" min="1" max="32" value="0" />
+          <div class="muted">0 = auto</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <button id="run" disabled>Run match</button>
+        <button id="stop" disabled style="margin-left:8px;">Stop</button>
+      </div>
+    </div>
+  </div>
+
+  <h3>Status</h3>
+  <div class="card">
+    <div id="statusLine" class="muted">Idle.</div>
+    <progress id="pStageA" max="1" value="0"></progress>
+    <div class="muted">Stage A</div>
+    <progress id="pStageB" max="1" value="0" style="margin-top:8px;"></progress>
+    <div class="muted">Stage B</div>
+  </div>
+
+  <h3>Results</h3>
+  <pre id="out">Select a dataset + query image.</pre>
+
+  <h3>Log</h3>
+  <pre id="log" style="max-height: 240px; overflow:auto;">(empty)</pre>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+
+  const state = {
+    h5File: null,
+    queryBool64: null,
+    running: false,
+    abort: false,
+    workers: [],
+    workerURL: null,
+    probeURL: null
+  };
+
+  function logLine(s) {
+    const el = $("log");
+    if (el.textContent === "(empty)") el.textContent = "";
+    const ts = new Date().toISOString().slice(11, 19);
+    el.textContent += `[${ts}] ${s}\n`;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function setStatus(s) {
+    $("statusLine").textContent = s;
+  }
+
+  function resetProgress() {
+    $("pStageA").max = 1; $("pStageA").value = 0;
+    $("pStageB").max = 1; $("pStageB").value = 0;
+  }
+
+  function disableUI(disabled) {
+    $("run").disabled = disabled || !(state.h5File && state.queryBool64);
+    $("stop").disabled = !disabled;
+    $("h5").disabled = disabled;
+    $("query").disabled = disabled;
+    $("topN").disabled = disabled;
+    $("stageAsize").disabled = disabled;
+    $("stageAtopk").disabled = disabled;
+    $("stageBr").disabled = disabled;
+    $("dilate").disabled = disabled;
+    $("dens").disabled = disabled;
+    $("workers").disabled = disabled;
+  }
+
+  function canRun() {
+    $("run").disabled = !(state.h5File && state.queryBool64) || state.running;
+  }
+
+  function drawPreview(imageBitmap) {
+    const c = $("qprev");
+    const ctx = c.getContext("2d");
+    ctx.clearRect(0,0,c.width,c.height);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(imageBitmap, 0, 0, c.width, c.height);
+  }
+
+  async function loadQueryFile(file) {
+    const bmp = await createImageBitmap(file);
+    drawPreview(bmp);
+
+    const c = document.createElement("canvas");
+    c.width = 64; c.height = 64;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(bmp, 0, 0, 64, 64);
+    const img = ctx.getImageData(0,0,64,64).data; // RGBA
+
+    const g = new Uint8Array(64*64);
+    for (let i=0, p=0; i<g.length; i++, p+=4) {
+      g[i] = (0.299*img[p] + 0.587*img[p+1] + 0.114*img[p+2]) | 0;
+    }
+    return g;
+  }
+
+  function toBoolInk64(grayU8, preferSparse=true) {
+    let whiteCount = 0, blackCount = 0;
+    for (let i=0;i<grayU8.length;i++){
+      if (grayU8[i] > 128) whiteCount++;
+      if (grayU8[i] < 128) blackCount++;
+    }
+    const pickBlack = !preferSparse ? true : (blackCount <= whiteCount);
+    const out = new Uint8Array(grayU8.length);
+    if (pickBlack) {
+      for (let i=0;i<grayU8.length;i++) out[i] = grayU8[i] < 128 ? 1 : 0;
+    } else {
+      for (let i=0;i<grayU8.length;i++) out[i] = grayU8[i] > 128 ? 1 : 0;
+    }
+    return out;
+  }
+
+  function dilate3x3Bool64(x) {
+    const out = new Uint8Array(64*64);
+    for (let y=0;y<64;y++){
+      for (let x0=0;x0<64;x0++){
+        let v = 0;
+        for (let dy=-1; dy<=1 && !v; dy++){
+          const yy = y+dy;
+          if (yy<0 || yy>=64) continue;
+          for (let dx=-1; dx<=1; dx++){
+            const xx = x0+dx;
+            if (xx<0 || xx>=64) continue;
+            if (x[yy*64+xx]) { v = 1; break; }
+          }
+        }
+        out[y*64+x0] = v;
+      }
+    }
+    return out;
+  }
+
+  $("h5").addEventListener("change", (e) => {
+    state.h5File = e.target.files?.[0] || null;
+    canRun();
+  });
+
+  $("query").addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) { state.queryBool64 = null; canRun(); return; }
+    const g = await loadQueryFile(f);
+    let qb = toBoolInk64(g, true);
+    if ($("dilate").checked) qb = dilate3x3Bool64(qb);
+    state.queryBool64 = qb;
+    canRun();
+  });
+
+  $("dilate").addEventListener("change", async () => {
+    const f = $("query").files?.[0];
+    if (!f) return;
+    const g = await loadQueryFile(f);
+    let qb = toBoolInk64(g, true);
+    if ($("dilate").checked) qb = dilate3x3Bool64(qb);
+    state.queryBool64 = qb;
+    canRun();
+  });
+
+  function makeWorkerURL() {
+    const workerSrc = `
+      const H5WASM_URLS = [
+        "https://beyondmicrocontrol.github.io/AsciiCAD/res/h5wasm.js",
+        "https://unpkg.com/h5wasm@0.8.11/dist/iife/h5wasm.js"
+        ];
+
+        let loaded = false;
+        for (const url of H5WASM_URLS) {
+        try {
+            self.importScripts(url);
+            loaded = true;
+            break;
+        } catch (e) {
+            // keep trying
+        }
+        }
+        if (!loaded) {
+        throw new Error("Failed to load h5wasm from all CDNs: " + H5WASM_URLS.join(", "));
+        }
+
+      function reportProgress(phase, workerId, done, total) {
+        // throttle: every 200 items + always final
+        if (done === total || done % 200 === 0) {
+          postMessage({ type: "progress", phase, workerId, done, total });
+        }
+      }
+
+      function downsampleBoolNearest64(x, outSize) {
+        if (outSize === 64) return x;
+        const idx = new Int32Array(outSize);
+        for (let i=0;i<outSize;i++) idx[i] = Math.round(i * (63 / (outSize - 1)));
+        const out = new Uint8Array(outSize*outSize);
+        for (let y=0;y<outSize;y++){
+          const yy = idx[y]*64;
+          const yS = y*outSize;
+          for (let x0=0;x0<outSize;x0++){
+            out[yS+x0] = x[yy + idx[x0]];
+          }
+        }
+        return out;
+      }
+
+      function stageA_score_chunk(imagesU8, queryBool64, stageASize, workerId) {
+        const n = (imagesU8.length / 4096) | 0;
+        const qSmall = downsampleBoolNearest64(queryBool64, stageASize);
+
+        const idx = new Int32Array(stageASize);
+        for (let i=0;i<stageASize;i++){
+          idx[i] = Math.round(i * (63 / (stageASize - 1)));
+        }
+
+        const scores = new Float32Array(n);
+
+        for (let t=0;t<n;t++){
+          const base = t*4096;
+
+          let interW=0, unionW=0;
+          let interB=0, unionB=0;
+
+          for (let yy=0; yy<stageASize; yy++){
+            const y64 = idx[yy]*64;
+            const yS  = yy*stageASize;
+            for (let xx=0; xx<stageASize; xx++){
+              const pix = imagesU8[base + y64 + idx[xx]];
+              const q   = qSmall[yS + xx] ? 1 : 0;
+
+              const tW = (pix > 128) ? 1 : 0;
+              const tB = (pix < 128) ? 1 : 0;
+
+              if (tW & q) interW++;
+              if (tW | q) unionW++;
+
+              if (tB & q) interB++;
+              if (tB | q) unionB++;
+            }
+          }
+
+          const sW = unionW ? (interW / unionW) : 0;
+          const sB = unionB ? (interB / unionB) : 0;
+          scores[t] = sW >= sB ? sW : sB;
+
+          reportProgress("stageA", workerId, t+1, n);
+        }
+        return scores;
+      }
+
+      function bestIoUOverShifts(templateBool, queryBool, radius) {
+        let best = 0.0;
+        for (let dy=-radius; dy<=radius; dy++){
+          const y0 = Math.max(0, dy);
+          const y1 = Math.min(64, 64+dy);
+          const by0 = Math.max(0, -dy);
+
+          for (let dx=-radius; dx<=radius; dx++){
+            const x0 = Math.max(0, dx);
+            const x1 = Math.min(64, 64+dx);
+            const bx0 = Math.max(0, -dx);
+
+            let inter=0, uni=0;
+            for (let y=y0, by=by0; y<y1; y++, by++){
+              let a = y*64 + x0;
+              let b = by*64 + bx0;
+              for (let x=x0; x<x1; x++, a++, b++){
+                const A = templateBool[a];
+                const B = queryBool[b];
+                if (A & B) inter++;
+                if (A | B) uni++;
+              }
+            }
+            const s = uni ? (inter/uni) : 0.0;
+            if (s > best) best = s;
+          }
+        }
+        return best;
+      }
+
+      function templateToBool(templateU8, polarity) {
+        const out = new Uint8Array(4096);
+        if (polarity === 'white') {
+          for (let i=0;i<4096;i++) out[i] = templateU8[i] > 128 ? 1 : 0;
+        } else {
+          for (let i=0;i<4096;i++) out[i] = templateU8[i] < 128 ? 1 : 0;
+        }
+        return out;
+      }
+
+      function popcountBool(x) {
+        let s=0;
+        for (let i=0;i<x.length;i++) s += x[i] ? 1 : 0;
+        return s;
+      }
+
+      self.onmessage = async (e) => {
+        try {
+          const msg = e.data;
+
+          if (msg.type === 'init') {
+            self._workerId = msg.workerId;
+
+            const { FS } = await h5wasm.ready;
+            // fresh mount point per worker
+            try { FS.mkdir('/work'); } catch {}
+            FS.mount(FS.filesystems.WORKERFS, { files: [msg.h5File] }, '/work');
+
+            const f = new h5wasm.File('/work/' + msg.h5File.name, 'r');
+            const images = f.get('images');
+            const labels = f.get('labels');
+
+            postMessage({
+            type: 'log',
+            workerId: self._workerId,
+            message:
+                'opened OK; images.shape=' + JSON.stringify(images.shape) + ' ' +
+                'images.dtype=' + String(images.dtype || images.type || '') + ' ' +
+                'labels.shape=' + JSON.stringify(labels.shape) + ' ' +
+                'labels.dtype=' + String(labels.dtype || labels.type || '')
+            });
+
+            // read our chunk [start:end)
+            const start = msg.start;
+            const end = msg.end;
+
+            const imgShape = images.shape; // e.g. [N,64,64] or [N,4096]
+
+            // Read images chunk robustly
+            let imagesChunkObj;
+            if (imgShape.length === 3) {
+            // (N,64,64)
+            imagesChunkObj = images.slice([[start, end], [0, imgShape[1]], [0, imgShape[2]]]);
+            } else if (imgShape.length === 2) {
+            // (N,4096) (flattened)
+            imagesChunkObj = images.slice([[start, end], [0, imgShape[1]]]);
+            } else {
+            throw new Error("Unsupported /images rank: " + imgShape.length + " shape=" + JSON.stringify(imgShape));
+            }
+
+            // h5wasm usually returns a typed array in .value, but guard anyway:
+            let imagesChunk = imagesChunkObj?.value ?? imagesChunkObj;
+            if (!imagesChunk) throw new Error("images.slice(...) returned empty result");
+
+            // Normalize to Uint8Array
+            const imgU8 = (imagesChunk instanceof Uint8Array)
+            ? imagesChunk
+            : new Uint8Array(imagesChunk.buffer);
+
+            // Labels chunk (this one is fine)
+            const labelsChunkObj = labels.slice([[start, end]]);
+            const labelsChunk = labelsChunkObj?.value ?? labelsChunkObj;
+            if (!labelsChunk) throw new Error("labels.slice(...) returned empty result");
+
+            const labI32 = (labelsChunk instanceof Int32Array)
+            ? labelsChunk
+            : new Int32Array(labelsChunk.buffer);
+
+
+            self._chunk = { start, end, imagesU8: imgU8, labelsI32: labI32 };
+
+            postMessage({ type:'inited', workerId: self._workerId, start, end, n: end-start });
+            return;
+          }
+
+          if (!self._chunk) throw new Error("Worker not initialized.");
+
+          if (msg.type === 'stageA') {
+            const { imagesU8, labelsI32, start } = self._chunk;
+            const scores = stageA_score_chunk(imagesU8, msg.queryBool64, msg.stageASize, self._workerId);
+
+            const localTake = msg.localTake;
+            const best = [];
+            for (let i=0;i<scores.length;i++){
+              const s = scores[i];
+              const gi = start + i;
+              const cp = labelsI32[i];
+              if (best.length < localTake) {
+                best.push({ s, gi, cp });
+                if (best.length === localTake) best.sort((a,b)=>a.s-b.s);
+              } else if (s > best[0].s) {
+                best[0] = { s, gi, cp };
+                best.sort((a,b)=>a.s-b.s);
+              }
+            }
+            best.sort((a,b)=>b.s-a.s);
+            postMessage({ type:'stageA_done', workerId: self._workerId, best });
+            return;
+          }
+
+          if (msg.type === 'stageB') {
+            const { imagesU8, labelsI32, start } = self._chunk;
+            const radius = msg.stageBRadius;
+            const densityPrefilter = msg.densityPrefilter;
+
+            const q = msg.queryBool64;
+            const dq = popcountBool(q);
+
+            const total = msg.indicesGlobal.length;
+            reportProgress("stageB", self._workerId, 0, total || 1);
+
+            const bestScore = new Map(); // cp -> score
+
+            for (let j=0; j<total; j++) {
+              const gi = msg.indicesGlobal[j];
+              const i = gi - start;
+              if (i < 0 || i >= labelsI32.length) {
+                reportProgress("stageB", self._workerId, j+1, total);
+                continue;
+              }
+
+              const cp = labelsI32[i];
+              const base = i*4096;
+              const tU8 = imagesU8.subarray(base, base+4096);
+
+              if (densityPrefilter > 0 && dq > 0) {
+                let dtW=0, dtB=0;
+                for (let k=0;k<4096;k++){
+                  const pix = tU8[k];
+                  if (pix > 128) dtW++;
+                  if (pix < 128) dtB++;
+                }
+                const dt = Math.min(dtW, dtB);
+                if (dt === 0) { reportProgress("stageB", self._workerId, j+1, total); continue; }
+                const ratio = Math.max(dq/dt, dt/dq);
+                if (ratio > densityPrefilter) { reportProgress("stageB", self._workerId, j+1, total); continue; }
+              }
+
+              const tW = templateToBool(tU8, 'white');
+              const tB = templateToBool(tU8, 'black');
+
+              const s1 = bestIoUOverShifts(tW, q, radius);
+              const s2 = bestIoUOverShifts(tB, q, radius);
+              const s  = s1 >= s2 ? s1 : s2;
+
+              const prev = bestScore.get(cp);
+              if (prev === undefined || s > prev) bestScore.set(cp, s);
+
+              reportProgress("stageB", self._workerId, j+1, total);
+            }
+
+            const out = [];
+            for (const [cp, s] of bestScore.entries()) out.push([cp, s]);
+            out.sort((a,b)=>b[1]-a[1]);
+
+            postMessage({ type:'stageB_done', workerId: self._workerId, best: out });
+            return;
+          }
+
+          postMessage({ type:'error', message:'Unknown message type: ' + msg.type, stack:'' });
+        } catch (err) {
+          postMessage({
+            type: "error",
+            message: String(err?.message || err),
+            stack: String(err?.stack || "")
+          });
+        }
+      };
+    `;
+    const blob = new Blob([workerSrc], { type: "text/javascript" });
+    return URL.createObjectURL(blob);
+  }
+
+  function makeProbeWorkerURL() {
+    const src = `
+
+        const H5WASM_URLS = [
+        "https://beyondmicrocontrol.github.io/AsciiCAD/res/h5wasm.js",
+        "https://unpkg.com/h5wasm@0.8.11/dist/iife/h5wasm.js"
+        ];
+
+        let loaded = false;
+        for (const url of H5WASM_URLS) {
+        try {
+            self.importScripts(url);
+            loaded = true;
+            break;
+        } catch (e) {
+            // keep trying
+        }
+        }
+        if (!loaded) {
+        throw new Error("Failed to load h5wasm from all CDNs: " + H5WASM_URLS.join(", "));
+        }
+
+      self.onmessage = async (e) => {
+        try {
+          const { FS } = await h5wasm.ready;
+          try { FS.mkdir('/work'); } catch {}
+          FS.mount(FS.filesystems.WORKERFS, { files: [e.data.h5File] }, '/work');
+          const f = new h5wasm.File('/work/' + e.data.h5File.name, 'r');
+          const labels = f.get('labels');
+          const n = labels.shape[0];
+          postMessage({ type:'probe', n });
+        } catch (err) {
+          postMessage({ type:'error', message:String(err?.message||err), stack:String(err?.stack||"") });
+        }
+      };
+    `;
+    return URL.createObjectURL(new Blob([src], {type:"text/javascript"}));
+  }
+
+  function formatResults(pairs, topN) {
+    let out = "";
+    out += "Rank  Char   Hex Code   Match % (IoU)\n";
+    out += "-".repeat(72) + "\n";
+    for (let i=0;i<Math.min(topN, pairs.length); i++){
+      const [cp, s] = pairs[i];
+      let ch = "";
+      try { ch = String.fromCodePoint(cp); } catch { ch = ""; }
+      const disp = (ch && ch >= " " && ch !== "\u007f") ? ch : " ";
+      out += `${String(i+1).padEnd(5)} ${disp.padEnd(6)} U+${cp.toString(16).toUpperCase().padStart(4,"0")}     ${(s*100).toFixed(2).padStart(7)}%\n`;
+    }
+    return out;
+  }
+
+  function onceMessage(worker, predicate, timeoutMs=120000) {
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => {
+        cleanup();
+        reject(new Error("Timeout waiting for worker message."));
+      }, timeoutMs);
+
+      function onMsg(ev) {
+        const m = ev.data;
+        if (predicate(m)) {
+          cleanup();
+          resolve(m);
+        }
+      }
+      function onErr(err) {
+        cleanup();
+        reject(err);
+      }
+      function cleanup() {
+        clearTimeout(t);
+        worker.removeEventListener("message", onMsg);
+        worker.removeEventListener("error", onErr);
+      }
+
+      worker.addEventListener("message", onMsg);
+      worker.addEventListener("error", onErr);
+    });
+  }
+
+  function killWorkers() {
+    for (const w of state.workers) {
+      try { w.terminate(); } catch {}
+    }
+    state.workers = [];
+    if (state.workerURL) { URL.revokeObjectURL(state.workerURL); state.workerURL = null; }
+    if (state.probeURL)  { URL.revokeObjectURL(state.probeURL);  state.probeURL = null; }
+  }
+
+  $("stop").addEventListener("click", () => {
+    if (!state.running) return;
+    state.abort = true;
+    logLine("Stop requested; terminating workers.");
+    setStatus("Stopping…");
+    killWorkers();
+    state.running = false;
+    disableUI(false);
+    canRun();
+    setStatus("Stopped.");
+  });
+
+  $("run").addEventListener("click", async () => {
+    const h5File = state.h5File;
+    const queryBool64 = state.queryBool64;
+    if (!h5File || !queryBool64 || state.running) return;
+
+    state.running = true;
+    state.abort = false;
+    disableUI(true);
+
+    $("out").textContent = "Working…";
+    $("log").textContent = "(empty)";
+    resetProgress();
+    setStatus("Starting…");
+    logLine("Run started.");
+
+    try {
+      const topN = parseInt($("topN").value, 10);
+      const stageASize = parseInt($("stageAsize").value, 10);
+      const stageAtopk = parseInt($("stageAtopk").value, 10);
+      const stageBRadius = parseInt($("stageBr").value, 10);
+      const densityPrefilter = parseFloat($("dens").value);
+
+      let workerCount = parseInt($("workers").value, 10);
+      if (!workerCount || workerCount <= 0) workerCount = Math.max(1, (navigator.hardwareConcurrency || 4) - 1);
+
+      // Probe N via dedicated tiny worker
+      state.probeURL = makeProbeWorkerURL();
+      const probeW = new Worker(state.probeURL);
+      probeW.postMessage({ h5File });
+
+      const probeMsg = await onceMessage(probeW, (m) => m.type === "probe" || m.type === "error", 60000);
+      probeW.terminate();
+      if (probeMsg.type === "error") throw new Error(`Probe error: ${probeMsg.message}\n${probeMsg.stack || ""}`);
+
+      const N = probeMsg.n;
+      logLine(`Dataset size: N=${N}`);
+
+      // Create ranges
+      const ranges = [];
+      for (let i=0;i<workerCount;i++){
+        const start = Math.floor((i * N) / workerCount);
+        const end   = Math.floor(((i+1) * N) / workerCount);
+        if (end > start) ranges.push([start,end]);
+      }
+      logLine(`Using ${ranges.length} workers (requested ${workerCount}).`);
+
+      // Create workers
+      state.workerURL = makeWorkerURL();
+      state.workers = ranges.map(() => new Worker(state.workerURL));
+
+      // Progress aggregation arrays
+      const aDone = new Array(ranges.length).fill(0);
+      const aTot  = new Array(ranges.length).fill(1);
+      const bDone = new Array(ranges.length).fill(0);
+      const bTot  = new Array(ranges.length).fill(1);
+
+      function updateBars() {
+        const ad = aDone.reduce((s,x)=>s+x, 0);
+        const at = aTot.reduce((s,x)=>s+x, 0);
+        $("pStageA").max = at || 1;
+        $("pStageA").value = ad;
+
+        const bd = bDone.reduce((s,x)=>s+x, 0);
+        const bt = bTot.reduce((s,x)=>s+x, 0);
+        $("pStageB").max = bt || 1;
+        $("pStageB").value = bd;
+      }
+
+      // Attach shared listeners (logging, progress, errors)
+      state.workers.forEach((w, idx) => {
+        w.addEventListener("message", (ev) => {
+          const m = ev.data;
+          if (m?.type === "inited") {
+            logLine(`Worker ${idx} ready: [${m.start}, ${m.end}) n=${m.n}`);
+          } else if (m?.type === "progress") {
+            if (m.phase === "stageA") {
+              aDone[m.workerId] = m.done;
+              aTot[m.workerId] = m.total || 1;
+              setStatus(`Stage A… ${Math.round(100 * ($("pStageA").value / $("pStageA").max))}%`);
+            } else if (m.phase === "stageB") {
+              bDone[m.workerId] = m.done;
+              bTot[m.workerId] = m.total || 1;
+              setStatus(`Stage B… ${Math.round(100 * ($("pStageB").value / $("pStageB").max))}%`);
+            }
+            updateBars();
+          } 
+          else if (m?.type === "log") {
+            logLine("W" + m.workerId + ": " + m.message);
+          }
+          else if (m?.type === "error") {
+            logLine(`❌ Worker ${idx} error: ${m.message}`);
+            if (m.stack) logLine(m.stack);
+          }
+        });
+
+        w.addEventListener("error", (err) => {
+          logLine(`❌ Worker ${idx} crashed: ${err.message || err}`);
+        });
+      });
+
+      // Init workers
+      setStatus("Initializing workers…");
+      logLine("Initializing workers…");
+
+      await Promise.all(state.workers.map((w, idx) => {
+        const [start, end] = ranges[idx];
+        w.postMessage({ type:"init", h5File, start, end, workerId: idx });
+        return onceMessage(w, (m) => m.type === "inited" || m.type === "error", 120000).then((m) => {
+          if (m.type === "error") throw new Error(`Worker init error: ${m.message}\n${m.stack || ""}`);
+        });
+      }));
+
+      if (state.abort) throw new Error("Aborted.");
+
+      // Stage A
+      setStatus("Stage A…");
+      logLine(`Stage A: scoring at ${stageASize}x${stageASize}…`);
+
+      const localTake = Math.max(50, Math.ceil(stageAtopk / ranges.length) * 3);
+
+      const stageALists = await Promise.all(state.workers.map(async (w, idx) => {
+        w.postMessage({ type:"stageA", queryBool64, stageASize, localTake });
+        const m = await onceMessage(w, (mm) => mm.type === "stageA_done" || mm.type === "error", 600000);
+        if (m.type === "error") throw new Error(`Stage A worker ${idx} error: ${m.message}\n${m.stack || ""}`);
+        return m.best;
+      }));
+
+      if (state.abort) throw new Error("Aborted.");
+
+      // Merge shortlist
+      const allCandidates = stageALists.flat();
+      allCandidates.sort((x,y)=>y.s-x.s);
+      const shortlist = allCandidates.slice(0, Math.min(stageAtopk, allCandidates.length));
+      logLine(`Stage A: merged candidates=${allCandidates.length}, shortlist=${shortlist.length}`);
+
+      // Partition shortlist by worker ranges
+      const perWorkerIndices = ranges.map(([start,end]) => {
+        const arr = [];
+        for (const c of shortlist) if (c.gi >= start && c.gi < end) arr.push(c.gi);
+        return arr;
+      });
+
+      // Prepare Stage B progress totals immediately (so bar max is meaningful)
+      for (let i=0;i<perWorkerIndices.length;i++){
+        bTot[i] = Math.max(1, perWorkerIndices[i].length);
+        bDone[i] = 0;
+      }
+      updateBars();
+
+      // Stage B
+      setStatus("Stage B…");
+      logLine(`Stage B: shifted IoU radius=${stageBRadius}, densityPrefilter=${densityPrefilter}`);
+
+      const stageBLists = await Promise.all(state.workers.map(async (w, idx) => {
+        w.postMessage({
+          type:"stageB",
+          queryBool64,
+          stageBRadius,
+          densityPrefilter,
+          indicesGlobal: perWorkerIndices[idx]
+        });
+        const m = await onceMessage(w, (mm) => mm.type === "stageB_done" || mm.type === "error", 1200000);
+        if (m.type === "error") throw new Error(`Stage B worker ${idx} error: ${m.message}\n${m.stack || ""}`);
+        return m.best;
+      }));
+
+      if (state.abort) throw new Error("Aborted.");
+
+      // Merge best-per-codepoint
+      const best = new Map();
+      for (const arr of stageBLists) {
+        for (const [cp, s] of arr) {
+          const prev = best.get(cp);
+          if (prev === undefined || s > prev) best.set(cp, s);
+        }
+      }
+      const ranked = Array.from(best.entries()).sort((a,b)=>b[1]-a[1]);
+
+      // Render
+      $("out").textContent =
+        `N=${N}  workers=${ranges.length}\n` +
+        `StageA: ${stageASize}x${stageASize}, shortlist=${shortlist.length}\n` +
+        `StageB: radius=${stageBRadius}, dilate=${$("dilate").checked}, densityPrefilter=${densityPrefilter}\n\n` +
+        formatResults(ranked, topN);
+
+      setStatus("Done.");
+      logLine("Done.");
+
+    } catch (err) {
+      const msg = String(err?.message || err);
+      logLine(`❌ ${msg}`);
+      setStatus("Error (see log).");
+      $("out").textContent = "Error.\n\n" + msg;
+    } finally {
+      killWorkers();
+      state.running = false;
+      disableUI(false);
+      canRun();
+    }
+  });
+
+</script>
+</body>
+</html>
