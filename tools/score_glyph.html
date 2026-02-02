@@ -238,7 +238,24 @@
 
   function makeWorkerURL() {
     const workerSrc = `
-      self.importScripts("https://cdn.jsdelivr.net/npm/h5wasm@0.8.11/dist/iife/h5wasm.js");
+      const H5WASM_URLS = [
+        "https://cdn.jsdelivr.net/npm/h5wasm@0.8.11/dist/iife/h5wasm.js",
+        "https://unpkg.com/h5wasm@0.8.11/dist/iife/h5wasm.js",
+        ];
+
+        let loaded = false;
+        for (const url of H5WASM_URLS) {
+        try {
+            self.importScripts(url);
+            loaded = true;
+            break;
+        } catch (e) {
+            // keep trying
+        }
+        }
+        if (!loaded) {
+        throw new Error("Failed to load h5wasm from all CDNs: " + H5WASM_URLS.join(", "));
+        }
 
       function reportProgress(phase, workerId, done, total) {
         // throttle: every 200 items + always final
@@ -483,7 +500,26 @@
 
   function makeProbeWorkerURL() {
     const src = `
-      self.importScripts("https://cdn.jsdelivr.net/npm/h5wasm@0.8.11/dist/iife/h5wasm.js");
+
+        const H5WASM_URLS = [
+        "https://cdn.jsdelivr.net/npm/h5wasm@0.8.11/dist/iife/h5wasm.js",
+        "https://unpkg.com/h5wasm@0.8.11/dist/iife/h5wasm.js",
+        ];
+
+        let loaded = false;
+        for (const url of H5WASM_URLS) {
+        try {
+            self.importScripts(url);
+            loaded = true;
+            break;
+        } catch (e) {
+            // keep trying
+        }
+        }
+        if (!loaded) {
+        throw new Error("Failed to load h5wasm from all CDNs: " + H5WASM_URLS.join(", "));
+        }
+
       self.onmessage = async (e) => {
         try {
           const { FS } = await h5wasm.ready;
