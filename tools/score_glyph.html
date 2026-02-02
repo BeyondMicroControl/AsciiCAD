@@ -385,16 +385,14 @@
             const images = f.get('images');
             const labels = f.get('labels');
 
-  
-            // Breadcrumb: dataset metadata (runs before slicing)
             postMessage({
-            type: "log",
+            type: 'log',
             workerId: self._workerId,
             message:
-                "opened OK; images.shape=${JSON.stringify(images.shape)} " +
-                "images.dtype=${String(images.dtype)} " +
-                "labels.shape=${JSON.stringify(labels.shape)} " +
-                "labels.dtype=${String(labels.dtype)}"
+                'opened OK; images.shape=' + JSON.stringify(images.shape) + ' ' +
+                'images.dtype=' + String(images.dtype || images.type || '') + ' ' +
+                'labels.shape=' + JSON.stringify(labels.shape) + ' ' +
+                'labels.dtype=' + String(labels.dtype || labels.type || '')
             });
 
             // read our chunk [start:end)
