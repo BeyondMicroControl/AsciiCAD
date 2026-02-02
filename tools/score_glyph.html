@@ -388,7 +388,9 @@
             const start = msg.start;
             const end = msg.end;
 
-            const imagesChunk = images.slice([[start, end], [], []]).value;
+            const slab = images.slice([[start, end], [0, 64], [0, 64]]);
+            const imagesChunk = slab.value;
+
             const labelsChunk = labels.slice([[start, end]]).value;
 
             const imgU8 = (imagesChunk instanceof Uint8Array) ? imagesChunk : new Uint8Array(imagesChunk.buffer);
