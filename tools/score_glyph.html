@@ -20,7 +20,7 @@
   </style>
 </head>
 <body>
-  <h2>Glyph Matcher v0.4</h2>
+  <h2>Glyph Matcher v0.41</h2>
   <div class="muted">
     Single-file app: load HDF5 (/images, /labels) + query image → Stage A shortlist → Stage B shifted IoU refine.
     Includes minimal progress, worker status, and error logging.
@@ -239,9 +239,10 @@
   function makeWorkerURL() {
     const workerSrc = `
       const H5WASM_URLS = [
-        "https://cdn.jsdelivr.net/npm/h5wasm@0.8.11/dist/iife/h5wasm.js",
-        "https://unpkg.com/h5wasm@0.8.11/dist/iife/h5wasm.js",
         "https://beyondmicrocontrol.github.io/AsciiCAD/res/h5wasm.js",
+        "https://cdn.jsdelivr.net/npm/h5wasm@0.8.11/dist/iife/h5wasm.js",
+        "https://unpkg.com/h5wasm@0.8.11/dist/iife/h5wasm.js"
+        
         ];
 
         let loaded = false;
@@ -503,9 +504,10 @@
     const src = `
 
         const H5WASM_URLS = [
-        "https://cdn.jsdelivr.net/npm/h5wasm@0.8.11/dist/iife/h5wasm.js",
-        "https://unpkg.com/h5wasm@0.8.11/dist/iife/h5wasm.js",
         "https://beyondmicrocontrol.github.io/AsciiCAD/res/h5wasm.js",
+        "https://cdn.jsdelivr.net/npm/h5wasm@0.8.11/dist/iife/h5wasm.js",
+        "https://unpkg.com/h5wasm@0.8.11/dist/iife/h5wasm.js"
+        
         ];
 
         let loaded = false;
