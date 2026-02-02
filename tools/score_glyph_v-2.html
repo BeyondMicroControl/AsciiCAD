@@ -17,19 +17,13 @@
     .muted { opacity: .75; font-size: 12px; }
     progress { width: 100%; height: 16px; }
     code { background: #f6f6f6; padding: 0 4px; border-radius: 4px; }
-
-    .vizCell { border:1px solid #ddd; border-radius:10px; padding:8px; }
-    .vizCap  { font-size:12px; opacity:.8; margin-top:6px; display:flex; justify-content:space-between; gap:8px; }
-    .vizCanvas { width:100%; height:auto; image-rendering: pixelated; border-radius:8px; border:1px solid #eee; }
-    dialog::backdrop { background: rgba(0,0,0,0.25); }
-
   </style>
 </head>
 <body>
-  <h2>Glyph Matcher v0.44</h2>
+  <h2>Glyph Matcher v0.42</h2>
   <div class="muted">
     Single-file app: load HDF5 (/images, /labels) + query image → Stage A shortlist → Stage B shifted IoU refine.
-    Includes minimal progress, worker status, error logging, and a Top-64 overlay visualizer.
+    Includes minimal progress, worker status, and error logging.
   </div>
 
   <div class="row" style="margin-top:12px;">
@@ -104,26 +98,6 @@
   <h3>Results</h3>
   <pre id="out">Select a dataset + query image.</pre>
 
-  <button id="openViz" disabled style="margin-top:8px;">Show Top 64 overlay</button>
-
-  <dialog id="vizDlg" style="width:min(1100px, 96vw); border:1px solid #ccc; border-radius:12px; padding:12px;">
-    <form method="dialog" style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 10px 0;">
-      <div class="muted">
-        Top 64 templates with <span style="color:#b00;font-weight:600;">query mask</span> overlay (red, semi-transparent)
-      </div>
-      <div style="display:flex; gap:8px; align-items:center;">
-        <label class="muted" style="display:flex; gap:8px; align-items:center; user-select:none;">
-          <input id="vizShowBase" type="checkbox" checked />
-          Show template grayscale
-        </label>
-        <button id="closeViz">Close</button>
-      </div>
-    </form>
-
-    <div id="vizGrid" style="display:grid; grid-template-columns: repeat(8, 1fr); gap:10px;"></div>
-  </dialog>
-
-
   <h3>Log</h3>
   <pre id="log" style="max-height: 240px; overflow:auto;">(empty)</pre>
 
@@ -137,14 +111,7 @@
     abort: false,
     workers: [],
     workerURL: null,
-    probeURL: null,
-
-    // Visualization cache (so you can re-open the popup after workers terminate)
-    viz: {
-      top64: null,          // [{cp, s, gi, pol}, ...]
-      templatesByGi: null,  // Map gi -> {gi, cp, s, buf:ArrayBuffer}
-      queryBool64: null     // Uint8Array(4096)
-    }
+    probeURL: null
   };
 
   function logLine(s) {
@@ -418,7 +385,6 @@
             const images = f.get('images');
             const labels = f.get('labels');
 
-  
             postMessage({
             type: 'log',
             workerId: self._workerId,
@@ -438,13 +404,13 @@
             // Read images chunk robustly
             let imagesChunkObj;
             if (imgShape.length === 3) {
-              // (N,64,64)
-              imagesChunkObj = images.slice([[start, end], [0, imgShape[1]], [0, imgShape[2]]]);
+            // (N,64,64)
+            imagesChunkObj = images.slice([[start, end], [0, imgShape[1]], [0, imgShape[2]]]);
             } else if (imgShape.length === 2) {
-              // (N,4096) (flattened)
-              imagesChunkObj = images.slice([[start, end], [0, imgShape[1]]]);
+            // (N,4096) (flattened)
+            imagesChunkObj = images.slice([[start, end], [0, imgShape[1]]]);
             } else {
-              throw new Error("Unsupported /images rank: " + imgShape.length + " shape=" + JSON.stringify(imgShape));
+            throw new Error("Unsupported /images rank: " + imgShape.length + " shape=" + JSON.stringify(imgShape));
             }
 
             // h5wasm usually returns a typed array in .value, but guard anyway:
@@ -508,7 +474,7 @@
             const total = msg.indicesGlobal.length;
             reportProgress("stageB", self._workerId, 0, total || 1);
 
-            const bestScore = new Map(); // cp -> { s, gi }
+            const bestScore = new Map(); // cp -> score
 
             for (let j=0; j<total; j++) {
               const gi = msg.indicesGlobal[j];
@@ -538,47 +504,23 @@
               const tW = templateToBool(tU8, 'white');
               const tB = templateToBool(tU8, 'black');
 
-                const s1 = bestIoUOverShifts(tW, q, radius);
-                const s2 = bestIoUOverShifts(tB, q, radius);
-                const pol = (s1 >= s2) ? 'white' : 'black';
-                const s   = (s1 >= s2) ? s1 : s2;
+              const s1 = bestIoUOverShifts(tW, q, radius);
+              const s2 = bestIoUOverShifts(tB, q, radius);
+              const s  = s1 >= s2 ? s1 : s2;
 
-                const prev = bestScore.get(cp);
-                if (prev === undefined || s > prev.s) bestScore.set(cp, { s, gi, pol });
+              const prev = bestScore.get(cp);
+              if (prev === undefined || s > prev) bestScore.set(cp, s);
 
               reportProgress("stageB", self._workerId, j+1, total);
             }
 
             const out = [];
-            for (const [cp, obj] of bestScore.entries()) out.push([cp, obj.s, obj.gi, obj.pol]);
+            for (const [cp, s] of bestScore.entries()) out.push([cp, s]);
             out.sort((a,b)=>b[1]-a[1]);
 
             postMessage({ type:'stageB_done', workerId: self._workerId, best: out });
             return;
           }
-
-          if (msg.type === 'get_templates') {
-            const { imagesU8, labelsI32, start } = self._chunk;
-            const req = msg.items || []; // [{gi, cp, s}]
-            const out = [];
-
-            for (const it of req) {
-              const gi = it.gi;
-              const i = gi - start;
-              if (i < 0 || i >= labelsI32.length) continue;
-
-              const base = i * 4096;
-              const copy = new Uint8Array(4096);
-              copy.set(imagesU8.subarray(base, base + 4096));
-
-              out.push({ gi, cp: it.cp, s: it.s, buf: copy.buffer });
-            }
-
-            // Transfer buffers to avoid copying
-            postMessage({ type:'templates', workerId:self._workerId, items: out }, out.map(x => x.buf));
-            return;
-          }
-
 
           postMessage({ type:'error', message:'Unknown message type: ' + msg.type, stack:'' });
         } catch (err) {
@@ -647,165 +589,6 @@
     return out;
   }
 
-  // ---------- Visualization: Top64 overlay grid ----------
-
-  function cpToLabel(cp) {
-    let ch = " ";
-    try { ch = String.fromCodePoint(cp); } catch {}
-    const hex = cp.toString(16).toUpperCase().padStart(4, "0");
-    const disp = (ch && ch >= " " && ch !== "\u007f") ? ch : " ";
-    return { disp, hex };
-  }
-
-  function makeCanvasTile() {
-    const wrap = document.createElement("div");
-    wrap.className = "vizCell";
-
-    const c = document.createElement("canvas");
-    c.width = 64;
-    c.height = 64;
-    c.className = "vizCanvas";
-
-    const cap = document.createElement("div");
-    cap.className = "vizCap";
-
-    
-
-
-    wrap.appendChild(c);
-    wrap.appendChild(cap);
-    return { wrap, c, cap };
-  }
-
-function drawTemplateWithQueryOverlay(canvas, templateU8, queryBool64, pol, showBase=true) {
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  const w = 64, h = 64;
-
-  // Base: grayscale template OR plain white background
-  const base = ctx.createImageData(w, h);
-  for (let i = 0; i < w*h; i++) {
-    const v = showBase ? templateU8[i] : 255;
-    const p = i * 4;
-    base.data[p+0] = v;
-    base.data[p+1] = v;
-    base.data[p+2] = v;
-    base.data[p+3] = 255;
-  }
-  ctx.putImageData(base, 0, 0);
-
-  // Training template "ink mask" rendered as solid black (so it's visible)
-  // Choose ink polarity the same way StageB chose it.
-  const ink = ctx.createImageData(w, h);
-  for (let i = 0; i < w*h; i++) {
-    const pix = templateU8[i];
-    const isInk = (pol === 'white') ? (pix > 128) : (pix < 128);
-    if (isInk) {
-      const p = i * 4;
-      ink.data[p+0] = 0;
-      ink.data[p+1] = 0;
-      ink.data[p+2] = 0;
-      ink.data[p+3] = 255;
-    }
-  }
-  ctx.putImageData(ink, 0, 0);
-
-  // Query mask overlay in red (~35% alpha)
-  const ov = ctx.createImageData(w, h);
-  for (let i = 0; i < w*h; i++) {
-    if (queryBool64[i]) {
-      const p = i * 4;
-      ov.data[p+0] = 255;
-      ov.data[p+1] = 0;
-      ov.data[p+2] = 0;
-      ov.data[p+3] = 90;
-    }
-  }
-  ctx.putImageData(ov, 0, 0);
-}
-
-  function renderVizGrid() {
-    const dlg = $("vizDlg");
-    const grid = $("vizGrid");
-    const showBase = $("vizShowBase").checked;
-
-    if (!state.viz.top64 || !state.viz.templatesByGi || !state.viz.queryBool64) {
-      logLine("Viz: nothing cached to display.");
-      return;
-    }
-
-    grid.innerHTML = "";
-
-    for (const it of state.viz.top64) {
-      const got = state.viz.templatesByGi.get(it.gi);
-      if (!got) continue;
-
-      const { wrap, c, cap } = makeCanvasTile();
-      const tpl = new Uint8Array(got.buf);
-      drawTemplateWithQueryOverlay(c, tpl, state.viz.queryBool64, it.pol, showBase);
-
-      const { disp, hex } = cpToLabel(it.cp);
-      cap.innerHTML =
-        "<span><b>" + disp + "</b> U+" + hex + " (" + it.pol + ")</span>" +
-        "<span>" + (it.s*100).toFixed(2) + "%</span>";
-
-      grid.appendChild(wrap);
-    }
-
-    dlg.showModal();
-  }
-
-  async function fetchTemplatesForTop64(top64, ranges) {
-    // Partition requests per worker range
-    const perWorker = ranges.map(() => []);
-    for (const it of top64) {
-      for (let wi = 0; wi < ranges.length; wi++) {
-        const [start, end] = ranges[wi];
-        if (it.gi >= start && it.gi < end) {
-          perWorker[wi].push({ gi: it.gi, cp: it.cp, s: it.s });
-          break;
-        }
-      }
-    }
-
-    // Ask each worker for its needed templates (buffers are transferred back)
-    const responses = await Promise.all(state.workers.map(async (w, wi) => {
-      w.postMessage({ type: "get_templates", items: perWorker[wi] });
-      const msg = await onceMessage(w, (m) => m.type === "templates" || m.type === "error", 120000);
-      if (msg.type === "error") throw new Error("get_templates worker " + wi + " error: " + msg.message + "\n" + (msg.stack || ""));
-      return msg.items || [];
-    }));
-
-    const byGi = new Map();
-    for (const arr of responses) {
-      for (const item of arr) {
-        byGi.set(item.gi, item); // {gi,cp,s,buf}
-      }
-    }
-    return byGi;
-  }
-
-  async function prepareAndShowViz(top64, queryBool64, ranges) {
-    // Copy query mask (so it survives after workers are killed)
-    const qCopy = new Uint8Array(queryBool64.length);
-    qCopy.set(queryBool64);
-
-    setStatus("Fetching top-64 templates for visualization…");
-    logLine("Viz: fetching top-64 templates…");
-
-    const templatesByGi = await fetchTemplatesForTop64(top64, ranges);
-
-    // Cache
-    state.viz.top64 = top64;
-    state.viz.templatesByGi = templatesByGi;
-    state.viz.queryBool64 = qCopy;
-
-    $("openViz").disabled = false;
-
-    // Render + open dialog
-    renderVizGrid();
-    setStatus("Done.");
-  }
-
   function onceMessage(worker, predicate, timeoutMs=120000) {
     return new Promise((resolve, reject) => {
       const t = setTimeout(() => {
@@ -856,24 +639,6 @@ function drawTemplateWithQueryOverlay(canvas, templateU8, queryBool64, pol, show
     setStatus("Stopped.");
   });
 
-
-  // Viz UI: re-open cached visualization + toggle base
-  $("openViz").addEventListener("click", () => {
-    if (!state.viz.top64) {
-      logLine("Viz: no cached results yet. Run a match first.");
-      return;
-    }
-    renderVizGrid();
-  });
-
-  $("vizShowBase").addEventListener("change", () => {
-    // Re-render using cached buffers (fast)
-    const dlg = $("vizDlg");
-    if (!dlg.open) return;
-    renderVizGrid();
-  });
-
-
   $("run").addEventListener("click", async () => {
     const h5File = state.h5File;
     const queryBool64 = state.queryBool64;
@@ -886,7 +651,6 @@ function drawTemplateWithQueryOverlay(canvas, templateU8, queryBool64, pol, show
     $("out").textContent = "Working…";
     $("log").textContent = "(empty)";
     resetProgress();
-    $("openViz").disabled = true;
     setStatus("Starting…");
     logLine("Run started.");
 
@@ -949,8 +713,6 @@ function drawTemplateWithQueryOverlay(canvas, templateU8, queryBool64, pol, show
           const m = ev.data;
           if (m?.type === "inited") {
             logLine(`Worker ${idx} ready: [${m.start}, ${m.end}) n=${m.n}`);
-          } else if (m?.type === "log") {
-            logLine("W" + m.workerId + ": " + m.message);
           } else if (m?.type === "progress") {
             if (m.phase === "stageA") {
               aDone[m.workerId] = m.done;
@@ -962,7 +724,11 @@ function drawTemplateWithQueryOverlay(canvas, templateU8, queryBool64, pol, show
               setStatus(`Stage B… ${Math.round(100 * ($("pStageB").value / $("pStageB").max))}%`);
             }
             updateBars();
-          } else if (m?.type === "error") {
+          } 
+          else if (m?.type === "log") {
+            logLine("W" + m.workerId + ": " + m.message);
+          }
+          else if (m?.type === "error") {
             logLine(`❌ Worker ${idx} error: ${m.message}`);
             if (m.stack) logLine(m.stack);
           }
@@ -1041,33 +807,22 @@ function drawTemplateWithQueryOverlay(canvas, templateU8, queryBool64, pol, show
 
       if (state.abort) throw new Error("Aborted.");
 
-      // Merge best-per-codepoint (keep also gi for visualization)
-      const best = new Map(); // cp -> { s, gi }
+      // Merge best-per-codepoint
+      const best = new Map();
       for (const arr of stageBLists) {
-        for (const [cp, s, gi, pol] of arr) {
-        const prev = best.get(cp);
-        if (prev === undefined || s > prev.s) best.set(cp, { s, gi, pol });
+        for (const [cp, s] of arr) {
+          const prev = best.get(cp);
+          if (prev === undefined || s > prev) best.set(cp, s);
         }
       }
-        const ranked = Array.from(best.entries())
-        .map(([cp, obj]) => ({ cp, s: obj.s, gi: obj.gi, pol: obj.pol }))
-        .sort((a,b)=>b.s-a.s);
-
+      const ranked = Array.from(best.entries()).sort((a,b)=>b[1]-a[1]);
 
       // Render
       $("out").textContent =
         `N=${N}  workers=${ranges.length}\n` +
         `StageA: ${stageASize}x${stageASize}, shortlist=${shortlist.length}\n` +
         `StageB: radius=${stageBRadius}, dilate=${$("dilate").checked}, densityPrefilter=${densityPrefilter}\n\n` +
-        formatResults(ranked.map(x => [x.cp, x.s]), topN);
-
-      // Prepare and show the Top-64 overlay popup (diagnostics)
-      const top64 = ranked.slice(0, 64);
-      if (top64.length) {
-        await prepareAndShowViz(top64, queryBool64, ranges);
-      } else {
-        $("openViz").disabled = true;
-      }
+        formatResults(ranked, topN);
 
       setStatus("Done.");
       logLine("Done.");
