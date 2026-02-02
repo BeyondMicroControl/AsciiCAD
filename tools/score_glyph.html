@@ -37,6 +37,13 @@
       <label>HDF5 dataset (.h5)</label>
       <input id="h5" type="file" accept=".h5,.hdf5,.nxs,.hdf" />
       <div class="muted">Must contain <code>/images</code> (N,64,64) uint8 and <code>/labels</code> (N) ints.</div>
+
+
+    <label class="muted" style="display:flex;gap:8px;align-items:center; user-select:none;">
+      <input id="flipY" type="checkbox" checked />
+      Flip Y (dataset stored upside-down)
+    </label>
+
     </div>
 
     <div class="card">
@@ -224,6 +231,17 @@
     return out;
   }
 
+  function flipYBool64(x) {
+    // x: Uint8Array(4096), row-major. Returns a NEW array with rows reversed.
+    const out = new Uint8Array(64 * 64);
+    for (let y = 0; y < 64; y++) {
+      const srcRow = (63 - y) * 64;
+      const dstRow = y * 64;
+      out.set(x.subarray(srcRow, srcRow + 64), dstRow);
+    }
+    return out;
+  }
+
   function dilate3x3Bool64(x) {
     const out = new Uint8Array(64*64);
     for (let y=0;y<64;y++){
@@ -254,6 +272,7 @@
     if (!f) { state.queryBool64 = null; canRun(); return; }
     const g = await loadQueryFile(f);
     let qb = toBoolInk64(g, true);
+    if (document.getElementById("flipY").checked) qb = flipYBool64(qb);
     if ($("dilate").checked) qb = dilate3x3Bool64(qb);
     state.queryBool64 = qb;
     canRun();
@@ -264,6 +283,7 @@
     if (!f) return;
     const g = await loadQueryFile(f);
     let qb = toBoolInk64(g, true);
+    if (document.getElementById("flipY").checked) qb = flipYBool64(qb);
     if ($("dilate").checked) qb = dilate3x3Bool64(qb);
     state.queryBool64 = qb;
     canRun();
@@ -464,6 +484,26 @@
             const labI32 = (labelsChunk instanceof Int32Array)
             ? labelsChunk
             : new Int32Array(labelsChunk.buffer);
+
+
+            if (msg.type === "get_label_templates") {
+              const { imagesU8, labelsI32, start } = self._chunk;
+              const cp = msg.cp;
+              const out = [];
+
+              for (let i = 0; i < labelsI32.length; i++) {
+                if (labelsI32[i] !== cp) continue;
+
+                const base = i * 4096;
+                const copy = new Uint8Array(4096);
+                copy.set(imagesU8.subarray(base, base + 4096));
+
+                out.push({ gi: start + i, buf: copy.buffer });
+              }
+
+              postMessage({ type: "label_templates", cp, items: out }, out.map(x => x.buf));
+              return;
+            }
 
 
             self._chunk = { start, end, imagesU8: imgU8, labelsI32: labI32 };
@@ -676,6 +716,15 @@
     wrap.appendChild(cap);
     return { wrap, c, cap };
   }
+
+  wrap.onclick = async () => {
+  const variants = await fetchAllVariantsForCp(it.cp);
+  const avg = averageTemplates(variants);
+  drawAvgHeatmapWithOverlay(document.getElementById("aggCanvas"), avg, state.viz.queryBool64, true);
+
+  document.getElementById("aggMeta").textContent =
+    `Aggregated ${variants.length} variants for U+${it.cp.toString(16).toUpperCase().padStart(4,"0")}`;
+};
 
 function drawTemplateWithQueryOverlay(canvas, templateU8, queryBool64, pol, showBase=true) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -890,6 +939,72 @@ function drawTemplateWithQueryOverlay(canvas, templateU8, queryBool64, pol, show
     setStatus("Starting…");
     logLine("Run started.");
 
+
+    // 3B
+    async function fetchAllVariantsForCp(cp) {
+      const parts = await Promise.all(state.workers.map(async (w) => {
+        w.postMessage({ type: "get_label_templates", cp });
+        const m = await onceMessage(w, mm => mm.type === "label_templates" || mm.type === "error", 120000);
+        if (m.type === "error") throw new Error(m.message);
+        return m.items || [];
+      }));
+      return parts.flat();
+    }
+
+    function averageTemplates(items) {
+      const sum = new Uint32Array(4096);
+      for (const it of items) {
+        const u8 = new Uint8Array(it.buf);
+        for (let i = 0; i < 4096; i++) sum[i] += u8[i];
+      }
+      const avg = new Uint8Array(4096);
+      for (let i = 0; i < 4096; i++) avg[i] = Math.round(sum[i] / items.length);
+      return avg;
+    }
+
+
+    function drawAvgHeatmapWithOverlay(canvas, avgU8, queryBool64, flipY=true)
+    {
+      const W = 64, H = 64;
+      const tmp = document.createElement("canvas");
+      tmp.width = W; tmp.height = H;
+      const tctx = tmp.getContext("2d", { willReadFrequently: true });
+
+      const img = tctx.createImageData(W, H);
+
+      for (let y=0; y<H; y++) {
+        const sy = flipY ? (H - 1 - y) : y;
+        for (let x=0; x<W; x++) {
+          const src = sy*W + x;
+          const dst = y*W + x;
+          const p = dst*4;
+
+          // base heatmap: avg intensity
+          const v = avgU8[src];
+          img.data[p+0] = v;
+          img.data[p+1] = v;
+          img.data[p+2] = v;
+          img.data[p+3] = 255;
+
+          // overlay query in red (semi transparent)
+          if (queryBool64[src]) {
+            img.data[p+0] = 255;
+            img.data[p+1] = 0;
+            img.data[p+2] = 0;
+            img.data[p+3] = 90; // alpha
+          }
+        }
+      }
+
+      tctx.putImageData(img, 0, 0);
+
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(tmp, 0, 0, canvas.width, canvas.height);
+    }
+
+    // MAIN THREAD
     try {
       const topN = parseInt($("topN").value, 10);
       const stageASize = parseInt($("stageAsize").value, 10);
