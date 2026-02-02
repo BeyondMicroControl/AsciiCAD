@@ -386,6 +386,17 @@
             const labels = f.get('labels');
 
   
+            // Breadcrumb: dataset metadata (runs before slicing)
+            postMessage({
+            type: "log",
+            workerId: self._workerId,
+            message:
+                `opened OK; images.shape=${JSON.stringify(images.shape)} ` +
+                `images.dtype=${String(images.dtype)} ` +
+                `labels.shape=${JSON.stringify(labels.shape)} ` +
+                `labels.dtype=${String(labels.dtype)}`
+            });
+
             // read our chunk [start:end)
             const start = msg.start;
             const end = msg.end;
