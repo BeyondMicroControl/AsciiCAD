@@ -724,7 +724,11 @@
               setStatus(`Stage B… ${Math.round(100 * ($("pStageB").value / $("pStageB").max))}%`);
             }
             updateBars();
-          } else if (m?.type === "error") {
+          } 
+          else if (m?.type === "log") {
+            logLine("W" + m.workerId + ": " + m.message);
+          }
+          else if (m?.type === "error") {
             logLine(`❌ Worker ${idx} error: ${m.message}`);
             if (m.stack) logLine(m.stack);
           }
