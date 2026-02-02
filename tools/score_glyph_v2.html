@@ -26,7 +26,7 @@
   </style>
 </head>
 <body>
-  <h2>Glyph Matcher v0.43</h2>
+  <h2>Glyph Matcher v0.44</h2>
   <div class="muted">
     Single-file app: load HDF5 (/images, /labels) + query image → Stage A shortlist → Stage B shifted IoU refine.
     Includes minimal progress, worker status, error logging, and a Top-64 overlay visualizer.
@@ -539,18 +539,19 @@
               const tW = templateToBool(tU8, 'white');
               const tB = templateToBool(tU8, 'black');
 
-              const s1 = bestIoUOverShifts(tW, q, radius);
-              const s2 = bestIoUOverShifts(tB, q, radius);
-              const s  = s1 >= s2 ? s1 : s2;
+                const s1 = bestIoUOverShifts(tW, q, radius);
+                const s2 = bestIoUOverShifts(tB, q, radius);
+                const pol = (s1 >= s2) ? 'white' : 'black';
+                const s   = (s1 >= s2) ? s1 : s2;
 
-              const prev = bestScore.get(cp);
-              if (prev === undefined || s > prev.s) bestScore.set(cp, { s, gi });
+                const prev = bestScore.get(cp);
+                if (prev === undefined || s > prev.s) bestScore.set(cp, { s, gi, pol });
 
               reportProgress("stageB", self._workerId, j+1, total);
             }
 
             const out = [];
-            for (const [cp, obj] of bestScore.entries()) out.push([cp, obj.s, obj.gi]);
+            for (const [cp, obj] of bestScore.entries()) out.push([cp, obj.s, obj.gi, obj.pol]);
             out.sort((a,b)=>b[1]-a[1]);
 
             postMessage({ type:'stageB_done', workerId: self._workerId, best: out });
@@ -669,40 +670,60 @@
     const cap = document.createElement("div");
     cap.className = "vizCap";
 
+    cap.innerHTML =
+    "<span><b>" + disp + "</b> U+" + hex + " (" + it.pol + ")</span>" +
+    "<span>" + (it.s*100).toFixed(2) + "%</span>";
+
     wrap.appendChild(c);
     wrap.appendChild(cap);
     return { wrap, c, cap };
   }
 
-  function drawTemplateWithQueryOverlay(canvas, templateU8, queryBool64, showBase=true) {
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    const w = 64, h = 64;
+function drawTemplateWithQueryOverlay(canvas, templateU8, queryBool64, pol, showBase=true) {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const w = 64, h = 64;
 
-    // Base grayscale (template)
-    const base = ctx.createImageData(w, h);
-    for (let i = 0; i < w*h; i++) {
-      const v = showBase ? templateU8[i] : 255;
-      const p = i * 4;
-      base.data[p+0] = v;
-      base.data[p+1] = v;
-      base.data[p+2] = v;
-      base.data[p+3] = 255;
-    }
-    ctx.putImageData(base, 0, 0);
-
-    // Overlay query mask in red (~35% alpha)
-    const ov = ctx.createImageData(w, h);
-    for (let i = 0; i < w*h; i++) {
-      if (queryBool64[i]) {
-        const p = i * 4;
-        ov.data[p+0] = 255;
-        ov.data[p+1] = 0;
-        ov.data[p+2] = 0;
-        ov.data[p+3] = 90;
-      }
-    }
-    ctx.putImageData(ov, 0, 0);
+  // Base: grayscale template OR plain white background
+  const base = ctx.createImageData(w, h);
+  for (let i = 0; i < w*h; i++) {
+    const v = showBase ? templateU8[i] : 255;
+    const p = i * 4;
+    base.data[p+0] = v;
+    base.data[p+1] = v;
+    base.data[p+2] = v;
+    base.data[p+3] = 255;
   }
+  ctx.putImageData(base, 0, 0);
+
+  // Training template "ink mask" rendered as solid black (so it's visible)
+  // Choose ink polarity the same way StageB chose it.
+  const ink = ctx.createImageData(w, h);
+  for (let i = 0; i < w*h; i++) {
+    const pix = templateU8[i];
+    const isInk = (pol === 'white') ? (pix > 128) : (pix < 128);
+    if (isInk) {
+      const p = i * 4;
+      ink.data[p+0] = 0;
+      ink.data[p+1] = 0;
+      ink.dataHook.data[p+2] = 0;
+      ink.data[p+3] = 255;
+    }
+  }
+  ctx.putImageData(ink, 0, 0);
+
+  // Query mask overlay in red (~35% alpha)
+  const ov = ctx.createImageData(w, h);
+  for (let i = 0; i < w*h; i++) {
+    if (queryBool64[i]) {
+      const p = i * 4;
+      ov.data[p+0] = 255;
+      ov.data[p+1] = 0;
+      ov.data[p+2] = 0;
+      ov.data[p+3] = 90;
+    }
+  }
+  ctx.putImageData(ov, 0, 0);
+}
 
   function renderVizGrid() {
     const dlg = $("vizDlg");
@@ -722,7 +743,7 @@
 
       const { wrap, c, cap } = makeCanvasTile();
       const tpl = new Uint8Array(got.buf);
-      drawTemplateWithQueryOverlay(c, tpl, state.viz.queryBool64, showBase);
+      drawTemplateWithQueryOverlay(c, tpl, state.viz.queryBool64, it.pol, showBase);
 
       const { disp, hex } = cpToLabel(it.cp);
       cap.innerHTML =
@@ -1025,13 +1046,13 @@
       // Merge best-per-codepoint (keep also gi for visualization)
       const best = new Map(); // cp -> { s, gi }
       for (const arr of stageBLists) {
-        for (const [cp, s, gi] of arr) {
-          const prev = best.get(cp);
-          if (prev === undefined || s > prev.s) best.set(cp, { s, gi });
+        for (const [cp, s, gi, pol] of arr) {
+        const prev = best.get(cp);
+        if (prev === undefined || s > prev.s) best.set(cp, { s, gi, pol });
         }
       }
-      const ranked = Array.from(best.entries())
-        .map(([cp, obj]) => ({ cp, s: obj.s, gi: obj.gi }))
+        const ranked = Array.from(best.entries())
+        .map(([cp, obj]) => ({ cp, s: obj.s, gi: obj.gi, pol: obj.pol }))
         .sort((a,b)=>b.s-a.s);
 
 
