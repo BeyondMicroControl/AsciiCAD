@@ -20,7 +20,7 @@
   </style>
 </head>
 <body>
-  <h2>Glyph Matcher v0.42</h2>
+  <h2>Glyph Matcher v0.41</h2>
   <div class="muted">
     Single-file app: load HDF5 (/images, /labels) + query image → Stage A shortlist → Stage B shifted IoU refine.
     Includes minimal progress, worker status, and error logging.
@@ -403,9 +403,6 @@
             } else {
             throw new Error("Unsupported /images rank: " + imgShape.length + " shape=" + JSON.stringify(imgShape));
             }
-
-            postMessage({ type:"log", workerId:self._workerId, message:'images.shape=${JSON.stringify(images.shape)} labels.shape=${JSON.stringify(labels.shape)}' });
-
 
             // h5wasm usually returns a typed array in .value, but guard anyway:
             let imagesChunk = imagesChunkObj?.value ?? imagesChunkObj;
