@@ -392,6 +392,8 @@
 
             const imgShape = images.shape; // e.g. [N,64,64] or [N,4096]
 
+            postMessage({ type:"log", workerId:self._workerId, message:"images.shape=${JSON.stringify(images.shape)} labels.shape=${JSON.stringify(labels.shape)}" });
+
             // Read images chunk robustly
             let imagesChunkObj;
             if (imgShape.length === 3) {
@@ -425,7 +427,7 @@
 
             self._chunk = { start, end, imagesU8: imgU8, labelsI32: labI32 };
 
-            postMessage({ type:"log", workerId:self._workerId, message:"images.shape=${JSON.stringify(images.shape)} labels.shape=${JSON.stringify(labels.shape)}" });
+            postMessage({ type:'inited', workerId: self._workerId, start, end, n: end-start });
             return;
           }
 
