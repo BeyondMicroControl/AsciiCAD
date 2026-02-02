@@ -385,16 +385,43 @@
             const images = f.get('images');
             const labels = f.get('labels');
 
+  
+            // read our chunk [start:end)
             const start = msg.start;
             const end = msg.end;
 
-            const slab = images.slice([[start, end], [0, 64], [0, 64]]);
-            const imagesChunk = slab.value;
+            const imgShape = images.shape; // e.g. [N,64,64] or [N,4096]
 
-            const labelsChunk = labels.slice([[start, end]]).value;
+            // Read images chunk robustly
+            let imagesChunkObj;
+            if (imgShape.length === 3) {
+            // (N,64,64)
+            imagesChunkObj = images.slice([[start, end], [0, imgShape[1]], [0, imgShape[2]]]);
+            } else if (imgShape.length === 2) {
+            // (N,4096) (flattened)
+            imagesChunkObj = images.slice([[start, end], [0, imgShape[1]]]);
+            } else {
+            throw new Error("Unsupported /images rank: " + imgShape.length + " shape=" + JSON.stringify(imgShape));
+            }
 
-            const imgU8 = (imagesChunk instanceof Uint8Array) ? imagesChunk : new Uint8Array(imagesChunk.buffer);
-            const labI32 = (labelsChunk instanceof Int32Array) ? labelsChunk : new Int32Array(labelsChunk.buffer);
+            // h5wasm usually returns a typed array in .value, but guard anyway:
+            let imagesChunk = imagesChunkObj?.value ?? imagesChunkObj;
+            if (!imagesChunk) throw new Error("images.slice(...) returned empty result");
+
+            // Normalize to Uint8Array
+            const imgU8 = (imagesChunk instanceof Uint8Array)
+            ? imagesChunk
+            : new Uint8Array(imagesChunk.buffer);
+
+            // Labels chunk (this one is fine)
+            const labelsChunkObj = labels.slice([[start, end]]);
+            const labelsChunk = labelsChunkObj?.value ?? labelsChunkObj;
+            if (!labelsChunk) throw new Error("labels.slice(...) returned empty result");
+
+            const labI32 = (labelsChunk instanceof Int32Array)
+            ? labelsChunk
+            : new Int32Array(labelsChunk.buffer);
+
 
             self._chunk = { start, end, imagesU8: imgU8, labelsI32: labI32 };
 
