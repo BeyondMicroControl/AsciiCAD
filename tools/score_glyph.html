@@ -714,17 +714,14 @@
 
     wrap.appendChild(c);
     wrap.appendChild(cap);
+
+
+
+
+
     return { wrap, c, cap };
   }
 
-  wrap.onclick = async () => {
-  const variants = await fetchAllVariantsForCp(it.cp);
-  const avg = averageTemplates(variants);
-  drawAvgHeatmapWithOverlay(document.getElementById("aggCanvas"), avg, state.viz.queryBool64, true);
-
-  document.getElementById("aggMeta").textContent =
-    `Aggregated ${variants.length} variants for U+${it.cp.toString(16).toUpperCase().padStart(4,"0")}`;
-};
 
 function drawTemplateWithQueryOverlay(canvas, templateU8, queryBool64, pol, showBase=true) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -789,6 +786,18 @@ function drawTemplateWithQueryOverlay(canvas, templateU8, queryBool64, pol, show
       if (!got) continue;
 
       const { wrap, c, cap } = makeCanvasTile();
+
+
+      wrap.onclick = async () => 
+      {
+        const variants = await fetchAllVariantsForCp(it.cp);
+        const avg = averageTemplates(variants);
+        drawAvgHeatmapWithOverlay(document.getElementById("aggCanvas"), avg, state.viz.queryBool64, true);
+
+        document.getElementById("aggMeta").textContent =
+          `Aggregated ${variants.length} variants for U+${it.cp.toString(16).toUpperCase().padStart(4,"0")}`;
+      };
+
       const tpl = new Uint8Array(got.buf);
       drawTemplateWithQueryOverlay(c, tpl, state.viz.queryBool64, it.pol, showBase);
 
