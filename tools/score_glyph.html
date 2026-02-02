@@ -6,28 +6,31 @@
   <title>Glyph Match (HDF5 + Workers)</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 16px; }
-    .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
     .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
     label { display:block; font-size: 12px; opacity: .8; margin-bottom: 4px; }
-    input[type="number"] { width: 100px; }
+    input[type="number"] { width: 110px; }
     pre { white-space: pre-wrap; background: #0b1020; color: #d7e2ff; padding: 12px; border-radius: 10px; }
     canvas { border: 1px solid #ddd; border-radius: 8px; }
     button { padding: 10px 14px; border-radius: 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
     button:disabled { opacity: .5; cursor: not-allowed; }
     .muted { opacity: .75; font-size: 12px; }
+    progress { width: 100%; height: 16px; }
+    code { background: #f6f6f6; padding: 0 4px; border-radius: 4px; }
   </style>
 </head>
 <body>
   <h2>Glyph Matcher (browser)</h2>
   <div class="muted">
-    Implements the same 2-stage approach as your Python script: Stage A shortlist, Stage B shifted IoU refinement.
+    Single-file app: load HDF5 (/images, /labels) + query image → Stage A shortlist → Stage B shifted IoU refine.
+    Includes minimal progress, worker status, and error logging.
   </div>
 
   <div class="row" style="margin-top:12px;">
     <div class="card">
       <label>HDF5 dataset (.h5)</label>
       <input id="h5" type="file" accept=".h5,.hdf5,.nxs,.hdf" />
-      <div class="muted">Must contain datasets: <code>/images</code> (N,64,64) uint8 and <code>/labels</code> (N) ints.</div>
+      <div class="muted">Must contain <code>/images</code> (N,64,64) uint8 and <code>/labels</code> (N) ints.</div>
     </div>
 
     <div class="card">
@@ -36,25 +39,25 @@
       <div style="margin-top:8px;">
         <canvas id="qprev" width="128" height="128"></canvas>
       </div>
-      <div class="muted">Will be resized to 64×64 (nearest) and binarized.</div>
+      <div class="muted">Resized to 64×64 (nearest) and binarized; optionally dilated.</div>
     </div>
 
-    <div class="card">
+    <div class="card" style="min-width: 520px;">
       <div class="row">
         <div>
           <label>Top N</label>
           <input id="topN" type="number" min="1" max="512" value="64" />
         </div>
         <div>
-          <label>StageA size</label>
+          <label>Stage A size</label>
           <input id="stageAsize" type="number" min="4" max="32" value="16" />
         </div>
         <div>
-          <label>StageA topK</label>
-          <input id="stageAtopk" type="number" min="100" max="20000" value="2000" />
+          <label>Stage A topK</label>
+          <input id="stageAtopk" type="number" min="100" max="50000" value="2000" />
         </div>
         <div>
-          <label>StageB radius</label>
+          <label>Stage B radius</label>
           <input id="stageBr" type="number" min="0" max="10" value="3" />
         </div>
       </div>
@@ -78,52 +81,73 @@
 
       <div style="margin-top:12px;">
         <button id="run" disabled>Run match</button>
+        <button id="stop" disabled style="margin-left:8px;">Stop</button>
       </div>
     </div>
+  </div>
+
+  <h3>Status</h3>
+  <div class="card">
+    <div id="statusLine" class="muted">Idle.</div>
+    <progress id="pStageA" max="1" value="0"></progress>
+    <div class="muted">Stage A</div>
+    <progress id="pStageB" max="1" value="0" style="margin-top:8px;"></progress>
+    <div class="muted">Stage B</div>
   </div>
 
   <h3>Results</h3>
   <pre id="out">Select a dataset + query image.</pre>
 
-
-<h3>Status</h3>
-<div class="card">
-  <div id="statusLine" class="muted">Idle.</div>
-  <progress id="pStageA" max="1" value="0" style="width:100%; height:16px;"></progress>
-  <div class="muted">Stage A</div>
-  <progress id="pStageB" max="1" value="0" style="width:100%; height:16px; margin-top:8px;"></progress>
-  <div class="muted">Stage B</div>
-</div>
-
-<h3>Log</h3>
-<pre id="log" style="max-height: 240px; overflow:auto;">(empty)</pre>
+  <h3>Log</h3>
+  <pre id="log" style="max-height: 240px; overflow:auto;">(empty)</pre>
 
 <script type="module">
-
-
-function logLine(s) {
-  const el = $("log");
-  const ts = new Date().toISOString().slice(11, 19);
-  el.textContent += `[${ts}] ${s}\n`;
-  el.scrollTop = el.scrollHeight;
-}
-
-function setStatus(s) {
-  $("statusLine").textContent = s;
-}
-
-function resetProgress() {
-  $("pStageA").max = 1; $("pStageA").value = 0;
-  $("pStageB").max = 1; $("pStageB").value = 0;
-}
-
   const $ = (id) => document.getElementById(id);
 
   const state = {
     h5File: null,
-    queryRGBA: null,
-    queryBool64: null
+    queryBool64: null,
+    running: false,
+    abort: false,
+    workers: [],
+    workerURL: null,
+    probeURL: null
   };
+
+  function logLine(s) {
+    const el = $("log");
+    if (el.textContent === "(empty)") el.textContent = "";
+    const ts = new Date().toISOString().slice(11, 19);
+    el.textContent += `[${ts}] ${s}\n`;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function setStatus(s) {
+    $("statusLine").textContent = s;
+  }
+
+  function resetProgress() {
+    $("pStageA").max = 1; $("pStageA").value = 0;
+    $("pStageB").max = 1; $("pStageB").value = 0;
+  }
+
+  function disableUI(disabled) {
+    $("run").disabled = disabled || !(state.h5File && state.queryBool64);
+    $("stop").disabled = !disabled;
+    $("h5").disabled = disabled;
+    $("query").disabled = disabled;
+    $("topN").disabled = disabled;
+    $("stageAsize").disabled = disabled;
+    $("stageAtopk").disabled = disabled;
+    $("stageBr").disabled = disabled;
+    $("dilate").disabled = disabled;
+    $("dens").disabled = disabled;
+    $("workers").disabled = disabled;
+  }
+
+  function canRun() {
+    $("run").disabled = !(state.h5File && state.queryBool64) || state.running;
+  }
 
   function drawPreview(imageBitmap) {
     const c = $("qprev");
@@ -137,7 +161,6 @@ function resetProgress() {
     const bmp = await createImageBitmap(file);
     drawPreview(bmp);
 
-    // Convert to 64x64 grayscale with nearest
     const c = document.createElement("canvas");
     c.width = 64; c.height = 64;
     const ctx = c.getContext("2d", { willReadFrequently: true });
@@ -145,19 +168,14 @@ function resetProgress() {
     ctx.drawImage(bmp, 0, 0, 64, 64);
     const img = ctx.getImageData(0,0,64,64).data; // RGBA
 
-    // grayscale u8
     const g = new Uint8Array(64*64);
     for (let i=0, p=0; i<g.length; i++, p+=4) {
-      // simple luma
       g[i] = (0.299*img[p] + 0.587*img[p+1] + 0.114*img[p+2]) | 0;
     }
-
     return g;
   }
 
   function toBoolInk64(grayU8, preferSparse=true) {
-    // replicate Python logic:
-    // white_ink = arr > 128; black_ink = arr < 128; pick sparser if preferSparse
     let whiteCount = 0, blackCount = 0;
     for (let i=0;i<grayU8.length;i++){
       if (grayU8[i] > 128) whiteCount++;
@@ -174,7 +192,6 @@ function resetProgress() {
   }
 
   function dilate3x3Bool64(x) {
-    // x: Uint8Array len=4096 (0/1)
     const out = new Uint8Array(64*64);
     for (let y=0;y<64;y++){
       for (let x0=0;x0<64;x0++){
@@ -194,10 +211,6 @@ function resetProgress() {
     return out;
   }
 
-  function canRun() {
-    $("run").disabled = !(state.h5File && state.queryBool64);
-  }
-
   $("h5").addEventListener("change", (e) => {
     state.h5File = e.target.files?.[0] || null;
     canRun();
@@ -214,7 +227,6 @@ function resetProgress() {
   });
 
   $("dilate").addEventListener("change", async () => {
-    // reprocess query if already loaded
     const f = $("query").files?.[0];
     if (!f) return;
     const g = await loadQueryFile(f);
@@ -226,31 +238,34 @@ function resetProgress() {
 
   function makeWorkerURL() {
     const workerSrc = `
-      // Worker: loads h5wasm (iife) and scores a chunk of templates
       self.importScripts('https://cdn.jsdelivr.net/npm/h5wasm@0latest/dist/iife/h5wasm.js');
 
+      function reportProgress(phase, workerId, done, total) {
+        // throttle: every 200 items + always final
+        if (done === total || done % 200 === 0) {
+          postMessage({ type: "progress", phase, workerId, done, total });
+        }
+      }
+
       function downsampleBoolNearest64(x, outSize) {
-        // x: Uint8Array 4096 (0/1)
         if (outSize === 64) return x;
         const idx = new Int32Array(outSize);
-        for (let i=0;i<outSize;i++){
-          idx[i] = Math.round(i * (63 / (outSize - 1)));
-        }
+        for (let i=0;i<outSize;i++) idx[i] = Math.round(i * (63 / (outSize - 1)));
         const out = new Uint8Array(outSize*outSize);
         for (let y=0;y<outSize;y++){
+          const yy = idx[y]*64;
+          const yS = y*outSize;
           for (let x0=0;x0<outSize;x0++){
-            out[y*outSize+x0] = x[idx[y]*64 + idx[x0]];
+            out[yS+x0] = x[yy + idx[x0]];
           }
         }
         return out;
       }
 
-      function stageA_score_chunk(imagesU8, queryBool64, stageASize) {
-        // imagesU8: Uint8Array len = n*4096, each pixel 0..255
+      function stageA_score_chunk(imagesU8, queryBool64, stageASize, workerId) {
         const n = (imagesU8.length / 4096) | 0;
         const qSmall = downsampleBoolNearest64(queryBool64, stageASize);
 
-        // precompute nearest indices from 64 -> stageASize
         const idx = new Int32Array(stageASize);
         for (let i=0;i<stageASize;i++){
           idx[i] = Math.round(i * (63 / (stageASize - 1)));
@@ -274,11 +289,9 @@ function resetProgress() {
               const tW = (pix > 128) ? 1 : 0;
               const tB = (pix < 128) ? 1 : 0;
 
-              // IoU for white polarity
               if (tW & q) interW++;
               if (tW | q) unionW++;
 
-              // IoU for black polarity
               if (tB & q) interB++;
               if (tB | q) unionB++;
             }
@@ -287,15 +300,14 @@ function resetProgress() {
           const sW = unionW ? (interW / unionW) : 0;
           const sB = unionB ? (interB / unionB) : 0;
           scores[t] = sW >= sB ? sW : sB;
-        }
 
+          reportProgress("stageA", workerId, t+1, n);
+        }
         return scores;
       }
 
       function bestIoUOverShifts(templateBool, queryBool, radius) {
-        // both Uint8Array 4096 (0/1)
         let best = 0.0;
-
         for (let dy=-radius; dy<=radius; dy++){
           const y0 = Math.max(0, dy);
           const y1 = Math.min(64, 64+dy);
@@ -324,7 +336,7 @@ function resetProgress() {
         return best;
       }
 
-      function templateToBool(templateU8, polarity /* 'white'|'black' */) {
+      function templateToBool(templateU8, polarity) {
         const out = new Uint8Array(4096);
         if (polarity === 'white') {
           for (let i=0;i<4096;i++) out[i] = templateU8[i] > 128 ? 1 : 0;
@@ -341,331 +353,368 @@ function resetProgress() {
       }
 
       self.onmessage = async (e) => {
-        const msg = e.data;
+        try {
+          const msg = e.data;
 
-        if (msg.type === 'init') {
-          // Mount file into worker FS using WORKERFS, as shown in h5wasm docs
-          const { FS } = await h5wasm.ready;
-          FS.mkdir('/work');
-          FS.mount(FS.filesystems.WORKERFS, { files: [msg.h5File] }, '/work');
+          if (msg.type === 'init') {
+            self._workerId = msg.workerId;
 
-          const f = new h5wasm.File('/work/' + msg.h5File.name, 'r');
-          const images = f.get('images');
-          const labels = f.get('labels');
+            const { FS } = await h5wasm.ready;
+            // fresh mount point per worker
+            try { FS.mkdir('/work'); } catch {}
+            FS.mount(FS.filesystems.WORKERFS, { files: [msg.h5File] }, '/work');
 
-          // Read our chunk [start:end)
-          const start = msg.start;
-          const end = msg.end;
+            const f = new h5wasm.File('/work/' + msg.h5File.name, 'r');
+            const images = f.get('images');
+            const labels = f.get('labels');
 
-          const imagesChunk = images.slice([[start, end], [], []]).value; // Uint8Array or TypedArray
-          const labelsChunk = labels.slice([[start, end]]).value;
+            const start = msg.start;
+            const end = msg.end;
 
-          // Normalize to Uint8Array for images
-          const imgU8 = (imagesChunk instanceof Uint8Array) ? imagesChunk : new Uint8Array(imagesChunk.buffer);
-          const labI32 = (labelsChunk instanceof Int32Array) ? labelsChunk : new Int32Array(labelsChunk.buffer);
+            const imagesChunk = images.slice([[start, end], [], []]).value;
+            const labelsChunk = labels.slice([[start, end]]).value;
 
-          self._chunk = {
-            start, end,
-            imagesU8: imgU8,
-            labelsI32: labI32
-          };
+            const imgU8 = (imagesChunk instanceof Uint8Array) ? imagesChunk : new Uint8Array(imagesChunk.buffer);
+            const labI32 = (labelsChunk instanceof Int32Array) ? labelsChunk : new Int32Array(labelsChunk.buffer);
 
-          postMessage({ type:'inited', start, end, n: end-start });
-          return;
-        }
+            self._chunk = { start, end, imagesU8: imgU8, labelsI32: labI32 };
 
-        if (msg.type === 'stageA') {
-          const { imagesU8, labelsI32, start } = self._chunk;
-          const scores = stageA_score_chunk(imagesU8, msg.queryBool64, msg.stageASize);
-
-          // Return local topM candidates (oversample a bit for better global merge)
-          const localTake = msg.localTake;
-          // simple partial selection: keep best localTake via insertion (localTake small)
-          const best = [];
-          for (let i=0;i<scores.length;i++){
-            const s = scores[i];
-            const gi = start + i;
-            const cp = labelsI32[i];
-            if (best.length < localTake) {
-              best.push({ s, gi, cp });
-              if (best.length === localTake) best.sort((a,b)=>a.s-b.s);
-            } else if (s > best[0].s) {
-              best[0] = { s, gi, cp };
-              // bubble smallest to correct place
-              best.sort((a,b)=>a.s-b.s);
-            }
+            postMessage({ type:'inited', workerId: self._workerId, start, end, n: end-start });
+            return;
           }
-          // send descending
-          best.sort((a,b)=>b.s-a.s);
-          postMessage({ type:'stageA_done', best });
-          return;
-        }
 
-        if (msg.type === 'stageB') {
-          const { imagesU8, labelsI32, start } = self._chunk;
-          const radius = msg.stageBRadius;
-          const densityPrefilter = msg.densityPrefilter;
+          if (!self._chunk) throw new Error("Worker not initialized.");
 
-          const q = msg.queryBool64;
-          const dq = popcountBool(q);
+          if (msg.type === 'stageA') {
+            const { imagesU8, labelsI32, start } = self._chunk;
+            const scores = stageA_score_chunk(imagesU8, msg.queryBool64, msg.stageASize, self._workerId);
 
-          // best-per-codepoint
-          const bestScore = new Map(); // cp -> score
-
-          for (const gi of msg.indicesGlobal) {
-            const i = gi - start;
-            if (i < 0 || i >= (labelsI32.length)) continue;
-
-            const cp = labelsI32[i];
-
-            // extract template u8 (4096)
-            const base = i*4096;
-            const tU8 = imagesU8.subarray(base, base+4096);
-
-            if (densityPrefilter > 0 && dq > 0) {
-              // match python: dt = min(sum(white), sum(black))
-              let dtW=0, dtB=0;
-              for (let k=0;k<4096;k++){
-                const pix = tU8[k];
-                if (pix > 128) dtW++;
-                if (pix < 128) dtB++;
+            const localTake = msg.localTake;
+            const best = [];
+            for (let i=0;i<scores.length;i++){
+              const s = scores[i];
+              const gi = start + i;
+              const cp = labelsI32[i];
+              if (best.length < localTake) {
+                best.push({ s, gi, cp });
+                if (best.length === localTake) best.sort((a,b)=>a.s-b.s);
+              } else if (s > best[0].s) {
+                best[0] = { s, gi, cp };
+                best.sort((a,b)=>a.s-b.s);
               }
-              const dt = Math.min(dtW, dtB);
-              if (dt === 0) continue;
-              const ratio = Math.max(dq/dt, dt/dq);
-              if (ratio > densityPrefilter) continue;
             }
-
-            const tW = templateToBool(tU8, 'white');
-            const tB = templateToBool(tU8, 'black');
-
-            const s1 = bestIoUOverShifts(tW, q, radius);
-            const s2 = bestIoUOverShifts(tB, q, radius);
-            const s  = s1 >= s2 ? s1 : s2;
-
-            const prev = bestScore.get(cp);
-            if (prev === undefined || s > prev) bestScore.set(cp, s);
+            best.sort((a,b)=>b.s-a.s);
+            postMessage({ type:'stageA_done', workerId: self._workerId, best });
+            return;
           }
 
-          // serialize map to array
-          const out = [];
-          for (const [cp, s] of bestScore.entries()) out.push([cp, s]);
-          out.sort((a,b)=>b[1]-a[1]);
+          if (msg.type === 'stageB') {
+            const { imagesU8, labelsI32, start } = self._chunk;
+            const radius = msg.stageBRadius;
+            const densityPrefilter = msg.densityPrefilter;
 
-          postMessage({ type:'stageB_done', best: out });
-          return;
+            const q = msg.queryBool64;
+            const dq = popcountBool(q);
+
+            const total = msg.indicesGlobal.length;
+            reportProgress("stageB", self._workerId, 0, total || 1);
+
+            const bestScore = new Map(); // cp -> score
+
+            for (let j=0; j<total; j++) {
+              const gi = msg.indicesGlobal[j];
+              const i = gi - start;
+              if (i < 0 || i >= labelsI32.length) {
+                reportProgress("stageB", self._workerId, j+1, total);
+                continue;
+              }
+
+              const cp = labelsI32[i];
+              const base = i*4096;
+              const tU8 = imagesU8.subarray(base, base+4096);
+
+              if (densityPrefilter > 0 && dq > 0) {
+                let dtW=0, dtB=0;
+                for (let k=0;k<4096;k++){
+                  const pix = tU8[k];
+                  if (pix > 128) dtW++;
+                  if (pix < 128) dtB++;
+                }
+                const dt = Math.min(dtW, dtB);
+                if (dt === 0) { reportProgress("stageB", self._workerId, j+1, total); continue; }
+                const ratio = Math.max(dq/dt, dt/dq);
+                if (ratio > densityPrefilter) { reportProgress("stageB", self._workerId, j+1, total); continue; }
+              }
+
+              const tW = templateToBool(tU8, 'white');
+              const tB = templateToBool(tU8, 'black');
+
+              const s1 = bestIoUOverShifts(tW, q, radius);
+              const s2 = bestIoUOverShifts(tB, q, radius);
+              const s  = s1 >= s2 ? s1 : s2;
+
+              const prev = bestScore.get(cp);
+              if (prev === undefined || s > prev) bestScore.set(cp, s);
+
+              reportProgress("stageB", self._workerId, j+1, total);
+            }
+
+            const out = [];
+            for (const [cp, s] of bestScore.entries()) out.push([cp, s]);
+            out.sort((a,b)=>b[1]-a[1]);
+
+            postMessage({ type:'stageB_done', workerId: self._workerId, best: out });
+            return;
+          }
+
+          postMessage({ type:'error', message:'Unknown message type: ' + msg.type, stack:'' });
+        } catch (err) {
+          postMessage({
+            type: "error",
+            message: String(err?.message || err),
+            stack: String(err?.stack || "")
+          });
         }
-
-        postMessage({ type:'error', message:'Unknown message type' });
       };
     `;
     const blob = new Blob([workerSrc], { type: "text/javascript" });
     return URL.createObjectURL(blob);
   }
 
+  function makeProbeWorkerURL() {
+    const src = `
+      self.importScripts('https://cdn.jsdelivr.net/npm/h5wasm@0latest/dist/iife/h5wasm.js');
+      self.onmessage = async (e) => {
+        try {
+          const { FS } = await h5wasm.ready;
+          try { FS.mkdir('/work'); } catch {}
+          FS.mount(FS.filesystems.WORKERFS, { files: [e.data.h5File] }, '/work');
+          const f = new h5wasm.File('/work/' + e.data.h5File.name, 'r');
+          const labels = f.get('labels');
+          const n = labels.shape[0];
+          postMessage({ type:'probe', n });
+        } catch (err) {
+          postMessage({ type:'error', message:String(err?.message||err), stack:String(err?.stack||"") });
+        }
+      };
+    `;
+    return URL.createObjectURL(new Blob([src], {type:"text/javascript"}));
+  }
+
   function formatResults(pairs, topN) {
     let out = "";
-    out += "Rank  Char   Hex Code   Match % (IoU)\\n";
-    out += "-".repeat(72) + "\\n";
+    out += "Rank  Char   Hex Code   Match % (IoU)\n";
+    out += "-".repeat(72) + "\n";
     for (let i=0;i<Math.min(topN, pairs.length); i++){
       const [cp, s] = pairs[i];
-      const ch = String.fromCodePoint(cp);
-      const disp = (ch.length && ch >= " " && ch !== "\\u007f") ? ch : " ";
-      out += `${String(i+1).padEnd(5)} ${disp.padEnd(6)} U+${cp.toString(16).toUpperCase().padStart(4,"0")}     ${(s*100).toFixed(2).padStart(7)}%\\n`;
+      let ch = "";
+      try { ch = String.fromCodePoint(cp); } catch { ch = ""; }
+      const disp = (ch && ch >= " " && ch !== "\u007f") ? ch : " ";
+      out += `${String(i+1).padEnd(5)} ${disp.padEnd(6)} U+${cp.toString(16).toUpperCase().padStart(4,"0")}     ${(s*100).toFixed(2).padStart(7)}%\n`;
     }
     return out;
   }
 
+  function onceMessage(worker, predicate, timeoutMs=120000) {
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => {
+        cleanup();
+        reject(new Error("Timeout waiting for worker message."));
+      }, timeoutMs);
 
+      function onMsg(ev) {
+        const m = ev.data;
+        if (predicate(m)) {
+          cleanup();
+          resolve(m);
+        }
+      }
+      function onErr(err) {
+        cleanup();
+        reject(err);
+      }
+      function cleanup() {
+        clearTimeout(t);
+        worker.removeEventListener("message", onMsg);
+        worker.removeEventListener("error", onErr);
+      }
 
-  // RUN HANDLER
+      worker.addEventListener("message", onMsg);
+      worker.addEventListener("error", onErr);
+    });
+  }
 
-  $("run").addEventListener("click", async () => 
-  {
+  function killWorkers() {
+    for (const w of state.workers) {
+      try { w.terminate(); } catch {}
+    }
+    state.workers = [];
+    if (state.workerURL) { URL.revokeObjectURL(state.workerURL); state.workerURL = null; }
+    if (state.probeURL)  { URL.revokeObjectURL(state.probeURL);  state.probeURL = null; }
+  }
 
-    $("log").textContent = "";
+  $("stop").addEventListener("click", () => {
+    if (!state.running) return;
+    state.abort = true;
+    logLine("Stop requested; terminating workers.");
+    setStatus("Stopping…");
+    killWorkers();
+    state.running = false;
+    disableUI(false);
+    canRun();
+    setStatus("Stopped.");
+  });
+
+  $("run").addEventListener("click", async () => {
+    const h5File = state.h5File;
+    const queryBool64 = state.queryBool64;
+    if (!h5File || !queryBool64 || state.running) return;
+
+    state.running = true;
+    state.abort = false;
+    disableUI(true);
+
+    $("out").textContent = "Working…";
+    $("log").textContent = "(empty)";
     resetProgress();
     setStatus("Starting…");
     logLine("Run started.");
 
-    const h5File = state.h5File;
-    const queryBool64 = state.queryBool64;
-    if (!h5File || !queryBool64) return;
+    try {
+      const topN = parseInt($("topN").value, 10);
+      const stageASize = parseInt($("stageAsize").value, 10);
+      const stageAtopk = parseInt($("stageAtopk").value, 10);
+      const stageBRadius = parseInt($("stageBr").value, 10);
+      const densityPrefilter = parseFloat($("dens").value);
 
-    const topN = parseInt($("topN").value, 10);
-    const stageASize = parseInt($("stageAsize").value, 10);
-    const stageAtopk = parseInt($("stageAtopk").value, 10);
-    const stageBRadius = parseInt($("stageBr").value, 10);
-    const densityPrefilter = parseFloat($("dens").value);
+      let workerCount = parseInt($("workers").value, 10);
+      if (!workerCount || workerCount <= 0) workerCount = Math.max(1, (navigator.hardwareConcurrency || 4) - 1);
 
-    let workers = parseInt($("workers").value, 10);
-    if (!workers || workers <= 0) workers = Math.max(1, (navigator.hardwareConcurrency || 4) - 1);
-
-    $("out").textContent = "Loading + scoring…";
-
-    const workerURL = makeWorkerURL();
-    const ws = [];
-    for (let i=0;i<workers;i++) ws.push(new Worker(workerURL));
-
-    // We need N to split ranges. We'll ask worker0 to open and get dataset length by reading labels metadata quickly.
-    // Easiest in single-file: just initialize workers with guess ranges after we discover N from worker0.
-    // We'll do a tiny init in worker0 that reads labels length by reading the whole labels dataset once (small).
-    // Then we re-init all workers with proper slices.
-
-    async function getNFromWorker0() {
-      return await new Promise((resolve, reject) => {
-        const w0 = ws[0];
-        const t = setTimeout(() => reject(new Error("Timeout getting N")), 60000);
-
-        const handler = (ev) => {
-          const m = ev.data;
-          if (m.type === "inited") {
-            // we don't actually know N here; we'll send a special request:
-            // (hack) We'll ask it to stageA with localTake=1 and infer its n, but that only gives chunk size.
-          }
-        };
-        w0.addEventListener("message", handler);
-
-        // Instead, we simply initialize worker0 with [0, 1] and then ask it to re-open and read labels length.
-        // We'll implement a quick solution: initialize with [0, 1], then re-init properly after probing by reading labels slice [0,0] is impossible.
-        // So: we choose a safe approach: split by file size and do load in each worker using ranges computed after we ask user for N? Not ideal.
-        // Better: set all workers to load the full labels dataset to get its length? labels is small.
-        // We'll do it: init all workers with [0,0] and let them read labels length? slice [0,0] is empty but still valid; some libs dislike it.
-        // We'll avoid: init worker0 with [0, 1], then request stageA and ignore; then we can't know N.
-
-        clearTimeout(t);
-        w0.removeEventListener("message", handler);
-        resolve(null);
-      });
-    }
-
-    // Simpler + robust (and labels is small): read labels length in main thread by spinning up a dedicated worker that returns labels length,
-    // then terminate it. We'll just do it inline using the same worker script:
-    async function probeN() {
-      return await new Promise((resolve, reject) => {
-        const w = new Worker(workerURL);
-        const timeout = setTimeout(() => reject(new Error("Timeout probing N")), 60000);
-
-        w.onmessage = async (ev) => {
-          const m = ev.data;
-          if (m.type === "inited") {
-            // not enough
-          }
-          if (m.type === "error") {
-            clearTimeout(timeout);
-            w.terminate();
-            reject(new Error(m.message));
-          }
-        };
-
-        // We'll send a special "probe" by initializing [0,1], then running stageA with localTake=1,
-        // and in the worker we don't have N. So we need another plan:
-        // We'll instead estimate N from file size is unsafe with compression.
-        // Therefore: for production you’d add a "probe" message to worker that reads labels.metadata.shape[0].
-        // For this single-file demo, we’ll assume labels is readable by slice and use a binary search strategy:
-        // try slices with increasing end until it fails—too hacky.
-
-        // OK: We'll take the straightforward path: for real use, add a 'probe' in worker.
-        // Here, we'll implement it now: (since worker code is generated above, easiest is: accept that demo assumes N known)
-        reject(new Error("This demo needs a tiny 'probe' addition to the worker to read labels.shape[0]. See note in output."));
-      });
-    }
-
-    // Since we don't want to block you with that complexity here, we’ll do the simplest practical thing for your 14.5MB file:
-    // load the entire dataset in EACH worker’s chunk by splitting the index space AFTER reading labels length in ONE worker,
-    // but to read labels length we add a minimal 'probe' call by recreating workers with a slightly different script.
-    // We'll just do the probe in main thread by creating a new worker URL with a probe handler.
-
-    function makeProbeWorkerURL() {
-      const src = `
-        self.importScripts('https://cdn.jsdelivr.net/npm/h5wasm@0latest/dist/iife/h5wasm.js');
-        self.onmessage = async (e) => {
-          const { FS } = await h5wasm.ready;
-          FS.mkdir('/work');
-          FS.mount(FS.filesystems.WORKERFS, { files: [e.data.h5File] }, '/work');
-          const f = new h5wasm.File('/work/' + e.data.h5File.name, 'r');
-          const labels = f.get('labels');
-          // labels.shape is available per docs (from metadata)
-          const n = labels.shape[0];
-          postMessage({ type:'probe', n });
-        };
-      `;
-      return URL.createObjectURL(new Blob([src], {type:"text/javascript"}));
-    }
-
-    const probeURL = makeProbeWorkerURL();
-    const probeW = new Worker(probeURL);
-    const N = await new Promise((resolve, reject) => {
-      const timeout = setTimeout(()=>reject(new Error("Timeout probing labels length")), 60000);
-      probeW.onmessage = (ev) => {
-        if (ev.data?.type === "probe") {
-          clearTimeout(timeout);
-          resolve(ev.data.n);
-        }
-      };
-      probeW.onerror = (err) => reject(err);
+      // Probe N via dedicated tiny worker
+      state.probeURL = makeProbeWorkerURL();
+      const probeW = new Worker(state.probeURL);
       probeW.postMessage({ h5File });
-    });
-    probeW.terminate();
 
-    // Init workers with ranges
-    const ranges = [];
-    for (let i=0;i<workers;i++){
-      const start = Math.floor((i * N) / workers);
-      const end   = Math.floor(((i+1) * N) / workers);
-      if (end > start) ranges.push([start,end]);
-    }
+      const probeMsg = await onceMessage(probeW, (m) => m.type === "probe" || m.type === "error", 60000);
+      probeW.terminate();
+      if (probeMsg.type === "error") throw new Error(`Probe error: ${probeMsg.message}\n${probeMsg.stack || ""}`);
 
-    // Recreate workers matching ranges (to keep it clean)
-    ws.forEach(w => w.terminate());
-    const workersArr = ranges.map(() => new Worker(workerURL));
+      const N = probeMsg.n;
+      logLine(`Dataset size: N=${N}`);
 
-    await Promise.all(workersArr.map((w, idx) => {
-      const [start,end] = ranges[idx];
-      return new Promise((resolve, reject) => {
-        w.onmessage = (ev) => {
-          if (ev.data?.type === "inited") resolve();
-          if (ev.data?.type === "error") reject(new Error(ev.data.message));
-        };
-        w.onerror = (err) => reject(err);
-        w.postMessage({ type:"init", h5File, start, end });
+      // Create ranges
+      const ranges = [];
+      for (let i=0;i<workerCount;i++){
+        const start = Math.floor((i * N) / workerCount);
+        const end   = Math.floor(((i+1) * N) / workerCount);
+        if (end > start) ranges.push([start,end]);
+      }
+      logLine(`Using ${ranges.length} workers (requested ${workerCount}).`);
+
+      // Create workers
+      state.workerURL = makeWorkerURL();
+      state.workers = ranges.map(() => new Worker(state.workerURL));
+
+      // Progress aggregation arrays
+      const aDone = new Array(ranges.length).fill(0);
+      const aTot  = new Array(ranges.length).fill(1);
+      const bDone = new Array(ranges.length).fill(0);
+      const bTot  = new Array(ranges.length).fill(1);
+
+      function updateBars() {
+        const ad = aDone.reduce((s,x)=>s+x, 0);
+        const at = aTot.reduce((s,x)=>s+x, 0);
+        $("pStageA").max = at || 1;
+        $("pStageA").value = ad;
+
+        const bd = bDone.reduce((s,x)=>s+x, 0);
+        const bt = bTot.reduce((s,x)=>s+x, 0);
+        $("pStageB").max = bt || 1;
+        $("pStageB").value = bd;
+      }
+
+      // Attach shared listeners (logging, progress, errors)
+      state.workers.forEach((w, idx) => {
+        w.addEventListener("message", (ev) => {
+          const m = ev.data;
+          if (m?.type === "inited") {
+            logLine(`Worker ${idx} ready: [${m.start}, ${m.end}) n=${m.n}`);
+          } else if (m?.type === "progress") {
+            if (m.phase === "stageA") {
+              aDone[m.workerId] = m.done;
+              aTot[m.workerId] = m.total || 1;
+              setStatus(`Stage A… ${Math.round(100 * ($("pStageA").value / $("pStageA").max))}%`);
+            } else if (m.phase === "stageB") {
+              bDone[m.workerId] = m.done;
+              bTot[m.workerId] = m.total || 1;
+              setStatus(`Stage B… ${Math.round(100 * ($("pStageB").value / $("pStageB").max))}%`);
+            }
+            updateBars();
+          } else if (m?.type === "error") {
+            logLine(`❌ Worker ${idx} error: ${m.message}`);
+            if (m.stack) logLine(m.stack);
+          }
+        });
+
+        w.addEventListener("error", (err) => {
+          logLine(`❌ Worker ${idx} crashed: ${err.message || err}`);
+        });
       });
-    }));
 
-    // Stage A in parallel
-    const localTake = Math.max(50, Math.ceil(stageAtopk / ranges.length) * 3);
+      // Init workers
+      setStatus("Initializing workers…");
+      logLine("Initializing workers…");
 
-    const stageALists = await Promise.all(workersArr.map((w) => {
-      return new Promise((resolve, reject) => {
-        w.onmessage = (ev) => {
-          if (ev.data?.type === "stageA_done") resolve(ev.data.best);
-          if (ev.data?.type === "error") reject(new Error(ev.data.message));
-        };
-        w.onerror = (err) => reject(err);
+      await Promise.all(state.workers.map((w, idx) => {
+        const [start, end] = ranges[idx];
+        w.postMessage({ type:"init", h5File, start, end, workerId: idx });
+        return onceMessage(w, (m) => m.type === "inited" || m.type === "error", 120000).then((m) => {
+          if (m.type === "error") throw new Error(`Worker init error: ${m.message}\n${m.stack || ""}`);
+        });
+      }));
+
+      if (state.abort) throw new Error("Aborted.");
+
+      // Stage A
+      setStatus("Stage A…");
+      logLine(`Stage A: scoring at ${stageASize}x${stageASize}…`);
+
+      const localTake = Math.max(50, Math.ceil(stageAtopk / ranges.length) * 3);
+
+      const stageALists = await Promise.all(state.workers.map(async (w, idx) => {
         w.postMessage({ type:"stageA", queryBool64, stageASize, localTake });
+        const m = await onceMessage(w, (mm) => mm.type === "stageA_done" || mm.type === "error", 600000);
+        if (m.type === "error") throw new Error(`Stage A worker ${idx} error: ${m.message}\n${m.stack || ""}`);
+        return m.best;
+      }));
+
+      if (state.abort) throw new Error("Aborted.");
+
+      // Merge shortlist
+      const allCandidates = stageALists.flat();
+      allCandidates.sort((x,y)=>y.s-x.s);
+      const shortlist = allCandidates.slice(0, Math.min(stageAtopk, allCandidates.length));
+      logLine(`Stage A: merged candidates=${allCandidates.length}, shortlist=${shortlist.length}`);
+
+      // Partition shortlist by worker ranges
+      const perWorkerIndices = ranges.map(([start,end]) => {
+        const arr = [];
+        for (const c of shortlist) if (c.gi >= start && c.gi < end) arr.push(c.gi);
+        return arr;
       });
-    }));
 
-    // Merge to global topK
-    const allCandidates = stageALists.flat();
-    allCandidates.sort((a,b)=>b.s-a.s);
-    const shortlist = allCandidates.slice(0, Math.min(stageAtopk, allCandidates.length));
+      // Prepare Stage B progress totals immediately (so bar max is meaningful)
+      for (let i=0;i<perWorkerIndices.length;i++){
+        bTot[i] = Math.max(1, perWorkerIndices[i].length);
+        bDone[i] = 0;
+      }
+      updateBars();
 
-    // Split shortlist indices by worker range
-    const perWorkerIndices = ranges.map(([start,end]) => {
-      const arr = [];
-      for (const c of shortlist) if (c.gi >= start && c.gi < end) arr.push(c.gi);
-      return arr;
-    });
+      // Stage B
+      setStatus("Stage B…");
+      logLine(`Stage B: shifted IoU radius=${stageBRadius}, densityPrefilter=${densityPrefilter}`);
 
-    // Stage B in parallel
-    const stageBLists = await Promise.all(workersArr.map((w, idx) => {
-      return new Promise((resolve, reject) => {
-        w.onmessage = (ev) => {
-          if (ev.data?.type === "stageB_done") resolve(ev.data.best);
-          if (ev.data?.type === "error") reject(new Error(ev.data.message));
-        };
-        w.onerror = (err) => reject(err);
+      const stageBLists = await Promise.all(state.workers.map(async (w, idx) => {
         w.postMessage({
           type:"stageB",
           queryBool64,
@@ -673,38 +722,46 @@ function resetProgress() {
           densityPrefilter,
           indicesGlobal: perWorkerIndices[idx]
         });
-      });
-    }));
+        const m = await onceMessage(w, (mm) => mm.type === "stageB_done" || mm.type === "error", 1200000);
+        if (m.type === "error") throw new Error(`Stage B worker ${idx} error: ${m.message}\n${m.stack || ""}`);
+        return m.best;
+      }));
 
-    // Merge best-per-codepoint like Python script
-    const best = new Map(); // cp -> score
-    for (const arr of stageBLists) {
-      for (const [cp, s] of arr) {
-        const prev = best.get(cp);
-        if (prev === undefined || s > prev) best.set(cp, s);
+      if (state.abort) throw new Error("Aborted.");
+
+      // Merge best-per-codepoint
+      const best = new Map();
+      for (const arr of stageBLists) {
+        for (const [cp, s] of arr) {
+          const prev = best.get(cp);
+          if (prev === undefined || s > prev) best.set(cp, s);
+        }
       }
+      const ranked = Array.from(best.entries()).sort((a,b)=>b[1]-a[1]);
+
+      // Render
+      $("out").textContent =
+        `N=${N}  workers=${ranges.length}\n` +
+        `StageA: ${stageASize}x${stageASize}, shortlist=${shortlist.length}\n` +
+        `StageB: radius=${stageBRadius}, dilate=${$("dilate").checked}, densityPrefilter=${densityPrefilter}\n\n` +
+        formatResults(ranked, topN);
+
+      setStatus("Done.");
+      logLine("Done.");
+
+    } catch (err) {
+      const msg = String(err?.message || err);
+      logLine(`❌ ${msg}`);
+      setStatus("Error (see log).");
+      $("out").textContent = "Error.\n\n" + msg;
+    } finally {
+      killWorkers();
+      state.running = false;
+      disableUI(false);
+      canRun();
     }
-    const ranked = Array.from(best.entries()).sort((a,b)=>b[1]-a[1]);
-
-    // Render
-    $("out").textContent =
-      `N=${N}  workers=${ranges.length}\\n` +
-      `StageA: ${stageASize}x${stageASize}, topK=${shortlist.length}\\n` +
-      `StageB: radius=${stageBRadius}, dilate=${$("dilate").checked}, densityPrefilter=${densityPrefilter}\\n\\n` +
-      formatResults(ranked, topN);
-
-    workersArr.forEach(w => w.terminate());
-    URL.revokeObjectURL(workerURL);
-    URL.revokeObjectURL(probeURL);
-
-
-
-    $("log").textContent = "";
-    resetProgress();
-    setStatus("Starting…");
-    logLine("Run started.");
-
   });
+
 </script>
 </body>
 </html>
