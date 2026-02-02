@@ -238,7 +238,7 @@
 
   function makeWorkerURL() {
     const workerSrc = `
-      self.importScripts('https://cdn.jsdelivr.net/npm/h5wasm@0latest/dist/iife/h5wasm.js');
+      self.importScripts("https://cdn.jsdelivr.net/npm/h5wasm@0.8.11/dist/iife/h5wasm.js");
 
       function reportProgress(phase, workerId, done, total) {
         // throttle: every 200 items + always final
@@ -483,7 +483,7 @@
 
   function makeProbeWorkerURL() {
     const src = `
-      self.importScripts('https://cdn.jsdelivr.net/npm/h5wasm@0latest/dist/iife/h5wasm.js');
+      self.importScripts("https://cdn.jsdelivr.net/npm/h5wasm@0.8.11/dist/iife/h5wasm.js");
       self.onmessage = async (e) => {
         try {
           const { FS } = await h5wasm.ready;
