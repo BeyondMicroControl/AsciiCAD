@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>AsciiCAD Wrapper + CLI Parser Demo</title>
+    <title>CLI Parser tool</title>
     <style>
 html, body { height: 100%; margin: 0; }
 body{
@@ -153,14 +153,41 @@ pre{
   display: block;
   background: #fff;
 }
+
+.gradient{
+    background:linear-gradient(0deg, rgba(120,120,120,1) 0%, rgba(0,0,0,1) 50%);
+}
+
+.Btn{
+
+    background: #2b3240; color:#ffffff;
+    height:25px;float:left;margin:10px;border-radius:10px;-webkit-border-radius:10px;box-shadow:0 1px 2px #5e5d5b;padding-top:5px;
+}
     </style>
   </head>
-  <body>
-    <div class="topbar">
-      <button id="btnClear">Clear Logs</button>
-      <button id="btnRunTests">Run Assertions</button>
-      <button id="btnParse">Parse Input</button>
+<script type="text/javascript" src="TOOLS_Header.js"></script>
+
+<body class="slider_main" onload="init_gui();">
+
+<span id="slider_title" style="background:linear-gradient(0deg, rgba(120,120,120,1) 0%, rgba(0,0,0,1) 50%);"></span>
+<div class="slider_overlay" style="overflow:scroll;background:linear-gradient(0deg, rgba(120,120,120,1) 0%, rgba(0,0,0,1) 50%);">
+
+  <div id="topmenu" style="background-color:#0b1220">
+
+    <div>
+      <button id="btnClear" class="Btn">Clear Logs</button>
+      <button id="btnRunTests" class="Btn">Run Assertions</button>
+      <button id="btnParse" class="Btn">Parse Input</button>
+      <button onclick="history.back()" class="Btn">Go Back</button>
     </div>
+
+        
+        <div style="font-size:12px;font-weight:400;width:800px;padding:0px;margin:0px">            
+          Single-file app: load HDF5 (/images, /labels) + query image → Stage A shortlist → Stage B shifted IoU refine.<br>
+          Includes minimal progress, worker status, error logging, and a Top-64 overlay visualizer.
+  </div>
+
+  <div id=main style="background:linear-gradient(180deg, rgba(120,120,120,1) 0%, rgba(0,0,0,1) 50%);">
 
     <div class="main">
       <div class="panel">
@@ -195,6 +222,16 @@ pre{
     <div id="logPanel"></div>
 
 <script>
+      var CONF_version="v1.0";
+      //var CONF_builddate="20260114-230000";
+      var CONF_style =  "background: #0b1220 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=') repeat center top;font: 62.5%/1 sans-serif;height: 100%;width: 100%;"
+  
+
+    function init_gui(_o)
+    { 
+        document.getElementById('slider_title').outerHTML = _TITLE();       
+    }
+
   // ---- Logging (also compatible with the original wrapper's message format) ----
   const logPanel = document.getElementById("logPanel");
   function log(type, ...args){
@@ -673,6 +710,7 @@ function parseLine(line, dataIn) {
   setExample(`echo "hi there" | grep hi && ls -la --color=auto; rm -- -weird`);
   log("info", "Ready. Click “Run Assertions” for the test suite.");
 </script>
-
+      </div>
+    </div>
   </body>
 </html>
