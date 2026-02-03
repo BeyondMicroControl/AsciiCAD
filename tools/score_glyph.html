@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Glyph Match (HDF5 + Workers)</title>
+  <title>Glyph Match - HDF5</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 16px; }
     .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
@@ -24,13 +24,27 @@
     dialog::backdrop { background: rgba(0,0,0,0.25); }
 
   </style>
+  <script type="text/javascript" src="TOOLS_Header.js"></script>
+
+<script>
+      var CONF_version="v0.45";
+      //var CONF_builddate="20260114-230000";
+
+    function init_gui(_o)
+    { 
+        document.getElementById('slider_title').outerHTML = _TITLE();       
+    }
+</script>
+
 </head>
-<body>
-  <h2>Glyph Matcher v0.45</h2>
-  <div class="muted">
-    Single-file app: load HDF5 (/images, /labels) + query image → Stage A shortlist → Stage B shifted IoU refine.
+<body class="slider_main" onload="init_gui();">
+<div id="slider_title"></div>
+<div class="slider_overlay">
+    <div class="muted" style="text-align: center;">
+    Single-file app: load HDF5 (/images, /labels) + query image → Stage A shortlist → Stage B shifted IoU refine.<br>
     Includes minimal progress, worker status, error logging, and a Top-64 overlay visualizer.
-  </div>
+    </div>
+    <div id=main style="width:100%;height:100%;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
 
   <div class="row" style="margin-top:12px;">
     <div class="card">
@@ -1210,5 +1224,8 @@ function drawTemplateWithQueryOverlay(canvas, templateU8, queryBool64, pol, show
   });
 
 </script>
+    </div>
+</div>
+
 </body>
 </html>
