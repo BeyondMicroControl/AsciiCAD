@@ -193,11 +193,12 @@ pre{
         <div class="panelHeader">Input command line</div>
         <div class="panelBody">
           <textarea id="input"></textarea>
-          <div class="controls">
-            <button id="btnExample1">Example: pipeline + chain</button>
-            <button id="btnExample2">Example: quotes + escapes</button>
-            <button id="btnExample3">Example: end-of-options</button>
-            <button id="btnExample4">Example: comments</button>
+          <div class="controls" style="color:white">
+            <div style="margin-top:5px"><small>Examples:</small></div>
+            <button id="btnExample1" data-hint="echo &quot;hi there&quot; | grep hi && ls -la --color=auto; rm -- -weird">pipeline + chain</button>
+            <button id="btnExample2" data-hint="mycmd -abc -oValue --name=&quot;Two Words&quot; &quot;arg 1&quot; 'arg 2' one\\ word">quotes + escapes</button>
+            <button id="btnExample3" data-hint="rm -- -notAnOption -alsoNot">end-of-options</button>
+            <button id="btnExample4" data-hint="echo ok # everything after # is ignored">comments</button>
           </div>
           <div class="smallNote">
             This is a <b>shell-ish</b> parser demo:
@@ -221,7 +222,7 @@ pre{
     <div id="logPanel"></div>
 
 <script>
-      var CONF_version="v1.01";
+      var CONF_version="v1.03";
       //var CONF_builddate="20260114-230000";
       var CONF_style =  "background: #0b1220 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=') repeat center top;font: 62.5%/1 sans-serif;height: 100%;width: 100%;"
   
@@ -731,17 +732,17 @@ var oCMD = new CMD();
 
   document.getElementById("btnParse").onclick = () => { runExample(); };
 
-  document.getElementById("btnExample1").onclick = () =>
-    { setExample(`echo "hi there" | grep hi && ls -la --color=auto; rm -- -weird`); runExample(); }
+  document.getElementById("btnExample1").onclick = (e) => 
+  { setExample(e.srcElement.dataset.hint, e.currentTarget); runExample(); };
 
-  document.getElementById("btnExample2").onclick = () =>
-    { setExample(`mycmd -abc -oValue --name="Two Words" "arg 1" 'arg 2' one\\ word`); runExample(); }
+  document.getElementById("btnExample2").onclick = (e) =>
+  { setExample(e.srcElement.dataset.hint, e.currentTarget); runExample(); };
 
-  document.getElementById("btnExample3").onclick = () =>
-    { setExample(`rm -- -notAnOption -alsoNot`); runExample(); }
+  document.getElementById("btnExample3").onclick = (e) =>
+  { setExample(e.srcElement.dataset.hint, e.currentTarget); runExample(); };
 
-  document.getElementById("btnExample4").onclick = () =>
-    { setExample(`echo ok # everything after # is ignored`); runExample(); }
+  document.getElementById("btnExample4").onclick = (e) =>
+  { setExample(e.srcElement.dataset.hint, e.currentTarget); runExample(); };
 
   // default sample
   setExample(`echo "hi there" | grep hi && ls -la --color=auto; rm -- -weird`);
