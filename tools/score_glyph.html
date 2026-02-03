@@ -38,9 +38,11 @@
 
 </head>
 <body class="slider_main" onload="init_gui();">
-<div id="slider_title"></div>
-<div class="slider_overlay">
-    <div class="muted" style="text-align: center;">
+
+<span id="slider_title"></span>
+<div class="slider_overlay" style="text-align:center">
+   <button onclick="history.back()">back</button>
+    <div class="muted">
     Single-file app: load HDF5 (/images, /labels) + query image → Stage A shortlist → Stage B shifted IoU refine.<br>
     Includes minimal progress, worker status, error logging, and a Top-64 overlay visualizer.
     </div>
