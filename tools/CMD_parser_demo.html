@@ -72,6 +72,9 @@ body{
   overflow: auto;
   min-height: 0;
   box-sizing: border-box;
+  height:400px;
+  overflow-y: scroll;
+
 }
 textarea{
   width: 100%;
@@ -235,7 +238,7 @@ pre{
     div.className = "logLine " + (type === "error" ? "logErr" : type === "warn" ? "logWarn" : type === "ok" ? "logOk" : "logInfo");
     div.textContent = `[${type}] ${args.join(" ")}`;
     logPanel.appendChild(div);
-    div.scrollIntoView({ block: "end" });
+    //div.scrollIntoView({ block: "end" });
   }
 
   // Keep support for messages from the AsciiCAD iframe (original wrapper behavior)
@@ -539,8 +542,10 @@ function parseLine(line, dataIn) {
     }
   }
 
-  function runTests() {
+  function runTests() 
+  {
     log("info", "Running assertion suite...");
+
     const tests = [];
 
     tests.push({
@@ -555,6 +560,8 @@ function parseLine(line, dataIn) {
         ]);
       }
     });
+
+
 
     tests.push({
       name: "Lex: operators split at top level",
@@ -655,6 +662,8 @@ function parseLine(line, dataIn) {
       }
     });
 
+
+
     let pass = 0;
     for (const t of tests) {
       try {
@@ -666,6 +675,7 @@ function parseLine(line, dataIn) {
       }
     }
     log("info", `Done. ${pass}/${tests.length} tests passing.`);
+
   }
 
   // ---- UI wiring ----
