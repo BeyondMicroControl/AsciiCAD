@@ -7,7 +7,7 @@ _two channels_:
 2.  **structure/texture** (where that ink sits: edges, orientation, frequency, corners, etc.)
     
 
-A workable way to quantise + vote is to treat each glyph as a _little image_ (its raster) and precompute a small set of **features** that match the features you extract from the picture per cell. Then matching is “nearest neighbor” (or multi-stage voting) with knobs to control what matters.
+A workable way to quantise + vote is to treat each glyph as a _little image_ (its raster) and precompute a small set of **features** that match the features we extract from the picture per cell. Then matching is “nearest neighbor” (or multi-stage voting) with knobs to control what matters.
 
 1) Treat every glyph as data: raster → features
 -----------------------------------------------
@@ -23,7 +23,7 @@ Render each candidate glyph (monospace) to a tiny bitmap at a fixed resolution (
 *   **Variance / contrast**: how “flat” vs “busy” the glyph is.
     
 
-Quantise coverage into bins (e.g. 16 bins), so you can do fast filtering:
+Quantise coverage into bins (e.g. 16 bins), so we can do fast filtering:
 
 *   coverage\_bin = round(coverage \* (B-1))
     
@@ -61,7 +61,7 @@ This makes it easy to group glyphs:
 
 ### C. Texture / frequency (the hard channel)
 
-You can capture “texture feel” with a tiny frequency descriptor:
+Capture “texture feel” with a tiny frequency descriptor:
 
 *   2D DCT (or FFT) on the glyph bitmap → take a few low/mid frequency coefficients as a vector
     
@@ -79,7 +79,7 @@ Quantise texture into a few classes:
 *   **striped** (strong directional frequency)
     
 
-This is how you distinguish, say, “▒” vs “▓” vs “█” or “⠿” vs “⣿”.
+This is how we distinguish, say, “▒” vs “▓” vs “█” or “⠿” vs “⣿”.
 
 2) Extract the same features from the image per cell
 ----------------------------------------------------
@@ -129,7 +129,7 @@ Pick a **candidate set** of glyphs based on quantised bins:
 *   if texture class says “fine grain”: restrict to stipple families (▒, ⠶, ⠿, etc.)
     
 
-This is where you control artistic choices. Sliders map nicely to these gates.
+This is where we control artistic choices. Sliders map nicely to these gates.
 
 ### Stage 2 — Soft scoring (precise match)
 
@@ -156,9 +156,9 @@ To avoid broken lines, don’t decide purely per pixel/cell in isolation:
 
 **Option A: Tile consensus (8×8 threads concept)**
 
-*   For each output cell, you already aggregate features from the cell patch (that’s a consensus).
+*   For each output cell, we already aggregate features from the cell patch.
     
-*   Additionally, you can enforce **neighborhood voting**:
+*   Additionally, we enforce **neighborhood voting**:
     
     *   compute the “edge class” (none / H / V / diag / corner / junction / texture)
         
@@ -183,7 +183,7 @@ This is basically a tiny Markov Random Field: very controllable with 2–3 penal
 4) How to make it “controllable” (what users actually tweak)
 ------------------------------------------------------------
 
-You want knobs that map to feature weights and gating thresholds, not raw math:
+We want knobs that map to feature weights and gating thresholds, not raw math:
 
 1.  **Brightness fidelity** (wL): “match tone”
     
@@ -213,7 +213,7 @@ This turns our system into a “shader” rather than a one-off mapper.
 5) Practical glyph family design
 ----------------------------------
 
-You already have a great taxonomy:
+We already have a great taxonomy:
 
 *   **Edges with clear orientation**: \_ | / \\ and box drawing lines (U+2500–U+250B, etc.)
     
