@@ -172,10 +172,11 @@
   const srcCtx = srcCanvas.getContext("2d", { willReadFrequently: true });
 
   // cache for steps (as ImageData) so we can switch preview quickly
-  const stepCache = {
-    source: null, // ImageData
-    sobel: null   // ImageData
-  };
+const stepCache = {
+  source: null,
+  sobel: null,
+  sobelKey: ""   // <-- add this
+};
 
   let hasImage = false;
   let previewMode = "source";
@@ -209,7 +210,8 @@
     });
   }
 
-  function renderPreview() {
+  function renderPreview() 
+  {
     renderPreviewButtonsState();
     const hintEl = $("previewHint");
 
@@ -219,14 +221,23 @@
       return;
     }
 
-    if (previewMode === "source") {
+    if (previewMode === "source") 
+    {
       hintEl.textContent = "Original image.";
       previewCtx.putImageData(stepCache.source, 0, 0);
-    } else if (previewMode === "sobel") {
-      if (!stepCache.sobel) {
-        stepCache.sobel = computeSobelImageData(stepCache.source);
+    } 
+    else if (previewMode === "sobel") 
+    {
+      const p = getSobelPreviewParams();
+      const key = `${p.gain}|${p.threshold}|${p.thresholded}`;
+
+      if (!stepCache.sobel || stepCache.sobelKey !== key) {
+        stepCache.sobel = computeSobelImageData(stepCache.source, p);
+        stepCache.sobelKey = key;
       }
-      hintEl.textContent = "Sobel magnitude (edges).";
+      hintEl.textContent = p.thresholded
+        ? `Sobel magnitude (gain ${p.gain.toFixed(2)}), thresholded @ ${p.threshold}`
+        : `Sobel magnitude (gain ${p.gain.toFixed(2)})`;
       previewCtx.putImageData(stepCache.sobel, 0, 0);
     }
   }
@@ -327,7 +338,7 @@
   // ---------------------------
   // Sobel as an *image* step (for preview)
   // ---------------------------
-  function computeSobelImageData(srcImageData) {
+  function computeSobelImageData(srcImageData, params) {
     const w = srcImageData.width, h = srcImageData.height;
     const src = srcImageData.data;
 
@@ -372,17 +383,29 @@
       }
     }
 
-    // Second pass: write grayscale (0..255)
+    const gain = params?.gain ?? 1.0;
+    const threshold = params?.threshold ?? 0;
+    const thresholded = params?.thresholded ?? false;
+
+    // Second pass: write grayscale (0..255) with gain and optional thresholding
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const mag = mags[y * w + x];
-        const v = clamp(Math.round((mag / maxMag) * 255), 0, 255);
+
+        // normalize to 0..255, then apply gain
+        let v = (mag / maxMag) * 255 * gain;
+        v = clamp(Math.round(v), 0, 255);
+
+        // optional thresholded view (useful when you tune edgeThresh)
+        if (thresholded) v = (v >= threshold) ? 255 : 0;
+
         const i = (y * w + x) * 4;
         dst[i] = dst[i+1] = dst[i+2] = v;
         dst[i+3] = 255;
       }
     }
     return out;
+
   }
 
   // ---------------------------
@@ -518,11 +541,20 @@
     // Invalidate step caches that depend on these params:
     // - Sobel preview depends on edgeGain (and could later depend on other params)
     stepCache.sobel = null;
+    stepCache.sobelKey = "";
 
     // If we later add more step caches (DoG, quantized angles, etc.), invalidate them here too.
     renderPreview();     // refresh the preview window
     computeAscii();      // keep ASCII output consistent with the final committed params
   }
+
+  function getSobelPreviewParams() {
+  return {
+    gain: parseFloat($("edgeGain").value),       // affects brightness of edges
+    threshold: parseInt($("edgeThresh").value, 10), // optional: show thresholded edges
+    thresholded: true                            // set false if you want pure magnitude preview
+  };
+}
 
   // Attach "commit on release" behavior to a control.
   // We allow both pointer events and mouse/touch for broad compatibility.
