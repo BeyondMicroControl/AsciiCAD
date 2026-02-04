@@ -1,4 +1,4 @@
-**glyph “material model”** 
+# Glyph “material model”
 
 _two channels_:
 
