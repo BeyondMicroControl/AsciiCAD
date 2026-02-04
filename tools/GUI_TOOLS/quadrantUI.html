@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Quadrant Feature Controller (Standalone)</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      margin: 18px;
+    }
+    .wrap { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+    .card {
+      border: 1px solid rgba(127,127,127,.35);
+      border-radius: 14px;
+      padding: 14px;
+      min-width: 320px;
+      flex: 1;
+    }
+    h2 { margin: 0 0 10px 0; font-size: 18px; }
+    h3 { margin: 0 0 10px 0; font-size: 14px; opacity: .95; }
+    canvas {
+      border-radius: 14px;
+      border: 1px solid rgba(127,127,127,.35);
+      width: 360px;
+      height: 360px;
+      touch-action: none;
+      display: block;
+    }
+    label { display: block; margin: 10px 0 6px; font-size: 12px; opacity: .9; }
+    input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(127,127,127,.35);
+      background: transparent;
+    }
+    input[type="range"] { width: 100%; }
+    .row { display: flex; gap: 10px; }
+    .row > div { flex: 1; }
+    .small { font-size: 12px; opacity: .85; line-height: 1.35; }
+    pre {
+      margin: 10px 0 0 0;
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(127,127,127,.35);
+      overflow: auto;
+      max-height: 320px;
+      background: rgba(127,127,127,.08);
+      white-space: pre;
+    }
+    button {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(127,127,127,.35);
+      background: rgba(127,127,127,.12);
+      cursor: pointer;
+    }
+    button:hover { background: rgba(127,127,127,.18); }
+    .inline { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .val { font-size: 12px; opacity: .8; }
+  </style>
+</head>
+<body>
+
+  <h2>Quadrant Feature Controller (UI Prototype)</h2>
+
+  <div class="wrap">
+    <div class="card" style="flex:0 0 auto;">
+      <h3>Quadrant pad (drag the dot)</h3>
+      <canvas id="pad" width="360" height="360" aria-label="quadrant controller"></canvas>
+
+      <div class="small" style="margin-top:10px;">
+        Corner weights are computed by bilinear mixing from dot position (x,y in 0..1):<br/>
+        TL=(1-x)(1-y), TR=x(1-y), BL=(1-x)y, BR=xy.
+      </div>
+
+      <div class="inline" style="margin-top:10px;">
+        <button id="btnCenter">Center</button>
+        <button id="btnRandom">Random</button>
+        <span class="val" id="xyReadout"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Corner labels (map these to features 2/3/4/5)</h3>
+
+      <div class="row">
+        <div>
+          <label>Top-left label</label>
+          <input id="lblTL" type="text" value="Edge fidelity" />
+        </div>
+        <div>
+          <label>Top-right label</label>
+          <input id="lblTR" type="text" value="Texture fidelity / FFT" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Bottom-left label</label>
+          <input id="lblBL" type="text" value="Edge glyph family bias" />
+        </div>
+        <div>
+          <label>Bottom-right label</label>
+          <input id="lblBR" type="text" value="Continuity" />
+        </div>
+      </div>
+
+      <h3 style="margin-top:14px;">Separate sliders</h3>
+
+      <label>Luminosity voting strength <span class="val" id="lumVoteVal"></span></label>
+      <input id="lumVote" type="range" min="0" max="1" step="0.01" value="0.15" />
+
+      <label>Detail-scale voting strength <span class="val" id="scaleVoteVal"></span></label>
+      <input id="scaleVote" type="range" min="0" max="1" step="0.01" value="0.10" />
+
+      <h3 style="margin-top:14px;">Output (integration-ready state)</h3>
+      <pre id="out"></pre>
+
+      <div class="small" style="margin-top:10px;">
+        Integration hooks:
+        <ul>
+          <li><code>window.QuadrantController.getState()</code></li>
+          <li>Listen for <code>window.addEventListener("quadrant-change", ...)</code></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const pad = $("pad");
+  const ctx = pad.getContext("2d");
+
+  // Dot position in normalized coords (0..1)
+  let x = 0.5, y = 0.5;
+  let dragging = false;
+
+  // Theme-ish colors that work in both light/dark
+  const C = {
+    bg:   "rgba(127,127,127,0.08)",
+    grid: "rgba(127,127,127,0.25)",
+    axis: "rgba(127,127,127,0.35)",
+    text: "rgba(220,220,220,0.95)",   // will still look OK in light mode
+    text2:"rgba(30,30,30,0.90)",      // fallback for light backgrounds (we'll choose dynamically)
+    dotHalo: "rgba(255,255,255,0.35)",
+    dotCore: "rgba(255,255,255,0.95)",
+    dotStroke: "rgba(0,0,0,0.65)"
+  };
+
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  // Bilinear corner weights
+  function cornerWeights(nx, ny) {
+    const wTL = (1 - nx) * (1 - ny);
+    const wTR = nx * (1 - ny);
+    const wBL = (1 - nx) * ny;
+    const wBR = nx * ny;
+    const sum = wTL + wTR + wBL + wBR || 1;
+    return { TL: wTL/sum, TR: wTR/sum, BL: wBL/sum, BR: wBR/sum };
+  }
+
+  function getLabels() {
+    return {
+      TL: $("lblTL").value,
+      TR: $("lblTR").value,
+      BL: $("lblBL").value,
+      BR: $("lblBR").value
+    };
+  }
+
+  function getSliders() {
+    return {
+      luminosityVoting: parseFloat($("lumVote").value),
+      detailScaleVoting: parseFloat($("scaleVote").value)
+    };
+  }
+
+  function getState() {
+    const labels = getLabels();
+    const w = cornerWeights(x, y);
+    const sliders = getSliders();
+    const weightsByLabel = {};
+    weightsByLabel[labels.TL] = w.TL;
+    weightsByLabel[labels.TR] = w.TR;
+    weightsByLabel[labels.BL] = w.BL;
+    weightsByLabel[labels.BR] = w.BR;
+
+    return {
+      version: "1.1",
+      dot: { x, y },
+      corners: { labels, weights: w },
+      weightsByLabel,
+      sliders
+    };
+  }
+
+  function emitChange() {
+    const state = getState();
+    $("out").textContent = JSON.stringify(state, null, 2);
+    $("xyReadout").textContent = `x=${state.dot.x.toFixed(3)}  y=${state.dot.y.toFixed(3)}`;
+    window.dispatchEvent(new CustomEvent("quadrant-change", { detail: state }));
+  }
+
+  function draw() {
+    const W = pad.width, H = pad.height;
+
+    // background
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = C.bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // grid
+    ctx.strokeStyle = C.grid;
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      const gx = (W * i) / 4;
+      const gy = (H * i) / 4;
+      ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+    }
+
+    // axes (center)
+    ctx.strokeStyle = C.axis;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
+
+    // border
+    ctx.strokeStyle = "rgba(127,127,127,0.45)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, W-2, H-2);
+
+    // labels
+    const labels = getLabels();
+    ctx.font = "12px ui-monospace, monospace";
+
+    // choose readable label color based on background luminance (simple heuristic)
+    // bg is light-ish in both modes, but this keeps it robust
+    ctx.fillStyle = "rgba(30,30,30,0.90)";
+
+    const padPx = 10;
+
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(labels.TL, padPx, padPx);
+
+    ctx.textAlign = "right";
+    ctx.textBaseline = "top";
+    ctx.fillText(labels.TR, W - padPx, padPx);
+
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(labels.BL, padPx, H - padPx);
+
+    ctx.textAlign = "right";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(labels.BR, W - padPx, H - padPx);
+
+    // dot
+    const px = x * W;
+    const py = y * H;
+
+    // crosshair through dot
+    ctx.strokeStyle = "rgba(0,0,0,0.25)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(W, py); ctx.stroke();
+
+    // halo
+    ctx.fillStyle = C.dotHalo;
+    ctx.beginPath();
+    ctx.arc(px, py, 16, 0, Math.PI * 2);
+    ctx.fill();
+
+    // core + outline
+    ctx.fillStyle = C.dotCore;
+    ctx.strokeStyle = C.dotStroke;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(px, py, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  function setDotFromEvent(ev) {
+    const r = pad.getBoundingClientRect();
+    const px = clamp(ev.clientX - r.left, 0, r.width);
+    const py = clamp(ev.clientY - r.top, 0, r.height);
+    x = clamp(px / r.width, 0, 1);
+    y = clamp(py / r.height, 0, 1);
+    draw();
+    emitChange();
+  }
+
+  // pointer interactions
+  pad.addEventListener("pointerdown", (ev) => {
+    dragging = true;
+    pad.setPointerCapture(ev.pointerId);
+    setDotFromEvent(ev);
+  });
+  pad.addEventListener("pointermove", (ev) => {
+    if (!dragging) return;
+    setDotFromEvent(ev);
+  });
+  function endDrag(ev) {
+    if (!dragging) return;
+    dragging = false;
+    try { pad.releasePointerCapture(ev.pointerId); } catch {}
+  }
+  pad.addEventListener("pointerup", endDrag);
+  pad.addEventListener("pointercancel", endDrag);
+
+  // buttons
+  $("btnCenter").addEventListener("click", () => { x = 0.5; y = 0.5; draw(); emitChange(); });
+  $("btnRandom").addEventListener("click", () => { x = Math.random(); y = Math.random(); draw(); emitChange(); });
+
+  // labels + sliders update
+  for (const id of ["lblTL","lblTR","lblBL","lblBR"]) {
+    $(id).addEventListener("input", () => { draw(); emitChange(); });
+    $(id).addEventListener("change", () => { draw(); emitChange(); });
+  }
+
+  function syncSliderLabels() {
+    $("lumVoteVal").textContent = $("lumVote").value;
+    $("scaleVoteVal").textContent = $("scaleVote").value;
+  }
+  for (const id of ["lumVote","scaleVote"]) {
+    $(id).addEventListener("input", () => { syncSliderLabels(); emitChange(); });
+    $(id).addEventListener("change", () => { syncSliderLabels(); emitChange(); });
+  }
+
+  // expose API
+  window.QuadrantController = {
+    getState,
+    setDot(nx, ny) {
+      x = clamp(nx, 0, 1);
+      y = clamp(ny, 0, 1);
+      draw();
+      emitChange();
+    }
+  };
+
+  // init
+  syncSliderLabels();
+  draw();
+  emitChange();
+})();
+</script>
+
+</body>
+</html>
