@@ -32,7 +32,7 @@ SOFTWARE.
 
 # About the author
 
-I'm an enterprise security architect, old project manager and software professional with nearly 30 years of experience, currently based in Leuven, Belgium. Throughout my career, my focus has evolved from hands-on software development to broader technology leadership and cybersecurity./
+I'm an enterprise security architect, old project manager and software professional with nearly 30 years of IT experience, currently based in Leuven, Belgium. Throughout my career, my focus has evolved from hands-on software development to broader technology leadership and cybersecurity./
 Beyond my professional work, I maintain an active portfolio of personal projects that reflect my passion for both retro computing and embedded systems development. As a hobbyist since the early 80', I still find fun in exploring interesting topics across several domains, far away from corporate management subject matters.  Whether it sounds like a strange combo, Enterprise Architecture remains unequivocally my core field of interest.
 
 ## Retro Computing & Emulation
