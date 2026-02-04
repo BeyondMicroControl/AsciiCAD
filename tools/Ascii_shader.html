@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Qualitative ASCII Shader (Standalone)</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; margin: 16px; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+    .panel { border: 1px solid rgba(127,127,127,.35); border-radius: 12px; padding: 12px; min-width: 320px; flex: 1; }
+    label { display: block; margin: 10px 0 6px; font-size: 13px; opacity: .95; }
+    input[type="text"], textarea { width: 100%; box-sizing: border-box; padding: 10px; border-radius: 10px; border: 1px solid rgba(127,127,127,.35); background: transparent; }
+    textarea { min-height: 220px; resize: vertical; white-space: pre; overflow: auto; }
+    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .controls > div { min-width: 220px; }
+    .inline { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .value { opacity: .8; font-size: 12px; }
+    button { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(127,127,127,.35); background: rgba(127,127,127,.12); cursor: pointer; }
+    button:hover { background: rgba(127,127,127,.18); }
+    canvas { width: 100%; height: auto; border-radius: 12px; border: 1px solid rgba(127,127,127,.35); }
+    .hint { font-size: 12px; opacity: .8; line-height: 1.35; margin-top: 8px; }
+    .monoPreview { white-space: pre; line-height: 1; font-size: 10px; border-radius: 12px; border: 1px solid rgba(127,127,127,.35); padding: 10px; overflow:auto; max-height: 320px; }
+    .seg { display:flex; gap:8px; flex-wrap:wrap; }
+    .seg button { padding: 8px 10px; }
+    .seg button[data-active="true"] { outline: 2px solid rgba(127,127,127,.55); }
+  </style>
+</head>
+<body>
+  <h2 style="margin:0 0 12px 0;">Qualitative ASCII Shader (Standalone HTML + JS)</h2>
+
+  <div class="row">
+    <div class="panel">
+      <h3 style="margin:0 0 10px 0;">1) Input</h3>
+
+      <label>Load image file</label>
+      <div class="inline">
+        <input id="fileInput" type="file" accept="image/*" />
+        <button id="btnExample">Load example (built-in gradient)</button>
+      </div>
+
+      <label>Or download image by URL</label>
+      <div class="inline">
+        <input id="urlInput" type="text" placeholder="https://example.com/image.jpg" />
+        <button id="btnDownload">Download</button>
+      </div>
+
+      <div class="hint">
+        Tip: if a URL fails, it’s often due to CORS. File input always works offline.
+      </div>
+
+      <label>Preview (select step)</label>
+      <div class="seg" id="previewButtons"></div>
+
+      <canvas id="previewCanvas" width="640" height="360"></canvas>
+
+      <div class="hint" id="previewHint"></div>
+    </div>
+
+    <div class="panel">
+      <h3 style="margin:0 0 10px 0;">2) Controls</h3>
+
+      <div class="controls">
+        <div>
+          <label>Columns <span class="value" id="colsVal"></span></label>
+          <input id="cols" type="range" min="20" max="300" value="120" />
+        </div>
+
+        <div>
+          <label>Rows <span class="value" id="rowsVal"></span></label>
+          <input id="rows" type="range" min="10" max="200" value="60" />
+        </div>
+
+        <div>
+          <label class="inline" style="margin-top:10px;">
+            <input id="keepAspect" type="checkbox" checked />
+            Keep aspect ratio (adjust rows when columns change)
+          </label>
+          <div class="hint">
+            Uses a character aspect correction factor (width/height). Default 0.5 is typical for monospace rendering.
+          </div>
+
+          <label>Char aspect correction <span class="value" id="charAspVal"></span></label>
+          <input id="charAspect" type="range" min="0.30" max="0.90" step="0.01" value="0.50" />
+        </div>
+
+        <div>
+          <label>Edge sensitivity (Sobel threshold) <span class="value" id="edgeVal"></span></label>
+          <input id="edgeThresh" type="range" min="0" max="255" value="80" />
+          <label>Edge magnitude gain <span class="value" id="edgeGainVal"></span></label>
+          <input id="edgeGain" type="range" min="0.5" max="3.0" step="0.05" value="1.35" />
+        </div>
+
+        <div style="grid-column: 1 / -1;">
+          <label>Luminance character set (light → dense)</label>
+          <input id="charset" type="text" value=" .,:;irsXA253hMHGS#9B&@" />
+          <div class="hint">
+            You can use monospaced UTF-8 too (e.g. ░▒▓█ or ⠂⠒⠖⠶⠷⠿⣿). Keep it ordered light→dense.
+          </div>
+        </div>
+
+        <div style="grid-column: 1 / -1;">
+          <label>Edge character set (4 directions: horiz, vert, diag1, diag2)</label>
+          <input id="edgeChars" type="text" value="_|/\\" />
+          <div class="hint">
+            Must contain 4 characters. Default maps to: _ , | , / , \ .
+          </div>
+        </div>
+
+        <div style="grid-column: 1 / -1;" class="inline">
+          <button id="btnRun">Run ASCII shader</button>
+          <button id="btnCopy">Copy encoded string</button>
+          <span class="value" id="status"></span>
+        </div>
+      </div>
+
+      <label>ASCII preview (rendered)</label>
+      <div id="asciiPreview" class="monoPreview"></div>
+
+      <div class="hint">
+        The <b>encoded output</b> below is a single string where newlines are written as the two characters
+        <code>\</code> and <code>n</code> (i.e. <code>\\n</code>), and backslashes are doubled (<code>\\</code>).
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3 style="margin:0 0 10px 0;">3) Output (strict string)</h3>
+
+      <label>Encoded string output (only uses \\n and \\ escapes)</label>
+      <textarea id="outEncoded" spellcheck="false"></textarea>
+
+      <label style="margin-top:12px;">Raw output (contains real newlines; backslashes are literal)</label>
+      <textarea id="outRaw" spellcheck="false"></textarea>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ---------------------------
+  // Utilities
+  // ---------------------------
+  const $ = (id) => document.getElementById(id);
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+
+  function setStatus(msg) { $("status").textContent = msg || ""; }
+
+  function escapeForSingleString(rawAscii) {
+    // 1) Escape backslashes: \  -> \\
+    // 2) Replace actual newlines with literal "\n" (two chars)
+    return rawAscii.replace(/\\/g, "\\\\").replace(/\n/g, "\\n");
+  }
+
+  function quantizeAngleTo4(theta) {
+    let a = Math.abs(theta);
+    if (a > Math.PI / 2) a = Math.PI - a;
+    if (a < Math.PI / 8) return 0;             // horizontal
+    if (a < 3 * Math.PI / 8) return 2;         // diagonal group
+    return 1;                                  // vertical
+  }
+  function diagSlashIndex(gx, gy) {
+    return (gx * gy < 0) ? 2 : 3; // '/' vs '\'
+  }
+
+  // ---------------------------
+  // Canvases & preview pipeline state
+  // ---------------------------
+  const previewCanvas = $("previewCanvas");
+  const previewCtx = previewCanvas.getContext("2d", { willReadFrequently: true });
+
+  // offscreen holds the current source image
+  const srcCanvas = document.createElement("canvas");
+  const srcCtx = srcCanvas.getContext("2d", { willReadFrequently: true });
+
+  // cache for steps (as ImageData) so we can switch preview quickly
+  const stepCache = {
+    source: null, // ImageData
+    sobel: null   // ImageData
+  };
+
+  let hasImage = false;
+  let previewMode = "source";
+
+  function makePreviewButtons() {
+    const container = $("previewButtons");
+    container.innerHTML = "";
+
+    const steps = [
+      { id: "source", label: "Show Source", hint: "Original image as loaded (downscaled only for display)." },
+      { id: "sobel",  label: "Show Sobel",  hint: "Sobel magnitude (edge strength) shown as grayscale." }
+    ];
+
+    for (const s of steps) {
+      const b = document.createElement("button");
+      b.textContent = s.label;
+      b.dataset.step = s.id;
+      b.addEventListener("click", () => {
+        previewMode = s.id;
+        renderPreview();
+      });
+      container.appendChild(b);
+    }
+    renderPreviewButtonsState();
+  }
+
+  function renderPreviewButtonsState() {
+    const buttons = $("previewButtons").querySelectorAll("button");
+    buttons.forEach(btn => {
+      btn.dataset.active = (btn.dataset.step === previewMode) ? "true" : "false";
+    });
+  }
+
+  function renderPreview() {
+    renderPreviewButtonsState();
+    const hintEl = $("previewHint");
+
+    if (!hasImage) {
+      previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      hintEl.textContent = "No image loaded.";
+      return;
+    }
+
+    if (previewMode === "source") {
+      hintEl.textContent = "Original image.";
+      previewCtx.putImageData(stepCache.source, 0, 0);
+    } else if (previewMode === "sobel") {
+      if (!stepCache.sobel) {
+        stepCache.sobel = computeSobelImageData(stepCache.source);
+      }
+      hintEl.textContent = "Sobel magnitude (edges).";
+      previewCtx.putImageData(stepCache.sobel, 0, 0);
+    }
+  }
+
+  // ---------------------------
+  // Loading + drawing
+  // ---------------------------
+  function setPreviewSize(w, h) {
+    previewCanvas.width = w;
+    previewCanvas.height = h;
+    srcCanvas.width = w;
+    srcCanvas.height = h;
+  }
+
+  function drawImageToSourceAndCache(img) {
+    // limit preview size for performance
+    const maxW = 900;
+    const scale = Math.min(1, maxW / img.naturalWidth);
+    const w = Math.max(1, Math.floor(img.naturalWidth * scale));
+    const h = Math.max(1, Math.floor(img.naturalHeight * scale));
+
+    setPreviewSize(w, h);
+
+    srcCtx.clearRect(0, 0, w, h);
+    srcCtx.drawImage(img, 0, 0, w, h);
+
+    stepCache.source = srcCtx.getImageData(0, 0, w, h);
+    stepCache.sobel = null; // invalidate when source changes
+
+    hasImage = true;
+    setStatus(`Loaded ${img.naturalWidth}×${img.naturalHeight} (preview ${w}×${h})`);
+    renderPreview();
+  }
+
+  function loadFromFile(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+      img.src = url;
+    });
+  }
+
+  async function loadFromUrl(url) {
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const objUrl = URL.createObjectURL(blob);
+    try {
+      const img = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        i.src = objUrl;
+      });
+      return img;
+    } finally {
+      URL.revokeObjectURL(objUrl);
+    }
+  }
+
+  function loadBuiltInExample() {
+    const w = 800, h = 450;
+    setPreviewSize(w, h);
+
+    // draw into source canvas
+    const g = srcCtx.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0.00, "black");
+    g.addColorStop(0.35, "#333");
+    g.addColorStop(0.65, "#bbb");
+    g.addColorStop(1.00, "white");
+    srcCtx.fillStyle = g;
+    srcCtx.fillRect(0, 0, w, h);
+
+    srcCtx.strokeStyle = "white";
+    srcCtx.lineWidth = 6;
+    srcCtx.strokeRect(60, 60, 250, 160);
+    srcCtx.beginPath();
+    srcCtx.moveTo(420, 70);
+    srcCtx.lineTo(740, 230);
+    srcCtx.lineTo(520, 390);
+    srcCtx.closePath();
+    srcCtx.stroke();
+
+    srcCtx.fillStyle = "rgba(0,0,0,.7)";
+    srcCtx.font = "bold 56px ui-monospace, monospace";
+    srcCtx.fillText("ASCII", 90, 330);
+
+    stepCache.source = srcCtx.getImageData(0, 0, w, h);
+    stepCache.sobel = null;
+
+    hasImage = true;
+    setStatus(`Loaded built-in example ${w}×${h}`);
+    renderPreview();
+  }
+
+  // ---------------------------
+  // Sobel as an *image* step (for preview)
+  // ---------------------------
+  function computeSobelImageData(srcImageData) {
+    const w = srcImageData.width, h = srcImageData.height;
+    const src = srcImageData.data;
+
+    // luminance
+    const lum = new Float32Array(w * h);
+    for (let i = 0, p = 0; i < src.length; i += 4, p++) {
+      const r = src[i], g = src[i+1], b = src[i+2];
+      lum[p] = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    function at(x, y) {
+      x = clamp(x, 0, w - 1);
+      y = clamp(y, 0, h - 1);
+      return lum[y * w + x];
+    }
+
+    const out = new ImageData(w, h);
+    const dst = out.data;
+
+    // First pass: magnitude, find max for normalization (optional but gives nicer preview)
+    let maxMag = 1;
+    const mags = new Float32Array(w * h);
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const a00 = at(x-1, y-1), a10 = at(x, y-1), a20 = at(x+1, y-1);
+        const a01 = at(x-1, y),   a21 = at(x+1, y);
+        const a02 = at(x-1, y+1), a12 = at(x, y+1), a22 = at(x+1, y+1);
+
+        const gx =
+          (-1 * a00) + ( 1 * a20) +
+          (-2 * a01) + ( 2 * a21) +
+          (-1 * a02) + ( 1 * a22);
+
+        const gy =
+          ( 1 * a00) + ( 2 * a10) + ( 1 * a20) +
+          (-1 * a02) + (-2 * a12) + (-1 * a22);
+
+        const mag = Math.sqrt(gx*gx + gy*gy);
+        mags[y * w + x] = mag;
+        if (mag > maxMag) maxMag = mag;
+      }
+    }
+
+    // Second pass: write grayscale (0..255)
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const mag = mags[y * w + x];
+        const v = clamp(Math.round((mag / maxMag) * 255), 0, 255);
+        const i = (y * w + x) * 4;
+        dst[i] = dst[i+1] = dst[i+2] = v;
+        dst[i+3] = 255;
+      }
+    }
+    return out;
+  }
+
+  // ---------------------------
+  // Core: ASCII shader (uses Sobel at character-cell level)
+  // ---------------------------
+  const gridCanvas = document.createElement("canvas");
+  const gridCtx = gridCanvas.getContext("2d", { willReadFrequently: true });
+
+  function computeAscii() {
+    if (!hasImage || !stepCache.source) {
+      setStatus("No image loaded.");
+      return;
+    }
+
+    let cols = parseInt($("cols").value, 10);
+    let rows = parseInt($("rows").value, 10);
+    const keepAspect = $("keepAspect").checked;
+    const charAspect = parseFloat($("charAspect").value);
+    const edgeThresh = parseInt($("edgeThresh").value, 10);
+    const edgeGain = parseFloat($("edgeGain").value);
+
+    let charset = $("charset").value;
+    if (!charset || charset.length < 2) charset = " .:-=+*#%@";
+
+    let edgeChars = $("edgeChars").value;
+    if (!edgeChars || edgeChars.length < 4) edgeChars = "_|/\\";
+    edgeChars = edgeChars.slice(0, 4);
+
+    // keep aspect: base on preview image dimensions (stepCache.source)
+    const srcW = stepCache.source.width;
+    const srcH = stepCache.source.height;
+    if (keepAspect) {
+      rows = clamp(Math.round(cols * (srcH / srcW) * charAspect), 10, 200);
+      $("rows").value = String(rows);
+      $("rowsVal").textContent = rows;
+    }
+
+    // Downscale source preview image to cols x rows
+    gridCanvas.width = cols;
+    gridCanvas.height = rows;
+    gridCtx.clearRect(0, 0, cols, rows);
+    gridCtx.imageSmoothingEnabled = true;
+
+    // draw from source ImageData via a temp canvas
+    const tmp = document.createElement("canvas");
+    tmp.width = srcW; tmp.height = srcH;
+    tmp.getContext("2d").putImageData(stepCache.source, 0, 0);
+    gridCtx.drawImage(tmp, 0, 0, cols, rows);
+
+    const imgData = gridCtx.getImageData(0, 0, cols, rows);
+    const data = imgData.data;
+
+    const lum = new Float32Array(cols * rows);
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const i = (y * cols + x) * 4;
+        const r = data[i], g = data[i+1], b = data[i+2];
+        lum[y * cols + x] = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      }
+    }
+    function at(x, y) {
+      x = clamp(x, 0, cols - 1);
+      y = clamp(y, 0, rows - 1);
+      return lum[y * cols + x];
+    }
+
+    const outLines = [];
+    const nChars = charset.length;
+
+    for (let y = 0; y < rows; y++) {
+      let line = "";
+      for (let x = 0; x < cols; x++) {
+        const a00 = at(x-1, y-1), a10 = at(x, y-1), a20 = at(x+1, y-1);
+        const a01 = at(x-1, y),   a11 = at(x, y),   a21 = at(x+1, y);
+        const a02 = at(x-1, y+1), a12 = at(x, y+1), a22 = at(x+1, y+1);
+
+        const gx =
+          (-1 * a00) + ( 1 * a20) +
+          (-2 * a01) + ( 2 * a21) +
+          (-1 * a02) + ( 1 * a22);
+
+        const gy =
+          ( 1 * a00) + ( 2 * a10) + ( 1 * a20) +
+          (-1 * a02) + (-2 * a12) + (-1 * a22);
+
+        let mag = Math.sqrt(gx*gx + gy*gy) * 0.25 * edgeGain;
+        if (mag > 255) mag = 255;
+
+        let ch;
+        if (mag >= edgeThresh) {
+          const theta = Math.atan2(gy, gx);
+          const bin = quantizeAngleTo4(theta);
+          if (bin === 0) ch = edgeChars[0];
+          else if (bin === 1) ch = edgeChars[1];
+          else ch = edgeChars[diagSlashIndex(gx, gy)];
+        } else {
+          // FIX: invert luminance mapping for charset ordered light->dense:
+          // black -> dense (last), white -> light (first)
+          const v = a11; // 0..255
+          const t = 1 - (v / 255); // invert
+          const idx = clamp(Math.floor(t * (nChars - 1)), 0, nChars - 1);
+          ch = charset[idx];
+        }
+        line += ch;
+      }
+      outLines.push(line);
+    }
+
+    const raw = outLines.join("\n");
+    const encoded = escapeForSingleString(raw);
+
+    $("outRaw").value = raw;
+    $("outEncoded").value = encoded;
+    $("asciiPreview").textContent = raw;
+
+    setStatus(`Done: ${cols}×${rows} chars`);
+  }
+
+    // ---------------------------
+  // UI
+  // ---------------------------
+  function syncLabels() {
+    $("colsVal").textContent = $("cols").value;
+    $("rowsVal").textContent = $("rows").value;
+    $("edgeVal").textContent = $("edgeThresh").value;
+    $("edgeGainVal").textContent = $("edgeGain").value;
+    $("charAspVal").textContent = $("charAspect").value;
+  }
+
+  // Recompute anything that depends on *non grid* params and refresh preview.
+  // Called ONLY on "mouseup/pointerup" (and change).
+  function commitNonGridParams() {
+    // Invalidate step caches that depend on these params:
+    // - Sobel preview depends on edgeGain (and could later depend on other params)
+    stepCache.sobel = null;
+
+    // If we later add more step caches (DoG, quantized angles, etc.), invalidate them here too.
+    renderPreview();     // refresh the preview window
+    computeAscii();      // keep ASCII output consistent with the final committed params
+  }
+
+  // Attach "commit on release" behavior to a control.
+  // We allow both pointer events and mouse/touch for broad compatibility.
+  function attachCommitOnRelease(el) {
+    let down = false;
+
+    el.addEventListener("pointerdown", () => { down = true; }, { passive: true });
+    el.addEventListener("pointerup",   () => { if (down) { down = false; syncLabels(); commitNonGridParams(); } }, { passive: true });
+    el.addEventListener("pointercancel",() => { down = false; }, { passive: true });
+
+    // Fallbacks (some environments)
+    el.addEventListener("mousedown", () => { down = true; }, { passive: true });
+    el.addEventListener("mouseup",   () => { if (down) { down = false; syncLabels(); commitNonGridParams(); } }, { passive: true });
+    el.addEventListener("touchstart",() => { down = true; }, { passive: true });
+    el.addEventListener("touchend",  () => { if (down) { down = false; syncLabels(); commitNonGridParams(); } }, { passive: true });
+
+    // Keyboard / manual edits should still apply
+    el.addEventListener("change", () => { syncLabels(); commitNonGridParams(); });
+  }
+
+  $("fileInput").addEventListener("change", async (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    try {
+      setStatus("Loading file…");
+      const img = await loadFromFile(f);
+      drawImageToSourceAndCache(img);
+      previewMode = "source";
+      syncLabels();
+      computeAscii();
+    } catch (err) {
+      console.error(err);
+      setStatus("Failed to load file.");
+    }
+  });
+
+  $("btnDownload").addEventListener("click", async () => {
+    const url = $("urlInput").value.trim();
+    if (!url) return;
+    try {
+      setStatus("Downloading…");
+      const img = await loadFromUrl(url);
+      drawImageToSourceAndCache(img);
+      previewMode = "source";
+      syncLabels();
+      computeAscii();
+    } catch (err) {
+      console.error(err);
+      setStatus("Download failed (often CORS). Try file input.");
+    }
+  });
+
+  $("btnExample").addEventListener("click", () => {
+    loadBuiltInExample();
+    previewMode = "source";
+    syncLabels();
+    computeAscii();
+  });
+
+  $("btnRun").addEventListener("click", () => {
+    syncLabels();
+    // Run uses whatever is current, commit non-grid params too
+    commitNonGridParams();
+  });
+
+  $("btnCopy").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText($("outEncoded").value);
+      setStatus("Copied encoded string to clipboard.");
+    } catch {
+      setStatus("Copy failed (clipboard permission).");
+    }
+  });
+
+  // LIVE update only for columns/rows (as requested)
+  for (const id of ["cols", "rows"]) {
+    $(id).addEventListener("input", () => { syncLabels(); computeAscii(); });
+    $(id).addEventListener("change", () => { syncLabels(); computeAscii(); });
+  }
+
+  // Commit-on-release for every other parameter (as requested)
+  // Sliders + checkbox:
+  attachCommitOnRelease($("charAspect"));
+  attachCommitOnRelease($("keepAspect"));
+  attachCommitOnRelease($("edgeThresh"));
+  attachCommitOnRelease($("edgeGain"));
+
+  // Text inputs: apply on change (and also on blur/Enter naturally via change)
+  $("charset").addEventListener("change", () => { syncLabels(); commitNonGridParams(); });
+  $("edgeChars").addEventListener("change", () => { syncLabels(); commitNonGridParams(); });
+
+  // Init
+  makePreviewButtons();
+  syncLabels();
+  loadBuiltInExample();
+  computeAscii();
+})();
+</script>
+</body>
+</html>
