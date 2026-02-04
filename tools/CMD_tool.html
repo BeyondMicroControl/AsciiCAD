@@ -157,8 +157,30 @@ pre{
   background: #fff;
 }
 
+/* styling for title heading */
 .gradient { background:linear-gradient(0deg, rgba(120,120,120,1) 0%, rgba(0,0,0,1) 50%); }
 .Btn{ background: #2b3240; color:#ffffff;height:25px;float:left;margin:10px;border-radius:10px;-webkit-border-radius:10px;box-shadow:0 1px 2px #5e5d5b;padding-top:5px; }
+
+/* baseline styling for JSON */
+.json-view {
+font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+white-space: pre;
+line-height: 1.35;
+}
+
+/* highlight both matching boundaries */
+.json-boundary.active {
+background: rgba(255, 255, 255, 0.5);
+border-radius: 4px;
+outline: 1px solid rgba(255, 215, 0, 0.35);
+}
+
+#output {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  white-space: pre;      /* exact */
+  /* OR: white-space: pre-wrap;  keep indentation, but allow wrapping */
+}
+
 
 </style>
   </head>
@@ -212,7 +234,7 @@ pre{
       </div>
 
       <div class="panel">
-        <div class="panelHeader">Parsed output (JSON)</div>
+        <div class="panelHeader">Parsed output (JSON) - hover over brackets to highlight matching pairs</div>
         <div class="panelBody">
           <pre id="output">(click “Parse Input”)</pre>
         </div>
@@ -537,6 +559,189 @@ function CMD()
 
 
 
+
+
+
+//        _____   ______     ___   ____  _____                               
+//       |_   _|.' ____ \  .'   `.|_   \|_   _|                              
+//         | |  | (___ \_|/  .-.  \ |   \ | |                                
+//     _   | |   _.____`. | |   | | | |\ \| |                                
+//    | |__' |  | \____) |\  `-'  /_| |_\   |_                               
+//    `.____.'   \______.' `.___.'|_____|\____|       _    _                 
+//     (_)          / |_                             / |_ (_)                
+//     __   _ .--. `| |-'.---.  _ .--.  ,--.   .---.`| |-'__  _   __  .---.  
+//    [  | [ `.-. | | | / /__\\[ `/'`\]`'_\ : / /'`\]| | [  |[ \ [  ]/ /__\\ 
+//     | |  | | | | | |,| \__., | |    // | |,| \__. | |, | | \ \/ / | \__., 
+//    [___][___||__]\__/ '.__.'[___]   \'-;__/'.___.'\__/[___] \__/   '.__.'
+
+
+/**
+ * Make a JSON string interactive by pairing boundary characters.
+ *
+ * @param {string} jsonStr - JSON string input (can be minified or pretty).
+ * @param {Object|Array} boundaryStyles - e.g. { "{}":"color:#0f0;font-weight:800", "[]":"color:#f0f;font-weight:800" }
+ *                                      If you pass an array, it should be like:
+ *                                      [ ["{}", "color:#0f0"], ["[]", "color:#f0f"] ]
+ * @param {HTMLElement} mountEl - where to render
+ * @param {number} [indent=2] - pretty-print indent
+ * @returns {HTMLElement} root element
+ */
+function makeInteractiveJson(jsonStr, boundaryStyles, mountEl, indent = 2) {
+  if (!mountEl) throw new Error("mountEl is required");
+
+  // Normalize boundaryStyles into an object map: pairKey -> styleString
+  const styleMap = Array.isArray(boundaryStyles)
+    ? Object.fromEntries(boundaryStyles)
+    : (boundaryStyles || {});
+
+  // Build open/close lookup maps: char -> pairKey
+  const openToKey = {};
+  const closeToKey = {};
+  for (const pairKey of Object.keys(styleMap)) {
+    if (typeof pairKey !== "string" || pairKey.length !== 2) continue;
+    const open = pairKey[0];
+    const close = pairKey[1];
+    openToKey[open] = pairKey;
+    closeToKey[close] = pairKey;
+  }
+
+  // Pretty-print the JSON for readability and stable bracket pairing
+  let pretty;
+  try {
+    const obj = JSON.parse(jsonStr);
+    pretty = JSON.stringify(obj, null, indent);
+  } catch (e) {
+    // If invalid JSON, still render raw text without pairing logic
+    const fallback = document.createElement("pre");
+    fallback.className = "json-view";
+    fallback.textContent = jsonStr;
+    mountEl.replaceChildren(fallback);
+    return fallback;
+  }
+
+  const root = document.createElement("pre");
+  root.className = "json-view";
+
+  // Pairing state: stacks per pairKey, because you might use multiple boundary types
+  const stacks = {}; // pairKey -> [{ id, openSpan }]
+  let nextPairId = 1;
+
+  const frag = document.createDocumentFragment();
+
+  // Helper to append normal text char safely (as text node)
+  function appendTextChar(ch) {
+    frag.appendChild(document.createTextNode(ch));
+  }
+
+  // Helper to append a boundary span
+  function appendBoundarySpan(ch, pairKey, pairId) {
+    const sp = document.createElement("span");
+    sp.className = "json-boundary";
+    sp.textContent = ch;
+    sp.dataset.pair = String(pairId);
+    if (styleMap[pairKey]) sp.setAttribute("style", styleMap[pairKey]);
+    frag.appendChild(sp);
+    return sp;
+  }
+
+  // Scan pretty JSON string and wrap boundary chars
+  for (let i = 0; i < pretty.length; i++) {
+    const ch = pretty[i];
+
+    // Opening boundary?
+    if (openToKey[ch]) {
+      const pairKey = openToKey[ch];
+      const pairId = nextPairId++;
+
+      const openSpan = appendBoundarySpan(ch, pairKey, pairId);
+
+      if (!stacks[pairKey]) stacks[pairKey] = [];
+      stacks[pairKey].push({ id: pairId, openSpan });
+      continue;
+    }
+
+    // Closing boundary?
+    if (closeToKey[ch]) {
+      const pairKey = closeToKey[ch];
+
+      // Pop the most recent opening of the same type
+      const stack = stacks[pairKey];
+      if (stack && stack.length) {
+        const { id: pairId } = stack.pop();
+        appendBoundarySpan(ch, pairKey, pairId);
+      } else {
+        // Unmatched close: render as plain text
+        appendTextChar(ch);
+      }
+      continue;
+    }
+
+    // Otherwise normal character
+    appendTextChar(ch);
+  }
+
+  root.appendChild(frag);
+  mountEl.replaceChildren(root);
+
+  // Event delegation for hover highlighting
+  let activePair = null;
+
+  function setActive(pairId) {
+    if (activePair === pairId) return;
+    clearActive();
+    activePair = pairId;
+    root.querySelectorAll(`.json-boundary[data-pair="${CSS.escape(pairId)}"]`)
+      .forEach(el => el.classList.add("active"));
+  }
+
+  function clearActive() {
+    if (activePair == null) return;
+    root.querySelectorAll(`.json-boundary[data-pair="${CSS.escape(activePair)}"]`)
+      .forEach(el => el.classList.remove("active"));
+    activePair = null;
+  }
+
+  root.addEventListener("mousemove", (e) => {
+    const b = e.target.closest(".json-boundary");
+    if (!b || !root.contains(b)) {
+      clearActive();
+      return;
+    }
+    setActive(b.dataset.pair);
+  });
+
+  root.addEventListener("mouseleave", clearActive);
+
+  return root;
+}
+
+  function prettyJson(res, indent = 2) 
+  {
+    const value = (typeof res === "string") ? JSON.parse(res) : res;
+    return JSON.stringify(value, null, indent);
+  } 
+
+
+
+
+
+
+
+
+
+
+
+
+
+//    ████████ ███████ ███████ ████████     ██████  ███████ ███    ██  ██████ ██   ██ 
+//       ██    ██      ██         ██        ██   ██ ██      ████   ██ ██      ██   ██ 
+//       ██    █████   ███████    ██        ██████  █████   ██ ██  ██ ██      ███████ 
+//       ██    ██           ██    ██        ██   ██ ██      ██  ██ ██ ██      ██   ██ 
+//       ██    ███████ ███████    ██        ██████  ███████ ██   ████  ██████ ██   ██
+
+
+
+
 var oCMD = new CMD();
 
 
@@ -712,6 +917,8 @@ var oCMD = new CMD();
   const frameWrap = document.getElementById("frameWrap");
   const iframe = document.getElementById("app");
 
+
+
   function setExample(text)
   {
     input.value = text;
@@ -722,9 +929,26 @@ var oCMD = new CMD();
   {
     const line = input.value || "";
     const res = oCMD.parseLine(line, { user: "demo" });
-    output.textContent = JSON.stringify(res, null, 2);
+    //output.textContent = JSON.stringify(res, null, 2);
+
+    output.textContent = prettyJson(res, 2);
+
+    
     log(res.ok ? "ok" : "warn", "Parsed line. ok =", String(res.ok));
     if (!res.ok && res.error) log("error", res.error);
+  }
+   
+
+makeInteractiveJson(
+  output.textContent,
+  {
+    "{}": "color:#8a8;",
+    "[]": "color:#86c;",
+    "()": "color:#c88;",
+  },
+  output
+);
+
   }
 
   document.getElementById("btnClear").onclick = () => { logPanel.textContent = ""; };
