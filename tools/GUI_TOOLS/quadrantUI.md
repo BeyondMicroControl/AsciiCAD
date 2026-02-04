@@ -1,4 +1,6 @@
-**glyph “material model”** with _two channels_:
+**glyph “material model”** 
+
+_two channels_:
 
 1.  **luminance/coverage** (how much ink the glyph puts down)
     
@@ -14,7 +16,7 @@ Render each candidate glyph (monospace) to a tiny bitmap at a fixed resolution (
 
 ### A. Luminance / coverage (easy channel)
 
-*   **Ink coverage**: mean of (1 - pixel brightness). This is your “density”.
+*   **Ink coverage**: mean of (1 - pixel brightness). This is our “density”.
     
 *   **Center-of-mass** of ink (optional): catches top/bottom heavy glyphs (e.g. ▀ vs ▄).
     
@@ -148,7 +150,7 @@ Where:
 
 Pick lowest score.
 
-### Stage 3 — Consensus / stability (your “compute shader” idea)
+### Stage 3 — Consensus / stability (the “compute shader” idea)
 
 To avoid broken lines, don’t decide purely per pixel/cell in isolation:
 
@@ -206,10 +208,10 @@ You want knobs that map to feature weights and gating thresholds, not raw math:
 6.  **Detail scale**: controls prefilter (DoG sigma) and texture scale bins
     
 
-This turns your system into a “shader” rather than a one-off mapper.
+This turns our system into a “shader” rather than a one-off mapper.
 
-5) Practical glyph family design (your examples)
-------------------------------------------------
+5) Practical glyph family design
+----------------------------------
 
 You already have a great taxonomy:
 
@@ -222,7 +224,7 @@ You already have a great taxonomy:
 *   **Texture-heavy**: shade blocks ░▒▓█ (U+2591–U+2588), Braille (U+2800–U+28FF), dense mosaics like ⣿
     
 
-In the feature database, each family becomes a _candidate pool_ with its own statistical profile (coverage range, texture range). Your algorithm can either:
+In the feature database, each family becomes a _candidate pool_ with its own statistical profile (coverage range, texture range). Our algorithm can either:
 
 *   choose from the union, or
     
@@ -231,8 +233,6 @@ In the feature database, each family becomes a _candidate pool_ with its own s
 
 6) A clean quantisation scheme that works well
 ----------------------------------------------
-
-If you want something you can implement and tune without it getting out of hand:
 
 Per glyph and per cell, quantise to:
 
@@ -251,7 +251,7 @@ Per glyph and per cell, quantise to:
 
 That’s enough to do robust gating and still keep candidate sets small.
 
-If you want, next we can sketch (still without code) a **concrete per-cell decision flow** like:
+Next we can sketch a **concrete per-cell decision flow** like:
 
 1.  classify cell → {flat, edge, corner, texture} using thresholds
     
@@ -264,6 +264,3 @@ If you want, next we can sketch (still without code) a **concrete per-cell deci
 5.  rank by texture vector if texture-heavy
     
 6.  apply neighborhood continuity vote
-    
-
-That’s the “design doc” version you can implement directly.
