@@ -3756,7 +3756,7 @@ const PICKER_TABS =
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.04</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.05</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -3764,6 +3764,7 @@ const PICKER_TABS =
           <div id="cellsLine">Cells: —</div>
           <div id="zoomLine">Zoom: 100%</div>
           <div class="tiny muted" id="coordLine">Cell: —</div>
+        <div class="tiny muted" id="panLine">Pan: x 0.00, y 0.00</div>
         </div>
 
         <div class="card">
@@ -3928,6 +3929,8 @@ const sbTitle = document.getElementById("sbTitle");
 const cellsLine = document.getElementById("cellsLine");
 const zoomLine = document.getElementById("zoomLine");
 const coordLine = document.getElementById("coordLine");
+
+const panLine = document.getElementById("panLine");
 
 const resizeHandle = document.getElementById("resizeHandle");
 
@@ -4672,6 +4675,31 @@ function updateUI()
   zoomLine.textContent = "Zoom: " + Math.round(scale * 100) + "%";
   coordLine.textContent = hoverCell ? ("Cell: Ln " + (hoverCell.r+1) + ", Col " + (hoverCell.c+1)) : "Cell: —";
 
+  // Pan offset in "cell units": +x = grid moved right, +y = grid moved up
+  // Note: zoom is centered on the screen, so even without "active panning" the grid origin shifts when scale changes.
+  // We therefore compute offset from the *actual* screen-space position of the grid origin.
+  const __cs = oASC.getCellSize();
+  const __cw = __cs.cw;
+  const __ch = __cs.ch;
+
+  const __cx = stageSize.w / 2;
+  const __cy = stageSize.h / 2;
+
+  // Screen-space position of grid origin (0,0) under the current transform:
+  // translate(cx,cy) * scale(s) * translate(-cx+panX, -cy+panY)
+  const __originX = __cx * (1 - scale) + scale * panX;
+  const __originY = __cy * (1 - scale) + scale * panY;
+
+  const __cellW = __cw * scale;   // cell size in screen coordinates
+  const __cellH = __ch * scale;
+
+  const __px = __cellW ? (__originX / __cellW) : 0;   // right = positive
+  const __py = __cellH ? (-__originY / __cellH) : 0;  // up = positive
+
+  const __fx = (Math.abs(__px) < 1e-9 ? 0 : __px).toFixed(0);
+  const __fy = (Math.abs(__py) < 1e-9 ? 0 : __py).toFixed(0);
+  panLine.textContent = "Pan: x " + __fx + ", y " + __fy;
+
   pasteLine.style.display = pasteDrag ? "block" : "none";
 
   undoBtn.disabled = undoStack.length === 0;
@@ -4686,6 +4714,23 @@ function setHoverFromEvent(e)
   if (pasteDrag && hoverCell) pasteDrag.anchor = { r: hoverCell.r, c: hoverCell.c };
   updateUI();
 }
+
+
+function __clampPanToKeepCenterInGrid()
+{
+  // Constraint: the screen center point must always remain inside the grid.
+  // This prevents panning the grid fully out of view (no grid corner beyond screen center).
+  const { cw, ch } = oASC.getCellSize();
+  const gridW = COLS * cw;
+  const gridH = ROWS * ch;
+
+  const cx = stageSize.w / 2;
+  const cy = stageSize.h / 2;
+
+  if (gridW > 0) panX = oCOM.clamp(panX, cx - gridW, cx);
+  if (gridH > 0) panY = oCOM.clamp(panY, cy - gridH, cy);
+}
+
 
 // Sidebar toggle between UI and CLI
 function switchToSidebar(newSidebar)
@@ -5594,6 +5639,7 @@ canvas.addEventListener("wheel",(e) =>
     // Two-finger scroll pans (KiCad-like)
     panX += (e.deltaX || 0) / scale;
     panY += (e.deltaY || 0) / scale;
+    __clampPanToKeepCenterInGrid();
     updateUI();
     draw();
     return;
@@ -5618,6 +5664,7 @@ canvas.addEventListener("mousemove", (e) =>
       const dy = e.clientY - panDrag.y;
       panX = panDrag.panX0 + dx / scale;
       panY = panDrag.panY0 + dy / scale;
+      __clampPanToKeepCenterInGrid();
       setHoverFromEvent(e);
       draw();
       return;
