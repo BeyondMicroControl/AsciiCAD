@@ -889,6 +889,61 @@ const dragTools = {
 - (-) Requires maintaining two small parsers/dispatchers (Terminal + CADScript), plus mode transitions.
 
 
+---
+
+## ADR-033: Pan/Zoom usability upgrades (anchored zoom, bounded pan, live navigation telemetry)
+
+**Date:** 06-Feb-2026 (v1.04–v1.05)
+**Status:** Proposed → Accepted (once merged)
+**Context:** After the CLI foundation work in ADR-032 (v1.03), user feedback shifted to navigation comfort in large grids (256×128). The current “zoom around screen center” workflow forces users to pan the area-of-interest to the center before zooming, which is inefficient during repeated inspect/zoom cycles. Additionally, unrestricted panning risks losing the grid entirely (user can pan the grid fully out of view). 
+
+### Decision
+
+Improve navigation ergonomics by introducing:
+1. Zoom anchored to pointer position
+- Wheel / pinch zoom uses the grid location under the pointer as the anchor, for both zoom-in and zoom-out.
+- This removes the need to pre-pan the area of interest to screen center before zooming.
+
+2. Bounded panning to prevent losing the grid
+- Panning is constrained so the grid cannot be moved completely out of view.
+- Hard rule: stop moving the grid when trying to push any grid corner “past the screen center.”
+- Practical implementation: keep the screen center point always inside the grid’s transformed bounds, so in the worst case ~3/4 of the screen may be off-grid, but not 100%.
+
+3. Live navigation telemetry in the Canvas card
+Display, in real time:
+
+- Cells: 256 × 128
+- Zoom: …%
+- Cell: Ln …, Col … (hover cell)
+- Pan: x …, y … in cell units, with consistent sign convention:
+  - Pan right by one cell width → x = +1
+  - Pan left by one cell width → x = -1
+  - Pan up by one cell height → y = +1
+  - Pan down by one cell height → y = -1
+Note: because zoom is centered (or anchored at pointer), even without active panning the grid origin shifts during zoom, so “pan units” must reflect the effective transform, not just raw panX/panY.
+
+### Rationale
+**Pointer-anchored zoom** matches mainstream CAD / map / schematic UX: users zoom into the region they are looking at, where the cursor is.
+**Bounded pan** prevents disorientation and “lost canvas” situations, especially at high zoom factors.
+**Telemetry** provides immediate feedback for precision work (documentation, scripting, collaboration, and debugging gesture logic).
+
+### Consequences
+- (+) Faster inspection workflow: users can zoom into a detail without pre-centering it.
+- (+) Reduced “navigation churn”: fewer alternating pan/zoom gestures.
+- (+) Users can’t lose the grid completely; recovery is always possible without reset.
+- (+) Visible telemetry improves spatial awareness and helps validate transformations.
+- (-) Implementation complexity increases: zoom must adjust pan to preserve a chosen anchor point; pan offsets must be derived from the full transform (especially when zoom is not around the origin).
+- (-) Requires careful coordination with trackpad gestures (wheel pan vs ctrlKey pinch-zoom) and with the existing paste/CLI sidebars so input focus and gesture routing remain predictable.
+
+### Implementation notes
+- **Anchored zoom math:** when changing scale from s0 → s1, adjust pan so the world point under the pointer stays fixed in screen space.
+- **Clamp rule:** apply clamp after any pan update (drag-pan, wheel-pan) and after zoom (since effective extents change).
+- **Telemetry:** compute pan offsets in cell units based on the effective screen-space position of the grid origin after applying the current transform; do not assume raw panX/panY remain valid under center-zoom.
+- **UI polish:** ensure terminal/container scrollbars do not reserve persistent track width (overflow-y: auto vs scroll) to avoid visual artifacts next to the sidebar.
+
+---
+---
+
 ## Summary of Key Design Principles
 
 1. Simplicity: No frameworks, vanilla JavaScript
