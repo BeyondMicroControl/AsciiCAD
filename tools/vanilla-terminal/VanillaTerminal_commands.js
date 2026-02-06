@@ -13,6 +13,8 @@ var VanillaTerminalBuiltins = (function () {
   var STORAGE_KEY = "VanillaTerm";
   var VERSION = "0.0.11";
 
+  
+
   var HELP = {
     clear: "clear the terminal screen",
     version: "print the terminal version",
@@ -72,6 +74,15 @@ var VanillaTerminalBuiltins = (function () {
           }
         });
       },
+
+      "eval": function (terminal, params) 
+      {
+        params = params || [];
+        var expression = params[0];
+        var result  = eval('(function() {' + expression + '; return {"key":key,"value":value} }())');
+        // TODO populate global object with key-value pair data
+      }
+
     };
   }
 
