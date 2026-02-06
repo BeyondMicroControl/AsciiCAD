@@ -3756,7 +3756,7 @@ const PICKER_TABS =
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.05</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.06</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -4731,6 +4731,25 @@ function __clampPanToKeepCenterInGrid()
   if (gridH > 0) panY = oCOM.clamp(panY, cy - gridH, cy);
 }
 
+function __zoomAtCanvasPoint(mx, my, zoomFactor)
+{
+  const s0 = scale;
+  const s1 = oCOM.clamp(Number((s0 * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
+  if (s1 === s0) return;
+
+  const cx = stageSize.w / 2;
+  const cy = stageSize.h / 2;
+
+  // Adjust pan so the grid location under the mouse stays under the mouse
+  const k = (1 / s1) - (1 / s0);
+  panX = panX + (mx - cx) * k;
+  panY = panY + (my - cy) * k;
+
+  scale = s1;
+  __clampPanToKeepCenterInGrid();
+}
+
+
 
 // Sidebar toggle between UI and CLI
 function switchToSidebar(newSidebar)
@@ -5621,8 +5640,13 @@ canvas.addEventListener("wheel",(e) =>
 
   if (e.ctrlKey)   // Pinch-zoom on trackpad (Chrome/Safari typically set ctrlKey for pinch)
   {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
     const zoomFactor = Math.exp(-e.deltaY * 0.01);
-    scale = oCOM.clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
+    __zoomAtCanvasPoint(mx, my, zoomFactor);
+
     updateUI();
     draw();
     return;
@@ -5646,8 +5670,13 @@ canvas.addEventListener("wheel",(e) =>
   }
 
   // Mouse wheel zooms
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
   const zoomFactor = Math.exp(-e.deltaY * 0.01);
-  scale = oCOM.clamp(Number((scale * zoomFactor).toFixed(4)), MIN_SCALE, MAX_SCALE);
+  __zoomAtCanvasPoint(mx, my, zoomFactor);
+
   updateUI();
   draw();
 },
