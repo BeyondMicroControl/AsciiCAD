@@ -2465,6 +2465,87 @@ image_data:
 }
 ,
 {
+name: 'ATTinyX26',
+type: 'MCU',
+description: '',
+MFR: 'ATTINY3226-SSU',
+pin_data: null,
+text_data:[
+'╔═══════════════════╗\n' +
+'║ ● [U# ATTinyX26]  ║\n' +
+'║                   ║\n' +
+'╢ VCC           GND ╟\n' +
+'║                   ║\n' +
+'╢ PA4       SCK PA3 ╟\n' +
+'║                   ║\n' +
+'╢ PA5  RX1 MISO PA2 ╟\n' +
+'║                   ║\n' +
+'╢ PA6  TX1 MOSI PA1 ╟\n' +
+'║                   ║\n' +
+'╢ PA7      UPDI PA0 ╟\n' +
+'║                   ║\n' +
+'╢ PB5           PC3 ╟\n' +
+'║                   ║\n' +
+'╢ PB4           PC2 ╟\n' +
+'║                   ║\n' +
+'╢ PB3 RX0       PC1 ╟\n' +
+'║                   ║\n' +
+'╢ PB2 TX0       PC0 ╟\n' +
+'║                   ║\n' +
+'╢ PB1 SDA   SCL PB0 ╟\n' +
+'╚═══════════════════╝'
+,
+'╔══╧════╧════╧════╧════╧════╧════╧════╧════╧════╧══╗\n' +
+'║ PB1  PB2  PB3  PB4  PB5  PA7  PA6  PA5  PA4  VCC ║\n' +
+'║ SDA  TX0  RX0                                 ●  ║\n' +
+'║                                                  ║\n' +
+'║                  [U# ATTinyX26]                  ║\n' +
+'║                                                  ║\n' +
+'║                               TX1  RX1           ║\n' +
+'║ SCL                     UPDI  MOSI MISO SCK      ║\n' +
+'║ PB0  PC0  PC1  PC2  PC3  PA0  PA1  PA2  PA3  GND ║\n' +
+'╚══╤════╤════╤════╤════╤════╤════╤════╤════╤════╤══╝'
+,
+'╔═══════════════════╗\n' +
+'║   [U# ATTinyX26]  ║\n' +
+'║                   ║\n' +
+'╢ PB0 SCL   SDA PB1 ╟\n' +
+'║                   ║\n' +
+'╢ PC0       TX0 PB2 ╟\n' +
+'║                   ║\n' +
+'╢ PC1       RX0 PB3 ╟\n' +
+'║                   ║\n' +
+'╢ PC2           PB4 ╟\n' +
+'║                   ║\n' +
+'╢ PC3           PB5 ╟\n' +
+'║                   ║\n' +
+'╢ PA0 UPDI      PA7 ╟\n' +
+'║                   ║\n' +
+'╢ PA1 MOSI TX1  PA6 ╟\n' +
+'║                   ║\n' +
+'╢ PA2 MISO RX1  PA5 ╟\n' +
+'║                   ║\n' +
+'╢ PA3 SCK       PA4 ╟\n' +
+'║                   ║\n' +
+'╢ GND         ● VCC ╟\n' +
+'╚═══════════════════╝'
+,
+'╔══╧════╧════╧════╧════╧════╧════╧════╧════╧════╧══╗\n' +
+'║ GND  PA3  PA2  PA1  PA0  PC3  PC2  PC1  PC0  PB0 ║\n' +
+'║      SCK  MISO MOSI UPDI                     SCL ║\n' +
+'║           RX1  TX1                               ║\n' +
+'║                                                  ║\n' +
+'║                  [U# ATTinyX26]                  ║\n' +
+'║                                                  ║\n' +
+'║  ●                                 RX0  TX0  SDA ║\n' +
+'║ VCC  PA4  PA5  PA6  PA7  PB5  PB4  PB3  PB2  PB1 ║\n' +
+'╚══╤════╤════╤════╤════╤════╤════╤════╤════╤════╤══╝'
+],
+image_data:
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAC1QTFRFAAAAMDA1ODc6S0pLr6ywd3V3U1JUqqirrqqupaGji4eJvbq9paGiY2JlhYSGSoSKUAAAAA90Uk5TAP//+vc6xLNEE/cLeXgP3WrViwAAAlNJREFUeJztVL+LE0EUnkaSJRKYWbjCbl4ghXDNDGcXsFjYuEkhHASuUCSplRRp/IGkCIhgcWAsLK4xW8hVW+Q45Zot0igWx6UPabwu/4Oz82N/ZDOxFnzVst/33vu+92YGof9hi9qT9X5CD4724hsGjes9+BmjBA5PrfhFHzAm8MKG12+AUMFoPrbgS5GfBLR2Nqn1gGoCrHYLFBhJCASa6zL+iclkVYSUh3GnD5AU1zLcbZ3CgEgGamTgwyLuLKkUR0UB3aQ4jB4o9XJOqkRhGBuFE12mpHOjDCQIocSoOEit/u4r8zQhGBvi02y1fiNzqCqQ4hg/0wRpQJXO2cycSgMqkwidGe4eaYG6AN5qgO+3t3GguXxM3a7agGzKaIMBzuffm7V8Qfiox0IJZ9JmpsA/8SP07QvWvgmDvAF3duBfeWPkMTN6QWiwHCFYedHkEXonJGph0OBZBSBeNBpfftVD0j8hl98aRYuXjji6y1zZLIh3KvITE+iWF6QreNYMx4vXzg+5qAFLz1DawLtexBXfHAUOxQERTkT+sPrG7HrJITsjMr+1GE+7UWROyxlnhQJY5gcpjtAxzxHIeXMUz9vR+/yNSXQSc1LD1WR4N1ijfNzydAsch/G0g34VL3d9YBhu2JoMK37p7hudicBpxwnKj8OSy5t//mAxrHSjzyVclEg2ScK300412PX81I4FgdNwOG2jDztfH7ESN3wuDHq2F1BYDeN5x3k1thCcQdMmUMfF0/nDWhBbcRGXHYtAE1XP1t/ET8sDnMb3v+D/bPwB1max/B27DpQAAAAASUVORK5CYII='
+}
+,
+{
 name: 'CH340N',
 type: 'Power/Driver',
 description: 'USB to TTL Serial Port Module CH340N 5V to 3.3V Converter Adapter Board',
@@ -2491,6 +2572,41 @@ text_data:
 image_data:
 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAApaWlSUlJaGhoioqKk5OTlZWVvb29tLS08fHxLCU2VgAAAAp0Uk5TAP7+/fskivURF2gpfKwAAAH7SURBVHic7dS/r9MwEAdwSxBwR1OrnTlH7PG5iNV2JNYsrWB7em1D14hCGCtQo/Jfc3Z/Jm3KG2B7Nyaffn2202Psuf5JDZ4IpsVfQFP2icEhYFtO7wEK4OWmH8SA2bIfzMoiKR/hZhsBNCGgeVQPfSDZB8DkVgSBhMSnxAGY7zcEgWZJW/gJAMqMrvc6YLvQI58DIJHxlRhQAJuWvxS99alOx93NDhifLYvkK72nCGP9x2UX0DmVjdKAOvXKG+yIeFDbeQgweWaHCimj6IJkrsHoNJcOtfK5/VZ0wAutKcCuc4OYGo9ZvWqDl9SeVmipA8RMq6EQqxZ4hQp0tkbM0SNqnYqz2CdoChBjaeJrWkycRQSvK1o9ryQCokIIAScRAf8ihFZW0oVpryGTB7E5AsbrSmqVrx1QAFhxqB+b81ctqpBRe+XAiFONNkfAGxFWMVJfBAzBjjbHfxaf0XMHmOv09HtHdvSbnUQeHimXncBQhVVYS3iAt6JV8nwtvIlC2eoSuMu7j0LDXsjYjDStr6NZhN5NFC5ux71vAbYlkXtRk3ChRaE+sCshva2DsHEjnzuA7Uq5wL0IZze5HkF8uysPGUKqh5szijfzIKR4867oGWLbBYmaVuidcnuhiv4xyBe02cm9OclndbW6O0j5rimePmn/J3iuQ/0BH/+EHeDJmf4AAAAASUVORK5CYII='
 } 
+,
+{
+name: '8SSR',
+type: 'Power/Driver',
+description: '8 x Solid State Relay - Low Level Trigger',
+MFR: '8SSR',
+pin_data: null,
+text_data:
+[
+'╔══════════════════════════╗\n' +
+'╢DC+ [8 Solid State Relay] ║\n' +
+'╢DC-   Low Level Trigger   ║\n' +
+'╢CH1                       ║\n' +
+'╢CH2                       ║\n' +
+'╢CH3     ┏━━━━━━━━┓  SW1⌈⊘⌉╟\n' +
+'╢CH4     ┗━━━━━━━━┛     ⌊⊘⌋╟\n' +
+'╢CH5     ┏━━━━━━━━┓  SW2⌈⊘⌉╟\n' +
+'╢CH6     ┗━━━━━━━━┛     ⌊⊘⌋╟\n' +
+'╢CH7     ┏━━━━━━━━┓  SW3⌈⊘⌉╟\n' +
+'╢CH8     ┗━━━━━━━━┛     ⌊⊘⌋╟\n' +
+'╢⌈⊘⌉DC+  ┏━━━━━━━━┓  SW4⌈⊘⌉╟\n' +
+'╢⌊⊘⌋DC-  ┗━━━━━━━━┛     ⌊⊘⌋╟\n' +
+'╢⌈⊘⌉CH1  ┏━━━━━━━━┓  SW5⌈⊘⌉╟\n' +
+'╢⌊⊘⌋CH2  ┗━━━━━━━━┛     ⌊⊘⌋╟\n' +
+'╢⌈⊘⌉CH3  ┏━━━━━━━━┓  SW6⌈⊘⌉╟\n' +
+'╢⌊⊘⌋CH4  ┗━━━━━━━━┛     ⌊⊘⌋╟\n' +
+'╢⌈⊘⌉CH5  ┏━━━━━━━━┓  SW7⌈⊘⌉╟\n' +
+'╢⌊⊘⌋CH6  ┗━━━━━━━━┛     ⌊⊘⌋╟\n' +
+'╢⌈⊘⌉CH7  ┏━━━━━━━━┓  SW8⌈⊘⌉╟\n' +
+'╢⌊⊘⌋CH8  ┗━━━━━━━━┛     ⌊⊘⌋╟\n' +
+'╚══════════════════════════╝\n'
+],
+image_data:
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAC1QTFRFAAAAEhYavcDDLjE0REZIlbjspqeqa21ujY6PX5Xe////paqyw8/fpK69IGnBGnTlUAAAAA90Uk5TAP/8///7/P7++hU4EZT//rqySQAAAxJJREFUeJzdk0FrE0EUx3PPehhS6H2w0xStsMxAeo07ZHOOrGUvPQzpZqVUsA27K+IlltkViYdggnvJB/DUi6VQhSL0IDEghUpLvRUtveQz+CZ2myZN0rPO9f147/f+bzf14ZaX+m/ft+7PqXXt5BB/mgYcWFwsTiE6lkVzTn1/8gBMDJQTi5OIbhzgij6Z0GKbemQLoSL5PmFAmyJPvEKIjwUO3uOsjjIbeBOxcUAnflRUBplaVmfbYwYcWWe06ILBzJbOTm9afm2RM5rxMBgwnYkbgXesUGTzKCOVgU5reITQTmLDdEIdzdTKiCEARohu6QHVi04FDAw1As81h47WeSzxFgIDcKQIUGxbpWtxaietnCRg4JFnCqCFOQuA08EGpRWac13IIMoDwDZWbctq3NtL6neauEzhRMpABwPTgXrcwEla6Xi5RjbhRKIMQIZSb7UJAE4maB+b73L9DLysnslnqOlBA7uxnjhqJXKm51x1BVgkn+HiSdOymyTJQTuSuKyjJVyGjBXgrVqqQf1qg2a1BsuhAlwBAINJqC80RbJC2rKNnBOp76CiAO68blh2jNeS+iF+StES+KMZuBKaCf4OWN9OBAiGBJFKEBmQ8ayMwTAmyYpda9nD8wi+IqL3M/ahgd0urV2uqFkL59UNF/rPVhTACkQZ/pJJhlrcPue8hqE/VYAp22qAkxhCh7bJuSlAAwCDem7vwlpp1bcHwArjnBcgJAUs+U7vwr5wBmfuHPUB7lUVwEWl+LYXt64yTKX2dhZ4/8ECBgrcIPR7v+W1Ty19XOnXDQVQ6URR+HxgqBx2w+olwLgTiGzk+y+Hfqq0jEyDcYMh5mFfRmFQeZEael1R5pQZDH4KV0ZuIN8M11PaTlA1KDQxseO6viR7qVHihwMEfXjXwzIMhgyTLKRbNZiY9yU0WB/z26e6MtoMnCj0woCcjqnDrl4Fbh6Ffi258ihx7JgickNJxg3oa2ASRMVQjjG8fJ+FiwO3PqkBvN0oks5YwyuNmpg8QL2uwFMGqBZf7k+tA7F/C/Dvvj+wrUBCQQBVrQAAAABJRU5ErkJggg=='
+}
 ,
 {
 name: 'XIAO_ESP32-C3',
