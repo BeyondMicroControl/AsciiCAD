@@ -221,6 +221,17 @@ outline: 1px solid rgba(255, 215, 0, 0.35);
             <button id="btnExample2" data-hint="mycmd -abc -oValue --name=&quot;Two Words&quot; &quot;arg 1&quot; 'arg 2' one\\ word">quotes + escapes</button>
             <button id="btnExample3" data-hint="rm -- -notAnOption -alsoNot">end-of-options</button>
             <button id="btnExample4" data-hint="echo ok # everything after # is ignored">comments</button>
+
+            AsciiCAD tests >>
+            <button id="btnExample10" data-hint="exec &quot;clear()&quot;">exec "clear()"</button>
+            <button id="btnExample11" data-hint="exec &quot;freeform(1,1,'c')&quot;">exec 'freeform(1,1,"+")'</button>
+            <button id="btnExample12" data-hint="exec &quot;undo()&quot;">exec "undo()"</button>
+            <button id="btnExample13" data-hint="exec &quot;redo()&quot;">exec "redo()"</button>
+
+            <button id="btnExample14" data-hint='name="Sylvia"'>name="Sylvia"</button>
+            <button id="btnExample15" data-hint='echo "Hello $name"'>echo "Hello $name"</button>
+            
+
           </div>
           <div class="smallNote">
             This is a <b>shell-ish</b> parser demo:
@@ -244,7 +255,7 @@ outline: 1px solid rgba(255, 215, 0, 0.35);
     <div id="logPanel"></div>
 
 <script>
-      var CONF_version="v1.04";
+      var CONF_version="v1.05";
       //var CONF_builddate="20260114-230000";
       var CONF_style =  "background: #0b1220 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=') repeat center top;font: 62.5%/1 sans-serif;height: 100%;width: 100%;"
   
@@ -576,7 +587,7 @@ function CMD()
 
 
 /**
- * Make a JSON string interactive by pairing boundary characters.
+ * Make a JSON string pretty and interactive by showing boundary character [] {} pairs.
  *
  * @param {string} jsonStr - JSON string input (can be minified or pretty).
  * @param {Object|Array} boundaryStyles - e.g. { "{}":"color:#0f0;font-weight:800", "[]":"color:#f0f;font-weight:800" }
@@ -969,23 +980,18 @@ var oCMD = new CMD();
 
   document.getElementById("btnClear").onclick = () => { logPanel.textContent = ""; };
   document.getElementById("btnRunTests").onclick = runTests;
-
   document.getElementById("btnParse").onclick = () => { runExample(); };
 
-  document.getElementById("btnExample1").onclick = (e) => 
-  { setExample(e.srcElement.dataset.hint, e.currentTarget); runExample(); };
-
-  document.getElementById("btnExample2").onclick = (e) =>
-  { setExample(e.srcElement.dataset.hint, e.currentTarget); runExample(); };
-
-  document.getElementById("btnExample3").onclick = (e) =>
-  { setExample(e.srcElement.dataset.hint, e.currentTarget); runExample(); };
-
-  document.getElementById("btnExample4").onclick = (e) =>
-  { setExample(e.srcElement.dataset.hint, e.currentTarget); runExample(); };
+  // load every example
+  const buttons = document.querySelectorAll('[id^="btnExample"]');
+  for(var i=0; i<buttons.length ; i++)
+  {
+      document.getElementById(buttons[i].id).onclick = (e) => 
+        { setExample(e.srcElement.dataset.hint, e.currentTarget); runExample(); };
+  }
 
   // default sample
-  setExample(`echo "hi there" | grep hi && ls -la --color=auto; rm -- -weird`);
+  setExample(`echo "Hello $name"`);
   runExample();
   log("info", "Ready. Click “Run Assertions” for the test suite.");
 </script>
