@@ -1816,7 +1816,10 @@ uriBtn.addEventListener("click", () =>
   {  
     var l3 = oCOM.ArrayBufferTobase64(dump);
     var e = document.getElementById("URIcontainer");
-    e.innerHTML = "<a href=\"index.html?d="+l3+"\" target=\"_blank\">Saved PermaLink</a><br>"
+    if(bDebug==true)
+      e.innerHTML = "<a href=\"tools/AsciiCAD_debug.html?d="+l3+"\" target=\"AsciiCAD_debug\">Saved PermaLink</a><br>"
+    else
+      e.innerHTML = "<a href=\"index.html?d="+l3+"\" target=\"_blank\">Saved PermaLink</a><br>"
   }
   catch({ n, m }) { alert("ArrayBufferTobase64:"+n+" "+m) }
 });

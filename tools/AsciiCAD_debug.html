@@ -1,3 +1,20 @@
+<!--
+//          _                      _    _    ______       _       ______
+//         / \                    (_)  (_) .' ___  |     / \     |_   _ `.
+//        / _ \     .--.   .---.  __   __ / .'   \_|    / _ \      | | `. \
+//       / ___ \   ( (`\] / /'`\][  | [  || |          / ___ \     | |  | |
+//     _/ /   \ \_  `'.'. | \__.  | |  | |\ `.___.'\ _/ /   \ \_  _| |_.' /
+//    |____|_|____|[\__)_)'.___.'[___][___]`.____ .'|____| |____||______.'
+//    |_   _ `.        [  |
+//      | | `. \ .---.  | |.--.   __   _   .--./)  .--./) .---.  _ .--.
+//      | |  | |/ /__\\ | '/'`\ \[  | | | / /'`\; / /'`\;/ /__\\[ `/'`\]
+//     _| |_.' /| \__., |  \__/ | | \_/ |,\ \._// \ \._//| \__., | |
+//    |______.'  '.__.'[__;.__.'  '.__.'_/.',__`  .',__`  '.__.'[___]
+//                                       ( ( __))( ( __))
+// Copyright (c) 2025 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+// AsciiCAD_debug.html
+-->
 <!doctype html>
 <html lang="en">
   <head>
@@ -36,9 +53,23 @@ body {
   background: #fff;
 }
 
+/* --- Splitter handle --- */
+#splitter{
+  flex: 0 0 6px;
+  height: 6px;
+  cursor: row-resize;
+  background: #111827;
+  border-top: 1px solid #334155;
+  border-bottom: 1px solid #334155;
+  box-sizing: border-box;
+}
+
+/* --- Resizable log panel --- */
 #logPanel{
-  flex: 0 0 140px;
-  height: 140px;
+  flex: 0 0 auto;         /* no longer locked to 140px */
+  height: 140px;          /* default; JS will override if stored */
+  min-height: 60px;       /* prevent collapsing */
+  max-height: 70vh;       /* keep room for the iframe */
   overflow-y: auto;
   overflow-x: hidden;
   background: #0f172a;
@@ -46,10 +77,12 @@ body {
   font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   padding: 6px;
   margin: 0;
-  border-top: 1px solid #334155;
+  border-top: 0;          /* border handled by splitter */
   box-sizing: border-box;
   white-space: pre-wrap;
+  scrollbar-color: #808080 #222;
 }
+
     </style>
   </head>
   <body>
@@ -57,52 +90,119 @@ body {
       <button onclick="logPanel.textContent=''">Clear Logs</button>
       <button onclick="document.location='../index.html'" style="filter:grayscale(50%)">exit D&#x1F41E;</span></button>
       <span>
-        sources: <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/index.html" target="AsciiCAD" rel="noopener">current</a> | <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/dist/AsciiCAD.html" target="AsciiCAD" rel="noopener">distro</a>
+        sources: <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/index.html" target="AsciiCADsrc" rel="noopener">current</a> | <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/dist/AsciiCAD.html" target="AsciiCADsrc" rel="noopener">distro</a>
       </span>
     </div>
-  
-<script>
-  oCOM.URL.parse(document.location.toString());
-  oCOM.URL.addURI({"t":Date.now(),"bDebug":true});
-  var URI_string = oCOM.URL.getURI();
 
-  document.write('<iframe id="app" class="frame" src="../index.html'+URI_string+'" title="AsciiCAD" sandbox="allow-scripts allow-downloads allow-pointer-lock allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>');
+<script>
+oCOM.URL.parse(document.location.toString());
+oCOM.URL.addURI({"t":Date.now(),"bDebug":true});
+var URI_string = oCOM.URL.getURI();
+
+document.write('<iframe id="app" class="frame" src="../index.html'+URI_string+'" title="AsciiCAD" sandbox="allow-scripts allow-downloads allow-pointer-lock allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>');
 </script>
-  <div id="logPanel"></div>
+
+
+<div id="splitter" title="Drag to resize logs"></div>
+<div id="logPanel"></div>
+
+
 <script>
 
-  const baseURL = "AsciiCAD.html";
-  const iframe = document.getElementById("app");
-  const logPanel = document.getElementById("logPanel");
+const baseURL = "AsciiCAD.html";
+const iframe = document.getElementById("app");
+const logPanel = document.getElementById("logPanel");
 
-  // FORCE readable colors even if CSS is overridden
-  logPanel.style.background = "#0f172a";
-  logPanel.style.color = "#e5e7eb";
-  logPanel.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
-  logPanel.style.fontSize = "12px";
+// FORCE readable colors even if CSS is overridden
+logPanel.style.background = "#0f172a";
+logPanel.style.color = "#e5e7eb";
+logPanel.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+logPanel.style.fontSize = "12px";
 
-  function loadFresh() 
-  {
-    iframe.src = baseURL + "?t=" + Date.now();
+
+
+
+
+
+
+const splitter = document.getElementById("splitter");
+
+// Restore saved height (if any)
+(function restoreLogHeight(){
+  try {
+    const h = parseInt(localStorage.getItem("AsciiCAD_debug_logHeight") || "", 10);
+    if (!isNaN(h) && h > 0) logPanel.style.height = h + "px";
+  } catch(_) {}
+})();
+
+(function enableLogResize(){
+  let dragging = false;
+
+  function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+  splitter.addEventListener("pointerdown", (ev) => {
+    dragging = true;
+    splitter.setPointerCapture(ev.pointerId);
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+  });
+
+  splitter.addEventListener("pointermove", (ev) => {
+    if (!dragging) return;
+
+    // We resize by setting the logPanel height to the distance from bottom
+    const viewportH = window.innerHeight;
+    const desired = viewportH - ev.clientY;
+
+    const minH = 60;
+    const maxH = Math.floor(viewportH * 0.7);
+
+    const h = clamp(desired, minH, maxH);
+    logPanel.style.height = h + "px";
+
+    try { localStorage.setItem("AsciiCAD_debug_logHeight", String(h)); } catch(_) {}
+  });
+
+  function endDrag(){
+    if (!dragging) return;
+    dragging = false;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
   }
 
-    window.addEventListener("message", (e) => {
-    if (!e.data || !e.data.__asciicadLog) return;
+  splitter.addEventListener("pointerup", endDrag);
+  splitter.addEventListener("pointercancel", endDrag);
 
-    const line = document.createElement("div");
-    line.style.whiteSpace = "pre-wrap";
-    line.style.color =
-        e.data.type === "error" ? "#f87171" :
-        e.data.type === "warn"  ? "#fde047" : "#e5e7eb";
+  // Ensure it stays reasonable on resize/orientation change
+  window.addEventListener("resize", () => {
+    const current = parseInt(logPanel.style.height || "140", 10);
+    const maxH = Math.floor(window.innerHeight * 0.7);
+    if (current > maxH) {
+      logPanel.style.height = maxH + "px";
+      try { localStorage.setItem("AsciiCAD_debug_logHeight", String(maxH)); } catch(_) {}
+    }
+  });
+})();
 
-    line.textContent = `[${e.data.type}] ${(e.data.args || []).join(" ")}`;
-    logPanel.appendChild(line);
 
-    // Most reliable autoscroll:
-    line.scrollIntoView({ block: "end" });
-    });
 
-  // hook up your buttons as you already did...
+
+
+window.addEventListener("message", (e) => {
+if (!e.data || !e.data.__asciicadLog) return;
+
+const line = document.createElement("div");
+line.style.whiteSpace = "pre-wrap";
+line.style.color =
+    e.data.type === "error" ? "#f87171" :
+    e.data.type === "warn"  ? "#fde047" : "#e5e7eb";
+
+line.textContent = `[${e.data.type}] ${(e.data.args || []).join(" ")}`;
+logPanel.appendChild(line);
+
+// Most reliable autoscroll:
+line.scrollIntoView({ block: "end" });
+});
 </script>
 
   </body>
