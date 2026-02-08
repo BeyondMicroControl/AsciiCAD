@@ -220,16 +220,20 @@ outline: 1px solid rgba(255, 215, 0, 0.35);
             <button id="btnExample1" data-hint="echo &quot;hi there&quot; | grep hi && ls -la --color=auto; rm -- -weird">pipeline + chain</button>
             <button id="btnExample2" data-hint="mycmd -abc -oValue --name=&quot;Two Words&quot; &quot;arg 1&quot; 'arg 2' one\\ word">quotes + escapes</button>
             <button id="btnExample3" data-hint="rm -- -notAnOption -alsoNot">end-of-options</button>
-            <button id="btnExample4" data-hint="echo ok # everything after # is ignored">comments</button>
 
-            AsciiCAD tests >>
+            <button id="btnExample4" data-hint='name="Sylvia";echo "Hello $name";'>set and get variable</button>
+            <button id="btnExample5" data-hint="echo ok # everything after # is ignored">comments</button>
+            <button id="btnExample6" data-hint='echo "Port is ${PORT:-8080}"'>defaults in variables</button>
+            <button id="btnExample7" data-hint='LOGDIR="/var/log"; ls -lh "$LOGDIR"; sudo tail -n 50 "$LOGDIR/syslog"'>avoid repeating long paths</button>
+            <button id="btnExample8" data-hint='ext="txt"; grep -R "TODO" --include="*.$ext"'>build commands with variables</button>
+
+
             <button id="btnExample10" data-hint="exec &quot;clear()&quot;">exec "clear()"</button>
             <button id="btnExample11" data-hint="exec &quot;freeform(1,1,'c')&quot;">exec 'freeform(1,1,"+")'</button>
             <button id="btnExample12" data-hint="exec &quot;undo()&quot;">exec "undo()"</button>
             <button id="btnExample13" data-hint="exec &quot;redo()&quot;">exec "redo()"</button>
 
-            <button id="btnExample14" data-hint='name="Sylvia"'>name="Sylvia"</button>
-            <button id="btnExample15" data-hint='echo "Hello $name"'>echo "Hello $name"</button>
+
             
 
           </div>
@@ -255,7 +259,7 @@ outline: 1px solid rgba(255, 215, 0, 0.35);
     <div id="logPanel"></div>
 
 <script>
-      var CONF_version="v1.05";
+      var CONF_version="v1.06";
       //var CONF_builddate="20260114-230000";
       var CONF_style =  "background: #0b1220 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=') repeat center top;font: 62.5%/1 sans-serif;height: 100%;width: 100%;"
   
@@ -374,24 +378,13 @@ function CMD()
   //
   /// Parse a single statement (no top-level operators) into:
   /// { ok, name, arguments:[ {opt:value}, "positional", ... ], data:[{key,value},...] }
-   
-  this.parseStatement = function(stmtString, dataIn) 
+  /// Internal: parse a statement from an already-tokenized word array (quotes already handled by lexLine).
+  /// `words` must be an array like ["cmd","arg1","arg 2",...]
+  this._parseStatementWords = function(words, dataIn)
   {
     const data = this.normalizeData(dataIn);
 
-    const lex = this.lexLine(stmtString);
-    if (!lex.ok) {
-      return { ok: false, name: "", arguments: [], data: dataToPairs(data), error: lex.error };
-    }
-
-    // In a statement string, lexer might have produced operators if user passed them in.
-    // Treat that as an error here to keep responsibilities clean.
-    if (lex.tokens.some(t => t.type === "op"))
-      return { ok: false, name: "", arguments: [], data: dataToPairs(data), error: "operator found inside statement" };
-
-    const words = lex.tokens.filter(t => t.type === "word").map(t => t.value);
-
-    if (words.length === 0)
+    if (!Array.isArray(words) || words.length === 0)
       return { ok: false, name: "", arguments: [], data: dataToPairs(data), error: "empty statement" };
 
     const name = words[0];
@@ -400,74 +393,92 @@ function CMD()
     const outArgs = [];
     let stopOptions = false;
 
-    const pushOpt = (optName, optValue) => { outArgs.push({ [optName]: optValue }); };       // optValue is usually string or true
+    const pushOpt = (optName, optValue) => { outArgs.push({ [optName]: optValue }); };
 
-    for (let i = 0; i < argv.length; i++) 
+    for (let i = 0; i < argv.length; i++)
     {
       const tok = argv[i];
 
       if (!stopOptions && tok === "--") { stopOptions = true; continue; }
 
-      if (!stopOptions && tok.startsWith("--") && tok.length > 2) {
-        // long option: --opt or --opt=value
+      if (!stopOptions && tok.startsWith("--") && tok.length > 2)
+      {
         const eq = tok.indexOf("=");
-        if (eq >= 0) { const opt = tok.slice(2, eq); const val = tok.slice(eq + 1); pushOpt(opt, val); } 
+        if (eq >= 0) { const opt = tok.slice(2, eq); const val = tok.slice(eq + 1); pushOpt(opt, val); }
         else
         {
           const opt = tok.slice(2);
-          // if next token exists and doesn't look like an option, consume as value
           const next = argv[i + 1];
-          if (next != null && !(next.startsWith("-") && next !== "-")) { pushOpt(opt, next); i++; } 
+          if (next != null && !(next.startsWith("-") && next !== "-")) { pushOpt(opt, next); i++; }
           else pushOpt(opt, true);
         }
         continue;
       }
 
-      if (!stopOptions && tok.startsWith("-") && tok !== "-" && tok.length > 1) 
+
+  /// Internal: render a "raw" string that is human-friendly and keeps grouping visible.
+  /// Since lexLine strips quote characters, this reconstructs a safe representation:
+  /// - wraps args containing whitespace (or empty) in double quotes
+  /// - escapes backslash and double quote inside those quoted args
+  this._renderRawWords = function(words)
+  {
+    if (!Array.isArray(words)) return "";
+    const needsQuotes = (s) => {
+      if (s === "") return true;
+      // show grouping if whitespace present
+      return /[\s]/.test(s);
+    };
+    const escForDq = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    return words.map(w => {
+      const s = String(w);
+      return needsQuotes(s) ? `"${escForDq(s)}"` : s;
+    }).join(" ");
+  }
+
+      if (!stopOptions && tok.startsWith("-") && tok !== "-" && tok.length > 1)
       {
-        // short options, maybe grouped: -a -bc -oValue
         const body = tok.slice(1);
 
-        // If it's like -oValue and o is known to take a value? We don't have a spec,
-        // so we use a heuristic:
-        // - If token is exactly "-x" and next is a value => consume next as value
-        // - If token is "-xVALUE" => treat as x has VALUE
-        // - If grouped like "-abc" => treat as flags a,b,c
         if (body.length === 1)
         {
           const opt = body;
           const next = argv[i + 1];
-          if (next != null && !(next.startsWith("-") && next !== "-")) {
-            pushOpt(opt, next);
-            i++;
-          } else {
-            pushOpt(opt, true);
-          }
-        } else 
+          if (next != null && !(next.startsWith("-") && next !== "-")) { pushOpt(opt, next); i++; }
+          else pushOpt(opt, true);
+        }
+        else
         {
-          // Heuristic: if "-oVALUE" (first char + rest) treat as opt with attached value,
-          // otherwise treat as grouped flags.
           const first = body[0];
           const rest = body.slice(1);
-
-          // If rest looks like a number or string, we accept attached value
-          // EXCEPT when rest is all letters (likely grouping)
           const restIsAllLetters = /^[A-Za-z]+$/.test(rest);
           if (!restIsAllLetters) pushOpt(first, rest);
-          else { for (const ch of body) pushOpt(ch, true); } // grouped flags -abc => a,b,c
+          else { for (const ch of body) pushOpt(ch, true); }
         }
         continue;
       }
 
-      // positional
       outArgs.push(tok);
     }
 
-    // Example: statement parser can read/modify data for downstream statements if you want.
-    // Here we just record the last command name.
     data.lastCommand = name;
-
     return { ok: true, name, arguments: outArgs, data: dataToPairs(data) };
+  }
+
+
+   
+  this.parseStatement = function(stmtString, dataIn) 
+  {
+    const lex = this.lexLine(stmtString);
+    if (!lex.ok)
+      return { ok: false, name: "", arguments: [], data: dataToPairs(this.normalizeData(dataIn)), error: lex.error };
+
+    // In a statement string, lexer might have produced operators if user passed them in.
+    // Treat that as an error here to keep responsibilities clean.
+    if (lex.tokens.some(t => t.type === "op"))
+      return { ok: false, name: "", arguments: [], data: dataToPairs(this.normalizeData(dataIn)), error: "operator found inside statement" };
+
+    const words = lex.tokens.filter(t => t.type === "word").map(t => t.value);
+    return this._parseStatementWords(words, dataIn);
   }
 
 
@@ -505,17 +516,18 @@ function CMD()
 
     const flushSegment = () => 
     {
-      const raw = currentWords.join(" ").trim();
-      if (raw.length === 0) { currentWords = []; return; }
-      const parsed = this.parseStatement(raw, data); // pass shared data object
-      
-      // parseStatement returns data as pairs; we need to keep updating the shared plain object.
+      // NOTE: we do NOT rebuild a statement string from tokens, because that would lose quotes.
+      // `currentWords` already contains the shell-merged words (e.g. ["echo","Hello $name"]).
+      if (!currentWords.length) return;
 
-      const updated = this.normalizeData(parsed.data);                 // So re-normalize back into data:
+      const parsed = this._parseStatementWords(currentWords, data); // pass shared data object
 
-      for (const [k, v] of Object.entries(updated)) data[k] = v;  // Copy updated keys into data
+      const updated = this.normalizeData(parsed.data);
+      for (const [k, v] of Object.entries(updated)) data[k] = v;
 
-      segments.push({ opBefore, raw, parsed });
+      // Human-friendly only (original quotes are stripped by lexLine, so we reconstruct grouping)
+      const raw = this._renderRawWords(currentWords);
+segments.push({ opBefore, raw, parsed });
       currentWords = [];
     };
 
@@ -874,7 +886,17 @@ var oCMD = new CMD();
       }
     });
 
+    
     tests.push({
+      name: "Statement: double quotes keep spaces as one arg",
+      fn: () => {
+        const r = oCMD.parseStatement(`echo "Hello $name"`, {});
+        assert(r.ok);
+        assertDeepEq(r.arguments, ["Hello $name"]);
+      }
+    });
+
+tests.push({
       name: "Statement: end-of-options -- keeps dashy positional",
       fn: () => {
         const r = oCMD.parseStatement(`rm -- -weird`, {});
@@ -883,7 +905,19 @@ var oCMD = new CMD();
       }
     });
 
+    
     tests.push({
+      name: "Line: preserves quoted arg grouping",
+      fn: () => {
+        const r = oCMD.parseLine(`echo "Hello $name"`, { user: "demo" });
+        assert(r.ok);
+        assert(r.pipelineOrChain.length === 1);
+        assertDeepEq(r.pipelineOrChain[0].parsed.arguments, ["Hello $name"]);
+        assert(r.pipelineOrChain[0].raw === `echo "Hello $name"`);
+      }
+    });
+
+tests.push({
       name: "Line: pipeline + chain",
       fn: () => {
         const r = oCMD.parseLine(`echo "hi there" | grep hi && ls -la --color=auto; rm -- -weird`, { user: "alice" });
