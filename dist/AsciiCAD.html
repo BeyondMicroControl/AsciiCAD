@@ -5890,7 +5890,11 @@ window.addEventListener("load", function()
     }  
   }
 
-  if(oCOM.URL.filename == "AsciiCAD.html") document.getElementById("toolDebug").style.visibility = "hidden"
+  if(oCOM.URL.filename == "AsciiCAD.html")
+  {
+    document.getElementById("toolDebug").style.visibility = "hidden";
+    bDebug = false;
+  }
 
 }, false);
 
