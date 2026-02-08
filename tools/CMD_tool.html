@@ -257,7 +257,7 @@ outline: 1px solid rgba(255, 215, 0, 0.35);
     <div id="logPanel"></div>
 
 <script>
-      var CONF_version="v1.7";
+      var CONF_version="v1.71";
       //var CONF_builddate="20260114-230000";
       var CONF_style =  "background: #0b1220 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=') repeat center top;font: 62.5%/1 sans-serif;height: 100%;width: 100%;"
   
@@ -427,9 +427,6 @@ function CMD()
           if (next != null && !(next.startsWith("-") && next !== "-")) { pushOpt(opt, next); i++; }
           else pushOpt(opt, true);
         }
-        continue;
-      }
-
 
   /// Internal: render a "raw" string that is human-friendly and keeps grouping visible.
   /// Since lexLine strips quote characters, this reconstructs a safe representation:
@@ -438,17 +435,19 @@ function CMD()
   this._renderRawWords = function(words)
   {
     if (!Array.isArray(words)) return "";
-    const needsQuotes = (s) => {
-      if (s === "") return true;
-      // show grouping if whitespace present
-      return /[\s]/.test(s);
-    };
-    const escForDq = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    const needsQuotes = (s) => (s === "") || /\s/.test(s);
+    const escForDq = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\"');
     return words.map(w => {
       const s = String(w);
       return needsQuotes(s) ? `"${escForDq(s)}"` : s;
     }).join(" ");
   }
+
+  // Optional public alias (handy if you export a reduced API)
+  this.renderRawWords = this._renderRawWords;
+
+        continue;
+      }
 
       if (!stopOptions && tok.startsWith("-") && tok !== "-" && tok.length > 1)
       {
@@ -541,8 +540,8 @@ function CMD()
       for (const [k, v] of Object.entries(updated)) data[k] = v;
 
       // Human-friendly only (original quotes are stripped by lexLine, so we reconstruct grouping)
-      const raw = this._renderRawWords(currentWords);
-segments.push({ opBefore, raw, parsed });
+      const raw = (typeof this._renderRawWords === "function") ? this._renderRawWords(currentWords) : currentWords.join(" ");
+      segments.push({ opBefore, raw, parsed });
       currentWords = [];
     };
 
