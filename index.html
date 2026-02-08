@@ -1671,7 +1671,7 @@ window.addEventListener("load", function()
     switch(uri)
     {
       case "bDebug":
-        bDebug = oCOM.URL.uri[uri] == "true" && oCOM.URL.url != "AsciiCAD.html" ? true : false;
+        bDebug = oCOM.URL.uri[uri] == "true" && oCOM.URL.filename != "AsciiCAD.html" ? true : false;
         document.getElementById("toolDebug").style.visibility = bDebug==true ? "hidden" : "visible";
       break;
       case "d":
