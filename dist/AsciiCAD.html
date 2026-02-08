@@ -4258,7 +4258,10 @@ const PICKER_TABS =
         <script>
           oCOM.URL.parse(document.location.toString());
           if(oCOM.URL.filename == "AsciiCAD.html")
+          {
+            document.getElementById("toolDebug").style.visibility = "hidden";
             document.getElementById("DonwloadLink").innerHTML = "&nbsp;• <a href=\"#\" id=\"downloadSelfLink\" onclick=\"downloadThisFile(); return false;\">Download</a>";
+          }
         </script>
 
         </div>
