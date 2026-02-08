@@ -1672,10 +1672,9 @@ window.addEventListener("load", function()
     {
       case "bDebug":
         bDebug = oCOM.URL.uri[uri] == "true" && oCOM.URL.filename != "AsciiCAD.html" ? true : false;
-        document.getElementById("toolDebug").style.visibility = bDebug==true ? "visible" : "hidden";
       break;
-      case "d":
 
+      case "d":
       var db = oCOM.base64ToArrayBuffer(oCOM.URL.uri[uri]);
       if(db!=null)
       {
@@ -1737,6 +1736,8 @@ window.addEventListener("load", function()
       break; 
     }  
   }
+
+  document.getElementById("toolDebug").style.visibility = bDebug==true ? "visible" : "hidden";
 
 }, false);
 
