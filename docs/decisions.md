@@ -974,7 +974,7 @@ Introduce an explicit **Debug vs Production** workflow split:
    - Provide direct links to key source code references (fast navigation for developers).
    - Make the log panel **scrollable** and **user-resizable**.
    - Provide a direct path back to the non-debug version (`index.html`).
-   - Forward URI arguments into the iframe-loaded `index.html` to reproduce issues using query parameters.
+   - Forward URI arguments into the iframe-loaded `index.html` to reproduce issues using query parameters.  This enables saving a dedicated permalink for debug mode.
    - Inform the app about debug state by loading `index.html?bDebug=true`.
 
 ### Rationale
