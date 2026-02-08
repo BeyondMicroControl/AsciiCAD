@@ -271,15 +271,23 @@ outline: 1px solid rgba(255, 215, 0, 0.35);
           switch(uri)
           {
             case "d":
-              //var db = oCOM.base64ToArrayBuffer(oCOM.URL.uri[uri]);
-
+              // load command line from URI (?d=...)
               var line = decodeURIComponent( oCOM.URL.uri[uri]);
               setExample( line );
               runExample();
               log("info", "Ready. Click “Run Assertions” for the test suite.");
-
             break;
           }
+        }
+
+        if(input.value == "")
+        {
+              // load the first example by default
+              const buttons = document.querySelectorAll('[id^="btnExample"]');
+              line = buttons[0].dataset.hint
+              setExample( line );
+              runExample();
+              log("info", "Ready. Click “Run Assertions” for the test suite.");
         }
 
     }
