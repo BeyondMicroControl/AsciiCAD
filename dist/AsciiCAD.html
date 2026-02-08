@@ -522,18 +522,22 @@ oCOM = new COM();
 
 </script>
     <script type="text/javascript">
-//    ███████ ██████  ███████  ██████ ██ ███████ ██  ██████ 
-//    ██      ██   ██ ██      ██      ██ ██      ██ ██
-//    ███████ ██████  █████   ██      ██ █████   ██ ██
-//         ██ ██      ██      ██      ██ ██      ██ ██
-//    ███████ ██      ███████  ██████ ██ ██      ██  ██████ 
-// 
-//    ██   ██ ███████ ██      ██████  ███████ ██████  ███████ 
-//    ██   ██ ██      ██      ██   ██ ██      ██   ██ ██
-//    ███████ █████   ██      ██████  █████   ██████  ███████ 
-//    ██   ██ ██      ██      ██      ██      ██   ██      ██ 
-//    ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
+                                                                                                                                                                                                            
+//     █████  ███████  ██████ ██ ██  ██████  █████  ██████      ██   ██ ███████ ██      ██████  ███████ ██████  ███████ 
+//    ██   ██ ██      ██      ██ ██ ██      ██   ██ ██   ██     ██   ██ ██      ██      ██   ██ ██      ██   ██ ██      
+//    ███████ ███████ ██      ██ ██ ██      ███████ ██   ██     ███████ █████   ██      ██████  █████   ██████  ███████ 
+//    ██   ██      ██ ██      ██ ██ ██      ██   ██ ██   ██     ██   ██ ██      ██      ██      ██      ██   ██      ██ 
+//    ██   ██ ███████  ██████ ██ ██  ██████ ██   ██ ██████      ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
 
+
+
+
+
+//     █████  ███████  ██████                                                                                           
+//    ██   ██ ██      ██                                                                                                
+//    ███████ ███████ ██                                                                                                
+//    ██   ██      ██ ██                                                                                                
+//    ██   ██ ███████  ██████    
 
 function ASC()
 {
@@ -1833,15 +1837,310 @@ var oASC = new ASC();
 
 
 /////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
 
 
 
-//     ____   ____                _   __   __        _________                              _                   __ 
-//    |_  _| |_  _|              (_) [  | [  |      |  _   _  |                            (_)                 [  |
-//      \ \   / /,--.   _ .--.   __   | |  | |  ,--.|_/ | | \_|.---.  _ .--.  _ .--..--.   __   _ .--.   ,--.   | |
-//       \ \ / /`'_\ : [ `.-. | [  |  | |  | | `'_\ :   | |   / /__\\[ `/'`\][ `.-. .-. | [  | [ `.-. | `'_\ :  | |
-//        \ ' / // | |, | | | |  | |  | |  | | // | |, _| |_  | \__., | |     | | | | | |  | |  | | | | // | |, | |
-//         \_/  \'-;__/[___||__][___][___][___]\'-;__/|_____|  '.__.'[___]   [___||__||__][___][___||__]\'-;__/[___] 
+//     ██████ ███    ███ ██████  
+//    ██      ████  ████ ██   ██ 
+//    ██      ██ ████ ██ ██   ██ 
+//    ██      ██  ██  ██ ██   ██ 
+//     ██████ ██      ██ ██████  
+
+
+//
+// * Minimal Linux-style command line parsing (shell-ish, not a full shell).
+// - parseLine: splits a line into statements by operators ; && || | &
+// - parseStatement: parses one statement into {ok, name, arguments, data}
+//
+// Notes:
+// - Supports quotes '...' and "..." and backslash escaping.
+// - Supports comments starting with # when not inside quotes.
+// - Does NOT implement variable expansion, globbing, command substitution, redirections, etc.
+
+function CMD()
+{  
+  //     __                             
+  //    [  |                            
+  //     | | .---.  _   __              
+  //     | |/ /__\\[ \ [  ]             
+  //     | || \__., > '  <              
+  //    [___]'.__.'[__]`\_]             
+  //      _____      _                  
+  //     |_   _|    (_)                 
+  //       | |      __   _ .--.  .---.  
+  //       | |   _ [  | [ `.-. |/ /__\\ 
+  //      _| |__/ | | |  | | | || \__., 
+  //     |________|[___][___||__]'.__.'       
+  //                                   
+  /// Lex line into tokens: words + operators ; && || | &
+
+  this.lexLine = function(line) 
+  {
+    const ops = new Set([";", "&&", "||", "|", "&"]);
+    const tokens = []; // {type:"word"|"op", value:string}
+    let buf = "";
+
+    let inSingle = false;
+    let inDouble = false;
+    let escape = false;
+
+    const pushBuf = () => { if (buf.length) { tokens.push({ type: "word", value: buf }); buf = ""; } };
+
+    const pushOp = (op) => tokens.push({ type: "op", value: op });
+
+    for (let i = 0; i < line.length; i++) 
+    {
+      const ch = line[i];
+      if (escape) { buf += ch; escape = false; continue; }   // Keep escaped char literally (typical shell-ish behavior)
+      if (!inSingle && ch === "\\") { escape = true; continue; }
+      // Comments: # starts a comment only when not in quotes and at token boundary-ish
+      if (!inSingle && !inDouble && ch === "#") { break; }     // discard rest of line
+      if (!inDouble && ch === "'" ) { inSingle = !inSingle; continue; }
+      if (!inSingle && ch === '"') { inDouble = !inDouble; continue; }
+
+      if (!inSingle && !inDouble)
+      {
+        if (/\s/.test(ch)) { pushBuf(); continue; }                   // whitespace splits words
+        const two = line.slice(i, i + 2);                             // recognize multi-char operators first
+        if (ops.has(two)) { pushBuf(); pushOp(two); i++; continue; }  // consumed 2 chars
+        if (ops.has(ch)) { pushBuf(); pushOp(ch); continue; }
+      }
+      buf += ch;
+    }
+
+    if (escape) { return { ok: false, error: "dangling escape at end of line", tokens: [] }; }
+    if (inSingle || inDouble) { return { ok: false, error: "unclosed quote", tokens: [] }; }
+
+    pushBuf();
+    return { ok: true, tokens };
+  }
+
+  //     _ .--.   ,--.   _ .--.  .--.  .---.                               
+  //    [ '/'`\ \`'_\ : [ `/'`\]( (`\]/ /__\\                              
+  //     | \__/ |// | |, | |     `'.'.| \__.,                              
+  //     | ;.__/ \'-;__/[___]   [\__) )'.__.'                              
+  //    [__|____    _          _                                      _    
+  //    .' ____ \  / |_       / |_                                   / |_  
+  //    | (___ \_|`| |-',--. `| |-'.---.  _ .--..--.  .---.  _ .--. `| |-' 
+  //     _.____`.  | | `'_\ : | | / /__\\[ `.-. .-. |/ /__\\[ `.-. | | |   
+  //    | \____) | | |,// | |,| |,| \__., | | | | | || \__., | | | | | |,  
+  //     \______.' \__/\'-;__/\__/ '.__.'[___||__||__]'.__.'[___||__]\__/ 
+  //
+  /// Parse a single statement (no top-level operators) into:
+  /// { ok, name, arguments:[ {opt:value}, "positional", ... ], data:[{key,value},...] }
+   
+  this.parseStatement = function(stmtString, dataIn) 
+  {
+    const data = this.normalizeData(dataIn);
+
+    const lex = this.lexLine(stmtString);
+    if (!lex.ok) {
+      return { ok: false, name: "", arguments: [], data: dataToPairs(data), error: lex.error };
+    }
+
+    // In a statement string, lexer might have produced operators if user passed them in.
+    // Treat that as an error here to keep responsibilities clean.
+    if (lex.tokens.some(t => t.type === "op"))
+      return { ok: false, name: "", arguments: [], data: dataToPairs(data), error: "operator found inside statement" };
+
+    const words = lex.tokens.filter(t => t.type === "word").map(t => t.value);
+
+    if (words.length === 0)
+      return { ok: false, name: "", arguments: [], data: dataToPairs(data), error: "empty statement" };
+
+    const name = words[0];
+    const argv = words.slice(1);
+
+    const outArgs = [];
+    let stopOptions = false;
+
+    const pushOpt = (optName, optValue) => { outArgs.push({ [optName]: optValue }); };       // optValue is usually string or true
+
+    for (let i = 0; i < argv.length; i++) 
+    {
+      const tok = argv[i];
+
+      if (!stopOptions && tok === "--") { stopOptions = true; continue; }
+
+      if (!stopOptions && tok.startsWith("--") && tok.length > 2) {
+        // long option: --opt or --opt=value
+        const eq = tok.indexOf("=");
+        if (eq >= 0) { const opt = tok.slice(2, eq); const val = tok.slice(eq + 1); pushOpt(opt, val); } 
+        else
+        {
+          const opt = tok.slice(2);
+          // if next token exists and doesn't look like an option, consume as value
+          const next = argv[i + 1];
+          if (next != null && !(next.startsWith("-") && next !== "-")) { pushOpt(opt, next); i++; } 
+          else pushOpt(opt, true);
+        }
+        continue;
+      }
+
+      if (!stopOptions && tok.startsWith("-") && tok !== "-" && tok.length > 1) 
+      {
+        // short options, maybe grouped: -a -bc -oValue
+        const body = tok.slice(1);
+
+        // If it's like -oValue and o is known to take a value? We don't have a spec,
+        // so we use a heuristic:
+        // - If token is exactly "-x" and next is a value => consume next as value
+        // - If token is "-xVALUE" => treat as x has VALUE
+        // - If grouped like "-abc" => treat as flags a,b,c
+        if (body.length === 1)
+        {
+          const opt = body;
+          const next = argv[i + 1];
+          if (next != null && !(next.startsWith("-") && next !== "-")) {
+            pushOpt(opt, next);
+            i++;
+          } else {
+            pushOpt(opt, true);
+          }
+        } else 
+        {
+          // Heuristic: if "-oVALUE" (first char + rest) treat as opt with attached value,
+          // otherwise treat as grouped flags.
+          const first = body[0];
+          const rest = body.slice(1);
+
+          // If rest looks like a number or string, we accept attached value
+          // EXCEPT when rest is all letters (likely grouping)
+          const restIsAllLetters = /^[A-Za-z]+$/.test(rest);
+          if (!restIsAllLetters) pushOpt(first, rest);
+          else { for (const ch of body) pushOpt(ch, true); } // grouped flags -abc => a,b,c
+        }
+        continue;
+      }
+
+      // positional
+      outArgs.push(tok);
+    }
+
+    // Example: statement parser can read/modify data for downstream statements if you want.
+    // Here we just record the last command name.
+    data.lastCommand = name;
+
+    return { ok: true, name, arguments: outArgs, data: dataToPairs(data) };
+  }
+
+
+  //     _ .--.   ,--.   _ .--.  .--.  .---.  
+  //    [ '/'`\ \`'_\ : [ `/'`\]( (`\]/ /__\\ 
+  //     | \__/ |// | |, | |     `'.'.| \__., 
+  //     | ;.__/ \'-;__/[___]   [\__) )'.__.' 
+  //    [__|___      _                        
+  //     |_   _|    (_)                       
+  //       | |      __   _ .--.  .---.        
+  //       | |   _ [  | [ `.-. |/ /__\\       
+  //      _| |__/ | | |  | | | || \__.,       
+  //     |________|[___][___||__]'.__.' 
+  ///
+  /// Parse a full command line into statements split by operators.
+  /// Returns:
+  /// {
+  ///   ok,
+  ///   pipelineOrChain: [{ opBefore, raw, parsed }, ...],
+  ///   data:[{key,value},...]
+  /// }
+
+  this.parseLine = function parseLine(line, dataIn) 
+  {
+    const data = this.normalizeData(dataIn);
+
+    const lex = this.lexLine(line);
+    if (!lex.ok) {
+      return { ok: false, pipelineOrChain: [], data: dataToPairs(data), error: lex.error };
+    }
+
+    const segments = [];
+    let currentWords = [];
+    let opBefore = null;
+
+    const flushSegment = () => 
+    {
+      const raw = currentWords.join(" ").trim();
+      if (raw.length === 0) { currentWords = []; return; }
+      const parsed = this.parseStatement(raw, data); // pass shared data object
+      
+      // parseStatement returns data as pairs; we need to keep updating the shared plain object.
+
+      const updated = this.normalizeData(parsed.data);                 // So re-normalize back into data:
+
+      for (const [k, v] of Object.entries(updated)) data[k] = v;  // Copy updated keys into data
+
+      segments.push({ opBefore, raw, parsed });
+      currentWords = [];
+    };
+
+    for (const t of lex.tokens) 
+    {
+      if (t.type === "op") { flushSegment(); opBefore = t.value; }  // operator splits statements
+      else currentWords.push(t.value);
+    }
+    flushSegment();
+
+    const ok = segments.every(s => s.parsed && s.parsed.ok);
+
+    return { ok, pipelineOrChain: segments, data: dataToPairs(data) };
+  }
+
+  // HELPER FUNCTIONS
+
+  /// Convert plain object / Map / array-of-pairs into a mutable plain object
+  this.normalizeData = function(input) 
+  {
+    if (!input) return {};
+    if (input instanceof Map) {
+      const o = {};
+      for (const [k, v] of input.entries()) o[String(k)] = v;
+      return o;
+    }
+    if (Array.isArray(input)) {
+      // Accept [{key, value}] or [[k,v]] or [{k:v}]
+      const o = {};
+      for (const item of input) {
+        if (Array.isArray(item) && item.length >= 2) o[String(item[0])] = item[1];
+        else if (item && typeof item === "object")
+        {
+          if ("key" in item && "value" in item) o[String(item.key)] = item.value;
+          else { for (const [k, v] of Object.entries(item)) o[String(k)] = v; }
+        }
+      }
+      return o;
+    }
+    if (typeof input === "object") return { ...input };
+    return {};
+  }
+
+  function dataToPairs(obj)
+  {
+    return Object.entries(obj).map(([key, value]) => ({ key, value }));
+  }
+}
+
+
+
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+
+                                                                  
+//    ████████ ███████ ██████  ███    ███ ██ ███    ██  █████  ██      
+//       ██    ██      ██   ██ ████  ████ ██ ████   ██ ██   ██ ██      
+//       ██    █████   ██████  ██ ████ ██ ██ ██ ██  ██ ███████ ██      
+//       ██    ██      ██   ██ ██  ██  ██ ██ ██  ██ ██ ██   ██ ██      
+//       ██    ███████ ██   ██ ██      ██ ██ ██   ████ ██   ██ ███████ 
+
+
+
+
 
 
 function TERMINAL(props) 
