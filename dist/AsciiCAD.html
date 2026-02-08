@@ -5625,6 +5625,13 @@ oTERM.onInput((command, parameters, rawLine) =>
 
 function __cliHandleTerminal(line) 
 {
+  // TODO: replace oCMD by current cli parsing method, and further develop responses on the JSON !!!
+  
+  if(bDebug) oTERM.output("<a href=\"tools/CMD_tool.html?d="+encodeURIComponent(line)+"\" target=\"CMD_tool\">visual debugger</a>");  // for debugging purposes
+  //if(bDebug) oTERM.output("<a href=\"tools/CMD_tool.html?d="+encodeURIComponent(line)+"\" onclick=\"window.open(this.href,'CMD_tool'); return false;\">visual debugger</a>");  // for debugging purposes
+
+  const res = oCMD.parseLine(line, { "user": __cliMode });
+  
   const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
   if (!m) {
     oTERM.output("[ERROR] Invalid command");

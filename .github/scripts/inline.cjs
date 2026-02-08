@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const excludePattern = ["ExcludeFromDistro"];
 
 // Find repo root by stripping everything after "/.github"
 const marker = `${path.sep}.github${path.sep}`;
@@ -10,11 +11,29 @@ const srcHtmlPath = path.join(repoRoot, "index.html");
 const outDir = path.join(repoRoot, "dist");
 const outHtmlPath = path.join(outDir, "AsciiCAD.html");
 
+const excludePattern = ["ExcludeFromDistro"]; // strings or regex fragments to exclude from distro
+
+
 function readUtf8(p) {
   if (!fs.existsSync(p)) {
     throw new Error(`Missing file: ${p}`);
   }
   return fs.readFileSync(p, "utf8");
+}
+
+function matchesExcludePattern(s) {
+  if (!excludePattern || !excludePattern.length) return false;
+  const hay = String(s || "");
+  return excludePattern.some((pat) => {
+    if (!pat) return false;
+    // Treat patterns as case-insensitive substrings by default.
+    // If you want true regex support, pass strings like "/foo.*/i" and extend this.
+    return hay.toLowerCase().includes(String(pat).toLowerCase());
+  });
+}
+
+function shouldExclude(includeUrl, originalTag) {
+  return matchesExcludePattern(includeUrl) || matchesExcludePattern(originalTag);
 }
 
 function isRemote(url) {
@@ -29,6 +48,7 @@ function inlineBuild(html) {
     if (!hrefMatch) return tag;
 
     const href = hrefMatch[1].trim();
+    if (shouldExclude(href, tag)) return "";
     if (isRemote(href)) return tag;
 
     const cssPath = path.join(repoRoot, href);
@@ -42,6 +62,7 @@ function inlineBuild(html) {
 
   html = html.replace(scriptRe, (full, preAttrs, src, postAttrs) => {
     const s = src.trim();
+    if (shouldExclude(s, full)) return "";
     if (isRemote(s)) return full;
 
     const jsPath = path.join(repoRoot, s);
@@ -70,13 +91,6 @@ function main() {
     throw new Error(`'${outDir}' exists but is not a directory.`);
   }
   fs.mkdirSync(outDir, { recursive: true });
-
-  fs.writeFileSync(outHtmlPath, built, "utf8");
-
-  // Confirm the file is really there
-  const st = fs.statSync(outHtmlPath);
-  console.log(`Wrote ${outHtmlPath} (${st.size} bytes)`);
-
 
   fs.writeFileSync(outHtmlPath, built, "utf8");
 
