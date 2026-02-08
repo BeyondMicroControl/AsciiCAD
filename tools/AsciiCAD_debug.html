@@ -3,7 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>AsciiCAD (Wrapper)</title>
+    <title>AsciiCAD debug</title>
+    <script type="text/javascript"  src="../res/COM_MAIN.js"></script>
     <style>
 html, body { height: 100%; margin: 0; }
 body {
@@ -49,27 +50,27 @@ body {
   box-sizing: border-box;
   white-space: pre-wrap;
 }
-
     </style>
   </head>
   <body>
     <div class="topbar">
       <button onclick="logPanel.textContent=''">Clear Logs</button>
+      <button onclick="document.location='../index.html'" style="filter:grayscale(50%)">exit D&#x1F41E;</span></button>
       <span>
-        Full:
-        <a href="../index.html" target="_blank" rel="noopener">AsciiCAD.html</a>
-      </span>
-      <span>
-        Source:
-        <a id="srcLink" href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/index.html" target="_blank" rel="noopener">AsciiCAD.html</a>
+        sources: <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/index.html" target="AsciiCAD" rel="noopener">current</a> | <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/dist/AsciiCAD.html" target="AsciiCAD" rel="noopener">distro</a>
       </span>
     </div>
-
-    <iframe id="app" class="frame" src="../index.html" title="AsciiCAD" sandbox="allow-scripts allow-downloads allow-pointer-lock allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
-
-<div id="logPanel"></div>
-
+  
 <script>
+  oCOM.URL.parse(document.location.toString());
+  oCOM.URL.addURI({"t":Date.now(),"bDebug":true});
+  var URI_string = oCOM.URL.getURI();
+
+  document.write('<iframe id="app" class="frame" src="../index.html'+URI_string+'" title="AsciiCAD" sandbox="allow-scripts allow-downloads allow-pointer-lock allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>');
+</script>
+  <div id="logPanel"></div>
+<script>
+
   const baseURL = "AsciiCAD.html";
   const iframe = document.getElementById("app");
   const logPanel = document.getElementById("logPanel");
@@ -80,7 +81,8 @@ body {
   logPanel.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
   logPanel.style.fontSize = "12px";
 
-  function loadFresh() {
+  function loadFresh() 
+  {
     iframe.src = baseURL + "?t=" + Date.now();
   }
 

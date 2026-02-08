@@ -28,7 +28,7 @@
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.06</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.07</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -73,6 +73,8 @@
           <div class="row" style="margin-top:10px;">
             <button id="toolSchemaHighlight" class="btn" data-hint="Highlight: Mark signle lines in blue, enclosed double line boxes in red.">Highlight</button>   
             <button id="toolSchemaMatch" class="btn" data-hint="Match: Marks matching catalog items in green. Mind replacing wildcards inside these items, '#' with numbers, '$' with alphanumeric.">Match</button>
+            <span ><button class="btn" id="toolDebug" data-hint="Debug AsciiCAD" onclick="document.location='tools/AsciiCAD_debug.html'"  style="filter:grayscale(100%)">D&#x1F41E;</button></span>
+
           </div>
           <div id="toolHint" class="tiny muted" style="margin-top:8px;"></div>
         </div>
@@ -173,7 +175,7 @@
 //         ██ ██      ██   ██ ██ ██         ██    
 //    ███████  ██████ ██   ██ ██ ██         ██   
 
-const bDebug = true;
+var bDebug = false;
 
 const COLS = 256;
 const ROWS = 128;
@@ -1483,9 +1485,7 @@ function __cliHandleTerminal(line)
 {
   // TODO: replace oCMD by current cli parsing method, and further develop responses on the JSON !!!
   
-  if(bDebug) oTERM.output("<a href=\"tools/CMD_tool.html?d="+encodeURIComponent(line)+"\" target=\"CMD_tool\">visual debugger</a>");  // for debugging purposes
-  //if(bDebug) oTERM.output("<a href=\"tools/CMD_tool.html?d="+encodeURIComponent(line)+"\" onclick=\"window.open(this.href,'CMD_tool'); return false;\">visual debugger</a>");  // for debugging purposes
-
+  if(bDebug) oTERM.output("<a href=\"tools/CMD_tool.html?d="+encodeURIComponent(line)+"\" target=\"CMD_tool\">visual debug</a>");  // for debugging purposes
   const res = oCMD.parseLine(line, { "user": __cliMode });
   
   const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
@@ -1680,6 +1680,10 @@ window.addEventListener("load", function()
   {
     switch(uri)
     {
+      case "bDebug":
+        bDebug = oCOM.URL.uri[uri] == "true" ? true : false;
+        document.getElementById("toolDebug").style.visibility = bDebug==true ? "hidden" : "visible";
+      break;
       case "d":
 
       var db = oCOM.base64ToArrayBuffer(oCOM.URL.uri[uri]);
@@ -2198,6 +2202,6 @@ function downloadThisFile( callback )
 }
   </script>
 
-  <script src="res/AsciiCAD_SanityCheck.js"></script>
+  <script src="res/AsciiCAD_SanityCheck.js" data-hint='debug' defer></script>
 </body>
 </html>
