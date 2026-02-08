@@ -220,21 +220,18 @@ outline: 1px solid rgba(255, 215, 0, 0.35);
             <button id="btnExample1" data-hint="echo &quot;hi there&quot; | grep hi && ls -la --color=auto; rm -- -weird">pipeline + chain</button>
             <button id="btnExample2" data-hint="mycmd -abc -oValue --name=&quot;Two Words&quot; &quot;arg 1&quot; 'arg 2' one\\ word">quotes + escapes</button>
             <button id="btnExample3" data-hint="rm -- -notAnOption -alsoNot">end-of-options</button>
+            <button id="btnExample4" data-hint="echo ok # everything after # is ignored">comments</button>
 
-            <button id="btnExample4" data-hint='name="Sylvia";echo "Hello $name";'>set and get variable</button>
-            <button id="btnExample5" data-hint="echo ok # everything after # is ignored">comments</button>
+
+            <button id="btnExample5" data-hint='name="Sylvia";echo "Hello $name";'>set and get variable</button>
             <button id="btnExample6" data-hint='echo "Port is ${PORT:-8080}"'>defaults in variables</button>
             <button id="btnExample7" data-hint='LOGDIR="/var/log"; ls -lh "$LOGDIR"; sudo tail -n 50 "$LOGDIR/syslog"'>avoid repeating long paths</button>
             <button id="btnExample8" data-hint='ext="txt"; grep -R "TODO" --include="*.$ext"'>build commands with variables</button>
-
 
             <button id="btnExample10" data-hint="exec &quot;clear()&quot;">exec "clear()"</button>
             <button id="btnExample11" data-hint="exec &quot;freeform(1,1,'c')&quot;">exec 'freeform(1,1,"+")'</button>
             <button id="btnExample12" data-hint="exec &quot;undo()&quot;">exec "undo()"</button>
             <button id="btnExample13" data-hint="exec &quot;redo()&quot;">exec "redo()"</button>
-
-
-            
 
           </div>
           <div class="smallNote">
