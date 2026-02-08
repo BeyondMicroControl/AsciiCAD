@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const excludePattern = ["ExcludeFromDistro"];  // strings or regex fragments to exclude from distro
+const excludePattern = ["ExcludeFromDistro"];    // strings or regex fragments to exclude from distro
 
 // Find repo root by stripping everything after "/.github"
 const marker = `${path.sep}.github${path.sep}`;
@@ -10,7 +10,6 @@ const repoRoot = idx >= 0 ? __dirname.slice(0, idx) : path.resolve(__dirname, ".
 const srcHtmlPath = path.join(repoRoot, "index.html");
 const outDir = path.join(repoRoot, "dist");
 const outHtmlPath = path.join(outDir, "AsciiCAD.html");
-
 
 function readUtf8(p) {
   if (!fs.existsSync(p)) {
@@ -90,10 +89,11 @@ function main() {
   }
   fs.mkdirSync(outDir, { recursive: true });
 
+
   fs.writeFileSync(outHtmlPath, built, "utf8");
 
-  const outStat = fs.statSync(outHtmlPath);
-  console.log(`Wrote ${outHtmlPath} (${outStat.size} bytes)`);
+   const st = fs.statSync(outHtmlPath);
+   console.log(`Wrote ${outHtmlPath} (${st.size} bytes)`);
   
   if (st.size < 1000) {
     throw new Error("Output looks too small—build likely failed or inlining did nothing.");
