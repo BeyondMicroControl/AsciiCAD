@@ -1724,7 +1724,7 @@ function TERMINAL(props)
 
   // Cache DOM
   root.classList.add(ROOT_CLASS);
-  root.insertAdjacentHTML("beforeEnd", renderMarkup(this.shell));
+  root.insertAdjacentHTML("beforeEnd", renderMarkup(this.shell));   // Expected behavior in iframe: Blocked autofocusing on a form control in a cross-origin subframe.
 
   var container = root.querySelector(".container");
   this.DOM = {
