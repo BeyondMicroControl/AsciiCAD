@@ -943,6 +943,60 @@ Note: because zoom is centered (or anchored at pointer), even without active pan
 - **Telemetry:** compute pan offsets in cell units based on the effective screen-space position of the grid origin after applying the current transform; do not assume raw panX/panY remain valid under center-zoom.
 - **UI polish:** ensure terminal/container scrollbars do not reserve persistent track width (overflow-y: auto vs scroll) to avoid visual artifacts next to the sidebar.
 
+
+---
+
+## ADR-034: Debug/Production separation and developer UX improvements
+
+**Date:** 07-Feb-2026 (v1.06–v1.07)**Status:** Accepted**Context:** After usability and gesture improvements (ADR-033), development started to require quicker diagnosis of parsing, tool state, and event/gesture edge cases. Production builds should remain lean and avoid debug-only overhead, while debug builds should maximize visibility and reduce friction when reproducing issues (including when using URL arguments).
+
+### Decision
+
+Introduce an explicit **Debug vs Production** workflow split:
+
+1. **UI toggle: `D🐞`** (read:debug)
+   - Add a Tools button **D🐞** to quickly switch between Production and Debug experience without changing code manually.
+   - Goal: make the “debug loop” fast and accessible.
+
+2. **Sanity checks only in Debug mode**
+   - Sanity checks are executed only when debug mode is enabled.
+   - Production mode avoids runtime overhead and avoids “debug noise” in logs.
+
+3. **Exclude sanity-check code from the one-file distro**
+   - Update the distro build workflow (`inline.cjs`) so `bAsciiCAD_SanityCheck.js` is excluded from the distribution using the token **`ExcludeFromDistro`**.
+   - Goal: keep the dist HTML smaller and reduce shipped surface area.
+
+4. **CLI debug affordance: link to parsing visualizer**
+   - In Debug mode, the CLI proposes a link to a lab tool: **CMD_tool.html** (visual parsing result debugger).
+   - Goal: shorten time-to-root-cause for command parsing and statement/argument tokenization.
+
+5. **Upgrade `AsciiCAD_debug` wrapper**
+   - Provide direct links to key source code references (fast navigation for developers).
+   - Make the log panel **scrollable** and **user-resizable**.
+   - Provide a direct path back to the non-debug version (`index.html`).
+   - Forward URI arguments into the iframe-loaded `index.html` to reproduce issues using query parameters.
+   - Inform the app about debug state by loading `index.html?bDebug=true`.
+
+### Rationale
+
+- Debug work benefits from maximum observability (parsing visualization, sanity checks, rich logs).
+- Production builds should prioritize small size and predictable behavior (no debug-only dependencies).
+- A one-click toggle reduces friction and encourages frequent sanity-check use without burdening normal usage.
+
+### Consequences
+
+- (+) Faster debugging and triage (especially parsing/CLI issues and state bugs).
+- (+) Clear separation between production UX and developer UX.
+- (+) Smaller and cleaner distribution artifact (excludes sanity-check code).
+- (+) Easier reproduction of issues via forwarded URL arguments.
+- (-) Two “entry points” to maintain (`index.html` and debug wrapper).
+- (-) Requires discipline to keep debug-only hooks out of production paths.
+
+### Notes
+
+- Debug mode is treated as an **opt-in** developer experience; the default user path remains production.
+- The `ExcludeFromDistro` token provides a lightweight, maintainable way to keep dist files lean without complex build tooling.
+
 ---
 ---
 
