@@ -83,6 +83,30 @@ body {
   scrollbar-color: #808080 #222;
 }
 
+a:link {
+  color: grey;
+  background-color: transparent;
+  text-decoration: none;
+}
+
+a:visited {
+  color: pink;
+  background-color: transparent;
+  text-decoration: none;
+}
+
+a:hover {
+  color: red;
+  background-color: transparent;
+  text-decoration: underline;
+}
+
+a:active {
+  color: yellow;
+  background-color: transparent;
+  text-decoration: underline;
+}
+
     </style>
   </head>
   <body>
@@ -90,7 +114,14 @@ body {
       <button onclick="logPanel.textContent=''">Clear Logs</button>
       <button onclick="document.location='../index.html'" style="filter:grayscale(50%)">exit D&#x1F41E;</span></button>
       <span>
-        sources: <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/index.html" target="AsciiCADsrc" rel="noopener">current</a> | <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/dist/AsciiCAD.html" target="AsciiCADsrc" rel="noopener">distro</a>
+        src: <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/index.html"            target="AsciiCADsrc" rel="noopener">index</a>
+         | <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/res/AsciiCAD.css"        target="AsciiCADsrc" rel="noopener">css</a>
+         | <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/res/COM_MAIN.js"         target="AsciiCADsrc" rel="noopener">com</a>
+         | <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/res/AsciiCAD_helpers.js" target="AsciiCADsrc" rel="noopener">helpers</a>
+         | <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/res/AsciiCAD_catalog.js" target="AsciiCADsrc" rel="noopener">catalog</a>
+         | <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/res/pako.min.js"         target="AsciiCADsrc" rel="noopener">pako</a>
+         | <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/res/AsciiCAD_SanityCheck.js" target="AsciiCADsrc" rel="noopener">sanityCheck</a>
+         || <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/dist/AsciiCAD.html"     target="AsciiCADsrc" rel="noopener">distro</a>
       </span>
     </div>
 
