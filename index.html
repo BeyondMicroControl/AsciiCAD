@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="res/AsciiCAD.css">
     <script type="text/javascript"  src="res/COM_MAIN.js"></script>
     <script type="text/javascript"  src="res/AsciiCAD_helpers.js"></script>
+    <script type="text/javascript"  src="res/CMD_helpers.js"></script>
     <script type="text/javascript"  src="res/AsciiCAD_catalog.js"></script>
     <script type="text/javascript"  src="res/pako.min.js"></script>
 </head>
@@ -1476,6 +1477,10 @@ function __cliHandleTerminal(line)
 
   if(bDebug) oTERM.output("<a href=\"tools/CMD_tool.html?d="+encodeURIComponent(line)+"\" target=\"CMD_tool\">visual debug</a>");  // for debugging purposes
   const res = oCMD.parseLine(line, { "user": __cliMode });
+
+
+//CADScript
+
   
   const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
   if (!m) {
