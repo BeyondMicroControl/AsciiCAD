@@ -102,15 +102,6 @@
             <span id="DonwloadLink"></span>
           </div>
           <div class="tiny muted" id="URIcontainer"></div>
-
-        <!-- script>
-          oCOM.URL.parse(document.location.toString());
-          if(oCOM.URL.filename == "AsciiCAD.html")
-          {
-            document.getElementById("DonwloadLink").innerHTML = "&nbsp;• <a href=\"#\" id=\"downloadSelfLink\" onclick=\"downloadThisFile(); return false;\">Download</a>";
-          }
-        </script-->
-
         </div>
       </div>
     </aside>
@@ -1680,7 +1671,7 @@ window.addEventListener("load", function()
     switch(uri)
     {
       case "bDebug":
-        bDebug = oCOM.URL.uri[uri] == "true" ? true : false;
+        bDebug = oCOM.URL.uri[uri] == "true" && oCOM.URL.url != "AsciiCAD.html" ? true : false;
         document.getElementById("toolDebug").style.visibility = bDebug==true ? "hidden" : "visible";
       break;
       case "d":
@@ -1746,8 +1737,6 @@ window.addEventListener("load", function()
       break; 
     }  
   }
-
-  if(oCOM.URL.url == "AsciiCAD.html") document.getElementById("toolDebug").style.visibility
 
 }, false);
 
