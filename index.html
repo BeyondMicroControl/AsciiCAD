@@ -106,7 +106,10 @@
         <script>
           oCOM.URL.parse(document.location.toString());
           if(oCOM.URL.filename == "AsciiCAD.html")
+          {
+            document.getElementById("toolDebug").style.visibility = "hidden";
             document.getElementById("DonwloadLink").innerHTML = "&nbsp;• <a href=\"#\" id=\"downloadSelfLink\" onclick=\"downloadThisFile(); return false;\">Download</a>";
+          }
         </script>
 
         </div>
@@ -1672,9 +1675,6 @@ oASC.f["help"] = function (statementID)
 window.addEventListener("load", function()
 {
   oCOM.URL.parse(document.location.toString());
-
-  alert(oCOM.URL.url)
-
   for(var uri in oCOM.URL.uri)
   {
     switch(uri)
