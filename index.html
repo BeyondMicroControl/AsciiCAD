@@ -103,14 +103,13 @@
           </div>
           <div class="tiny muted" id="URIcontainer"></div>
 
-        <script>
+        <!-- script>
           oCOM.URL.parse(document.location.toString());
           if(oCOM.URL.filename == "AsciiCAD.html")
           {
-            document.getElementById("toolDebug").style.visibility = "hidden";
             document.getElementById("DonwloadLink").innerHTML = "&nbsp;• <a href=\"#\" id=\"downloadSelfLink\" onclick=\"downloadThisFile(); return false;\">Download</a>";
           }
-        </script>
+        </script-->
 
         </div>
       </div>
@@ -1483,7 +1482,7 @@ oTERM.onInput((command, parameters, rawLine) =>
 function __cliHandleTerminal(line) 
 {
   // TODO: replace oCMD by current cli parsing method, and further develop responses on the JSON !!!
-  
+
   if(bDebug) oTERM.output("<a href=\"tools/CMD_tool.html?d="+encodeURIComponent(line)+"\" target=\"CMD_tool\">visual debug</a>");  // for debugging purposes
   const res = oCMD.parseLine(line, { "user": __cliMode });
   
@@ -1675,6 +1674,7 @@ oASC.f["help"] = function (statementID)
 window.addEventListener("load", function()
 {
   oCOM.URL.parse(document.location.toString());
+
   for(var uri in oCOM.URL.uri)
   {
     switch(uri)
@@ -1746,6 +1746,8 @@ window.addEventListener("load", function()
       break; 
     }  
   }
+
+  if(oCOM.URL.url == "AsciiCAD.html") document.getElementById("toolDebug").style.visibility
 
 }, false);
 
