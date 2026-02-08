@@ -1672,6 +1672,9 @@ oASC.f["help"] = function (statementID)
 window.addEventListener("load", function()
 {
   oCOM.URL.parse(document.location.toString());
+
+  alert(oCOM.URL.url)
+
   for(var uri in oCOM.URL.uri)
   {
     switch(uri)
