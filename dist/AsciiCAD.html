@@ -6655,13 +6655,13 @@ function __cliHandleTerminal(line)
   if(script_node.token == "CADScript")
   {
     const names = Object.keys(a);
-    const values = Object.values(a);f
+    const values = Object.values(a);
     const code = script_node.arguments.raw;
 
     // TODO CATCH ERRORS!
     oCMD.runExternalScript(code)
       .then(() => oASC.draw())
-      .catch((err) => oTERM.output("[ERROR] "+JSON.stringify(err)) )
+      .catch((err) => { oTERM.output("[ERROR] "+JSON.stringify(err)); })
 
     return true;
   }
