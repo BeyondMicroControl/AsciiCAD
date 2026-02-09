@@ -1692,6 +1692,11 @@ a.freeform = function(x,y,c) { oASC.freeform(x,y,c); }
 window.addEventListener("load", function()
 {
 
+// TEST SNIPPET
+oCMD.runExternalScript("ASC.freeform(1,1,'+');")
+  .then(() => oASC.draw()) 
+  .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
+
 ////////////////////////////////////////
 
 
