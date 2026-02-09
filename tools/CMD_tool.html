@@ -207,7 +207,8 @@ outline: 1px solid rgba(255, 215, 0, 0.35);
       <button id="btnRunTests" class="Btn">Assertion</button>
       <br>
       <button id="btnParse" class="Btn">Parse Input</button>
-
+      <br>
+      <button id="btnCompile" class="Btn">Compile</button>
     </div>
 
   <div id=main class="gradient">
@@ -247,7 +248,7 @@ outline: 1px solid rgba(255, 215, 0, 0.35);
       </div>
 
       <div class="panel">
-        <div class="panelHeader">Parsed output (JSON) - hover to highlight matching braces</div>
+        <div class="panelHeader" style="padding:4px"><button id="btnEditJson" class="Btn" style="margin:0px;font-size:xx-small">Edit</button>&nbsp;&nbsp;Output (JSON) - hover to highlight matching braces</div>
         <div class="panelBody">
           <pre id="output">(click “Parse Input”)</pre>
         </div>
@@ -257,7 +258,7 @@ outline: 1px solid rgba(255, 215, 0, 0.35);
     <div id="logPanel"></div>
 
 <script>
-      var CONF_version="v1.71";
+      var CONF_version="v1.72";
       //var CONF_builddate="20260114-230000";
       var CONF_style =  "background: #0b1220 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAEEAYAAAD5YUI9AAAACXBIWXMAAA4mAAAOJgGi7yX8AAAARElEQVQIHWPYyrxTed9eg3UQWkQHQgtaQGg5JgaohAdUoglC8z+A0mFQBYIpUIEXULoOQgvIQRXIBUElMqASShBaWQwApNg4NPAzQGwAAAAASUVORK5CYII=') repeat center top;font: 62.5%/1 sans-serif;height: 100%;width: 100%;"
   
@@ -523,6 +524,7 @@ tests.push({
 
 
 
+
   function setExample(text)
   {
     input.value = text;
@@ -531,29 +533,128 @@ tests.push({
 
   function runExample()
   {
+    // If user is editing, stop edit and restore view first (optional but cleaner)
+    if (isEditingJson) stopJsonEdit();
+
     const line = input.value || "";
-    const res = oCMD.parseLine(line, { user: "demo" });
-    output.textContent = JSON.stringify(res, null, 2);
-    //output.textContent = prettyJsonAllman(res, 2);
+    var res = oCMD.parseLine(line, { user: "demo" });
+    setOutputJsonText(JSON.stringify(res), true);
 
     log(res.ok ? "ok" : "warn", "Parsed line. ok =", String(res.ok));
     if (!res.ok && res.error) log("error", res.error);
-
-    makeInteractiveJson(
-    output.textContent,
-    {
-        "{}": "color:#8a8;",
-        "[]": "color:#86c;",
-        "()": "color:#c88;",
-    },
-    output
-    );
-
   }
+
+
+
+  function compileExample()
+  {
+    if (isEditingJson) {
+      // If editing, compile the edited JSON (user requested edit support)
+      // We still keep it simple: attempt to parse what they edited.
+    }
+
+    var parsedText = getOutputJsonText();
+    var parsed;
+    try {
+      parsed = JSON.parse(parsedText);
+    } catch(e) {
+      log("error", "Cannot compile: output JSON is invalid.", e.message || String(e));
+      return;
+    }
+
+    var plan = oCMD.compile(parsed, { envPairs: parsed.data });
+    setOutputJsonText(JSON.stringify(plan), true);
+
+    log(plan.ok ? "ok" : "warn", "Compiled parsed content. ok =", String(plan.ok));
+    if (!plan.ok && plan.error) log("error", plan.error);
+  }
+
+
+
+  // ---- JSON output edit toggle ----
+  const JSON_STYLE = {"{}": "color:#8a8;","[]": "color:#86c;","()": "color:#c88;"};
+  let isEditingJson = false;
+
+  function getOutputEditorEl() {
+    return output.querySelector("textarea.jsonEditor");
+  }
+
+  function getOutputJsonText() {
+    const ta = getOutputEditorEl();
+    return ta ? ta.value : output.textContent;
+  }
+
+  function setOutputJsonText(txt, prettify) {
+    output.textContent = txt;
+    if (prettify) JSON.prettify(output, JSON_STYLE);
+  }
+
+  function startJsonEdit() {
+    if (isEditingJson) return;
+
+    const txt = output.textContent; // textContent works even when prettified (spans collapse to text)
+    const ta = document.createElement("textarea");
+    ta.className = "jsonEditor";
+    ta.value = txt;
+
+    // simple styling: no colors/interactivity needed during edit
+    ta.style.width = "100%";
+    ta.style.height = "500px";          // matches your panelBody height-ish
+    ta.style.resize = "vertical";
+    ta.style.boxSizing = "border-box";
+    ta.style.padding = "10px";
+    ta.style.borderRadius = "10px";
+    ta.style.border = "1px solid #22304a";
+    ta.style.background = "#0b1220";
+    ta.style.color = "#e5e7eb";
+    ta.style.font = '12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+    ta.style.outline = "none";
+
+    output.replaceChildren(ta);
+    isEditingJson = true;
+
+    const btn = document.getElementById("btnEditJson");
+    if (btn) btn.textContent = "Stop Edit";
+  }
+
+  function stopJsonEdit() {
+    if (!isEditingJson) return;
+
+    const ta = getOutputEditorEl();
+    const txt = ta ? ta.value : output.textContent;
+
+    // Restore + prettify back to interactive view
+    setOutputJsonText(txt, true);
+
+    isEditingJson = false;
+
+    const btn = document.getElementById("btnEditJson");
+    if (btn) btn.textContent = "Edit";
+  }
+
+  function toggleJsonEdit() {
+    if (isEditingJson) stopJsonEdit();
+    else startJsonEdit();
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   document.getElementById("btnClear").onclick = () => { logPanel.textContent = ""; };
   document.getElementById("btnRunTests").onclick = runTests;
   document.getElementById("btnParse").onclick = () => { runExample(); };
+  document.getElementById("btnCompile").onclick = () => { compileExample(); };
+  document.getElementById("btnEditJson").onclick = () => { toggleJsonEdit(); };
 
   // load every example
   const buttons = document.querySelectorAll('[id^="btnExample"]');
