@@ -2205,13 +2205,57 @@ function CMD()
     let inDouble = false;
     let escape = false;
 
-    const pushBuf = () => { if (buf.length) { tokens.push({ type: "word", value: buf }); buf = ""; } };
+    // CADScript block mode: if first word is CADScript and the next token begins with "{ ... }",
+    // then everything inside the brace block is treated literally as ONE argument token.
+    // This prevents operators like ';' inside the block from splitting statements.
+    let cadScriptSeen = false;
+    let scriptMode = false;
+    let braceDepth = 0;
+    let scriptInSingle = false;
+    let scriptInDouble = false;
+    let scriptEscape = false;
+const pushBuf = () => {
+      if (buf.length) {
+        tokens.push({ type: "word", value: buf });
+        // Detect leading CADScript command (first word)
+        if (tokens.length === 1 && tokens[0].type === "word" && tokens[0].value === "CADScript") {
+          cadScriptSeen = true;
+        }
+        buf = "";
+      }
+    };
 
     const pushOp = (op) => tokens.push({ type: "op", value: op });
 
     for (let i = 0; i < line.length; i++) 
     {
       const ch = line[i];
+
+      // If we're inside a CADScript { ... } block, treat content literally.
+      if (scriptMode)
+      {
+        // Keep escapes and quotes as characters, but track them so braces in strings don't end the block.
+        if (scriptEscape) { buf += ch; scriptEscape = false; continue; }
+        if (ch === "\\") { buf += ch; scriptEscape = true; continue; }
+
+        if (!scriptInDouble && ch === "'") { buf += ch; scriptInSingle = !scriptInSingle; continue; }
+        if (!scriptInSingle && ch === '"') { buf += ch; scriptInDouble = !scriptInDouble; continue; }
+
+        if (!scriptInSingle && !scriptInDouble)
+        {
+          if (ch === "{") { braceDepth++; buf += ch; continue; }
+          if (ch === "}") {
+            braceDepth--;
+            buf += ch;
+            if (braceDepth <= 0) { scriptMode = false; pushBuf(); }
+            continue;
+          }
+        }
+
+        buf += ch;
+        continue;
+      }
+
       if (escape) { buf += ch; escape = false; continue; }   // Keep escaped char literally (typical shell-ish behavior)
       if (!inSingle && ch === "\\") { escape = true; continue; }
       // Comments: # starts a comment only when not in quotes and at token boundary-ish
@@ -2221,6 +2265,19 @@ function CMD()
 
       if (!inSingle && !inDouble)
       {
+        // Start CADScript literal block as a single token: { ... }
+        if (cadScriptSeen && ch === "{")
+        {
+          pushBuf();               // ensure we're at token boundary
+          scriptMode = true;
+          braceDepth = 1;
+          scriptInSingle = false;
+          scriptInDouble = false;
+          scriptEscape = false;
+          buf += ch;               // begin literal token with '{'
+          continue;
+        }
+
         if (/\s/.test(ch)) { pushBuf(); continue; }                   // whitespace splits words
         const two = line.slice(i, i + 2);                             // recognize multi-char operators first
         if (ops.has(two)) { pushBuf(); pushOp(two); i++; continue; }  // consumed 2 chars
@@ -2284,23 +2341,23 @@ function CMD()
           else pushOpt(opt, true);
         }
 
-  /// Internal: render a "raw" string that is human-friendly and keeps grouping visible.
-  /// Since lexLine strips quote characters, this reconstructs a safe representation:
-  /// - wraps args containing whitespace (or empty) in double quotes
-  /// - escapes backslash and double quote inside those quoted args
-  this._renderRawWords = function(words)
-  {
-    if (!Array.isArray(words)) return "";
-    const needsQuotes = (s) => (s === "") || /\s/.test(s);
-    const escForDq = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-    return words.map(w => {
-      const s = String(w);
-      return needsQuotes(s) ? `"${escForDq(s)}"` : s;
-    }).join(" ");
-  }
+        /// Internal: render a "raw" string that is human-friendly and keeps grouping visible.
+        /// Since lexLine strips quote characters, this reconstructs a safe representation:
+        /// - wraps args containing whitespace (or empty) in double quotes
+        /// - escapes backslash and double quote inside those quoted args
+        this._renderRawWords = function(words)
+        {
+          if (!Array.isArray(words)) return "";
+          const needsQuotes = (s) => (s === "") || /\s/.test(s);
+          const escForDq = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+          return words.map(w => {
+            const s = String(w);
+            return needsQuotes(s) ? `"${escForDq(s)}"` : s;
+          }).join(" ");
+        }
 
-  // Public alias (handy if you export a reduced API)
-  this.renderRawWords = this._renderRawWords;
+          // Public alias (handy if you export a reduced API)
+        this.renderRawWords = this._renderRawWords;
 
         continue;
       }
