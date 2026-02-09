@@ -140,6 +140,20 @@ function ASC()
     this.pushStrokeIfNonEmpty(stroke);
   }
 
+  this.freeform = function(r, c, next) 
+  {
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
+      throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
+      
+    currentStroke = [];
+    op.ch    = next;
+    op.type  = "place";
+    var cell = {"r":r,"c":c};
+    this.applyOpAtCell(cell);                   // display character on grid 
+    this.pushStrokeIfNonEmpty(currentStroke);   // feed undo buffer
+  }
+
+
   // TODO: describe what it does, and check if this can be used as generic function or it should be a private function
   // INFO: currently only used in beginFreeform(), moveFreeform(), endFreeform()
   this.applyOpAtCell = function(cell)
@@ -218,6 +232,7 @@ function ASC()
     draw("cancelLine");
   }
 
+  this.getCharAtCell  = function(r, c) {  return ascii[r][c] }
   this.drawCharAtCell = function(r, c, ch) { ascii[r][c] = ch; }
 
   this.drawLinePreview = function() 
@@ -1305,6 +1320,262 @@ function ASC()
     updateUI();
     draw("doRedo");
   }
+
+
+  this.draw = function( str ) 
+  {
+
+    // TODO: should this remain a private function?
+    // INFO: currently only used in draw()
+    function renderCharAtCell(ctx, r, c, ch) 
+    {
+      const x = c * baseCellW + baseCellW / 2;
+      const y = r * baseCellH + baseCellH / 2;
+      ctx.fillText(ch, x, y);
+    }
+
+    const dpr = window.devicePixelRatio || 1;
+    const wCss = stageSize.w;
+    const hCss = stageSize.h;
+
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.fillStyle = GRID_BG;
+    ctx.fillRect(0,0,wCss,hCss);
+
+    const cx = wCss/2, cy = hCss/2;
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+    ctx.translate(-cx + panX, -cy + panY);
+
+    // TODO: refactor this function, as it leads to unreadable code, difficult to debug/understand
+    const getSnapFns = function(dpr, scaleNow)
+    {
+      const pxScale = (dpr || 1) * (scaleNow || 1);
+      const snap = (v) => Math.round(v * pxScale) / pxScale;
+      const snapLine = (v) => (Math.round(v * pxScale) + 0.5) / pxScale;
+      return { snap, snapLine };
+    }
+    const { snap, snapLine } = getSnapFns(dpr, scale);   // get snap functions
+
+    var { cw, ch } = oASC.getCellSize();
+
+    // Visible bounds in WORLD coordinates (undo pan/zoom around center)
+    const left   = (0 - cx) / scale + cx - panX;
+    const top    = (0 - cy) / scale + cy - panY;
+    const right  = (wCss - cx) / scale + cx - panX;
+    const bottom = (hCss - cy) / scale + cy - panY;
+
+    // Convert bounds -> grid indices (clamped)
+    const c0 = Math.max(0, Math.floor( oCOM.PanZoomSize(0,cx,scale,panX,cw) ));
+    const r0 = Math.max(0, Math.floor( oCOM.PanZoomSize(0,cy,scale,panY,ch) ));
+    const c1 = Math.min(COLS, Math.ceil( oCOM.PanZoomSize(wCss,cx,scale,panX,cw) ));
+    const r1 = Math.min(ROWS, Math.ceil( oCOM.PanZoomSize(hCss,cy,scale,panY,ch)  ));
+
+    ctx.beginPath();
+    ctx.strokeStyle = GRID_LINE;
+    ctx.lineWidth = 1 / scale;
+
+    for (let c = c0; c <= c1; c++)  // vertical lines
+    {
+      const x = snapLine(c * cw);
+      ctx.moveTo(x, snapLine(r0 * ch));
+      ctx.lineTo(x, snapLine(r1 * ch));
+    }
+
+    for (let r = r0; r <= r1; r++)   // horizontal lines
+    {
+      const y = snapLine(r * ch);
+      ctx.moveTo(snapLine(c0 * cw), y);
+      ctx.lineTo(snapLine(c1 * cw), y);
+    }
+
+    ctx.stroke();
+    ctx.fillStyle = "#000";     // Font sized to cell
+
+    const cwr = 0.62;   // 0.62
+    const maxByHeight = ch * 0.98;
+    const maxByWidth = (cw / cwr) * 0.98;
+    const fontPx = Math.max(4, Math.floor(Math.min(maxByHeight, maxByWidth)));
+
+    ctx.font = fontPx + "px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // Move preview
+    if (moveDrag)
+    {
+      const b = moveDrag.baseRect;
+      const o = moveDrag.offset;
+      const snapMap = moveDrag.snapshot;
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+      for (let r = b.r0; r <= b.r1; r++)
+      {
+        for (let c = b.c0; c <= b.c1; c++)
+        {
+          const chx = snapMap.get(r + ',' + c) || ' ';
+          if (chx === ' ') continue;
+          const rr = r + o.dr;
+          const cc = c + o.dc;
+          if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+          ctx.fillText(chx, snap(cc * cw + cw/2), snap(rr * ch + ch/2));
+        }
+      }
+      ctx.restore();
+    }
+
+    if (schemaHighlightOn && !highlightCache) highlightCache = oASC.computeHighlightOverlay();
+    const redSet = highlightCache ? highlightCache.redSet : null;
+    const insideSet = highlightCache ? highlightCache.insideSet : null;
+
+    const BLUE = "rgba(59,130,246,0.9)";
+    const RED  = "rgba(239,68,68,0.9)";
+    const GREEN = "rgba(34,197,94,0.95)";
+
+    if (schemaMatchOn && !matchCache) matchCache = oASC.computeMatchOverlay();
+
+    const greenSet = matchCache ? matchCache.greenSet : null;
+    // Draw all chars (skip base rect while moving)
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const chx = ascii[r][c];
+        if (chx === " ") continue;
+
+        if (moveDrag)
+        {
+          const b = moveDrag.baseRect;
+          if (r >= b.r0 && r <= b.r1 && c >= b.c0 && c <= b.c1) continue;
+        }
+
+        // Default color
+        let color = "#000";
+
+        // Match overlay has priority (green)
+        if (schemaMatchOn && greenSet) 
+        {
+          const k = keyRC(r, c);
+          if (greenSet.has(k)) color = GREEN;
+        }
+
+        if (schemaHighlightOn && color === "#000") 
+        {
+          const k = keyRC(r, c);
+          const inside = insideSet && insideSet.has(k);
+
+          // 1) Red: only double-line frame cells of enclosed rectangles
+          // 2) Blue: single-line glyphs + crossings, but NOT inside double rectangles
+          if (redSet && redSet.has(k) && (oASC.hasDoubleH(chx) || oASC.hasDoubleV(chx) || chx==="╔"||chx==="╗"||chx==="╚"||chx==="╝"))
+            color = RED;
+          else if (!inside) // single-line wires are: wire glyphs that are neither double nor thick
+          {
+            if (oASC.isWireGlyph(chx) && !isDoubleWire(chx) && !isThickWire(chx) && chx !== " ")
+              color = BLUE;
+          }
+        }
+
+        ctx.fillStyle = color;
+        ctx.fillText(chx, snap(c * cw + cw / 2), snap(r * ch + ch / 2));
+      }
+    }
+
+    // Selection overlay (stays after select; cleared after move mouseup)
+    if (selection) 
+    {
+        const x0 = selection.c0 * cw;
+        const y0 = selection.r0 * ch;
+        const w = (selection.c1 - selection.c0 + 1) * cw;
+        const h = (selection.r1 - selection.r0 + 1) * ch;
+        ctx.save();
+        ctx.lineWidth = 2 / scale;
+        ctx.strokeStyle = "rgba(59,130,246,0.9)";
+        ctx.fillStyle = "rgba(59,130,246,0.12)";
+        ctx.fillRect(x0, y0, w, h);
+        ctx.strokeRect(x0, y0, w, h);
+        ctx.restore();
+    }
+
+    // Drag-select marquee
+    if (selectDrag) 
+    {
+        const rr = oCOM.normRect(selectDrag.start, selectDrag.current);
+        const x0 = rr.c0 * cw;
+        const y0 = rr.r0 * ch;
+        const w = (rr.c1 - rr.c0 + 1) * cw;
+        const h = (rr.r1 - rr.r0 + 1) * ch;
+        ctx.save();
+        ctx.lineWidth = 2 / scale;
+        ctx.setLineDash([6/scale, 4/scale]);
+        ctx.strokeStyle = "rgba(16,185,129,0.95)";
+        ctx.strokeRect(x0, y0, w, h);
+        ctx.restore();
+    }
+
+    if (pasteDrag) drawPastePreview(cw, ch, snap);
+
+    oASC.drawLinePreview();
+
+    // Line preview overlay
+    if (lineDrag)
+    {
+      const old = ctx.fillStyle;
+      ctx.fillStyle = "rgba(59,130,246,0.9)";
+      const path = oASC.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+
+      for (const p of path)
+      {
+        if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+        renderCharAtCell(ctx, p.r, p.c, p.ch);
+      }
+
+      ctx.fillStyle = old;
+    }
+
+    if (boxDrag)
+    {
+      const old = ctx.fillStyle;
+      ctx.fillStyle = "rgba(59,130,246,0.9)";
+      const style = boxDrag.kind === "double" ? BOX_DOUBLE : boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE;
+      const path = oASC.buildBoxPath(boxDrag.start, boxDrag.cur, style);
+
+      for (const p of path)
+      {
+          if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+          renderCharAtCell(ctx, p.r, p.c, p.ch); // canvas-only renderer
+      }
+
+      ctx.fillStyle = old;
+    }
+
+    if (textDrag) 
+    {
+      const old = ctx.fillStyle;
+      ctx.fillStyle = "rgba(59,130,246,0.9)";
+      const r = textDrag.anchor.r;
+      let c = textDrag.anchor.c;
+      renderCharAtCell(ctx, r, c-1, '█');
+
+      for (const ch of Array.from(textDrag.text)) 
+      {
+          if (ch === '\n' || ch === '\r') continue;
+          if (r < 0 || r >= ROWS) break;
+          if (c < 0) { c++; continue; }
+          if (c >= COLS) break;
+
+          renderCharAtCell(ctx, r, c, ch); // canvas-only renderer
+          c++;
+      }
+
+      ctx.fillStyle = old;
+    }
+  }
+
+
+
+
+
+
 
 
 }

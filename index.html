@@ -29,7 +29,7 @@
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.07</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.08</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -1476,7 +1476,23 @@ function __cliHandleTerminal(line)
   // TODO: replace oCMD by current cli parsing method, and further develop responses on the JSON !!!
 
   if(bDebug) oTERM.output("<a href=\"tools/CMD_tool.html?d="+encodeURIComponent(line)+"\" target=\"CMD_tool\">visual debug</a>");  // for debugging purposes
-  const res = oCMD.parseLine(line, { "user": __cliMode });
+  
+  const parsed = oCMD.parseLine(line, { "user": __cliMode });
+  if (!parsed.ok && parsed.error) { oTERM.output("[ERROR] "+parsed.error); return true; }
+
+  const plan = oCMD.compile(parsed, { envPairs: parsed.data });
+  if (!plan.ok && plan.error) { oTERM.output("[ERROR] "+plan.error); return true; }
+
+  var script_node = plan.plan.groups[0].pipeline[0];
+  if(script_node.token == "CADScript")
+  {
+    const names = Object.keys(a);
+    const values = Object.values(a);
+    const code = script_node.arguments.raw;
+
+    const fn = new Function(...names, `"use strict";\nreturn (${code});`);
+
+  }
 
 
 //CADScript
@@ -1631,7 +1647,7 @@ function __cliHandleScript(line)
 oASC.f = {};
 var a = oASC.f; // a = shorthand object for oASC.f
 
-oASC.f["help"] = function (statementID)
+a.help = function(statementID)
 {
   if(statementID == null || statementID == "help")
   {
@@ -1649,9 +1665,11 @@ oASC.f["help"] = function (statementID)
   {
     oTERM.output("[ERROR] no help found on this topic");
   }
-
 }
 
+a.clear = function() { oASC.clear() }
+
+a.freeform = function(x,y,c) { oASC.freeform(x,y,c); }
 
 
 
@@ -1669,6 +1687,161 @@ oASC.f["help"] = function (statementID)
 // Load URL data
 window.addEventListener("load", function()
 {
+
+
+//////////////////////////// WORKER TEST
+
+
+
+const worker = createAscWorker(); // see worker source below
+
+// Central message handler
+worker.addEventListener("message", (e) => {
+  const msg = e.data;
+  if (!msg) return;
+
+  if (bDebug && msg.type === "log") {
+    console.log("[worker]", ...msg.args);
+    return;
+  }
+
+  if (msg.type === "call") {
+    const { id, name, args } = msg;
+    if(bDebug) console.log("[main] call from worker:", name, args);
+
+    try {
+      if (typeof oASC[name] !== "function") throw new Error("No such method: " + name);
+      const result = oASC[name](...(args || []));
+      worker.postMessage({ type: "ret", id, ok: true, result });
+    } catch (err) {
+      worker.postMessage({ type: "ret", id, ok: false, error: String(err?.message || err) });
+    }
+    return;
+  }
+
+  // done/error are handled per-run in runExternalScript() below
+});
+
+function runExternalScript(code) 
+{
+  return new Promise((resolve, reject) => {
+    const runId = Math.random().toString(16).slice(2);
+
+    const onMsg = (e) => {
+      const msg = e.data;
+      if (!msg || msg.runId !== runId) return;
+
+      if (msg.type === "done") {
+        if(bDebug) console.log("[main] worker done:", runId);
+        worker.removeEventListener("message", onMsg);
+        resolve();
+      }
+      if (msg.type === "error") {
+        console.error("[main] worker error:", msg.error);
+        worker.removeEventListener("message", onMsg);
+        reject(msg.error);
+      }
+    };
+
+    worker.addEventListener("message", onMsg);
+    if(bDebug) console.log("[main] sending script to worker:", code);
+    worker.postMessage({ type: "run", runId, code });
+  });
+}
+
+
+
+function createAscWorker() 
+{
+  const src = `
+    let nextId = 1;
+    const pending = new Map();
+
+    function log(...args) {
+      postMessage({ type: "log", args });
+    }
+
+    function callMain(name, args) {
+      const id = nextId++;
+      log("callMain ->", name, args);
+      postMessage({ type: "call", id, name, args });
+      return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+    }
+
+    // The API visible to scripts
+    const ASC = new Proxy({}, {
+      get(_t, prop) {
+        return (...args) => callMain(String(prop), args);
+      }
+    });
+
+    function runInScope(code) {
+      const scope = new Proxy({ ASC }, {
+        has() { return true; },
+        get(target, prop) {
+          if (prop === Symbol.unscopables) return undefined;
+          if (prop in target) return target[prop];
+          // allow some basics
+          if (prop === "Math") return Math;
+          if (prop === "JSON") return JSON;
+          if (prop === "Number") return Number;
+          if (prop === "String") return String;
+          throw new ReferenceError("Access denied: " + String(prop));
+        }
+      });
+
+      // async wrapper so user script can eventually 'await' if needed
+      const fn = new Function("scope", "return (async()=>{ with(scope){\\n" + code + "\\n} })();");
+      return fn(scope);
+    }
+
+    onmessage = async (e) => {
+      const msg = e.data;
+      if (!msg) return;
+
+      if (msg.type === "ret") {
+        const p = pending.get(msg.id);
+        if (!p) return;
+        pending.delete(msg.id);
+        msg.ok ? p.resolve(msg.result) : p.reject(new Error(msg.error));
+        return;
+      }
+
+      if (msg.type === "run") {
+        const { runId, code } = msg;
+        log("RUN start", runId, code);
+        try {
+          await runInScope(code);
+          log("RUN end", runId);
+          postMessage({ type: "done", runId });
+        } catch (err) {
+          postMessage({
+            type: "error",
+            runId,
+            error: { name: err.name, message: err.message, stack: err.stack }
+          });
+        }
+      }
+    };
+  `;
+
+  const blob = new Blob([src], { type: "application/javascript" });
+  return new Worker(URL.createObjectURL(blob));
+}
+
+
+
+
+// ✅ Correct usage (draw AFTER worker finished)
+runExternalScript("ASC.freeform(1,1,'+');ASC.freeform(2,2,'+');")
+  .then(() => draw())
+  .catch(console.error);
+
+
+
+////////////////////////////////////////
+
+
   oCOM.URL.parse(document.location.toString());
 
   for(var uri in oCOM.URL.uri)
