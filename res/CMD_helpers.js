@@ -724,20 +724,16 @@ function CMD()
 
   this.onWorkerMessage = function(e) 
   {
+    // 'this' scope is lost here
+    // TODO: check how we can regain .this scope here and pass it on to handleWorkerCall
     const msg = e.data;
     if (!msg) return;
+    if (bDebug && msg.type === "log") { console.log("[worker]", ...(msg.args || [])); return; }
 
-    if (msg.type === "log") {
-      if (bDebug) console.log("[worker]", ...(msg.args || []));
-      return;
+    if (msg.type === "call")
+    {
+      handleWorkerCall(msg); return;
     }
-
-    if (msg.type === "call") {
-      handleWorkerCall(msg);
-      return;
-    }
-
-    // done/error handled elsewhere
   }
 
   function handleWorkerCall(msg) 
@@ -769,7 +765,7 @@ function CMD()
 
 
 
-   
+
 
   /// Convert plain object / Map / array-of-pairs into a mutable plain object
   this.normalizeData = function(input) 
