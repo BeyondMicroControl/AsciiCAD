@@ -2485,7 +2485,7 @@ function CMD()
     let scriptInSingle = false;
     let scriptInDouble = false;
     let scriptEscape = false;
-const pushBuf = () => {
+    const pushBuf = () => {
       if (buf.length) {
         tokens.push({ type: "word", value: buf });
         // Detect leading CADScript command (first word)
@@ -2742,50 +2742,314 @@ const pushBuf = () => {
   }
 
 
-
-
-
-this.compile = function(parsedJson, initialCtx) {
-  // create compiler instance once (cache it)
-  if (!this._compiler) this._compiler = new CMDCompiler(/* optional opts */);
-  return this._compiler.compile(parsedJson, initialCtx);
-};
-
-
-
-
-// HELPER FUNCTIONS
-
-  /// Convert plain object / Map / array-of-pairs into a mutable plain object
-  this.normalizeData = function(input) 
+  this.compile = function(parsedJson, initialCtx) 
   {
-    if (!input) return {};
-    if (input instanceof Map) {
+    // create compiler instance once (cache it)
+    if (!this._compiler) this._compiler = new CMDCompiler(/* optional opts */);
+    return this._compiler.compile(parsedJson, initialCtx);
+  };
+
+
+//       ______  ____    ____  ______        ______                                _   __                 
+//     .' ___  ||_   \  /   _||_   _ `.    .' ___  |                              (_) [  |                
+//    / .'   \_|  |   \/   |    | | `. \  / .'   \_|  .--.   _ .--..--.  _ .--.   __   | | .---.  _ .--.  
+//    | |         | |\  /| |    | |  | |  | |       / .'`\ \[ `.-. .-. |[ '/'`\ \[  |  | |/ /__\\[ `/'`\] 
+//    \ `.___.'\ _| |_\/_| |_  _| |_.' /  \ `.___.'\| \__. | | | | | | | | \__/ | | |  | || \__., | |     
+//     `.____ .'|_____||_____||______.'    `.____ .' '.__.' [___||__||__]| ;.__/ [___][___]'.__.'[___]    
+//                                                                      [__|
+
+  /* CMD_compiler.js
+  *
+  * Compiler stage for CMD parser JSON:
+  * - groups pipeline statements
+  * - validates operator tokens
+  * - resolves env assignments and $var expansion (keeps raw + resolved)
+  * - emits a compiled execution plan (no execution)
+  */
+
+  function CMDCompiler(opts) 
+  {
+    opts = opts || {};
+
+    // Operator tokens we recognize (from your parser)
+    const OP_TOKENS = opts.opTokens || [";", "&&", "||", "|", "&", null];
+
+    // Command “token reference table” (minimal, extend as you like)
+    // If a command is not in this table, we still allow it by default unless strict=true.
+    const commandTable = opts.commandTable || {
+      echo: { token: "CMD", resolveArgs: true },
+      CADScript: { token: "CADScript", resolveArgs: false }
+    };
+
+    const strict = !!opts.strict;
+
+    // ---------- helpers ----------
+    function pairsToObj(pairs) {
       const o = {};
-      for (const [k, v] of input.entries()) o[String(k)] = v;
-      return o;
-    }
-    if (Array.isArray(input)) {
-      // Accept [{key, value}] or [[k,v]] or [{k:v}]
-      const o = {};
-      for (const item of input) {
-        if (Array.isArray(item) && item.length >= 2) o[String(item[0])] = item[1];
-        else if (item && typeof item === "object")
-        {
-          if ("key" in item && "value" in item) o[String(item.key)] = item.value;
-          else { for (const [k, v] of Object.entries(item)) o[String(k)] = v; }
-        }
+      if (!pairs) return o;
+      for (let i = 0; i < pairs.length; i++) {
+        const p = pairs[i];
+        if (p && typeof p.key === "string") o[p.key] = p.value;
       }
       return o;
     }
-    if (typeof input === "object") return { ...input };
-    return {};
+
+    function objToPairs(o) {
+      return Object.keys(o).map(k => ({ key: k, value: o[k] }));
+    }
+
+    function isValidOp(op) {
+      for (let i = 0; i < OP_TOKENS.length; i++) if (OP_TOKENS[i] === op) return true;
+      return false;
+    }
+
+    // Basic shell-ish identifier
+    function isIdent(s) {
+      return /^[A-Za-z_][A-Za-z0-9_]*$/.test(s);
+    }
+
+    // Detect assignment statement, based on parsed.name or raw.
+    // Your parser makes name be first word; for `name="Sylvia"` it becomes `name=Sylvia`
+    function parseAssignmentFromStatement(stmt) {
+      // Prefer parsed.name (most stable)
+      const s = (stmt && stmt.parsed && stmt.parsed.name) ? String(stmt.parsed.name) : "";
+      // Accept NAME=VALUE (VALUE may be empty)
+      const eq = s.indexOf("=");
+      if (eq <= 0) return null;
+
+      const key = s.slice(0, eq);
+      const value = s.slice(eq + 1);
+
+      if (!isIdent(key)) return null;
+
+      // In shell, assignments can appear before a command, but for now
+      // we treat a statement whose "name" contains '=' and has no args as an assignment.
+      const args = (stmt.parsed && Array.isArray(stmt.parsed.arguments)) ? stmt.parsed.arguments : [];
+      if (args.length !== 0) return null;
+
+      return { key, valueRaw: value };
+    }
+
+    // Expand $var occurrences using env (very small subset, by design)
+    // - supports $name and ${name}
+    // - leaves unknown variables as "" (shell-ish)
+    function expandVars(rawStr, envObj) {
+      const s = String(rawStr);
+
+      // ${name}
+      let out = s.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, function(_, name) {
+        return (envObj && envObj[name] != null) ? String(envObj[name]) : "";
+      });
+
+      // $name
+      out = out.replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, function(_, name) {
+        return (envObj && envObj[name] != null) ? String(envObj[name]) : "";
+      });
+
+      return out;
+    }
+
+    // Extract positional strings from parsed.arguments array:
+    // your parser uses either:
+    //   - strings for positionals
+    //   - objects like {opt:true} or {opt:"value"} for options
+    function splitArgs(parsedArgs) {
+      const options = [];     // array of {key,value}
+      const positionals = []; // array of strings (raw)
+      for (let i = 0; i < parsedArgs.length; i++) {
+        const a = parsedArgs[i];
+        if (typeof a === "string") {
+          positionals.push(a);
+        } else if (a && typeof a === "object" && !Array.isArray(a)) {
+          // take first key
+          const ks = Object.keys(a);
+          if (ks.length) options.push({ key: ks[0], value: a[ks[0]] });
+        } else {
+          // ignore unknown shapes, but keep raw string form if possible
+          positionals.push(String(a));
+        }
+      }
+      return { options, positionals };
+    }
+
+    // Lookup command metadata (token, resolveArgs flag)
+    function getCommandMeta(name) {
+      if (commandTable[name]) return commandTable[name];
+      // default behavior: unknown commands still behave like CMD commands
+      return { token: "CMD", resolveArgs: true };
+    }
+
+    // ---------- compile ----------
+    this.compile = function(parsedJson, initialCtx) {
+      const errors = [];
+      const warnings = [];
+
+      if (!parsedJson || !parsedJson.ok || !Array.isArray(parsedJson.pipelineOrChain)) {
+        return { ok: false, errors: ["Input JSON missing or parser ok=false"], plan: null };
+      }
+
+      const ctx = initialCtx || {};
+      const env = pairsToObj(ctx.envPairs || parsedJson.data || []); // seed from parser data pairs
+      const devices = ctx.devices || {}; // later: stdout devices, files, etc.
+
+      // Step 1: validate operators + build pipeline groups
+      const groups = [];
+      let currentGroup = null;
+
+      function startGroup(connectorFromPrev) {
+        currentGroup = {
+          connectorFromPrev: connectorFromPrev || null, // null, ;, &&, ||, &, etc.
+          pipeline: [] // compiled statements
+        };
+        groups.push(currentGroup);
+      }
+
+      for (let i = 0; i < parsedJson.pipelineOrChain.length; i++) {
+        const node = parsedJson.pipelineOrChain[i];
+
+        if (!isValidOp(node.opBefore)) {
+          errors.push("Invalid operator token opBefore=" + String(node.opBefore) + " at index " + i);
+        }
+
+        // Determine whether this node starts a new pipeline group:
+        // - first node starts a group
+        // - nodes with opBefore === '|' continue current group
+        // - otherwise start a new group with connectorFromPrev = opBefore
+        if (i === 0) {
+          startGroup(null);
+        } else if (node.opBefore !== "|") {
+          startGroup(node.opBefore);
+        } else if (!currentGroup) {
+          startGroup(null);
+        }
+
+        // Compile this statement
+        const compiledStmt = compileStatement(node, env, devices, errors, warnings);
+        currentGroup.pipeline.push(compiledStmt);
+
+        // Apply env updates immediately (compiler-side semantics)
+        if (compiledStmt.kind === "assign" && compiledStmt.envDelta) {
+          env[compiledStmt.envDelta.key] = compiledStmt.envDelta.value;
+        }
+      }
+
+      // Step 2: attach data + basic I/O wiring info (no execution)
+      // For each pipeline group, define how stdin/stdout conceptually flows.
+      for (let g = 0; g < groups.length; g++) {
+        const grp = groups[g];
+
+        // conceptual input: from previous group unless first
+        grp.input = { source: (g === 0) ? "initial" : "prevGroup" };
+        grp.output = { sink: (g === groups.length - 1) ? "device:stdout" : "nextGroup? (depends on connectors)" };
+
+        // pipeline internal wiring
+        for (let j = 0; j < grp.pipeline.length; j++) {
+          const s = grp.pipeline[j];
+          s.io = s.io || {};
+          s.io.stdin = (j === 0) ? { source: "group.stdin" } : { source: "pipe", from: j - 1 };
+          s.io.stdout = (j === grp.pipeline.length - 1) ? { sink: "group.stdout" } : { sink: "pipe", to: j + 1 };
+        }
+      }
+
+      const ok = errors.length === 0;
+      return {
+        ok,
+        errors,
+        warnings,
+        env: objToPairs(env),
+        plan: {
+          groups
+        }
+      };
+    };
+
+    function compileStatement(node, env, devices, errors, warnings) {
+      const parsed = node.parsed || {};
+      const name = String(parsed.name || "");
+      const raw = String(node.raw || "");
+
+      // 1) assignment?
+      const asn = parseAssignmentFromStatement(node);
+      if (asn) {
+        // Resolve assignment value (we keep both)
+        const valueResolved = expandVars(asn.valueRaw, env);
+
+        return {
+          kind: "assign",
+          token: "ASSIGN",
+          raw: raw,                 // as displayed by parser
+          envDelta: {
+            key: asn.key,
+            rawValue: asn.valueRaw,
+            value: valueResolved
+          },
+          // Keep for uniformity
+          name: asn.key + "=",
+          arguments: {
+            raw: [asn.valueRaw],
+            resolved: [valueResolved]
+          }
+        };
+      }
+
+      // 2) command
+      const meta = getCommandMeta(name);
+
+      // validate command token/table if strict
+      if (strict && !commandTable[name]) {
+        errors.push("Unknown command: " + name);
+      }
+
+      const parsedArgs = Array.isArray(parsed.arguments) ? parsed.arguments : [];
+      const split = splitArgs(parsedArgs);
+
+      // Resolve positionals unless this command opts out (CADScript)
+      const posRaw = split.positionals.slice();
+      const posResolved = meta.resolveArgs
+        ? posRaw.map(s => expandVars(s, env))
+        : posRaw.slice(); // keep raw, do not resolve
+
+      return {
+        kind: "command",
+        token: meta.token || "CMD",
+        resolveArgs: !!meta.resolveArgs,
+        name: name,
+        raw: raw, // display-raw (not guaranteed exact original)
+        options: split.options, // [{key,value},...]
+        arguments: {
+          raw: posRaw,
+          resolved: posResolved
+        },
+        // This is where, later, execution would attach runtime stdout/stderr/code
+        output: {
+          to: "auto" // will be wired by pipeline grouping
+        }
+      };
+    }
   }
 
-  function dataToPairs(obj)
-  {
-    return Object.entries(obj).map(([key, value]) => ({ key, value }));
-  }
+
+//       ______  ____    ____  ______                                                                        
+//     .' ___  ||_   \  /   _||_   _ `.                                                                      
+//    / .'   \_|  |   \/   |    | | `. \                                                                     
+//    | |         | |\  /| |    | |  | |                                                                     
+//    \ `.___.'\ _| |_\/_| |_  _| |_.' /                                                                     
+//     `.____ .'|_____||_____||______.'                                                                      
+//     ____      ____              __                    _________  __                                   __  
+//    |_  _|    |_  _|            [  |  _               |  _   _  |[  |                                 |  ] 
+//      \ \  /\  / / .--.   _ .--. | | / ] .---.  _ .--.|_/ | | \_| | |--.   _ .--.  .---.  ,--.    .--.| |  
+//       \ \/  \/ // .'`\ \[ `/'`\]| '' < / /__\\[ `/'`\]   | |     | .-. | [ `/'`\]/ /__\\`'_\ : / /'`\' |  
+//        \  /\  / | \__. | | |    | |`\ \| \__., | |      _| |_    | | | |  | |    | \__.,// | |,| \__/  |  
+//         \/  \/   '.__.' [___]  [__|  \_]'.__.'[___]    |_____|  [___]|__][___]    '.__.'\'-;__/ '.__.;__] 
+//        ___                          _    _                                                                
+//      .' ..]                        / |_ (_)                                                               
+//     _| |_  __   _   _ .--.   .---.`| |-'__   .--.   _ .--.   .--.                                         
+//    '-| |-'[  | | | [ `.-. | / /'`\]| | [  |/ .'`\ \[ `.-. | ( (`\]                                        
+//      | |   | \_/ |, | | | | | \__. | |, | || \__. | | | | |  `'.'.                                        
+//     [___]  '.__.'_/[___||__]'.___.'\__/[___]'.__.' [___||__][\__) )      
+
+
+
 
   this.createAscWorker = function() 
   {
@@ -2931,284 +3195,76 @@ this.compile = function(parsedJson, initialCtx) {
 
 
 
-}
 
 
 
-////////////////////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////
+   // OTHER HELPER FUNCTIONS //
+   ////////////////////////////
 
 
 
+   
 
-/* CMD_compiler.js
- *
- * Compiler stage for CMD parser JSON:
- * - groups pipeline statements
- * - validates operator tokens
- * - resolves env assignments and $var expansion (keeps raw + resolved)
- * - emits a compiled execution plan (no execution)
- */
-
-function CMDCompiler(opts) 
-{
-  opts = opts || {};
-
-  // Operator tokens we recognize (from your parser)
-  const OP_TOKENS = opts.opTokens || [";", "&&", "||", "|", "&", null];
-
-  // Command “token reference table” (minimal, extend as you like)
-  // If a command is not in this table, we still allow it by default unless strict=true.
-  const commandTable = opts.commandTable || {
-    echo: { token: "CMD", resolveArgs: true },
-    CADScript: { token: "CADScript", resolveArgs: false }
-  };
-
-  const strict = !!opts.strict;
-
-  // ---------- helpers ----------
-  function pairsToObj(pairs) {
-    const o = {};
-    if (!pairs) return o;
-    for (let i = 0; i < pairs.length; i++) {
-      const p = pairs[i];
-      if (p && typeof p.key === "string") o[p.key] = p.value;
+  /// Convert plain object / Map / array-of-pairs into a mutable plain object
+  this.normalizeData = function(input) 
+  {
+    if (!input) return {};
+    if (input instanceof Map) {
+      const o = {};
+      for (const [k, v] of input.entries()) o[String(k)] = v;
+      return o;
     }
-    return o;
-  }
-
-  function objToPairs(o) {
-    return Object.keys(o).map(k => ({ key: k, value: o[k] }));
-  }
-
-  function isValidOp(op) {
-    for (let i = 0; i < OP_TOKENS.length; i++) if (OP_TOKENS[i] === op) return true;
-    return false;
-  }
-
-  // Basic shell-ish identifier
-  function isIdent(s) {
-    return /^[A-Za-z_][A-Za-z0-9_]*$/.test(s);
-  }
-
-  // Detect assignment statement, based on parsed.name or raw.
-  // Your parser makes name be first word; for `name="Sylvia"` it becomes `name=Sylvia`
-  function parseAssignmentFromStatement(stmt) {
-    // Prefer parsed.name (most stable)
-    const s = (stmt && stmt.parsed && stmt.parsed.name) ? String(stmt.parsed.name) : "";
-    // Accept NAME=VALUE (VALUE may be empty)
-    const eq = s.indexOf("=");
-    if (eq <= 0) return null;
-
-    const key = s.slice(0, eq);
-    const value = s.slice(eq + 1);
-
-    if (!isIdent(key)) return null;
-
-    // In shell, assignments can appear before a command, but for now
-    // we treat a statement whose "name" contains '=' and has no args as an assignment.
-    const args = (stmt.parsed && Array.isArray(stmt.parsed.arguments)) ? stmt.parsed.arguments : [];
-    if (args.length !== 0) return null;
-
-    return { key, valueRaw: value };
-  }
-
-  // Expand $var occurrences using env (very small subset, by design)
-  // - supports $name and ${name}
-  // - leaves unknown variables as "" (shell-ish)
-  function expandVars(rawStr, envObj) {
-    const s = String(rawStr);
-
-    // ${name}
-    let out = s.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, function(_, name) {
-      return (envObj && envObj[name] != null) ? String(envObj[name]) : "";
-    });
-
-    // $name
-    out = out.replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, function(_, name) {
-      return (envObj && envObj[name] != null) ? String(envObj[name]) : "";
-    });
-
-    return out;
-  }
-
-  // Extract positional strings from parsed.arguments array:
-  // your parser uses either:
-  //   - strings for positionals
-  //   - objects like {opt:true} or {opt:"value"} for options
-  function splitArgs(parsedArgs) {
-    const options = [];     // array of {key,value}
-    const positionals = []; // array of strings (raw)
-    for (let i = 0; i < parsedArgs.length; i++) {
-      const a = parsedArgs[i];
-      if (typeof a === "string") {
-        positionals.push(a);
-      } else if (a && typeof a === "object" && !Array.isArray(a)) {
-        // take first key
-        const ks = Object.keys(a);
-        if (ks.length) options.push({ key: ks[0], value: a[ks[0]] });
-      } else {
-        // ignore unknown shapes, but keep raw string form if possible
-        positionals.push(String(a));
-      }
-    }
-    return { options, positionals };
-  }
-
-  // Lookup command metadata (token, resolveArgs flag)
-  function getCommandMeta(name) {
-    if (commandTable[name]) return commandTable[name];
-    // default behavior: unknown commands still behave like CMD commands
-    return { token: "CMD", resolveArgs: true };
-  }
-
-  // ---------- compile ----------
-  this.compile = function(parsedJson, initialCtx) {
-    const errors = [];
-    const warnings = [];
-
-    if (!parsedJson || !parsedJson.ok || !Array.isArray(parsedJson.pipelineOrChain)) {
-      return { ok: false, errors: ["Input JSON missing or parser ok=false"], plan: null };
-    }
-
-    const ctx = initialCtx || {};
-    const env = pairsToObj(ctx.envPairs || parsedJson.data || []); // seed from parser data pairs
-    const devices = ctx.devices || {}; // later: stdout devices, files, etc.
-
-    // Step 1: validate operators + build pipeline groups
-    const groups = [];
-    let currentGroup = null;
-
-    function startGroup(connectorFromPrev) {
-      currentGroup = {
-        connectorFromPrev: connectorFromPrev || null, // null, ;, &&, ||, &, etc.
-        pipeline: [] // compiled statements
-      };
-      groups.push(currentGroup);
-    }
-
-    for (let i = 0; i < parsedJson.pipelineOrChain.length; i++) {
-      const node = parsedJson.pipelineOrChain[i];
-
-      if (!isValidOp(node.opBefore)) {
-        errors.push("Invalid operator token opBefore=" + String(node.opBefore) + " at index " + i);
-      }
-
-      // Determine whether this node starts a new pipeline group:
-      // - first node starts a group
-      // - nodes with opBefore === '|' continue current group
-      // - otherwise start a new group with connectorFromPrev = opBefore
-      if (i === 0) {
-        startGroup(null);
-      } else if (node.opBefore !== "|") {
-        startGroup(node.opBefore);
-      } else if (!currentGroup) {
-        startGroup(null);
-      }
-
-      // Compile this statement
-      const compiledStmt = compileStatement(node, env, devices, errors, warnings);
-      currentGroup.pipeline.push(compiledStmt);
-
-      // Apply env updates immediately (compiler-side semantics)
-      if (compiledStmt.kind === "assign" && compiledStmt.envDelta) {
-        env[compiledStmt.envDelta.key] = compiledStmt.envDelta.value;
-      }
-    }
-
-    // Step 2: attach data + basic I/O wiring info (no execution)
-    // For each pipeline group, define how stdin/stdout conceptually flows.
-    for (let g = 0; g < groups.length; g++) {
-      const grp = groups[g];
-
-      // conceptual input: from previous group unless first
-      grp.input = { source: (g === 0) ? "initial" : "prevGroup" };
-      grp.output = { sink: (g === groups.length - 1) ? "device:stdout" : "nextGroup? (depends on connectors)" };
-
-      // pipeline internal wiring
-      for (let j = 0; j < grp.pipeline.length; j++) {
-        const s = grp.pipeline[j];
-        s.io = s.io || {};
-        s.io.stdin = (j === 0) ? { source: "group.stdin" } : { source: "pipe", from: j - 1 };
-        s.io.stdout = (j === grp.pipeline.length - 1) ? { sink: "group.stdout" } : { sink: "pipe", to: j + 1 };
-      }
-    }
-
-    const ok = errors.length === 0;
-    return {
-      ok,
-      errors,
-      warnings,
-      env: objToPairs(env),
-      plan: {
-        groups
-      }
-    };
-  };
-
-  function compileStatement(node, env, devices, errors, warnings) {
-    const parsed = node.parsed || {};
-    const name = String(parsed.name || "");
-    const raw = String(node.raw || "");
-
-    // 1) assignment?
-    const asn = parseAssignmentFromStatement(node);
-    if (asn) {
-      // Resolve assignment value (we keep both)
-      const valueResolved = expandVars(asn.valueRaw, env);
-
-      return {
-        kind: "assign",
-        token: "ASSIGN",
-        raw: raw,                 // as displayed by parser
-        envDelta: {
-          key: asn.key,
-          rawValue: asn.valueRaw,
-          value: valueResolved
-        },
-        // Keep for uniformity
-        name: asn.key + "=",
-        arguments: {
-          raw: [asn.valueRaw],
-          resolved: [valueResolved]
+    if (Array.isArray(input)) {
+      // Accept [{key, value}] or [[k,v]] or [{k:v}]
+      const o = {};
+      for (const item of input) {
+        if (Array.isArray(item) && item.length >= 2) o[String(item[0])] = item[1];
+        else if (item && typeof item === "object")
+        {
+          if ("key" in item && "value" in item) o[String(item.key)] = item.value;
+          else { for (const [k, v] of Object.entries(item)) o[String(k)] = v; }
         }
-      };
-    }
-
-    // 2) command
-    const meta = getCommandMeta(name);
-
-    // validate command token/table if strict
-    if (strict && !commandTable[name]) {
-      errors.push("Unknown command: " + name);
-    }
-
-    const parsedArgs = Array.isArray(parsed.arguments) ? parsed.arguments : [];
-    const split = splitArgs(parsedArgs);
-
-    // Resolve positionals unless this command opts out (CADScript)
-    const posRaw = split.positionals.slice();
-    const posResolved = meta.resolveArgs
-      ? posRaw.map(s => expandVars(s, env))
-      : posRaw.slice(); // keep raw, do not resolve
-
-    return {
-      kind: "command",
-      token: meta.token || "CMD",
-      resolveArgs: !!meta.resolveArgs,
-      name: name,
-      raw: raw, // display-raw (not guaranteed exact original)
-      options: split.options, // [{key,value},...]
-      arguments: {
-        raw: posRaw,
-        resolved: posResolved
-      },
-      // This is where, later, execution would attach runtime stdout/stderr/code
-      output: {
-        to: "auto" // will be wired by pipeline grouping
       }
-    };
+      return o;
+    }
+    if (typeof input === "object") return { ...input };
+    return {};
   }
+
+  function dataToPairs(obj)
+  {
+    return Object.entries(obj).map(([key, value]) => ({ key, value }));
+  }
+
+
 }
+
+
+var oCMD = new CMD();
+const worker = oCMD.createAscWorker(); // see worker source below
+worker.addEventListener("message", oCMD.onWorkerMessage);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3413,43 +3469,6 @@ function prettyJsonAllman(value, indent = 2) {
   return s;
 }
 
-var oCMD = new CMD();
-
-
-
-const worker = oCMD.createAscWorker(); // see worker source below
-worker.addEventListener("message", oCMD.onWorkerMessage);
-
-
-
-
-
-// Central message handler
-worker.addEventListener("message", (e) => {
-  const msg = e.data;
-  if (!msg) return;
-
-  if (bDebug && msg.type === "log") {
-    console.log("[worker]", ...msg.args);
-    return;
-  }
-
-  if (msg.type === "call") {
-    const { id, name, args } = msg;
-    if(bDebug) console.log("[main] call from worker:", name, args);
-
-    try {
-      if (typeof oASC[name] !== "function") throw new Error("No such method: " + name);
-      const result = oASC[name](...(args || []));
-      worker.postMessage({ type: "ret", id, ok: true, result });
-    } catch (err) {
-      worker.postMessage({ type: "ret", id, ok: false, error: String(err?.message || err) });
-    }
-    return;
-  }
-
-  // done/error are handled per-run in runExternalScript() below
-});
 
 </script>
     <script type="text/javascript">
