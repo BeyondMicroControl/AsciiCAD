@@ -3159,20 +3159,16 @@ function CMD()
 
   this.onWorkerMessage = function(e) 
   {
+    // 'this' scope is lost here
+    // TODO: check how we can regain .this scope here and pass it on to handleWorkerCall
     const msg = e.data;
     if (!msg) return;
+    if (bDebug && msg.type === "log") { console.log("[worker]", ...(msg.args || [])); return; }
 
-    if (msg.type === "log") {
-      if (bDebug) console.log("[worker]", ...(msg.args || []));
-      return;
+    if (msg.type === "call")
+    {
+      handleWorkerCall(msg); return;
     }
-
-    if (msg.type === "call") {
-      handleWorkerCall(msg);
-      return;
-    }
-
-    // done/error handled elsewhere
   }
 
   function handleWorkerCall(msg) 
@@ -3204,7 +3200,7 @@ function CMD()
 
 
 
-   
+
 
   /// Convert plain object / Map / array-of-pairs into a mutable plain object
   this.normalizeData = function(input) 
@@ -6659,11 +6655,15 @@ function __cliHandleTerminal(line)
   if(script_node.token == "CADScript")
   {
     const names = Object.keys(a);
-    const values = Object.values(a);
+    const values = Object.values(a);f
     const code = script_node.arguments.raw;
 
-    const fn = new Function(...names, `"use strict";\nreturn (${code});`);
+    // TODO CATCH ERRORS!
+    oCMD.runExternalScript(code)
+      .then(() => oASC.draw())
+      .catch((err) => oTERM.output("[ERROR] "+JSON.stringify(err)) )
 
+    return true;
   }
 
 
@@ -6859,20 +6859,6 @@ a.freeform = function(x,y,c) { oASC.freeform(x,y,c); }
 // Load URL data
 window.addEventListener("load", function()
 {
-
-
-//////////////////////////// WORKER TEST
-
-
-
-
-
-// ✅ Correct usage (draw AFTER worker finished)
-oCMD.runExternalScript("ASC.freeform(1,1,'+');ASC.freeform(2,2,'+');")
-  .then(() => oASC.draw())
-  .catch(console.error);
-
-
 
 ////////////////////////////////////////
 
