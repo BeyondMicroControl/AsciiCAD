@@ -1485,15 +1485,35 @@ function __cliHandleTerminal(line)
   var script_node = plan.plan.groups[0].pipeline[0];
   if(script_node.token == "CADScript")
   {
-    const names = Object.keys(a);
-    const values = Object.values(a);
+    const names = Object.keys(oASC);
+    const values = Object.values(oASC);
+    const types = values.map(v => v === null ? "null" : Array.isArray(v) ? "array" : typeof v);
+
+    var tokenlist = [];
+    var cnt = 0;
+    for(var i=0;i<types.length;i++) 
+    {
+      if(types[i]=="function")
+      {
+        try
+        { 
+          const o = new oASC[names[i]]();
+          if(o.help === undefined) continue;
+
+          if(cnt==0) tokenlist[cnt++] = "<b>"+names[i]+"</b> " + o.help;
+          else tokenlist[cnt++] = "→ "+o.help;
+
+        } catch(e) { continue; }
+
+      }
+    }
+
     const code = script_node.arguments.raw;
 
-    if (script_node.options?.[0]?.key === "h") {
-      oTERM.output(oCOM.escapeHTML("Usage examples:\n" +
-                                  "CADScript {freeform(0,0,'+')}\n" +
-                                  "CADScript {doUndo()}\n" +
-                                  "CADScript {doRedo()}\n"
+    if (script_node.options?.[0]?.key === "h")
+    {
+      oTERM.output(oCOM.escapeHTML("Documented commands:\n\n"+
+                                  tokenlist.join("\n")
                                 ));
       return true;
     }
@@ -1657,6 +1677,8 @@ function __cliHandleScript(line)
 
 // TODO: expland scope of help, accept arguments that will find help on other functions
 
+
+/*
 // create a function containter
 oASC.f = {};
 var a = oASC.f; // a = shorthand object for oASC.f
@@ -1684,7 +1706,7 @@ a.help = function(statementID)
 a.clear = function() { oASC.clear() }
 
 a.freeform = function(x,y,c) { oASC.freeform(x,y,c); }
-
+*/
 
 
 

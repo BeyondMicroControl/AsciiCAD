@@ -27,6 +27,12 @@ function ASC()
   //
   // SECTION: GRID
 
+  this.CADScript = function()
+  {
+    this.help = "usage:\nCADScript {<expression>}\ne.g. CADScript {doUndo();doRedo()}\n"
+  }
+
+
   // Stage sizing: ensure integer cell sizes (avoid remainder pixels -> spacing artifacts)
   this.computeStageSize = function() 
   {
@@ -74,7 +80,7 @@ function ASC()
     const cx = stageSize.w / 2;
     const cy = stageSize.h / 2;
 
-    const { cw, ch } = this.getCellSize();
+    const { cw, ch } = this.getCellSize?.() ?? { cw: 0, ch: 0 };
     const c = Math.floor( oCOM.PanZoomSize(px,cx,scale,panX,cw) );
     const r = Math.floor( oCOM.PanZoomSize(py,cy,scale,panY,ch) );
 
@@ -142,6 +148,9 @@ function ASC()
 
   this.freeform = function(r, c, next) 
   {
+    this.help = "freeform(<col>,<row>,<char>)"
+
+    if(r===undefined || c===undefined || next===undefined) return;  // safe escape if no arguments provided
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
       throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
       
@@ -149,8 +158,12 @@ function ASC()
     op.ch    = next;
     op.type  = "place";
     var cell = {"r":r,"c":c};
-    this.applyOpAtCell(cell);                   // display character on grid 
+
+    this.applyOpAtCell(cell);                   // display character on grid
     this.pushStrokeIfNonEmpty(currentStroke);   // feed undo buffer
+
+    //this.applyOpAtCell?.(cell) ?? {};                   // display character on grid 
+    //this.pushStrokeIfNonEmpty?.(currentStroke) ?? {};   // feed undo buffer
   }
 
 
@@ -1303,6 +1316,8 @@ function ASC()
 
   this.doUndo = function() 
   {
+    this.help = "doUndo()"
+
     const stroke = undoStack.pop();
     if (!stroke) return;
     for (let i = stroke.length - 1; i >= 0; i--) ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
@@ -1313,6 +1328,8 @@ function ASC()
 
   this.doRedo = function() 
   {
+    this.help = "doRedo()"
+
     const stroke = redoStack.pop();
     if (!stroke) return;
     for (let i = 0; i < stroke.length; i++) ascii[stroke[i].r][stroke[i].c] = stroke[i].next;
@@ -1570,11 +1587,6 @@ function ASC()
       ctx.fillStyle = old;
     }
   }
-
-
-
-
-
 
 
 
