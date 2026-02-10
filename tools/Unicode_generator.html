@@ -1,0 +1,83 @@
+<script>
+
+
+const oCOM = {
+  rangeChars(a, b) {
+    const out = [];
+    for (let cp = a; cp <= b; cp++) out.push(String.fromCodePoint(cp));
+    return out;
+  }
+};
+
+// Unicode 1.0.1 reconstructed UCD file (plain text)
+const UNICODE_1_0_1_UCD =
+  "https://www.unicode.org/Public/reconstructed/1.0.1/UnicodeData.txt"; // :contentReference[oaicite:1]{index=1}
+
+function compressToRanges(sortedCps) {
+  const ranges = [];
+  let s = sortedCps[0], e = s;
+  for (let i = 1; i < sortedCps.length; i++) {
+    const cp = sortedCps[i];
+    if (cp === e + 1) e = cp;
+    else { ranges.push([s, e]); s = e = cp; }
+  }
+  ranges.push([s, e]);
+  return ranges;
+}
+
+function emitAsConcatExpression(ranges, maxLineLen = 110) {
+  // emits: [].concat(oCOM.rangeChars(0x0000,0x007F)).concat(['…']).concat(...)
+  let parts = ["[]"];
+  for (const [a, b] of ranges) {
+    if (a === b) parts.push(`.concat(['\\u${a.toString(16).padStart(4, "0")}'])`);
+    else parts.push(`.concat(oCOM.rangeChars(0x${a.toString(16).padStart(4,"0")},0x${b.toString(16).padStart(4,"0")}))`);
+  }
+
+  // pretty wrap
+  let out = "";
+  let line = "";
+  for (const p of parts) {
+    if ((line + p).length > maxLineLen && line) {
+      out += line + "\n  ";
+      line = p;
+    } else {
+      line += p;
+    }
+  }
+  out += line;
+  return out;
+}
+
+async function buildUnicode10Ranges() {
+  const txt = await (await fetch(UNICODE_1_0_1_UCD)).text();
+
+  // Parse UnicodeData lines: "0041;LATIN CAPITAL LETTER A;Lu;..."
+  const cps = [];
+  for (const line of txt.split(/\r?\n/)) {
+    if (!line) continue;
+    const hex = line.slice(0, line.indexOf(";"));
+    const cp = parseInt(hex, 16);
+    if (!Number.isNaN(cp)) cps.push(cp);
+  }
+
+  cps.sort((a, b) => a - b);
+
+  // Optional: filter out non-printing categories if you want (Cc, Cf, etc.)
+  // For a “present in Unicode 1.0” repertoire list, keep all assigned cps:
+  const ranges = compressToRanges(cps);
+
+  return {
+    count: cps.length,
+    ranges,
+    jsExpr: emitAsConcatExpression(ranges)
+  };
+}
+
+// Example usage:
+buildUnicode10Ranges().then(({ count, ranges, jsExpr }) => {
+  console.log("Assigned code points (Unicode 1.0.1):", count);
+  console.log("Range count:", ranges.length);
+  console.log(jsExpr);
+});
+
+</script>
