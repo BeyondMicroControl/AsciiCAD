@@ -314,6 +314,10 @@ function COM()
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
+      .replaceAll("&lt;b&gt;", "<b>")
+      .replaceAll("&lt;/b&gt;", "</b>")
+      .replaceAll("&lt;u&gt;", "<u>")
+      .replaceAll("&lt;/u&gt;", "</u>")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;")
       .replaceAll("\n","<br>")
@@ -559,6 +563,12 @@ function ASC()
   //
   // SECTION: GRID
 
+  this.CADScript = function()
+  {
+    this.help = "usage:\nCADScript {<expression>}\ne.g. CADScript {doUndo();doRedo()}\n"
+  }
+
+
   // Stage sizing: ensure integer cell sizes (avoid remainder pixels -> spacing artifacts)
   this.computeStageSize = function() 
   {
@@ -606,7 +616,7 @@ function ASC()
     const cx = stageSize.w / 2;
     const cy = stageSize.h / 2;
 
-    const { cw, ch } = this.getCellSize();
+    const { cw, ch } = this.getCellSize?.() ?? { cw: 0, ch: 0 };
     const c = Math.floor( oCOM.PanZoomSize(px,cx,scale,panX,cw) );
     const r = Math.floor( oCOM.PanZoomSize(py,cy,scale,panY,ch) );
 
@@ -674,6 +684,9 @@ function ASC()
 
   this.freeform = function(r, c, next) 
   {
+    this.help = "freeform(<col>,<row>,<char>)"
+
+    if(r===undefined || c===undefined || next===undefined) return;  // safe escape if no arguments provided
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
       throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
       
@@ -681,8 +694,12 @@ function ASC()
     op.ch    = next;
     op.type  = "place";
     var cell = {"r":r,"c":c};
-    this.applyOpAtCell(cell);                   // display character on grid 
+
+    this.applyOpAtCell(cell);                   // display character on grid
     this.pushStrokeIfNonEmpty(currentStroke);   // feed undo buffer
+
+    //this.applyOpAtCell?.(cell) ?? {};                   // display character on grid 
+    //this.pushStrokeIfNonEmpty?.(currentStroke) ?? {};   // feed undo buffer
   }
 
 
@@ -1835,6 +1852,8 @@ function ASC()
 
   this.doUndo = function() 
   {
+    this.help = "doUndo()"
+
     const stroke = undoStack.pop();
     if (!stroke) return;
     for (let i = stroke.length - 1; i >= 0; i--) ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
@@ -1845,6 +1864,8 @@ function ASC()
 
   this.doRedo = function() 
   {
+    this.help = "doRedo()"
+
     const stroke = redoStack.pop();
     if (!stroke) return;
     for (let i = 0; i < stroke.length; i++) ascii[stroke[i].r][stroke[i].c] = stroke[i].next;
@@ -2102,11 +2123,6 @@ function ASC()
       ctx.fillStyle = old;
     }
   }
-
-
-
-
-
 
 
 
@@ -6682,15 +6698,35 @@ function __cliHandleTerminal(line)
   var script_node = plan.plan.groups[0].pipeline[0];
   if(script_node.token == "CADScript")
   {
-    const names = Object.keys(a);
-    const values = Object.values(a);
+    const names = Object.keys(oASC);
+    const values = Object.values(oASC);
+    const types = values.map(v => v === null ? "null" : Array.isArray(v) ? "array" : typeof v);
+
+    var tokenlist = [];
+    var cnt = 0;
+    for(var i=0;i<types.length;i++) 
+    {
+      if(types[i]=="function")
+      {
+        try
+        { 
+          const o = new oASC[names[i]]();
+          if(o.help === undefined) continue;
+
+          if(cnt==0) tokenlist[cnt++] = "<b>"+names[i]+"</b> " + o.help;
+          else tokenlist[cnt++] = "→ "+o.help;
+
+        } catch(e) { continue; }
+
+      }
+    }
+
     const code = script_node.arguments.raw;
 
-    if (script_node.options?.[0]?.key === "h") {
-      oTERM.output(oCOM.escapeHTML("Usage examples:\n" +
-                                  "CADScript {freeform(0,0,'+')}\n" +
-                                  "CADScript {doUndo()}\n" +
-                                  "CADScript {doRedo()}\n"
+    if (script_node.options?.[0]?.key === "h")
+    {
+      oTERM.output(oCOM.escapeHTML("Documented commands:\n\n"+
+                                  tokenlist.join("\n")
                                 ));
       return true;
     }
@@ -6854,6 +6890,8 @@ function __cliHandleScript(line)
 
 // TODO: expland scope of help, accept arguments that will find help on other functions
 
+
+/*
 // create a function containter
 oASC.f = {};
 var a = oASC.f; // a = shorthand object for oASC.f
@@ -6881,7 +6919,7 @@ a.help = function(statementID)
 a.clear = function() { oASC.clear() }
 
 a.freeform = function(x,y,c) { oASC.freeform(x,y,c); }
-
+*/
 
 
 
