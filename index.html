@@ -474,7 +474,9 @@ function renderCharGrid()
   for (const ch of arr)
   {
     const b = document.createElement("button");
-    b.className = "char";
+    const bVisible = oASC.isVisiblyRenderable(ch);
+    b.className = bVisible?"char":"char_noprint";
+    b.disabled = bVisible == false;
     b.textContent = ch;
     b.title = "Select '" + ch + "' 0x" + ch.codePointAt(0).toString(16).toUpperCase();
     b.addEventListener("click", () => { op = { type: "place", ch }; closePicker(); updateUI(); });

@@ -1703,15 +1703,138 @@ Motor:     ─Ⓜ─
 ⎜
 ⎝
 */
+
 // https://www.charset.org/utf-8/10
 const PICKER_TABS = 
 {
     Box: oCOM.rangeChars(0x2500, 0x257F).concat(oCOM.rangeChars(0x0331,0x0338)).concat(oCOM.rangeChars(0x035C,0x0361)).concat(oCOM.rangeChars(0x2010, 0x2017)).concat(['‗','ᙿ','᐀','͇','̿','⟋','⟍','≻','≺','⅄','ү','⌎','⌏','⌍','⌌','⎩','⌠','⎠','⎡','⎢','⎣','⎤','⎥','⎦','⎧','⎨','⎩','⌈','⌉','⌊','⌋','⌌','⌍','⌎','⌏','⌐','⌙','⌜','⌝','⌞','⌟','⊢','⊣','⊤','⟝','⟞','⋮','⋯','⋰','⋱','⵰','᯿','⸜','⸝','⸌','⸍','⦧','⦦','⎸ ⎹','▏','▕','⎽']),
     Arrows: oCOM.rangeChars(0x2190, 0x21FF).concat(oCOM.rangeChars(0x27F0, 0x27FF).concat(oCOM.rangeChars(0x2B00, 0x2B11)).concat(oCOM.rangeChars(0x2B60,0x2B65)).concat(['☚','☛','☜','☝','☞','☟','⎉','⎊','⎋','⎌','⏎','⏏','⏩','⏪','⏫','⏬','⏭','⏮','⏯'])),
     Geometric: oCOM.rangeChars(0x2580, 0x25FF).concat(oCOM.rangeChars(0x20D8, 0x20E4)).concat(oCOM.rangeChars(0x2B12, 0x2B2F)).concat(['❘','❙','❚']),
-    Icons1: oCOM.rangeChars(0x2600, 0x26FF),
-    Icons2: oCOM.rangeChars(0x2701, 0x2775).concat(oCOM.rangeChars(0x2794, 0x27C1)).concat([]),
+    Icons: oCOM.rangeChars(0x2600, 0x26FF).concat(oCOM.rangeChars(0x2701, 0x2775)).concat(oCOM.rangeChars(0x2794, 0x27C1)).concat([]),
     AlphaNumeric: oCOM.rangeChars(0x0021, 0x007A).concat(oCOM.rangeChars(0x2460, 0x24FF)),
-    Technical: ['⌁','⌂','⌇','⌖','⌗','⌚','⌛','⍾','⎆','⎈','⎍','⎎','⏚','⏛','⏦','⏻','⏼','⏱','⏲','⏚','⎓','⌁','⊕','⊖','⊗','⊘','⊞','⊟','⊠','☐','☑','☒','≈','≠','∞','⚠','⚡','⛶','⛝','⛌','·','•','●','Ω','π','µ','⍉','⍵','☼','✈','✉','✔','✖','✚','✥','✦','✧','★','☆','⏄','⅏','➰','➿','𐦫','⟁','⨨','𐺊','⎓','ᯤ'].concat(oCOM.rangeChars(0x2400,0x2424)),
-    Misc: oCOM.rangeChars(0x2320, 0x23FF).concat(['♀','♂','☯','☮','✌']),
+    "CP437": ['\x00', '☺','☻','♥','♦','♣','♠','•','◘','○','◙','♂','♀','♪','♫','☼','►','◄','↕','‼','¶','§','▬','↨','↑','↓','→','←','∟','↔','▲','▼']
+  .concat(oCOM.rangeChars(0x0020, 0x007E)).concat(['⌂',
+  'Ç','ü','é','â','ä','à','å','ç','ê','ë','è','ï','î','ì','Ä','Å',
+  'É','æ','Æ','ô','ö','ò','û','ù','ÿ','Ö','Ü','¢','£','¥','₧','ƒ',
+  'á','í','ó','ú','ñ','Ñ','ª','º','¿','⌐','¬','½','¼','¡','«','»',
+  '░','▒','▓','│','┤','╡','╢','╖','╕','╣','║','╗','╝','╜','╛','┐',
+  '└','┴','┬','├','─','┼','╞','╟','╚','╔','╩','╦','╠','═','╬','╧',
+  '╨','╤','╥','╙','╘','╒','╓','╫','╪','┘','┌','█','▄','▌','▐','▀',
+  'α','ß','Γ','π','Σ','σ','µ','τ','Φ','Θ','Ω','δ','∞','φ','ε','∩',
+  '≡','±','≥','≤','⌠','⌡','÷','≈','°','∙','·','√','ⁿ','²','■',' '
+])
+,
+"Unicode1.0.1": [].concat(oCOM.rangeChars(0x0000,0x017e)).concat(oCOM.rangeChars(0x0180,0x01f0))
+  .concat(oCOM.rangeChars(0x0250,0x02a8)).concat(oCOM.rangeChars(0x02b0,0x02de))
+  .concat(oCOM.rangeChars(0x02e0,0x02e9)).concat(oCOM.rangeChars(0x0300,0x0341))
+  .concat(oCOM.rangeChars(0x0370,0x0372)).concat(oCOM.rangeChars(0x0384,0x0386))
+  .concat(oCOM.rangeChars(0x0388,0x038a)).concat(['\u038c']).concat(oCOM.rangeChars(0x038e,0x03a1))
+  .concat(oCOM.rangeChars(0x03a3,0x03ce)).concat(oCOM.rangeChars(0x03d0,0x03f5))
+  .concat(oCOM.rangeChars(0x0401,0x040c)).concat(oCOM.rangeChars(0x040e,0x044f))
+  .concat(oCOM.rangeChars(0x0451,0x045c)).concat(oCOM.rangeChars(0x045e,0x0486))
+  .concat(oCOM.rangeChars(0x0490,0x04c4)).concat(oCOM.rangeChars(0x04c7,0x04c8))
+  .concat(oCOM.rangeChars(0x04cb,0x04cc)).concat(oCOM.rangeChars(0x0531,0x0556))
+  .concat(oCOM.rangeChars(0x0559,0x055f)).concat(oCOM.rangeChars(0x0561,0x0586)).concat(['\u0589'])
+  .concat(oCOM.rangeChars(0x05b0,0x05b9)).concat(oCOM.rangeChars(0x05bb,0x05c3))
+  .concat(oCOM.rangeChars(0x05d0,0x05ea)).concat(oCOM.rangeChars(0x05f0,0x05f5)).concat(['\u060c'])
+  .concat(['\u061b']).concat(['\u061f']).concat(oCOM.rangeChars(0x0621,0x063a))
+  .concat(oCOM.rangeChars(0x0640,0x0652)).concat(oCOM.rangeChars(0x0660,0x066c))
+  .concat(oCOM.rangeChars(0x0670,0x06b7)).concat(oCOM.rangeChars(0x06ba,0x06be))
+  .concat(oCOM.rangeChars(0x06c0,0x06ce)).concat(oCOM.rangeChars(0x06d0,0x06d5))
+  .concat(oCOM.rangeChars(0x06f0,0x06f9)).concat(oCOM.rangeChars(0x0901,0x0903))
+  .concat(oCOM.rangeChars(0x0905,0x0939)).concat(oCOM.rangeChars(0x093c,0x094d))
+  .concat(oCOM.rangeChars(0x0950,0x0954)).concat(oCOM.rangeChars(0x0958,0x0970))
+  .concat(oCOM.rangeChars(0x0981,0x0983)).concat(oCOM.rangeChars(0x0985,0x098c))
+  .concat(oCOM.rangeChars(0x098f,0x0990)).concat(oCOM.rangeChars(0x0993,0x09a8))
+  .concat(oCOM.rangeChars(0x09aa,0x09b0)).concat(['\u09b2']).concat(oCOM.rangeChars(0x09b6,0x09b9))
+  .concat(['\u09bc']).concat(oCOM.rangeChars(0x09be,0x09c4)).concat(oCOM.rangeChars(0x09c7,0x09c8))
+  .concat(oCOM.rangeChars(0x09cb,0x09cd)).concat(['\u09d7']).concat(oCOM.rangeChars(0x09dc,0x09dd))
+  .concat(oCOM.rangeChars(0x09df,0x09e3)).concat(oCOM.rangeChars(0x09e6,0x09fa)).concat(['\u0a02'])
+  .concat(oCOM.rangeChars(0x0a05,0x0a0a)).concat(oCOM.rangeChars(0x0a0f,0x0a10))
+  .concat(oCOM.rangeChars(0x0a13,0x0a28)).concat(oCOM.rangeChars(0x0a2a,0x0a30))
+  .concat(oCOM.rangeChars(0x0a32,0x0a33)).concat(oCOM.rangeChars(0x0a35,0x0a36))
+  .concat(oCOM.rangeChars(0x0a38,0x0a39)).concat(['\u0a3c']).concat(oCOM.rangeChars(0x0a3e,0x0a42))
+  .concat(oCOM.rangeChars(0x0a47,0x0a48)).concat(oCOM.rangeChars(0x0a4b,0x0a4c))
+  .concat(oCOM.rangeChars(0x0a59,0x0a5c)).concat(['\u0a5e']).concat(oCOM.rangeChars(0x0a66,0x0a74))
+  .concat(oCOM.rangeChars(0x0a81,0x0a83)).concat(oCOM.rangeChars(0x0a85,0x0a8b))
+  .concat(oCOM.rangeChars(0x0a8f,0x0a90)).concat(oCOM.rangeChars(0x0a93,0x0aa8))
+  .concat(oCOM.rangeChars(0x0aaa,0x0ab0)).concat(oCOM.rangeChars(0x0ab2,0x0ab3))
+  .concat(oCOM.rangeChars(0x0ab5,0x0ab9)).concat(oCOM.rangeChars(0x0abc,0x0ac5))
+  .concat(oCOM.rangeChars(0x0ac7,0x0ac8)).concat(oCOM.rangeChars(0x0acb,0x0acd)).concat(['\u0ad0'])
+  .concat(['\u0ae0']).concat(oCOM.rangeChars(0x0ae6,0x0aef)).concat(oCOM.rangeChars(0x0b01,0x0b03))
+  .concat(oCOM.rangeChars(0x0b05,0x0b0c)).concat(oCOM.rangeChars(0x0b0f,0x0b10))
+  .concat(oCOM.rangeChars(0x0b13,0x0b28)).concat(oCOM.rangeChars(0x0b2a,0x0b30))
+  .concat(oCOM.rangeChars(0x0b32,0x0b33)).concat(oCOM.rangeChars(0x0b36,0x0b39))
+  .concat(oCOM.rangeChars(0x0b3c,0x0b43)).concat(oCOM.rangeChars(0x0b47,0x0b48))
+  .concat(oCOM.rangeChars(0x0b4b,0x0b4d)).concat(['\u0b57']).concat(oCOM.rangeChars(0x0b5c,0x0b5d))
+  .concat(oCOM.rangeChars(0x0b5f,0x0b61)).concat(oCOM.rangeChars(0x0b66,0x0b70))
+  .concat(oCOM.rangeChars(0x0b82,0x0b83)).concat(oCOM.rangeChars(0x0b85,0x0b8a))
+  .concat(oCOM.rangeChars(0x0b8e,0x0b90)).concat(oCOM.rangeChars(0x0b92,0x0b95))
+  .concat(oCOM.rangeChars(0x0b99,0x0b9a)).concat(['\u0b9c']).concat(oCOM.rangeChars(0x0b9e,0x0b9f))
+  .concat(oCOM.rangeChars(0x0ba3,0x0ba4)).concat(oCOM.rangeChars(0x0ba8,0x0baa))
+  .concat(oCOM.rangeChars(0x0bae,0x0bb5)).concat(oCOM.rangeChars(0x0bb7,0x0bb9))
+  .concat(oCOM.rangeChars(0x0bbe,0x0bc2)).concat(oCOM.rangeChars(0x0bc6,0x0bc8))
+  .concat(oCOM.rangeChars(0x0bca,0x0bcd)).concat(['\u0bd7']).concat(oCOM.rangeChars(0x0be7,0x0bf2))
+  .concat(oCOM.rangeChars(0x0c01,0x0c03)).concat(oCOM.rangeChars(0x0c05,0x0c0c))
+  .concat(oCOM.rangeChars(0x0c0e,0x0c10)).concat(oCOM.rangeChars(0x0c12,0x0c28))
+  .concat(oCOM.rangeChars(0x0c2a,0x0c33)).concat(oCOM.rangeChars(0x0c35,0x0c39))
+  .concat(oCOM.rangeChars(0x0c3e,0x0c44)).concat(oCOM.rangeChars(0x0c46,0x0c48))
+  .concat(oCOM.rangeChars(0x0c4a,0x0c4d)).concat(oCOM.rangeChars(0x0c55,0x0c56))
+  .concat(oCOM.rangeChars(0x0c60,0x0c61)).concat(oCOM.rangeChars(0x0c66,0x0c6f))
+  .concat(oCOM.rangeChars(0x0c82,0x0c83)).concat(oCOM.rangeChars(0x0c85,0x0c8c))
+  .concat(oCOM.rangeChars(0x0c8e,0x0c90)).concat(oCOM.rangeChars(0x0c92,0x0ca8))
+  .concat(oCOM.rangeChars(0x0caa,0x0cb3)).concat(oCOM.rangeChars(0x0cb5,0x0cb9))
+  .concat(oCOM.rangeChars(0x0cbe,0x0cc4)).concat(oCOM.rangeChars(0x0cc6,0x0cc8))
+  .concat(oCOM.rangeChars(0x0cca,0x0ccd)).concat(oCOM.rangeChars(0x0cd5,0x0cd6)).concat(['\u0cde'])
+  .concat(oCOM.rangeChars(0x0ce0,0x0ce1)).concat(oCOM.rangeChars(0x0ce6,0x0cef))
+  .concat(oCOM.rangeChars(0x0d02,0x0d03)).concat(oCOM.rangeChars(0x0d05,0x0d0c))
+  .concat(oCOM.rangeChars(0x0d0e,0x0d10)).concat(oCOM.rangeChars(0x0d12,0x0d28))
+  .concat(oCOM.rangeChars(0x0d2a,0x0d39)).concat(oCOM.rangeChars(0x0d3e,0x0d43))
+  .concat(oCOM.rangeChars(0x0d46,0x0d48)).concat(oCOM.rangeChars(0x0d4a,0x0d4d)).concat(['\u0d57'])
+  .concat(oCOM.rangeChars(0x0d60,0x0d61)).concat(oCOM.rangeChars(0x0d66,0x0d6f))
+  .concat(oCOM.rangeChars(0x0e01,0x0e3a)).concat(oCOM.rangeChars(0x0e3f,0x0e5b))
+  .concat(oCOM.rangeChars(0x0e70,0x0e74)).concat(oCOM.rangeChars(0x0e81,0x0e82)).concat(['\u0e84'])
+  .concat(oCOM.rangeChars(0x0e87,0x0e88)).concat(['\u0e8a']).concat(['\u0e8d'])
+  .concat(oCOM.rangeChars(0x0e94,0x0e97)).concat(oCOM.rangeChars(0x0e99,0x0e9f))
+  .concat(oCOM.rangeChars(0x0ea1,0x0ea3)).concat(['\u0ea5']).concat(['\u0ea7'])
+  .concat(oCOM.rangeChars(0x0eaa,0x0eab)).concat(oCOM.rangeChars(0x0ead,0x0eb9))
+  .concat(oCOM.rangeChars(0x0ebb,0x0ebd)).concat(oCOM.rangeChars(0x0ec0,0x0ec4)).concat(['\u0ec6'])
+  .concat(oCOM.rangeChars(0x0ec8,0x0ecd)).concat(oCOM.rangeChars(0x0ed0,0x0ed9))
+  .concat(oCOM.rangeChars(0x0edc,0x0edd)).concat(oCOM.rangeChars(0x0ef0,0x0ef4))
+  .concat(oCOM.rangeChars(0x1000,0x1022)).concat(oCOM.rangeChars(0x1026,0x102c))
+  .concat(oCOM.rangeChars(0x102e,0x1031)).concat(oCOM.rangeChars(0x1033,0x103e))
+  .concat(oCOM.rangeChars(0x1040,0x104c)).concat(oCOM.rangeChars(0x10a0,0x10c5))
+  .concat(oCOM.rangeChars(0x10d0,0x10f6)).concat(['\u10fb']).concat(oCOM.rangeChars(0x2000,0x202e))
+  .concat(oCOM.rangeChars(0x2030,0x203e)).concat(oCOM.rangeChars(0x2040,0x2044)).concat(['\u2070'])
+  .concat(oCOM.rangeChars(0x2074,0x208e)).concat(oCOM.rangeChars(0x20a0,0x20aa))
+  .concat(oCOM.rangeChars(0x20d0,0x20e1)).concat(oCOM.rangeChars(0x2100,0x2138))
+  .concat(oCOM.rangeChars(0x2153,0x2182)).concat(oCOM.rangeChars(0x2190,0x21ea))
+  .concat(oCOM.rangeChars(0x2200,0x22f1)).concat(oCOM.rangeChars(0x2302,0x232c))
+  .concat(oCOM.rangeChars(0x2400,0x2424)).concat(oCOM.rangeChars(0x2440,0x244a))
+  .concat(oCOM.rangeChars(0x2460,0x24ea)).concat(oCOM.rangeChars(0x2500,0x2595))
+  .concat(oCOM.rangeChars(0x25a0,0x25ee)).concat(oCOM.rangeChars(0x2600,0x2613))
+  .concat(oCOM.rangeChars(0x261a,0x266f)).concat(oCOM.rangeChars(0x2701,0x2704))
+  .concat(oCOM.rangeChars(0x2706,0x2709)).concat(oCOM.rangeChars(0x270c,0x2727))
+  .concat(oCOM.rangeChars(0x2729,0x274b)).concat(['\u274d']).concat(oCOM.rangeChars(0x274f,0x2752))
+  .concat(['\u2756']).concat(oCOM.rangeChars(0x2758,0x275e)).concat(oCOM.rangeChars(0x2761,0x2767))
+  .concat(oCOM.rangeChars(0x2776,0x2794)).concat(oCOM.rangeChars(0x2798,0x27af))
+  .concat(oCOM.rangeChars(0x27b1,0x27be)).concat(oCOM.rangeChars(0x3000,0x3036)).concat(['\u303f'])
+  .concat(oCOM.rangeChars(0x3041,0x3094)).concat(oCOM.rangeChars(0x3099,0x309e))
+  .concat(oCOM.rangeChars(0x30a1,0x30f6)).concat(oCOM.rangeChars(0x30fb,0x30fe))
+  .concat(oCOM.rangeChars(0x3105,0x312c)).concat(oCOM.rangeChars(0x3131,0x318e))
+  .concat(oCOM.rangeChars(0x3190,0x319f)).concat(oCOM.rangeChars(0x3200,0x321c))
+  .concat(oCOM.rangeChars(0x3220,0x3243)).concat(oCOM.rangeChars(0x3260,0x327b))
+  .concat(oCOM.rangeChars(0x327f,0x32b0)).concat(oCOM.rangeChars(0x32d0,0x3357))
+  .concat(oCOM.rangeChars(0x337b,0x33dd)).concat(oCOM.rangeChars(0x3400,0x3d2d)).concat(['\u4e00'])
+  .concat(['\u9fa5']).concat(['\ue000']).concat(oCOM.rangeChars(0xf8ff,0xf900)).concat(['\ufa2d'])
+  .concat(oCOM.rangeChars(0xfe30,0xfe44)).concat(oCOM.rangeChars(0xfe49,0xfe52))
+  .concat(oCOM.rangeChars(0xfe54,0xfe66)).concat(oCOM.rangeChars(0xfe68,0xfe6b))
+  .concat(oCOM.rangeChars(0xfe70,0xfe72)).concat(['\ufe74']).concat(oCOM.rangeChars(0xfe76,0xfefc))
+  .concat(['\ufeff']).concat(oCOM.rangeChars(0xff01,0xff5e)).concat(oCOM.rangeChars(0xff61,0xffbe))
+  .concat(oCOM.rangeChars(0xffc2,0xffc7)).concat(oCOM.rangeChars(0xffca,0xffcf))
+  .concat(oCOM.rangeChars(0xffd2,0xffd7)).concat(oCOM.rangeChars(0xffda,0xffdc))
+  .concat(oCOM.rangeChars(0xffe0,0xffe6)).concat(['\ufffd'])
+  ,
+    Misc: ['⌁','⌂','⌇','⌖','⌗','⌚','⌛','⍾','⎆','⎈','⎍','⎎','⏚','⏛','⏦','⏻','⏼','⏱','⏲','⏚','⎓','⌁','⊕','⊖','⊗','⊘','⊞','⊟','⊠','☐','☑','☒','≈','≠','∞','⚠','⚡','⛶','⛝','⛌','·','•','●','Ω','π','µ','⍉','⍵','☼','✈','✉','✔','✖','✚','✥','✦','✧','★','☆','⏄','⅏','➰','➿','𐦫','⟁','⨨','𐺊','⎓','ᯤ'].concat(oCOM.rangeChars(0x2400,0x2424))
+    .concat(oCOM.rangeChars(0x2320, 0x23FF).concat(['♀','♂','☯','☮','✌'])),
 };

@@ -592,6 +592,29 @@ function ASC()
 
   this.isWireGlyph = function(ch) { return glyphToMask.has(ch); }
 
+
+  this.isVisiblyRenderable = function(ch, font = "16px monospace") 
+  {
+    if (!ch) return false;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = font;
+    ctx.textBaseline = "top";
+    ctx.fillText(ch, 8, 8);
+
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    // If any pixel has non-zero alpha, something rendered.
+    for (let i = 3; i < img.length; i += 4) {
+      if (img[i] !== 0) return true;
+    }
+    return false;
+  }
+
   this.mergedWireGlyph = function(prevCh, nextCh, lineKind /* "single"|"double","thick" */)
   {
     const pm = glyphToMask.get(prevCh) ?? 0;
