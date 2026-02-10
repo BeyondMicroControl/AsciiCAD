@@ -6628,12 +6628,11 @@ function __cliTerminalHelp()
   oTERM.output(
     oCOM.escapeHTML("Terminal commands:\n" +
       " <command> -h - detailed help\n" +
+      "  CADScript   - run CADScript\n" +
       "  clear       - clear terminal screen\n" +
-      "  exec \"..\"   - run CADScript\n" +
       "  exit        - exit CLI\n"+
       "  help        - terminal help\n" +
-      "  history     - show command history\n" +
-      "  script      - enter CADScript mode\n")
+      "  history     - show command history\n")
   );
 }
 
@@ -6687,6 +6686,15 @@ function __cliHandleTerminal(line)
     const values = Object.values(a);
     const code = script_node.arguments.raw;
 
+    if (script_node.options?.[0]?.key === "h") {
+      oTERM.output(oCOM.escapeHTML("Usage examples:\n" +
+                                  "CADScript {freeform(0,0,'+')}\n" +
+                                  "CADScript {doUndo()}\n" +
+                                  "CADScript {doRedo()}\n"
+                                ));
+      return true;
+    }
+
     // TODO CATCH ERRORS!
     oCMD.runExternalScript(code)
       .then(() => oASC.draw())
@@ -6726,6 +6734,8 @@ function __cliHandleTerminal(line)
   {
     const opt = rest.trim();
     const usage = "Usage:\n" +
+       "Navigate command history\n" +
+       "by pushing arrow up/down.\n\n" +
        "<bare> - show command history\n" +
        " -c    - clear command history\n" +
        " -h    - <command> help\n"
