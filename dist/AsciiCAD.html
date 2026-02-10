@@ -6875,6 +6875,99 @@ a.freeform = function(x,y,c) { oASC.freeform(x,y,c); }
 
 
 
+
+
+
+
+
+oCOM.URL.parse(document.location.toString());
+
+for(var uri in oCOM.URL.uri)
+{
+  switch(uri)
+  {
+    case "bDebug":
+      bDebug = oCOM.URL.uri[uri] == "true" ? true : false;
+      document.getElementById("toolDebug").style.visibility = bDebug==true ? "hidden" : "visible";
+    break;
+
+    case "d":
+    var db = oCOM.base64ToArrayBuffer(oCOM.URL.uri[uri]);
+    if(db!=null)
+    {
+      const inflator = new pako.Inflate();
+      inflator.push(db);
+      var bin = inflator.result;
+      if(typeof(bin)!="undefined")
+      {
+        var enc = new TextDecoder("utf-8");
+        var txt = enc.decode(bin);
+        // TODO: PASTE this text in grid
+
+        try
+        {
+            // Expand wide chars (⬤ etc.) so the grid aligns with IDE rendering
+            const expanded = oASC.expandWideCharsForGrid(txt);
+            // Convert to lines (using your existing normalizeNewlines)
+            const lines = oCOM.toLines(expanded); // <-- IMPORTANT
+            const stroke = [];
+            for (let r = 0; r < ROWS; r++)
+            {
+              const line = lines[r] || "";
+              for (let c = 0; c < COLS; c++) 
+              {
+                  const prev = ascii[r][c];
+                  const next = line[c] || ' ';
+                  if (prev !== next)
+                  {
+                    stroke.push({ r, c, prev, next });
+                    ascii[r][c] = next;
+                  }
+              }
+            }
+
+            selection = null;
+            selectDrag = null;
+            moveDrag = null;
+            textDrag = null;
+            boxDrag = null;
+            oASC.cancelPaste();
+
+            oASC.pushStrokeIfNonEmpty(stroke);
+            draw();
+
+            fileInput.value = "";
+        } catch (err)
+        {
+            console.error("Load failed:", err);
+            alert("Load failed. See console for details");
+        }
+      }
+    }
+    break;
+    case "download":
+
+      document.addEventListener("DOMContentLoaded", () => {
+        downloadThisFile();
+        setTimeout(() => history.back(), 1000);
+      });
+      
+    break; 
+  }  
+}
+
+if(oCOM.URL.filename == "AsciiCAD.html")
+{
+  document.getElementById("toolDebug").style.visibility = "hidden";
+  bDebug = false;
+}
+
+
+
+
+
+
+
 // END CLI TERMINAL MANAGEMENT
 //     ________                __     ______  _____     _____  
 //    |_   __  |              |  ]  .' ___  ||_   _|   |_   _| 
@@ -6888,7 +6981,7 @@ a.freeform = function(x,y,c) { oASC.freeform(x,y,c); }
 // Load URL data
 window.addEventListener("load", function()
 {
-
+});
 
 ////////////////////////////////////////
 /////  TEST SNIPPETS FOR WORKER.  ///////
@@ -6923,88 +7016,6 @@ oCMD.runExternalScript("ASC.doUndo()")
 ////////////////////////////////////////
 
 
-
-  oCOM.URL.parse(document.location.toString());
-
-  for(var uri in oCOM.URL.uri)
-  {
-    switch(uri)
-    {
-      case "bDebug":
-        bDebug = oCOM.URL.uri[uri] == "true" ? true : false;
-        document.getElementById("toolDebug").style.visibility = bDebug==true ? "hidden" : "visible";
-      break;
-
-      case "d":
-      var db = oCOM.base64ToArrayBuffer(oCOM.URL.uri[uri]);
-      if(db!=null)
-      {
-        const inflator = new pako.Inflate();
-        inflator.push(db);
-        var bin = inflator.result;
-        if(typeof(bin)!="undefined")
-        {
-          var enc = new TextDecoder("utf-8");
-          var txt = enc.decode(bin);
-          // TODO: PASTE this text in grid
-
-          try
-          {
-              // Expand wide chars (⬤ etc.) so the grid aligns with IDE rendering
-              const expanded = oASC.expandWideCharsForGrid(txt);
-              // Convert to lines (using your existing normalizeNewlines)
-              const lines = oCOM.toLines(expanded); // <-- IMPORTANT
-              const stroke = [];
-              for (let r = 0; r < ROWS; r++)
-              {
-                const line = lines[r] || "";
-                for (let c = 0; c < COLS; c++) 
-                {
-                    const prev = ascii[r][c];
-                    const next = line[c] || ' ';
-                    if (prev !== next)
-                    {
-                      stroke.push({ r, c, prev, next });
-                      ascii[r][c] = next;
-                    }
-                }
-              }
-
-              selection = null;
-              selectDrag = null;
-              moveDrag = null;
-              textDrag = null;
-              boxDrag = null;
-              oASC.cancelPaste();
-
-              oASC.pushStrokeIfNonEmpty(stroke);
-              draw();
-
-              fileInput.value = "";
-          } catch (err)
-          {
-              console.error("Load failed:", err);
-              alert("Load failed. See console for details");
-          }
-        }
-      }
-      break;
-      case "download":
-        // TODO download
-        downloadThisFile();
-        setTimeout(function() { history.back(); }, 1000);
-        
-      break; 
-    }  
-  }
-
-  if(oCOM.URL.filename == "AsciiCAD.html")
-  {
-    document.getElementById("toolDebug").style.visibility = "hidden";
-    bDebug = false;
-  }
-
-}, false);
 
 // Picker/catalog
 pickerBackdrop.addEventListener("click", closePicker);
