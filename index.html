@@ -1692,12 +1692,26 @@ a.freeform = function(x,y,c) { oASC.freeform(x,y,c); }
 window.addEventListener("load", function()
 {
 
-// TEST SNIPPET
+
+////////////////////////////////////////
+/////  TEST SNIPPET FOR WORKER.  ///////
+////////////////////////////////////////
+
 oCMD.runExternalScript("ASC.freeform(1,1,'+');")
   .then(() => oASC.draw()) 
   .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
 
+oCMD.runExternalScript("freeform(1,1,'+');")
+  .then(() => oASC.draw()) 
+  .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
+
+  oCMD.runExternalScript("{ freeform(1,1,'+'); }")
+  .then(() => oASC.draw()) 
+  .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
+
+
 ////////////////////////////////////////
+
 
 
   oCOM.URL.parse(document.location.toString());

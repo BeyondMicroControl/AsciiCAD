@@ -641,24 +641,39 @@ function CMD()
       });
 
       function runInScope(code) {
+
+        // Allow "{ ... }" wrapper blocks (common when users paste a block)
+        const t = String(code).trim();
+        if (t.length >= 2 && t.charAt(0) === "{" && t.charAt(t.length - 1) === "}") {
+          code = t.slice(1, -1);
+        }
+
         const scope = new Proxy({ ASC }, {
           has() { return true; },
           get(target, prop) {
             if (prop === Symbol.unscopables) return undefined;
             if (prop in target) return target[prop];
+
             // allow some basics
             if (prop === "Math") return Math;
             if (prop === "JSON") return JSON;
             if (prop === "Number") return Number;
             if (prop === "String") return String;
-            throw new ReferenceError("Access denied: " + String(prop));
+
+            // Allow calling "freeform(...)" without the ASC. prefix:
+            // Any unknown identifier is treated as a callable remote function.
+            return (...args) => callMain(String(prop), args); 
           }
         });
 
-        // async wrapper so user script can eventually 'await' if needed
-        const fn = new Function("scope", "return (async()=>{ with(scope){\\n" + code + "\\n} })();");
-        return fn(scope);
-      }
+      // async wrapper so user script can eventually 'await' if needed
+      const fn = new Function(
+        "scope",
+        "return (async()=>{ with(scope){\\n" + code + "\\n} })();"
+      );
+
+      return fn(scope);
+      } // <-- CLOSE runInScope()
 
       onmessage = async (e) => {
         const msg = e.data;
@@ -803,8 +818,22 @@ function CMD()
 
 
 var oCMD = new CMD();
-const worker = oCMD.createAscWorker(); // see worker source below
+const worker = oCMD.createAscWorker();
 worker.addEventListener("message", oCMD.onWorkerMessage);
+
+// Better diagnostics if the Worker fails to parse/execute (often shows as "Script error")
+worker.addEventListener("error", (e) => {
+  console.error("[main] worker error event:", {
+    message: e && e.message,
+    filename: e && e.filename,
+    lineno: e && e.lineno,
+    colno: e && e.colno
+  });
+});
+
+worker.addEventListener("messageerror", (e) => {
+  console.error("[main] worker messageerror:", e);
+});
 
 
 
