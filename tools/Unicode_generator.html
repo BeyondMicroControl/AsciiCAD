@@ -7358,10 +7358,12 @@ FFFD;REPLACEMENT CHARACTER;So;0;ON;;;;;N;;;;;`
 }
 
 // Example usage:
-buildUnicode10Ranges().then(({ count, ranges, jsExpr }) => {
+var a = buildUnicode10Ranges().then(({ count, ranges, jsExpr }) => {
   console.log("Assigned code points (Unicode 1.0.1):", count);
   console.log("Range count:", ranges.length);
   console.log(jsExpr);
 });
+
+JSON.stringify(a.jsExpr);
 
 </script>
