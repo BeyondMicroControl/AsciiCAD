@@ -350,6 +350,74 @@ function testDoubleBusCross() {
 }
 
 
+// WORKER THREAD SCRIPT TESTS (runExternalScript)
+// These tests verify that the worker sandbox accepts:
+//  1) ASC.freeform(...)
+//  2) freeform(...) (no ASC prefix)
+//  3) { freeform(...) } (wrapped block)
+// And that undo/redo works across those calls.
+async function runWorkerThreadScriptTests() {
+  if (typeof oCMD === "undefined" || typeof oCMD.runExternalScript !== "function") {
+    console.warn("Worker script tests skipped: oCMD.runExternalScript not available");
+    return;
+  }
+
+  // Ensure we start from a clean visible canvas area (top-left 3x1) without
+  // depending on internal undoStack/redoStack visibility.
+  // Note: wipeSelection(' ') is used elsewhere in this file; we reuse it here.
+  try { oASC.wipeSelection(' '); } catch {}
+
+  function small3x1() { return getSmallGridText(3, 1); }
+
+  // Helper to run a script, then optionally force a draw so the user sees it.
+  async function run(code, doDraw) {
+    await oCMD.runExternalScript(code);
+    if (doDraw && oASC && typeof oASC.draw === "function") oASC.draw();
+  }
+
+  console.log("Worker script tests starting...");
+
+  // Place three '+' using the three supported syntaxes.
+  await run("ASC.freeform(0,0,'+');", true);
+  await run("freeform(1,0,'+');", true);
+  await run("{ freeform(2,0,'+'); }", true);
+
+  assertGrid("worker freeform syntaxes => 3 pluses", small3x1(),
+    "+
++
++
+"
+  );
+
+  // Undo them via worker calls (so we test worker->main dispatch for undo too).
+  await run("ASC.doUndo()", true);
+  await run("ASC.doUndo()", true);
+  await run("ASC.doUndo()", true);
+
+  assertGrid("worker undo x3 => cleared", small3x1(),
+    " 
+ 
+ 
+"
+  );
+
+  // Redo them via direct API (user can also click redo 3 times).
+  // If you prefer to test redo via worker, swap to: await run("ASC.doRedo()", true) x3
+  if (oASC && typeof oASC.doRedo === "function") {
+    oASC.doRedo(); oASC.doRedo(); oASC.doRedo();
+    oASC.draw?.();
+    assertGrid("redo x3 => 3 pluses restored", small3x1(),
+      "+
++
++
+"
+    );
+    console.log("Worker script tests done. Tip: user can also press redo 3x to see the vertical '+' row.");
+  } else {
+    console.warn("Redo test skipped: oASC.doRedo not available");
+  }
+}
+
 // TEST RUNNER
 
 (function init() {
@@ -386,6 +454,11 @@ console.assert(!oASC.catalogTypes().includes(""), "catalogTypes contains empty s
 runJunctionTests(); oASC.wipeSelection(' ');
 runMixedJunctionTests(); oASC.wipeSelection(' ');
 testDoubleBusCross(); oASC.wipeSelection(' ');
+
+// Run worker sandbox tests after the synchronous sanity checks.
+setTimeout(() => {
+  runWorkerThreadScriptTests().catch(err => console.error('Worker script tests failed:', err));
+}, 0);
 
 updateUI();
 draw();
