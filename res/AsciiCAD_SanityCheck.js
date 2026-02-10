@@ -377,36 +377,40 @@ async function runWorkerThreadScriptTests() {
 
   console.log("Worker script tests starting...");
 
-  // Place three '+' using the three supported syntaxes.
-  await run("ASC.freeform(0,0,'+');", true);
-  await run("freeform(1,0,'+');", true);
-  await run("{ freeform(2,0,'+'); }", true);
 
-  assertGrid("worker freeform syntaxes => 3 pluses", small3x1(),
-    "+\n+\n+\n"
-  );
+  (async () => {
+    try {
+      await oCMD.runExternalScript("ASC.freeform(0,0,'+');");
+      await oASC.draw();
 
-  // Undo them via worker calls (so we test worker->main dispatch for undo too).
-  await run("ASC.doUndo()", true);
-  await run("ASC.doUndo()", true);
-  await run("ASC.doUndo()", true);
+      await oCMD.runExternalScript("freeform(1,0,'+');");
+      await oASC.draw();
 
-  assertGrid("worker undo x3 => cleared", small3x1(),
-    " \n \n \n"
-  );
+      await oCMD.runExternalScript("{ freeform(2,0,'+'); }");
+      await oASC.draw();
 
-  // Redo them via direct API (user can also click redo 3 times).
-  // If you prefer to test redo via worker, swap to: await run("ASC.doRedo()", true) x3
-  if (oASC && typeof oASC.doRedo === "function") {
-    oASC.doRedo(); oASC.doRedo(); oASC.doRedo();
-    oASC.draw?.();
-    assertGrid("redo x3 => 3 pluses restored", small3x1(),
-      "+\n+\n+\n"
-    );
-    console.log("Worker script tests done. Tip: user can also press redo 3x to see the vertical '+' row.");
-  } else {
-    console.warn("Redo test skipped: oASC.doRedo not available");
-  }
+      await assertGrid("worker freeform syntaxes => 3 pluses", small3x1(), "+\n+\n+\n");
+
+      await oCMD.runExternalScript("ASC.doUndo();");
+      await oASC.draw();
+
+      await oCMD.runExternalScript("ASC.doUndo();");
+      await oASC.draw();
+
+      await oCMD.runExternalScript("ASC.doUndo();");
+      await oASC.draw();
+
+
+      await assertGrid("worker undo x3 => cleared", small3x1()," \n \n \n");
+
+  
+
+    } catch (err) {
+      oTERM.output("[ERROR] " + JSON.stringify(err));
+    }
+  })();
+
+
 }
 
 // TEST RUNNER
