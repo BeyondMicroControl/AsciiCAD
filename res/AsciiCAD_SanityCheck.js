@@ -376,8 +376,6 @@ async function runWorkerThreadScriptTests() {
   }
 
   console.log("Worker script tests starting...");
-
-
   (async () => {
     try {
       await oCMD.runExternalScript("ASC.freeform(0,0,'+');");
