@@ -7364,6 +7364,11 @@ var a = buildUnicode10Ranges().then(({ count, ranges, jsExpr }) => {
   console.log(jsExpr);
 });
 
-JSON.stringify(a.jsExpr);
+document.getElementById("content").textContent = JSON.stringify(a.jsExpr);
+
+
 
 </script>
+
+<textarea id="content">
+</textarea>
