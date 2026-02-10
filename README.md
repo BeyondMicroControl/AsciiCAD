@@ -66,11 +66,11 @@ Try online:
 
 - [x] Automatically deploy a one-file .html app in /dist (v1.0)
 - [x] CLI (terminal and script parser) enabling scripting automation and AI agent interaction
-  - [ ] CADScript freeform(..) (put one glyph at designated column/row)
-  - [ ] CADScript doUndo()
-  - [ ] CADScript doRedo()
+  - [x] CADScript freeform(..) (put one glyph at designated column/row)
+  - [x] CADScript doUndo()
+  - [x] CADScript doRedo()
   - [ ] alias (rename commands for easier typing)
-  - [ ] help (self-help), clear (clear terminal screen), exit (exit terminal), history (command history), CADScript (parser & compiler)
+  - [x] help (self-help), clear (clear terminal screen), exit (exit terminal), history (command history), CADScript (parser & compiler)
 - [ ] Junction resolution is buggy, for the simple reason it is complex (single lines, double lines, double thickness lines, etc...)
 - [ ] Not all UTF8 characters are monospace-friendly, leading to less perfect character selection (still buggy)
 - [ ] Embed a component editor + Import/Export Ascii component catalog
