@@ -119,10 +119,10 @@ function ASC()
   {
     isDrawing = true;
     lastCellKey = null;
-    currentStroke = [];
+    this.currentStroke = [];
     if (!cell) return;
     lastCellKey = cell.r + ',' + cell.c;
-    this.applyOpAtCell(cell);
+    this.applyOpAtCell(cell,op);
     draw("beginFreeform");
   }
 
@@ -132,7 +132,7 @@ function ASC()
     const key = cell.r + ',' + cell.c;
     if (key === lastCellKey) return;
     lastCellKey = key;
-    this.applyOpAtCell(cell);
+    this.applyOpAtCell(cell,op);
     draw("moveFreeform");
   }
 
@@ -140,42 +140,27 @@ function ASC()
   {
     if (!isDrawing) return;
     isDrawing = false;
-    const stroke = currentStroke;
-    currentStroke = [];
+    const stroke = this.currentStroke;
+    this.currentStroke = [];
     lastCellKey = null;
     this.pushStrokeIfNonEmpty(stroke);
   }
 
   this.freeform = function(r, c, next) 
   {
-    this.help = "freeform(<col>,<row>,<char>)"
+    this.help = "freeform(<col>,<row>,<char>)";
 
     if(r===undefined || c===undefined || next===undefined) return;  // safe escape if no arguments provided
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
       throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
       
-    currentStroke = [];
+    this.currentStroke = [];
     op.ch    = next;
     op.type  = "place";
     var cell = {"r":r,"c":c};
 
-    this.applyOpAtCell(cell);                   // display character on grid
-    this.pushStrokeIfNonEmpty(currentStroke);   // feed undo buffer
-
-    //this.applyOpAtCell?.(cell) ?? {};                   // display character on grid 
-    //this.pushStrokeIfNonEmpty?.(currentStroke) ?? {};   // feed undo buffer
-  }
-
-
-  // TODO: describe what it does, and check if this can be used as generic function or it should be a private function
-  // INFO: currently only used in beginFreeform(), moveFreeform(), endFreeform()
-  this.applyOpAtCell = function(cell)
-  {
-    const prev = ascii[cell.r][cell.c];
-    const next = (op.type === "place") ? op.ch : ' ';
-    if (prev === next) return;
-    currentStroke.push({ r: cell.r, c: cell.c, prev, next });
-    ascii[cell.r][cell.c] = next;
+    this.applyOpAtCell(cell,op);                   // display character on grid & push coordinate to currentStroke
+    this.pushStrokeIfNonEmpty(this.currentStroke);   // feed undo buffer
   }
 
   // subsection: lines
@@ -468,39 +453,73 @@ function ASC()
   this.commitBox = function() 
   {
     if (!boxDrag) return;
-
     const style = boxDrag.kind === "double" ? BOX_DOUBLE : boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE;
+    this.box( boxDrag.start.c,boxDrag.start.r , boxDrag.cur.c,boxDrag.cur.r , style );
+    boxDrag = null;
+    draw("commitBox");
+  }
 
-    const path = this.buildBoxPath(boxDrag.start, boxDrag.cur, style);
+  this.BOX_SINGLE = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
+  this.BOX_THICK =  { h:'━', v:'┃', tl:'┏', tr:'┓', bl:'┗', br:'┛' };
+  this.BOX_DOUBLE = { h:'═', v:'║', tl:'╔', tr:'╗', bl:'╚', br:'╝' };
+
+  this.box = function(c0,r0,c1,r1, style)
+  {
+    this.help = "box(<c0>,<r0>,<c1>,<r1>,<this.BOX_SINGLE|this.BOX_THICK|this.BOX_DOUUBLE>)";
+
+     if(c0===undefined || r0===undefined || c1===undefined || r1===undefined) return;  // safe escape if no arguments provided
+    if(style===undefined) var style = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
+    const path = this.buildBoxPath( {"c":c0,"r":r0} , {"c":c1,"r":r1} , style);
 
     // De-dup (corners overwrite edges)
     const m = new Map();
-    for (const p of path) {
+    for (const p of path)
+    {
       if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
       m.set(p.r + ',' + p.c, p.ch);
     }
 
-    const stroke = [];
-    for (const [key, ch] of m) {
+    this.currentStroke = [];
+    for (const [key, ch] of m) 
+    {
       const [r, c] = key.split(',').map(Number);
-      const prev = ascii[r][c];
-      const next = ch;
-      if (prev !== next) stroke.push({ r, c, prev, next });
+      const cell = {"r":r,"c":c};
+      const op = {"ch":ch,"type":"place"};
+      this.applyOpAtCell( cell , op );                     // display character on grid & build undo buffer
     }
-
-    for (const s of stroke) ascii[s.r][s.c] = s.next;
-
-    boxDrag = null;
-    this.pushStrokeIfNonEmpty(stroke);
-    draw("commitBox");
+    this.pushStrokeIfNonEmpty(this.currentStroke);   // commit undo buffer 
   }
 
-  // TODO: why is cancelBox() unused ? 
-  this.cancelBox = function() 
+// TODO: MERGE WITH CORRESPONDING BUTTON FUNCTION
+  this.clear = function () 
   {
-    boxDrag = null;
-    draw("cancelBox");
+    this.help = "clear()";
+
+    this.currentStroke = [];
+    for(var c=0;c<COLS;c++)
+      for(var r=0;r<ROWS;r++)
+      {
+        if(ascii[r][c]!=' ')
+        {
+          const cell = {"r":r,"c":c};
+          const op   = {"ch":' ',"type":"place"};
+          this.applyOpAtCell?.( cell , op ) ?? {};           // display character on grid & build undo buffer
+        }
+      };
+    this.pushStrokeIfNonEmpty?.(this.currentStroke) ?? {};   // commit undo buffer 
   }
+
+
+  // TODO: describe what it does, and check if this can be used as generic function or it should be a private function
+  // INFO: currently only used in beginFreeform(), moveFreeform(), endFreeform()
+  this.applyOpAtCell = function(cell,op)
+  {
+    const prev = ascii[cell.r][cell.c];
+    const next = (op.type === "place") ? op.ch : ' ';
+    if (prev === next) return;
+    this.currentStroke.push({ r: cell.r, c: cell.c, prev, next });
+    ascii[cell.r][cell.c] = next;
+  }  
 
   this.hasDoubleH = function(ch) { return DOUBLE_H.has(ch); }
   this.hasDoubleV = function(ch) { return DOUBLE_V.has(ch); }
@@ -1852,6 +1871,7 @@ function TERMINAL(props)
 
   // ---- public API (instance methods defined here) ---------------------------
 
+  
   this.clear = function () {
     self.DOM.output.innerHTML = "";
     resetCommand();

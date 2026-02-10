@@ -1712,6 +1712,7 @@ const PICKER_TABS =
     Geometric: oCOM.rangeChars(0x2580, 0x25FF).concat(oCOM.rangeChars(0x20D8, 0x20E4)).concat(oCOM.rangeChars(0x2B12, 0x2B2F)).concat(['❘','❙','❚']),
     Icons: oCOM.rangeChars(0x2600, 0x26FF).concat(oCOM.rangeChars(0x2701, 0x2775)).concat(oCOM.rangeChars(0x2794, 0x27C1)).concat([]),
     AlphaNumeric: oCOM.rangeChars(0x0021, 0x007A).concat(oCOM.rangeChars(0x2460, 0x24FF)),
+    Ascii: oCOM.rangeChars(0x20, 0x7F),
     "CP437": ['\x00', '☺','☻','♥','♦','♣','♠','•','◘','○','◙','♂','♀','♪','♫','☼','►','◄','↕','‼','¶','§','▬','↨','↑','↓','→','←','∟','↔','▲','▼']
   .concat(oCOM.rangeChars(0x0020, 0x007E)).concat(['⌂',
   'Ç','ü','é','â','ä','à','å','ç','ê','ë','è','ï','î','ì','Ä','Å',

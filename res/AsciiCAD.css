@@ -42,7 +42,7 @@ canvas{display:block;width:100%;height:100%;outline:none}
 .tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
 
 .char-grid{ display: grid;grid-template-columns: repeat(24, minmax(0, 1fr));column-gap: 0px;row-gap: 0px;height: 70dvh; overflow-y: auto; overscroll-behavior: contain; align-content: start;}
-.char{ height:35px;border-radius:5px;border:1px solid var(--border);background:#fff;font-size:18px;cursor:pointer;border:1px solid #00000010; }
+.char{ height:35px;border-radius:5px;border:1px solid var(--border);background:#fff;font-size:large;cursor:pointer;border:1px solid #00000010; }
 .char_noprint{height:35px;border-radius:5px;border:1px solid var(--border);background:#00000010;font-size:18px}
 .char:hover{background:#f8fafc}
 
