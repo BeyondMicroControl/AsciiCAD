@@ -383,10 +383,7 @@ async function runWorkerThreadScriptTests() {
   await run("{ freeform(2,0,'+'); }", true);
 
   assertGrid("worker freeform syntaxes => 3 pluses", small3x1(),
-    "+
-+
-+
-"
+    "+\n+\n+\n"
   );
 
   // Undo them via worker calls (so we test worker->main dispatch for undo too).
@@ -395,10 +392,7 @@ async function runWorkerThreadScriptTests() {
   await run("ASC.doUndo()", true);
 
   assertGrid("worker undo x3 => cleared", small3x1(),
-    " 
- 
- 
-"
+    " \n \n \n"
   );
 
   // Redo them via direct API (user can also click redo 3 times).
@@ -407,10 +401,7 @@ async function runWorkerThreadScriptTests() {
     oASC.doRedo(); oASC.doRedo(); oASC.doRedo();
     oASC.draw?.();
     assertGrid("redo x3 => 3 pluses restored", small3x1(),
-      "+
-+
-+
-"
+      "+\n+\n+\n"
     );
     console.log("Worker script tests done. Tip: user can also press redo 3x to see the vertical '+' row.");
   } else {
