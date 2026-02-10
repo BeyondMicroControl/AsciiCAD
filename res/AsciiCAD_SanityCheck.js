@@ -413,8 +413,7 @@ async function runWorkerThreadScriptTests() {
 
 (function init() 
 {
-// only run assertions if we have a debug flag
-if (bDebug != true) return;
+if (bDebug != true) return;  // only run assertions if we have a debug flag
 
 stageSize = oASC.computeStageSize();
 stage.style.width = stageSize.w + 'px';
