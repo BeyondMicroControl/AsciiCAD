@@ -5226,7 +5226,7 @@ const PICKER_TABS =
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.08</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.09</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -6891,21 +6891,34 @@ window.addEventListener("load", function()
 
 
 ////////////////////////////////////////
-/////  TEST SNIPPET FOR WORKER.  ///////
+/////  TEST SNIPPETS FOR WORKER.  ///////
 ////////////////////////////////////////
 
-oCMD.runExternalScript("ASC.freeform(1,1,'+');")
+/*
+oCMD.runExternalScript("ASC.freeform(0,0,'+');")
   .then(() => oASC.draw()) 
   .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
 
-oCMD.runExternalScript("freeform(1,1,'+');")
+oCMD.runExternalScript("freeform(1,0,'+');")
   .then(() => oASC.draw()) 
   .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
 
-  oCMD.runExternalScript("{ freeform(1,1,'+'); }")
+oCMD.runExternalScript("{ freeform(2,0,'+'); }")
   .then(() => oASC.draw()) 
   .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
 
+oCMD.runExternalScript("ASC.doUndo()")
+  .then(() => oASC.draw()) 
+  .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
+
+oCMD.runExternalScript("ASC.doUndo()")
+  .then(() => oASC.draw()) 
+  .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
+
+oCMD.runExternalScript("ASC.doUndo()")
+  .then(() => oASC.draw()) 
+  .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
+*/
 
 ////////////////////////////////////////
 
