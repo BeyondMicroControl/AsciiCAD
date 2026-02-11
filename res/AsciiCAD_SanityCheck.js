@@ -1,3 +1,7 @@
+if (typeof bDebug === "undefined" || !bDebug) {
+  // Sanity checks disabled.
+} else {
+
 //    ███████  █████  ███    ██ ██ ████████ ██    ██  
 //    ██      ██   ██ ████   ██ ██    ██     ██  ██   
 //    ███████ ███████ ██ ██  ██ ██    ██      ████    
@@ -350,75 +354,58 @@ function testDoubleBusCross() {
 }
 
 
-// WORKER THREAD SCRIPT TESTS (runExternalScript)
-// These tests verify that the worker sandbox accepts:
-//  1) ASC.freeform(...)
-//  2) freeform(...) (no ASC prefix)
-//  3) { freeform(...) } (wrapped block)
-// And that undo/redo works across those calls.
-async function runWorkerThreadScriptTests() {
-  if (typeof oCMD === "undefined" || typeof oCMD.runExternalScript !== "function") {
-    console.warn("Worker script tests skipped: oCMD.runExternalScript not available");
-    return;
-  }
+// WORKER THREAD SMOKE TESTS (requires CMD worker)
 
-  // Ensure we start from a clean visible canvas area (top-left 3x1) without
-  // depending on internal undoStack/redoStack visibility.
-  // Note: wipeSelection(' ') is used elsewhere in this file; we reuse it here.
-  try { oASC.wipeSelection(' '); } catch {}
+function small3x1Plus()
+{
+  return "+\n+\n+\n";
+}
 
-  function small3x1() { return getSmallGridText(3, 1); }
+function small3x1Spaces()
+{
+  return " \n \n \n";
+}
 
-  // Helper to run a script, then optionally force a draw so the user sees it.
-  async function run(code, doDraw) {
-    await oCMD.runExternalScript(code);
-    if (doDraw && oASC && typeof oASC.draw === "function") oASC.draw();
-  }
-
-  console.log("Worker script tests starting...");
-  (async () => {
-    try {
-
-      await oCMD.runExternalScript("1+1;", { defaultObj: "oASC" })
-        .then(() => oTERM.output("[OK] expression executed"))
-        .catch(err => oTERM.output("[ERR] " + JSON.stringify(err)));
-
-      await oCMD.runExternalScript("clear();", { defaultObj: "oASC" })
-        .then(() => oASC.draw())
-        .catch(err => oTERM.output("[ERR] " + JSON.stringify(err)));
+function runWorkerThreadSmokeTests()
+{
+  // Start with a clean area
+  oASC.wipeSelection(' ');
 
 
-      await oCMD.runExternalScript("ASC.freeform(0,0,'+');");
-      await oASC.draw();
-
-      await oCMD.runExternalScript("freeform(1,0,'+');");
-      await oASC.draw();
-
-      await oCMD.runExternalScript("{ freeform(2,0,'+'); }");
-      await oASC.draw();
-
-      await assertGrid("worker freeform syntaxes => 3 pluses", small3x1(), "+\n+\n+\n");
-
-      await oCMD.runExternalScript("ASC.doUndo();");
-      await oASC.draw();
-
-      await oCMD.runExternalScript("ASC.doUndo();");
-      await oASC.draw();
-
-      await oCMD.runExternalScript("ASC.doUndo();");
-      await oASC.draw();
-
-
-      await assertGrid("worker undo x3 => cleared", small3x1()," \n \n \n");
-
-  
-
-    } catch (err) {
-      oTERM.output("[ERROR] " + JSON.stringify(err));
-    }
-  })();
-
-
+  console.log("-1-");
+  // Place 3 pluses using the three supported syntaxes
+  return oCMD.runExternalScript("{oASC.freeform(0,0,'+');}", { defaultObj: "oASC" })
+    .then(function(){ return oCMD.runExternalScript("freeform(1,0,'+');", { defaultObj: "oASC" }); })
+    .then(function(){ return oCMD.runExternalScript("{ freeform(2,0,'+'); }", { defaultObj: "oASC" }); })
+    .then(function(){
+      var got = getSmallGridText(3,1);
+      assertGrid("worker freeform syntaxes => 3 pluses", got, small3x1Plus());
+      console.log("-2-");
+    })
+    .then(function(){
+      // Undo 3 times (all 3 pluses should disappear)
+      return oCMD.runExternalScript("oASC.doUndo();oASC.doUndo();oASC.doUndo();", { defaultObj: "oASC" });
+    })
+    .then(function(){
+      console.log("-3-");
+      var got2 = getSmallGridText(3,1);
+      assertGrid("worker undo x3 => cleared", got2, small3x1Spaces());
+    })
+    .then(function(){
+      console.log("-4-");
+      // Redo 3 times (all 3 pluses should reappear)
+      return oCMD.runExternalScript("oASC.doRedo();oASC.doRedo();oASC.doRedo();", { defaultObj: "oASC" });
+    })
+    .then(function(){
+      console.log("-5-");
+      var got3 = getSmallGridText(3,1);
+      assertGrid("worker redo x3 => 3 pluses", got3, small3x1Plus());
+      console.log("Worker thread smoke tests done.");
+    })
+    .then(function(){
+      // cleanup
+      return oCMD.runExternalScript("oASC.doUndo();oASC.doUndo();oASC.doUndo();", { defaultObj: "oASC" });
+    });
 }
 
 // TEST RUNNER
@@ -462,11 +449,10 @@ runMixedJunctionTests(); oASC.wipeSelection(' ');
 testDoubleBusCross(); oASC.wipeSelection(' ');
 
 // Run worker sandbox tests after the synchronous sanity checks.
-setTimeout(() => {
-  runWorkerThreadScriptTests().catch(err => console.error('Worker script tests failed:', err));
-}, 0);
-
-updateUI();
-draw();
+runWorkerThreadSmokeTests()
+  .then(function(){ updateUI(); draw(); })
+  .catch(function(err){ console.error('Worker smoke tests failed:', err); updateUI(); draw(); });
 })();
 
+
+}

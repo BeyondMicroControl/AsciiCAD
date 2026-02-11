@@ -908,7 +908,7 @@ function CMD()
       "    }",
       "  }",
       "};"
-    ].join("\\n");
+    ].join("\n");
 
     var blob = new Blob([src], { type: "application/javascript" });
     return new Worker(URL.createObjectURL(blob));
