@@ -1504,9 +1504,11 @@ function __cliHandleTerminal(line)
     //oTERM.output("<br>"+line+"<br>");
 
     // TODO CATCH ERRORS!
-    oCMD.runExternalScript(code)
-      .then(() => oASC.draw())
-      .catch((err) => { oTERM.output("[ERROR] "+JSON.stringify(err)); })
+
+    oCMD.runExternalScript(code, { "defaultObj": "oASC" })
+      .then(() => { oASC.draw(); if(bDebug) oTERM.output("[SUCCESS] worker thread <pre>"+code+"</pre> and oASC.draw()."); })
+      .catch((err) => { oTERM.output("[ERROR] worker thread failed:<br>"+JSON.stringify(err)); })
+
 
     return true;
   }

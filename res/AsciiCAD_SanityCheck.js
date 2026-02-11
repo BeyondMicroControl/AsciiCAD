@@ -378,6 +378,16 @@ async function runWorkerThreadScriptTests() {
   console.log("Worker script tests starting...");
   (async () => {
     try {
+
+      await oCMD.runExternalScript("1+1;", { defaultObj: "oASC" })
+        .then(() => oTERM.output("[OK] expression executed"))
+        .catch(err => oTERM.output("[ERR] " + JSON.stringify(err)));
+
+      await oCMD.runExternalScript("clear();", { defaultObj: "oASC" })
+        .then(() => oASC.draw())
+        .catch(err => oTERM.output("[ERR] " + JSON.stringify(err)));
+
+
       await oCMD.runExternalScript("ASC.freeform(0,0,'+');");
       await oASC.draw();
 

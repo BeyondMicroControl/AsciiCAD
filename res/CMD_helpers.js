@@ -1,9 +1,9 @@
 //       ______  ____    ____  ______    
-//     .' ___  ||_   \  /   _||_   _ `.  
-//    / .'   \_|  |   \/   |    | | `. \ 
+//     .' ___  ||_   \  /   _||_   _ '.  
+//    / .'   \_|  |   \/   |    | | '. \ 
 //    | |         | |\  /| |    | |  | | 
-//    \ `.___.'\ _| |_\/_| |_  _| |_.' / 
-//     `.____ .'|_____||_____||______.'  
+//    \ '.___.'\ _| |_\/_| |_  _| |_.' / 
+//     '.____ .'|_____||_____||______.'  
 //
 // * Minimal Linux-style command line parsing (shell-ish, not a full shell).
 // - parseLine: splits a line into statements by operators ; && || | &
@@ -21,11 +21,11 @@ function CMD()
   //     | | .---.  _   __              
   //     | |/ /__\\[ \ [  ]             
   //     | || \__., > '  <              
-  //    [___]'.__.'[__]`\_]             
+  //    [___]'.__.'[__]'\_]             
   //      _____      _                  
   //     |_   _|    (_)                 
   //       | |      __   _ .--.  .---.  
-  //       | |   _ [  | [ `.-. |/ /__\\ 
+  //       | |   _ [  | [ '.-. |/ /__\\ 
   //      _| |__/ | | |  | | | || \__., 
   //     |________|[___][___||__]'.__.'       
   //                                   
@@ -130,20 +130,20 @@ function CMD()
   }
 
   //     _ .--.   ,--.   _ .--.  .--.  .---.                               
-  //    [ '/'`\ \`'_\ : [ `/'`\]( (`\]/ /__\\                              
-  //     | \__/ |// | |, | |     `'.'.| \__.,                              
+  //    [ '/''\ \''_\ : [ '/''\]( ('\]/ /__\\                              
+  //     | \__/ |// | |, | |     ''.'.| \__.,                              
   //     | ;.__/ \'-;__/[___]   [\__) )'.__.'                              
   //    [__|____    _          _                                      _    
   //    .' ____ \  / |_       / |_                                   / |_  
-  //    | (___ \_|`| |-',--. `| |-'.---.  _ .--..--.  .---.  _ .--. `| |-' 
-  //     _.____`.  | | `'_\ : | | / /__\\[ `.-. .-. |/ /__\\[ `.-. | | |   
+  //    | (___ \_|'| |-',--. '| |-'.---.  _ .--..--.  .---.  _ .--. '| |-' 
+  //     _.____'.  | | ''_\ : | | / /__\\[ '.-. .-. |/ /__\\[ '.-. | | |   
   //    | \____) | | |,// | |,| |,| \__., | | | | | || \__., | | | | | |,  
   //     \______.' \__/\'-;__/\__/ '.__.'[___||__||__]'.__.'[___||__]\__/ 
   //
   /// Parse a single statement (no top-level operators) into:
   /// { ok, name, arguments:[ {opt:value}, "positional", ... ], data:[{key,value},...] }
   /// Internal: parse a statement from an already-tokenized word array (quotes already handled by lexLine).
-  /// `words` must be an array like ["cmd","arg1","arg 2",...]
+  /// 'words' must be an array like ["cmd","arg1","arg 2",...]
   this._parseStatementWords = function(words, dataIn)
   {
     const data = this.normalizeData(dataIn);
@@ -188,7 +188,7 @@ function CMD()
           const escForDq = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
           return words.map(w => {
             const s = String(w);
-            return needsQuotes(s) ? `"${escForDq(s)}"` : s;
+            return needsQuotes(s) ? '"${escForDq(s)}"' : s;
           }).join(" ");
         }
 
@@ -246,13 +246,13 @@ function CMD()
 
 
   //     _ .--.   ,--.   _ .--.  .--.  .---.  
-  //    [ '/'`\ \`'_\ : [ `/'`\]( (`\]/ /__\\ 
-  //     | \__/ |// | |, | |     `'.'.| \__., 
+  //    [ '/''\ \''_\ : [ '/''\]( ('\]/ /__\\ 
+  //     | \__/ |// | |, | |     ''.'.| \__., 
   //     | ;.__/ \'-;__/[___]   [\__) )'.__.' 
   //    [__|___      _                        
   //     |_   _|    (_)                       
   //       | |      __   _ .--.  .---.        
-  //       | |   _ [  | [ `.-. |/ /__\\       
+  //       | |   _ [  | [ '.-. |/ /__\\       
   //      _| |__/ | | |  | | | || \__.,       
   //     |________|[___][___||__]'.__.' 
   ///
@@ -280,7 +280,7 @@ function CMD()
     const flushSegment = () => 
     {
       // NOTE: we do NOT rebuild a statement string from tokens, because that would lose quotes.
-      // `currentWords` already contains the shell-merged words (e.g. ["echo","Hello $name"]).
+      // 'currentWords' already contains the shell-merged words (e.g. ["echo","Hello $name"]).
       if (!currentWords.length) return;
 
       const parsed = this._parseStatementWords(currentWords, data); // pass shared data object
@@ -316,11 +316,11 @@ function CMD()
 
 
 //       ______  ____    ____  ______        ______                                _   __                 
-//     .' ___  ||_   \  /   _||_   _ `.    .' ___  |                              (_) [  |                
-//    / .'   \_|  |   \/   |    | | `. \  / .'   \_|  .--.   _ .--..--.  _ .--.   __   | | .---.  _ .--.  
-//    | |         | |\  /| |    | |  | |  | |       / .'`\ \[ `.-. .-. |[ '/'`\ \[  |  | |/ /__\\[ `/'`\] 
-//    \ `.___.'\ _| |_\/_| |_  _| |_.' /  \ `.___.'\| \__. | | | | | | | | \__/ | | |  | || \__., | |     
-//     `.____ .'|_____||_____||______.'    `.____ .' '.__.' [___||__||__]| ;.__/ [___][___]'.__.'[___]    
+//     .' ___  ||_   \  /   _||_   _ '.    .' ___  |                              (_) [  |                
+//    / .'   \_|  |   \/   |    | | '. \  / .'   \_|  .--.   _ .--..--.  _ .--.   __   | | .---.  _ .--.  
+//    | |         | |\  /| |    | |  | |  | |       / .''\ \[ '.-. .-. |[ '/''\ \[  |  | |/ /__\\[ '/''\] 
+//    \ '.___.'\ _| |_\/_| |_  _| |_.' /  \ '.___.'\| \__. | | | | | | | | \__/ | | |  | || \__., | |     
+//     '.____ .'|_____||_____||______.'    '.____ .' '.__.' [___||__||__]| ;.__/ [___][___]'.__.'[___]    
 //                                                                      [__|
 
   /* CMD_compiler.js
@@ -374,7 +374,7 @@ function CMD()
     }
 
     // Detect assignment statement, based on parsed.name or raw.
-    // Your parser makes name be first word; for `name="Sylvia"` it becomes `name=Sylvia`
+    // Your parser makes name be first word; for 'name="Sylvia"' it becomes 'name=Sylvia'
     function parseAssignmentFromStatement(stmt) {
       // Prefer parsed.name (most stable)
       const s = (stmt && stmt.parsed && stmt.parsed.name) ? String(stmt.parsed.name) : "";
@@ -595,217 +595,504 @@ function CMD()
 
 
 //       ______  ____    ____  ______                                                                        
-//     .' ___  ||_   \  /   _||_   _ `.                                                                      
-//    / .'   \_|  |   \/   |    | | `. \                                                                     
+//     .' ___  ||_   \  /   _||_   _ '.                                                                      
+//    / .'   \_|  |   \/   |    | | '. \                                                                     
 //    | |         | |\  /| |    | |  | |                                                                     
-//    \ `.___.'\ _| |_\/_| |_  _| |_.' /                                                                     
-//     `.____ .'|_____||_____||______.'                                                                      
+//    \ '.___.'\ _| |_\/_| |_  _| |_.' /                                                                     
+//     '.____ .'|_____||_____||______.'                                                                      
 //     ____      ____              __                    _________  __                                   __  
 //    |_  _|    |_  _|            [  |  _               |  _   _  |[  |                                 |  ] 
 //      \ \  /\  / / .--.   _ .--. | | / ] .---.  _ .--.|_/ | | \_| | |--.   _ .--.  .---.  ,--.    .--.| |  
-//       \ \/  \/ // .'`\ \[ `/'`\]| '' < / /__\\[ `/'`\]   | |     | .-. | [ `/'`\]/ /__\\`'_\ : / /'`\' |  
-//        \  /\  / | \__. | | |    | |`\ \| \__., | |      _| |_    | | | |  | |    | \__.,// | |,| \__/  |  
+//       \ \/  \/ // .''\ \[ '/''\]| '' < / /__\\[ '/''\]   | |     | .-. | [ '/''\]/ /__\\''_\ : / /''\' |  
+//        \  /\  / | \__. | | |    | |'\ \| \__., | |      _| |_    | | | |  | |    | \__.,// | |,| \__/  |  
 //         \/  \/   '.__.' [___]  [__|  \_]'.__.'[___]    |_____|  [___]|__][___]    '.__.'\'-;__/ '.__.;__] 
 //        ___                          _    _                                                                
 //      .' ..]                        / |_ (_)                                                               
-//     _| |_  __   _   _ .--.   .---.`| |-'__   .--.   _ .--.   .--.                                         
-//    '-| |-'[  | | | [ `.-. | / /'`\]| | [  |/ .'`\ \[ `.-. | ( (`\]                                        
-//      | |   | \_/ |, | | | | | \__. | |, | || \__. | | | | |  `'.'.                                        
+//     _| |_  __   _   _ .--.   .---.'| |-'__   .--.   _ .--.   .--.                                         
+//    '-| |-'[  | | | [ '.-. | / /''\]| | [  |/ .''\ \[ '.-. | ( ('\]                                        
+//      | |   | \_/ |, | | | | | \__. | |, | || \__. | | | | |  ''.'.                                        
 //     [___]  '.__.'_/[___||__]'.___.'\__/[___]'.__.' [___||__][\__) ) 
 //     
+
 // WORKER THREAD FUNCTIONS
 
+  // Keep instance context inside Worker callbacks (because event listeners lose "this")
+  var cmd = this;
 
-
-  this.createAscWorker = function() 
+  // Extract cloneable "constant" values from a container object.
+  // We only snapshot these into the Worker; methods are always executed on main thread.
+  cmd._extractConsts = function(obj, prefixes, explicitKeys, exposeAllNonFunctions)
   {
-    const src = `
-      let CONSTS = Object.create(null);
-      let nextId = 1;
-      const pending = new Map();
+    prefixes = Array.isArray(prefixes) ? prefixes : (prefixes ? [prefixes] : []);
+    explicitKeys = Array.isArray(explicitKeys) ? explicitKeys : null;
 
-      function log(...args) {
-        postMessage({ type: "log", args });
+    var out = Object.create(null);
+
+    function isCloneable(v)
+    {
+      if (v == null) return true;
+      if (typeof v === "function") return false;
+      try {
+        // structuredClone is available in modern browsers + Workers
+        if (typeof structuredClone === "function") { structuredClone(v); return true; }
+      } catch(e) { /* fallthrough */ }
+
+      // Fallback: JSON stringify test (won't keep undefined, but ok for constants)
+      try { JSON.stringify(v); return true; }
+      catch(e2) { return false; }
+    }
+
+    function shouldTakeKey(k)
+    {
+      if (explicitKeys) return explicitKeys.indexOf(k) >= 0;
+      if (exposeAllNonFunctions) return true;
+      for (var i = 0; i < prefixes.length; i++) {
+        if (String(k).indexOf(prefixes[i]) === 0) return true;
       }
+      return false;
+    }
 
-      function ensureCloneableArgs(name, args) {
-        for (let i = 0; i < args.length; i++) {
-          const v = args[i];
-          if (typeof v === "function") {
-            throw new Error("Argument " + i + " to " + name + "() is a function. " +
-                            "Did you pass a misspelled constant like BOX_DOUUBLE?");
-          }
-        }
-      }
+    for (var k in obj)
+    {
+      if (!shouldTakeKey(k)) continue;
+      var v = obj[k];
+      if (!isCloneable(v)) continue;
+      out[k] = v;
+    }
+    return out;
+  };
 
-      function callMain(name, args) {
-        ensureCloneableArgs(name, args);
-        const id = nextId++;
-        log("callMain ->", name, args);
-        postMessage({ type: "call", id, name, args });
-        return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
-      }
+  // Create a generic "CMD Worker" that can call back into multiple containers.
+  //
+  // bindings: [
+  //   { name:"oASC", obj:oASC, constPrefixes:["BOX_"], aliases:["ASC"] },
+  //   { name:"oCOM", obj:oCOM }
+  // ]
+  //
+  // Rules:
+  // - Only the *default* binding is "proxied" for unqualified calls (freeform(...)).
+  // - Other bindings must be used by name (oCOM.isDoubleWidthChar('+')).
+  // - Constants are snapshotted into the worker (cloneable values only).
+  this.createCMDWorker = function(bindings, opts)
+  {
+    opts = opts || {};
+    var allowAliases = !!opts.allowAliases;
+    if (!Array.isArray(bindings) || bindings.length === 0)
+      throw new Error("createCMDWorker: bindings array required");
 
-      // The API visible to scripts
-      const ASC = new Proxy({}, {
-        get(_t, prop) {
-          if (prop in CONSTS) return CONSTS[prop];          // constants as values
-          return (...args) => callMain(String(prop), args); // methods as calls
-        }
-      });
+    cmd._bindings   = Object.create(null);
+    cmd._aliasMap   = Object.create(null);
+    cmd._defaultObj = String(opts.defaultObj || bindings[0].name || "oASC");
 
-      function runInScope(code) {
+    // Optional alias map provided by caller (disabled by default)
+    if (allowAliases && opts.aliasMap) {
+      for (var a in opts.aliasMap) cmd._aliasMap[a] = String(opts.aliasMap[a]);
+    }
 
-        // Allow "{ ... }" wrapper blocks (common when users paste a block)
-        const t = String(code).trim();
-        if (t.length >= 2 && t.charAt(0) === "{" && t.charAt(t.length - 1) === "}") {
-          code = t.slice(1, -1);
-        }
+    // Prepare init payload (const snapshots) + store main-thread container refs
+    var initBindings = [];
+    for (var i = 0; i < bindings.length; i++)
+    {
+      var b = bindings[i];
+      if (!b || !b.name || !b.obj) continue;
 
-        const scope = new Proxy({ ASC }, 
-        {
-          has() { return true; },
-          get(target, prop) 
-          {
-            if (prop === Symbol.unscopables) return undefined;
-            if (prop in target) return target[prop];
+      var name = String(b.name);
+      cmd._bindings[name] = b.obj;
 
-            if (prop in CONSTS) return CONSTS[prop]; // allow bare BOX_DOUBLE etc.
-
-            // allow some basics
-            if (prop === "Math") return Math;
-            if (prop === "JSON") return JSON;
-            if (prop === "Number") return Number;
-            if (prop === "String") return String;
-
-            // Allow calling "freeform(...)" without the ASC. prefix:
-            // If user meant a constant (BOX_*) but it's not known, fail loudly (prevents DataCloneError)
-            const p = String(prop);
-            if (p.indexOf("BOX_") === 0) {
-              throw new ReferenceError("Unknown constant: " + p + " (did you mean BOX_DOUBLE?)");
-            }
-
-            // Otherwise: treat unknown identifiers as callable commands (freeform(), box(), etc.)
-            return (...args) => callMain(p, args);
-          }
-        });
-
-      // async wrapper so user script can eventually 'await' if needed
-      const fn = new Function(
-        "scope",
-        "return (async()=>{ with(scope){\\n" + code + "\\n} })();"
+      var consts = cmd._extractConsts(
+        b.obj,
+        b.constPrefixes || b.exposePrefixes || [],
+        b.constKeys || null,
+        !!b.exposeAllNonFunctions
       );
 
-      return fn(scope);
-      } // <-- CLOSE runInScope()
+      initBindings.push({ name: name, consts: consts });
 
-      onmessage = async (e) => 
-      {
-        const msg = e.data;
-        if (!msg) return;
-
-        if (msg.type === "init") {
-          CONSTS = msg.consts || Object.create(null);
-          log("INIT consts:", Object.keys(CONSTS));
-          return;
-        }
-
-        if (msg.type === "ret") {
-          const p = pending.get(msg.id);
-          if (!p) return;
-          pending.delete(msg.id);
-          msg.ok ? p.resolve(msg.result) : p.reject(new Error(msg.error));
-          return;
-        }
-
-        if (msg.type === "run") {
-          const { runId, code } = msg;
-          log("RUN start", runId, code);
-          try {
-            await runInScope(code);
-            log("RUN end", runId);
-            postMessage({ type: "done", runId });
-          } catch (err) {
-            postMessage({
-              type: "error",
-              runId,
-              error: { name: err.name, message: err.message, stack: err.stack }
-            });
+      // Optional aliases (disabled by default to avoid confusing ASC vs oASC)
+      if (allowAliases) {
+        var aliases = b.aliases || [];
+        if (Array.isArray(aliases)) {
+          for (var j = 0; j < aliases.length; j++) {
+            cmd._aliasMap[String(aliases[j])] = name;
           }
         }
-      };
-    `;
+      }
+    }
 
-    const blob = new Blob([src], { type: "application/javascript" });
-    return new Worker(URL.createObjectURL(blob));
-  }
+    // Build & start the Worker
+    cmd._worker = cmd._makeCMDWorker();
 
+    cmd._worker.addEventListener("message", cmd.onWorkerMessage);
 
-  this.runExternalScript = function(code) 
+    // Better diagnostics if the Worker fails to parse/execute (often shows as "Script error")
+    cmd._worker.addEventListener("error", function(e) {
+      console.error("[main] worker error event:", {
+        message:  e && e.message,
+        filename: e && e.filename,
+        lineno:   e && e.lineno,
+        colno:    e && e.colno
+      });
+    });
+
+    cmd._worker.addEventListener("messageerror", function(e) {
+      console.error("[main] worker messageerror:", e);
+    });
+
+    cmd._worker.postMessage({
+      type: "init",
+      bindings: initBindings,
+      aliasMap: cmd._aliasMap,
+      defaultObj: cmd._defaultObj
+    });
+
+    return cmd._worker;
+  };
+
+  // Backward compatible name (old code expects createAscWorker)
+  this.createAscWorker = function()
   {
-    return new Promise((resolve, reject) => {
-      const runId = Math.random().toString(16).slice(2);
+    // Legacy entry point. We keep it so existing code does not break,
+    // but we do NOT expose an 'ASC' alias (use oASC. or unqualified calls).
+    return cmd.createCMDWorker(
+      [{ name: "oASC", obj: oASC, constPrefixes: ["BOX_"] }],
+      { defaultObj: "oASC" }
+    );
+  };
 
-      const onMsg = (e) => {
-        const msg = e.data;
+  // Worker source (no template literals/backticks to avoid escaping traps)
+  cmd._makeCMDWorker = function()
+  {
+    var src = [
+      "let BINDINGS = Object.create(null);       // name -> { consts }",
+      "let ALIAS = Object.create(null);          // alias -> name",
+      "let DEFAULT_OBJ = null;",
+      "let nextId = 1;",
+      "const pending = new Map();",
+      "",
+      "function safeLogArgs(args) {",
+      "  const out = [];",
+      "  for (let i = 0; i < args.length; i++) {",
+      "    const v = args[i];",
+      "    if (typeof v === 'function') out.push('[Function]');",
+      "    else out.push(v);",
+      "  }",
+      "  return out;",
+      "}",
+      "",
+      "function log() {",
+      "  postMessage({ type: 'log', args: safeLogArgs(arguments) });",
+      "}",
+      "",
+      "function ensureCloneableArgs(objName, fnName, args) {",
+      "  for (let i = 0; i < args.length; i++) {",
+      "    const v = args[i];",
+      "    if (typeof v === 'function') {",
+      "      throw new Error('Argument ' + i + ' to ' + objName + '.' + fnName + '() is a function. ' +",
+      "                      'Likely a misspelled constant (e.g. BOX_DOUUBLE).');",
+      "    }",
+      "  }",
+      "}",
+      "",
+      "function callMain(objName, fnName, args) {",
+      "  ensureCloneableArgs(objName, fnName, args);",
+      "  const id = nextId++;",
+      "  log('callMain ->', objName + '.' + fnName, args);",
+      "  postMessage({ type: 'call', id: id, obj: objName, name: fnName, args: args });",
+      "  return new Promise((resolve, reject) => pending.set(id, { resolve: resolve, reject: reject }));",
+      "}",
+      "",
+      "function makeContainerProxy(objName) {",
+      "  return new Proxy({}, {",
+      "    get(_t, prop) {",
+      "      const p = String(prop);",
+      "      const b = BINDINGS[objName];",
+      "      if (b && b.consts && (p in b.consts)) return b.consts[p];",
+      "      return (...args) => callMain(objName, p, args);",
+      "    }",
+      "  });",
+      "}",
+      "",
+      "function buildScope(defaultObj) {",
+      "  DEFAULT_OBJ = defaultObj || DEFAULT_OBJ;",
+      "",
+      "  // Base API objects (oASC, oCOM, ...)",
+      "  const api = Object.create(null);",
+      "  for (const name in BINDINGS) api[name] = makeContainerProxy(name);",
+      "  for (const a in ALIAS) api[a] = api[ALIAS[a]];",
+      "",
+      "  return new Proxy(api, {",
+      "    has() { return true; },",
+      "    get(target, prop) {",
+      "      if (prop === Symbol.unscopables) return undefined;",
+      "      if (prop in target) return target[prop];",
+      "",
+      "      // bare constants resolve against the *default* container only",
+      "      const p = String(prop);",
+      "      const b = DEFAULT_OBJ ? BINDINGS[DEFAULT_OBJ] : null;",
+      "      if (b && b.consts && (p in b.consts)) return b.consts[p];",
+      "",
+      "      // allow a small safe standard library",
+      "      if (p === 'Math') return Math;",
+      "      if (p === 'JSON') return JSON;",
+      "      if (p === 'Number') return Number;",
+      "      if (p === 'String') return String;",
+      "",
+      "      // Do not allow confusing container names like ASC (use oASC. or unqualified calls)",
+      "      if (p === 'ASC') { throw new ReferenceError('Unknown container: ASC (use oASC. or unqualified calls)'); }",
+      "",
+      "      // nicer error for BOX_* typos",
+      "      if (p.indexOf('BOX_') === 0 && (!b || !b.consts || !(p in b.consts))) {",
+      "        throw new ReferenceError('Unknown constant: ' + p + ' (check spelling, e.g. BOX_DOUBLE)');",
+      "      }",
+      "",
+      "      // unqualified calls route to the default container",
+      "      return (...args) => callMain(DEFAULT_OBJ, p, args);",
+      "    }",
+      "  });",
+      "}",
+      "",
+      "function runInScope(code, defaultObj) {",
+      "  // Allow '{ ... }' wrapper blocks",
+      "  const t = String(code).trim();",
+      "  if (t.length >= 2 && t.charAt(0) === '{' && t.charAt(t.length - 1) === '}') {",
+      "    code = t.slice(1, -1);",
+      "  }",
+      "",
+      "  const scope = buildScope(defaultObj);",
+      "  const fn = new Function('scope', 'return (async function(){ with(scope){\\n' + code + '\\n} })();');",
+      "  return fn(scope);",
+      "}",
+      "",
+      "onmessage = async (e) => {",
+      "  const msg = e.data;",
+      "  if (!msg) return;",
+      "",
+      "  if (msg.type === 'init') {",
+      "    BINDINGS = Object.create(null);",
+      "    const list = Array.isArray(msg.bindings) ? msg.bindings : [];",
+      "    for (let i = 0; i < list.length; i++) {",
+      "      const it = list[i];",
+      "      if (!it || !it.name) continue;",
+      "      BINDINGS[String(it.name)] = { consts: it.consts || Object.create(null) };",
+      "    }",
+      "    ALIAS = msg.aliasMap || Object.create(null);",
+      "    DEFAULT_OBJ = msg.defaultObj || (list[0] ? String(list[0].name) : null);",
+      "    log('INIT bindings:', Object.keys(BINDINGS), 'default=', DEFAULT_OBJ);",
+      "    return;",
+      "  }",
+      "",
+      "  if (msg.type === 'ret') {",
+      "    const p = pending.get(msg.id);",
+      "    if (!p) return;",
+      "    pending.delete(msg.id);",
+      "    msg.ok ? p.resolve(msg.result) : p.reject(new Error(msg.error));",
+      "    return;",
+      "  }",
+      "",
+      "  if (msg.type === 'run') {",
+      "    const runId = msg.runId;",
+      "    const code = msg.code;",
+      "    const def  = msg.defaultObj || DEFAULT_OBJ;",
+      "    log('RUN start', runId, 'default=' + def, code);",
+      "    postMessage({ type: 'ack', runId: runId });",
+      "    try {",
+      "      await runInScope(code, def);",
+      "      log('RUN end', runId);",
+      "      postMessage({ type: 'done', runId: runId });",
+      "    } catch (err) {",
+      "      postMessage({",
+      "        type: 'error',",
+      "        runId: runId,",
+      "        error: { name: err && err.name, message: err && err.message, stack: err && err.stack }",
+      "      });",
+      "    }",
+      "  }",
+      "};"
+    ].join("\\n");
+
+    var blob = new Blob([src], { type: "application/javascript" });
+    return new Worker(URL.createObjectURL(blob));
+  };
+
+  // Run code in the already-created Worker.
+  // opts.defaultObj can select which container is used for unqualified calls.
+  this.runExternalScript = function(code, opts)
+  {
+    opts = opts || {};
+    var worker = cmd._worker;
+    if (!worker) {
+      return Promise.reject({ name: 'Error', message: 'Worker not initialized. Call createCMDWorker() first.' });
+    }
+
+    return new Promise(function(resolve, reject) {
+      var runId = Math.random().toString(16).slice(2);
+      var settled = false;
+
+      var timeoutMs = (opts.timeoutMs != null) ? Number(opts.timeoutMs) : 5000;
+      if (!isFinite(timeoutMs) || timeoutMs <= 0) timeoutMs = 5000;
+
+      // Fast failure: if the Worker never even ACKs the run request, it's usually not running.
+      var ackWaitMs = (opts.ackWaitMs != null) ? Number(opts.ackWaitMs) : 500;
+      if (!isFinite(ackWaitMs) || ackWaitMs <= 0) ackWaitMs = 500;
+      var ackSeen = false;
+
+      var timer = null;
+      var ackTimer = null;
+
+      function cleanup(onMsg, onErr, onMsgErr)
+      {
+        worker.removeEventListener('message', onMsg);
+        worker.removeEventListener('error', onErr);
+        worker.removeEventListener('messageerror', onMsgErr);
+        if (timer != null) { clearTimeout(timer); timer = null; }
+        if (ackTimer != null) { clearTimeout(ackTimer); ackTimer = null; }
+      }
+
+      function succeed(onMsg, onErr, onMsgErr)
+      {
+        if (settled) return;
+        settled = true;
+        cleanup(onMsg, onErr, onMsgErr);
+        resolve();
+      }
+
+      function fail(err, onMsg, onErr, onMsgErr)
+      {
+        if (settled) return;
+        settled = true;
+        cleanup(onMsg, onErr, onMsgErr);
+        reject(err);
+      }
+
+      function onMsg(e)
+      {
+        var msg = e.data;
         if (!msg || msg.runId !== runId) return;
 
-        if (msg.type === "done") {
-          if(bDebug) console.log("[main] worker done:", runId);
-          worker.removeEventListener("message", onMsg);
-          resolve();
+        if (msg.type === 'ack') {
+          ackSeen = true;
+          if (ackTimer != null) { clearTimeout(ackTimer); ackTimer = null; }
+          if (bDebug) console.log('[main] worker ack:', runId);
+          return;
         }
-        if (msg.type === "error") {
-          console.error("[main] worker error:", msg.error);
-          worker.removeEventListener("message", onMsg);
-          reject(msg.error);
-        }
-      };
 
-      worker.addEventListener("message", onMsg);
-      if(bDebug) console.log("[main] sending script to worker:", code);
-      worker.postMessage({ type: "run", runId, code });
+        if (msg.type === 'done') {
+          if (bDebug) console.log('[main] worker done:', runId);
+          succeed(onMsg, onErr, onMsgErr);
+          return;
+        }
+
+        if (msg.type === 'error') {
+          console.error('[main] worker error:', msg.error);
+          fail(msg.error, onMsg, onErr, onMsgErr);
+          return;
+        }
+      }
+
+      function onErr(e)
+      {
+        var err = {
+          name: 'WorkerError',
+          message: (e && e.message) ? String(e.message) : 'Worker error',
+          filename: e && e.filename ? String(e.filename) : '',
+          lineno: e && typeof e.lineno === 'number' ? e.lineno : 0,
+          colno: e && typeof e.colno === 'number' ? e.colno : 0,
+          runId: runId
+        };
+        console.error('[main] worker error event:', err);
+        fail(err, onMsg, onErr, onMsgErr);
+      }
+
+      function onMsgErr(e)
+      {
+        var err = { name: 'MessageError', message: 'Worker messageerror', runId: runId };
+        console.error('[main] worker messageerror:', e);
+        fail(err, onMsg, onErr, onMsgErr);
+      }
+
+      worker.addEventListener('message', onMsg);
+      worker.addEventListener('error', onErr);
+      worker.addEventListener('messageerror', onMsgErr);
+
+      ackTimer = setTimeout(function() {
+        if (ackSeen) return;
+        fail({ name: 'NoAckError', message: 'Worker did not ACK the run request.', runId: runId }, onMsg, onErr, onMsgErr);
+      }, ackWaitMs);
+
+      timer = setTimeout(function() {
+        fail({ name: 'TimeoutError', message: 'Worker did not respond (no done/error).', runId: runId }, onMsg, onErr, onMsgErr);
+      }, timeoutMs);
+
+      if (bDebug) console.log('[main] sending script to worker:', String(code));
+
+      try {
+        worker.postMessage({
+          type: 'run',
+          runId: runId,
+          code: String(code),
+          defaultObj: String(opts.defaultObj || cmd._defaultObj)
+        });
+      } catch (ex) {
+        fail({ name: ex && ex.name ? String(ex.name) : 'Error', message: ex && ex.message ? String(ex.message) : String(ex), runId: runId }, onMsg, onErr, onMsgErr);
+      }
     });
-  }
+  };
 
-  this.onWorkerMessage = function(e) 
+
+  this.onWorkerMessage = function(e)
   {
-    // 'this' scope is lost here
-    // TODO: check how we can regain .this scope here and pass it on to handleWorkerCall
     const msg = e.data;
     if (!msg) return;
-    if (bDebug && msg.type === "log") { console.log("[worker]", ...(msg.args || [])); return; }
 
-    if (msg.type === "call")
-    {
-      handleWorkerCall(msg); return;
+    if (bDebug && msg.type === 'log') {
+      console.log('[worker]', ...(msg.args || []));
+      return;
     }
-  }
 
-  function handleWorkerCall(msg) 
+    // IMPORTANT: reply back to the *same* worker instance that asked.
+    if (msg.type === 'call') {
+      const w = (e && (e.currentTarget || e.target)) ? (e.currentTarget || e.target) : cmd._worker;
+      handleWorkerCall(msg, w);
+      return;
+    }
+  };
+
+  function handleWorkerCall(msg, workerRef)
   {
     const id   = msg.id;
-    const name = msg.name;
+    const obj  = String(msg.obj || cmd._defaultObj);
+    const name = String(msg.name);
     const args = msg.args || [];
 
-    if (bDebug) console.log("[main] call from worker:", name, args);
+    if (bDebug) console.log("[main] call from worker:", obj + "." + name, args);
 
     try {
-      const fn = oASC[name];
-      if (typeof fn !== "function") throw new Error("No such method: " + name);
-      const result = fn.apply(oASC, args);
-      worker.postMessage({ type: "ret", id, ok: true, result });
+      const target = cmd._bindings[obj];
+      if (!target) throw new Error("No such container: " + obj);
+
+      const fn = target[name];
+      if (typeof fn !== "function") throw new Error("No such method: " + obj + "." + name);
+
+      const result = fn.apply(target, args);
+      workerRef.postMessage({ type: 'ret', id: id, ok: true, result: result });
     } catch (err) {
-      worker.postMessage({ type: "ret", id, ok: false, error: String(err && err.message ? err.message : err) });
+      try {
+        workerRef.postMessage({
+          type: 'ret',
+          id: id,
+          ok: false,
+          error: String(err && err.message ? err.message : err)
+        });
+      } catch (postErr) {
+        // If we can't even reply, at least log it so we don't fail silently.
+        console.error('[main] failed to post ret to worker:', postErr);
+      }
     }
   }
 
 
 
-
-
-
-   ////////////////////////////
+////////////////////////////
    // OTHER HELPER FUNCTIONS //
    ////////////////////////////
 
@@ -849,54 +1136,22 @@ function CMD()
 
 
 var oCMD = new CMD();
-const worker = oCMD.createAscWorker();
-const consts = {};
-for (const k in oASC) {
-  if (k.indexOf("BOX_") === 0) consts[k] = oASC[k];
-}
-worker.postMessage({ type: "init", consts });
 
-worker.addEventListener("message", oCMD.onWorkerMessage);
+// Default Worker: proxy only the first container (oASC) for unqualified calls,
+// but keep "ASC" as an alias for backward compatibility.
+var worker = oCMD.createCMDWorker(
+  [{ name: "oASC", obj: oASC, constPrefixes: ["BOX_"] }],
+  { defaultObj: "oASC" }
+);
 
-// Better diagnostics if the Worker fails to parse/execute (often shows as "Script error")
-worker.addEventListener("error", (e) => {
-  console.error("[main] worker error event:", {
-    message: e && e.message,
-    filename: e && e.filename,
-    lineno: e && e.lineno,
-    colno: e && e.colno
-  });
-});
-
-worker.addEventListener("messageerror", (e) => {
-  console.error("[main] worker messageerror:", e);
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// Example: multiple containers (only oASC is proxied; oCOM must be called by name)
+// var worker = oCMD.createCMDWorker(
+//   [
+//     { name: "oASC", obj: oASC, constPrefixes: ["BOX_"], aliases: ["ASC"] },
+//     { name: "oCOM", obj: oCOM }
+//   ],
+//   { defaultObj: "oASC" }
+// );
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -910,14 +1165,14 @@ worker.addEventListener("messageerror", (e) => {
 
 
 //        _____   ______     ___   ____  _____                               
-//       |_   _|.' ____ \  .'   `.|_   \|_   _|                              
+//       |_   _|.' ____ \  .'   '.|_   \|_   _|                              
 //         | |  | (___ \_|/  .-.  \ |   \ | |                                
-//     _   | |   _.____`. | |   | | | |\ \| |                                
-//    | |__' |  | \____) |\  `-'  /_| |_\   |_                               
-//    `.____.'   \______.' `.___.'|_____|\____|       _    _                 
+//     _   | |   _.____'. | |   | | | |\ \| |                                
+//    | |__' |  | \____) |\  '-'  /_| |_\   |_                               
+//    '.____.'   \______.' '.___.'|_____|\____|       _    _                 
 //     (_)          / |_                             / |_ (_)                
-//     __   _ .--. `| |-'.---.  _ .--.  ,--.   .---.`| |-'__  _   __  .---.  
-//    [  | [ `.-. | | | / /__\\[ `/'`\]`'_\ : / /'`\]| | [  |[ \ [  ]/ /__\\ 
+//     __   _ .--. '| |-'.---.  _ .--.  ,--.   .---.'| |-'__  _   __  .---.  
+//    [  | [ '.-. | | | / /__\\[ '/''\]''_\ : / /''\]| | [  |[ \ [  ]/ /__\\ 
 //     | |  | | | | | |,| \__., | |    // | |,| \__. | |, | | \ \/ / | \__., 
 //    [___][___||__]\__/ '.__.'[___]   \'-;__/'.___.'\__/[___] \__/   '.__.'
 
@@ -1043,13 +1298,13 @@ JSON.prettify = function makeInteractiveJson(mountEl, boundaryStyles, indent = 2
     if (activePair === pairId) return;
     clearActive();
     activePair = pairId;
-    root.querySelectorAll(`.json-boundary[data-pair="${CSS.escape(pairId)}"]`)
+    root.querySelectorAll('.json-boundary[data-pair="${CSS.escape(pairId)}"]')
       .forEach(el => el.classList.add("active"));
   }
 
   function clearActive() {
     if (activePair == null) return;
-    root.querySelectorAll(`.json-boundary[data-pair="${CSS.escape(activePair)}"]`)
+    root.querySelectorAll('.json-boundary[data-pair="${CSS.escape(activePair)}"]')
       .forEach(el => el.classList.remove("active"));
     activePair = null;
   }
@@ -1075,7 +1330,7 @@ function prettyJsonAllman(value, indent = 2) {
   // Start from standard pretty JSON
   let s = JSON.stringify(obj, null, indent);
 
-  // 1) Move `: {` and `: [` to the next line, aligned to the property's indentation.
+  // 1) Move ': {' and ': [' to the next line, aligned to the property's indentation.
   //    Example: '      "parsed": {'  ->  '      "parsed":\n      {'
   //    Also handles '...": {}' and '...": []'
   s = s.replace(
@@ -1083,15 +1338,15 @@ function prettyJsonAllman(value, indent = 2) {
     (m, ws, key, open, maybeClose, comma) => {
       // Case: inline empty {} or [] on same line
       if (maybeClose) {
-        return `${ws}"${key}":\n${ws}${open}\n${ws}${" ".repeat(indent)}\n${ws}${maybeClose}${comma}`;
+        return '${ws}"${key}":\n${ws}${open}\n${ws}${" ".repeat(indent)}\n${ws}${maybeClose}${comma}';
       }
-      // Case: normal `: {` or `: [`
-      return `${ws}"${key}":\n${ws}${open}`;
+      // Case: normal ': {' or ': ['
+      return '${ws}"${key}":\n${ws}${open}';
     }
   );
 
-  // 2) Move `: null/true/false/number/string`? No — leave primitives as-is.
-  // 3) Optional: Move `{` / `[` that follow `: ` but are not at end-of-line (rare in JSON.stringify output).
+  // 2) Move ': null/true/false/number/string'? No — leave primitives as-is.
+  // 3) Optional: Move '{' / '[' that follow ': ' but are not at end-of-line (rare in JSON.stringify output).
 
   return s;
 }
