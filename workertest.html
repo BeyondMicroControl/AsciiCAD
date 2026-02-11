@@ -1,0 +1,325 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AsciiCAD Worker Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 12px; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+    pre { padding: 10px; border: 1px solid #ccc; min-height: 120px; white-space: pre-wrap; }
+    .small { font-size: 12px; opacity: 0.85; }
+    code { background:#f5f5f5; padding:2px 4px; }
+  </style>
+</head>
+<body>
+  <h2>Worker URL Command Tester</h2>
+  <div class="small">
+    Usage: <code>?command=...</code><br>
+    Recommended: encode the whole command with <code>encodeURIComponent</code>.<br>
+    Example (encoded): <code>?command=%7BoASC.freeform(0,0,'%2B')%7D</code>
+  </div>
+
+  <h3>Command</h3>
+  <pre id="cmd"></pre>
+
+  <div class="row">
+    <div class="col">
+      <h3>Output (main thread)</h3>
+      <pre id="out"></pre>
+    </div>
+    <div class="col">
+      <h3>Log</h3>
+      <pre id="log"></pre>
+    </div>
+  </div>
+
+<script>
+/***********************
+ * Minimal output helpers
+ ***********************/
+function $(id){ return document.getElementById(id); }
+function log(s){
+  $("log").textContent += String(s) + "\n";
+  if (window.console && console.log) console.log(s);
+}
+function out(s){
+  $("out").textContent += String(s) + "\n";
+}
+
+/***********************
+ * Your URL parser (with tiny fixes)
+ ***********************/
+function COM(){
+  this.URL = {
+    url:"",
+    uri:{},
+    hash:"",
+    merge: function (_uri1,_uri2){
+      var _o = [];
+      var _i;
+      for(_i in _uri1) _o[_i] = _uri1[_i];
+      for(_i in _uri2) _o[_i] = _uri2[_i];
+      return _o; // fixed
+    },
+    addURI: function (_uri2){
+      var _i;
+      for(_i in _uri2)
+        if(_uri2[_i]) this.uri[_i] = _uri2[_i];
+        else delete this.uri[_i];
+    },
+    getURI: function (){
+      var _str = "";
+      var _i;
+      for(_i in this.uri)
+        if(this.uri[_i]) _str += (_str?"&":"?") + _i + "=" + this.uri[_i];
+      return _str;
+    },
+    parse: function (_url){
+      var _ppos = _url.lastIndexOf("#");
+      if(_ppos>0) { _url = _url.substring(0,_ppos); this.hash = _url.hash; }
+      var _urlarr = _url ? _url.split("?") : ["",""];
+      var _urlargs = _urlarr[1] ? _urlarr[1].split("&") : [_urlarr[0],""];
+      this.url = _urlarr[0];
+      this.filename = this.url.substring(this.url.lastIndexOf("/")+1,this.url.length);
+      this.uri = {};
+      for(var _i=0; _i<_urlargs.length; _i++){
+        if(!(_urlargs[_i]===undefined)){
+          var a = _urlargs[_i].split("=");
+          this.uri[a[0]] = a[1];
+        }
+      }
+    }
+  };
+}
+
+var oCOM = new COM();
+oCOM.URL.parse(document.location.toString());
+
+function getCommandParam(){
+  var raw = oCOM.URL.uri["command"];
+  if (!raw) return "";
+
+  // Your parser does not decode; do it here.
+  // Also translate '+' to space only if it was used as query-space (common),
+  // but we DO NOT want to break a literal '+' glyph inside quotes.
+  // So we do NOT auto-replace '+' -> ' '.
+  try { raw = decodeURIComponent(raw); } catch(e) {}
+
+  return raw;
+}
+
+/***********************
+ * Minimal container (main thread)
+ ***********************/
+function ASC(){
+  this.clear = function(){
+    out("command called: clear()");
+  };
+  this.freeform = function(c,r,ch){
+    out("command called: freeform(c=" + c + ", r=" + r + ", ch=" + ch + ")");
+  };
+}
+var oASC = new ASC();
+
+/***********************
+ * Worker creation (no backticks, no Proxy, no async/await)
+ * - worker posts "ready" at startup
+ * - main posts {type:'run', code:'...', runId:'...'}
+ * - worker sends ack/done/error and call requests
+ ***********************/
+function createWorker(){
+  var src = ""
+  + "var pending = {};\n"
+  + "var nextId = 1;\n"
+  + "var runCalls = [];\n"
+  + "\n"
+  + "function post(type, obj){\n"
+  + "  obj = obj || {};\n"
+  + "  obj.type = type;\n"
+  + "  postMessage(obj);\n"
+  + "}\n"
+  + "\n"
+  + "function callMain(objName, method, args){\n"
+  + "  var id = nextId++;\n"
+  + "  var p = new Promise(function(resolve, reject){ pending[id] = { resolve: resolve, reject: reject }; });\n"
+  + "  runCalls.push(p);\n"
+  + "  post('call', { id: id, obj: objName, name: method, args: args });\n"
+  + "  return p;\n"
+  + "}\n"
+  + "\n"
+  + "function allOk(proms){\n"
+  + "  // Resolve if all resolve; reject on first reject.\n"
+  + "  return Promise.all(proms);\n"
+  + "}\n"
+  + "\n"
+  + "// Minimal proxy object available to user code\n"
+  + "var oASC = {\n"
+  + "  clear: function(){ return callMain('oASC', 'clear', []); },\n"
+  + "  freeform: function(c,r,ch){ return callMain('oASC', 'freeform', [c,r,ch]); }\n"
+  + "};\n"
+  + "\n"
+  + "onmessage = function(e){\n"
+  + "  var msg = e.data;\n"
+  + "  if(!msg) return;\n"
+  + "\n"
+  + "  if(msg.type === 'ret'){\n"
+  + "    var p = pending[msg.id];\n"
+  + "    if(!p) return;\n"
+  + "    delete pending[msg.id];\n"
+  + "    if(msg.ok) p.resolve(msg.result);\n"
+  + "    else p.reject(new Error(msg.error || 'call failed'));\n"
+  + "    return;\n"
+  + "  }\n"
+  + "\n"
+  + "  if(msg.type === 'run'){\n"
+  + "    runCalls = [];\n"
+  + "    post('ack', { runId: msg.runId });\n"
+  + "    try {\n"
+  + "      // Compile and run user code as function body; user must reference oASC.\n"
+  + "      var fn = new Function('oASC', String(msg.code));\n"
+  + "      fn(oASC);\n"
+  + "    } catch(err) {\n"
+  + "      post('error', { runId: msg.runId, error: { name: err.name, message: err.message, stack: err.stack } });\n"
+  + "      return;\n"
+  + "    }\n"
+  + "\n"
+  + "    allOk(runCalls).then(function(){\n"
+  + "      post('done', { runId: msg.runId });\n"
+  + "    }).catch(function(err){\n"
+  + "      post('error', { runId: msg.runId, error: { name: err.name, message: err.message, stack: err.stack } });\n"
+  + "    });\n"
+  + "  }\n"
+  + "};\n"
+  + "\n"
+  + "post('ready', { ok: true });\n"
+  + "//# sourceURL=workertest_worker.js\n";
+
+  var blob = new Blob([src], { type: "application/javascript" });
+  var url = URL.createObjectURL(blob);
+  var w = new Worker(url);
+
+  w.addEventListener("error", function(e){
+    log("[main] WORKER ERROR EVENT: " + (e.message || "Script error.") + " at " + (e.filename||"") + ":" + (e.lineno||0) + ":" + (e.colno||0));
+  });
+  w.addEventListener("messageerror", function(e){
+    log("[main] WORKER MESSAGEERROR (clone/transfer issue)");
+  });
+
+  return w;
+}
+
+var worker = createWorker();
+
+/***********************
+ * Main-side RPC: handle calls from worker
+ ***********************/
+worker.addEventListener("message", function(e){
+  var msg = e.data;
+  if(!msg) return;
+
+  if(msg.type === "ready"){
+    log("[main] worker ready");
+    return;
+  }
+
+  if(msg.type === "call"){
+    log("[main] call from worker: " + msg.obj + "." + msg.name + "(" + JSON.stringify(msg.args) + ")");
+    try {
+      if(msg.obj !== "oASC") throw new Error("Unknown object: " + msg.obj);
+
+      var fn = oASC[msg.name];
+      if(typeof fn !== "function") throw new Error("No such method: oASC." + msg.name);
+
+      var result = fn.apply(oASC, msg.args || []);
+      worker.postMessage({ type: "ret", id: msg.id, ok: true, result: result });
+    } catch(err) {
+      worker.postMessage({ type: "ret", id: msg.id, ok: false, error: String(err && err.message ? err.message : err) });
+    }
+    return;
+  }
+});
+
+/***********************
+ * runExternalScript with ACK + timeout
+ ***********************/
+function runExternalScript(code){
+  code = String(code || "");
+  var runId = Math.random().toString(16).slice(2);
+
+  return new Promise(function(resolve, reject){
+    var acked = false;
+    var done = false;
+
+    function cleanup(){
+      worker.removeEventListener("message", onMsg);
+      if(tAck) clearTimeout(tAck);
+      if(tDone) clearTimeout(tDone);
+    }
+
+    function fail(err){
+      if(done) return;
+      done = true;
+      cleanup();
+      reject(err);
+    }
+
+    function succeed(){
+      if(done) return;
+      done = true;
+      cleanup();
+      resolve();
+    }
+
+    function onMsg(e){
+      var msg = e.data;
+      if(!msg || msg.runId !== runId) return;
+
+      if(msg.type === "ack"){
+        acked = true;
+        log("[main] ack: " + runId);
+        return;
+      }
+      if(msg.type === "done"){
+        log("[main] done: " + runId);
+        succeed();
+        return;
+      }
+      if(msg.type === "error"){
+        log("[main] error: " + runId + " -> " + (msg.error && msg.error.message ? msg.error.message : "unknown"));
+        fail(msg.error || { name:"Error", message:"Worker error" });
+        return;
+      }
+    }
+
+    worker.addEventListener("message", onMsg);
+
+    var tAck = setTimeout(function(){
+      if(!acked) fail({ name:"NoAckError", message:"Worker did not ACK the run request.", runId: runId });
+    }, 800);
+
+    var tDone = setTimeout(function(){
+      fail({ name:"TimeoutError", message:"Worker did not respond (no done/error).", runId: runId });
+    }, 5000);
+
+    log("[main] sending script to worker: " + code);
+    worker.postMessage({ type:"run", runId: runId, code: code });
+  });
+}
+
+/***********************
+ * Execute from URL
+ ***********************/
+var command = getCommandParam();
+$("cmd").textContent = command ? command : "(no command param)";
+
+if(!command){
+  out("No command provided.\nTry:\n?command=%7BoASC.freeform(0,0,'%2B')%7D");
+} else {
+  runExternalScript(command)
+    .then(function(){ out("[SUCCESS] worker ran."); })
+    .catch(function(err){ out("[ERROR] " + JSON.stringify(err)); });
+}
+</script>
+</body>
+</html>
