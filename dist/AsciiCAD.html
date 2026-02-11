@@ -3433,7 +3433,7 @@ function CMD()
       "    }",
       "  }",
       "};"
-    ].join("\\n");
+    ].join("\n");
 
     var blob = new Blob([src], { type: "application/javascript" });
     return new Worker(URL.createObjectURL(blob));
@@ -7198,26 +7198,21 @@ function __cliHandleTerminal(line)
     if (script_node.options?.[0]?.key === "h")    // responding to CADScript -h
     {
       var tokenlist = oCOM.JShelpCollector(oASC);
-      var s = "Documented commands:\n\n";
-      for(var i in tokenlist) s+= tokenlist[i].content.usage+"\n";
-      oTERM.output(oCOM.escapeHTML(s));
+     
+      var usage = [];
+      for(var i in tokenlist) 
+        usage.push(tokenlist[i].content.usage); // extract only usage information
+      usage.sort();                             // sort commands alphabetically
+      oTERM.output(oCOM.escapeHTML( "Documented commands:\n\n"+usage.join("\n") ));
       return true;
     }
 
-    //oTERM.output("<br>"+line+"<br>");
-
-    // TODO CATCH ERRORS!
-
     oCMD.runExternalScript(code, { "defaultObj": "oASC" })
-      .then(() => { oASC.draw(); if(bDebug) oTERM.output("[SUCCESS] worker thread <pre>"+code+"</pre> and oASC.draw()."); })
-      .catch((err) => { oTERM.output("[ERROR] worker thread failed:<br>"+JSON.stringify(err)); })
-
+      .then(() => { oASC.draw(); })
+      .catch((err) => { oTERM.output("[ERROR] worker thread failed:<br><small>"+JSON.stringify(err)+"</small>"); })
 
     return true;
   }
-
-
-//CADScript
 
   
   const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
@@ -7284,6 +7279,7 @@ function __cliHandleTerminal(line)
     return true;
   }
 
+  /*
   if (cmd === "script") {
     if (rest) {
       oTERM.output("[ERROR] Usage: script");
@@ -7322,6 +7318,7 @@ function __cliHandleTerminal(line)
 
     return true;
   }
+  */
 
   if (cmd === "exit") {
     if (typeof switchToSidebar === "function") switchToSidebar("ui");
@@ -7329,6 +7326,7 @@ function __cliHandleTerminal(line)
     return true;
   }
 
+  /*
   // Hint when user types CADScript-style calls in terminal mode
   if (line.includes("(") && line.endsWith(")")) {
     oTERM.output(
@@ -7336,6 +7334,7 @@ function __cliHandleTerminal(line)
     );
     return true;
   }
+    */
 
   oTERM.output("[ERROR] Unknown command. Type <u>help</u>");
   return true;
@@ -7412,6 +7411,7 @@ for(var uri in oCOM.URL.uri)
   switch(uri)
   {
     case "bDebug":
+      if(bDebug == true) break;   // if bDebug==true was hardcoded, always debug
       bDebug = oCOM.URL.uri[uri] == "true" ? true : false;
       document.getElementById("toolDebug").style.visibility = bDebug==true ? "hidden" : "visible";
     break;
@@ -7996,7 +7996,6 @@ function downloadThisFile( callback )
   oCOM.download(htmlContent, filename, mimeType, callback );
 }
   </script>
-
 
 </body>
 </html>
