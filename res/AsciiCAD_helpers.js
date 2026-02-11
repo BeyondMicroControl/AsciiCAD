@@ -29,8 +29,14 @@ function ASC()
 
   this.CADScript = function()
   {
-    this.help = "usage:\nCADScript {<expression>}\ne.g. CADScript {doUndo();doRedo()}\n"
   }
+  this.CADScript.help = 
+  {
+    type: "AsciiCAD_CMD",
+    usage: "CADScript {<expression>}\ne.g. CADScript {doUndo();doRedo()}\n",
+    desc: "Run a CADScript expression",
+    examples: ["CADScript {doUndo();doRedo()}"]
+  };
 
 
   // Stage sizing: ensure integer cell sizes (avoid remainder pixels -> spacing artifacts)
@@ -148,8 +154,6 @@ function ASC()
 
   this.freeform = function(r, c, next) 
   {
-    this.help = "freeform(<col>,<row>,<char>)";
-
     if(r===undefined || c===undefined || next===undefined) return;  // safe escape if no arguments provided
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
       throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
@@ -162,6 +166,7 @@ function ASC()
     this.applyOpAtCell(cell,op);                   // display character on grid & push coordinate to currentStroke
     this.pushStrokeIfNonEmpty(this.currentStroke);   // feed undo buffer
   }
+  this.freeform.help = "freeform(<i>c</i>,<i>r</i>,<i>char</i>)";
 
   // subsection: lines
 
@@ -465,8 +470,6 @@ function ASC()
 
   this.box = function(c0,r0,c1,r1, style)
   {
-    this.help = "box(<c0>,<r0>,<c1>,<r1>,<this.BOX_SINGLE|this.BOX_THICK|this.BOX_DOUUBLE>)";
-
      if(c0===undefined || r0===undefined || c1===undefined || r1===undefined) return;  // safe escape if no arguments provided
     if(style===undefined) var style = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
     const path = this.buildBoxPath( {"c":c0,"r":r0} , {"c":c1,"r":r1} , style);
@@ -489,12 +492,11 @@ function ASC()
     }
     this.pushStrokeIfNonEmpty(this.currentStroke);   // commit undo buffer 
   }
+  this.box.help = "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>BOX_SINGLE|BOX_THICK|BOX_DOUBLE</i>)";
 
 // TODO: MERGE WITH CORRESPONDING BUTTON FUNCTION
   this.clear = function () 
   {
-    this.help = "clear()";
-
     this.currentStroke = [];
     for(var c=0;c<COLS;c++)
       for(var r=0;r<ROWS;r++)
@@ -508,7 +510,13 @@ function ASC()
       };
     this.pushStrokeIfNonEmpty?.(this.currentStroke) ?? {};   // commit undo buffer 
   }
-
+  this.clear.help = 
+  {
+    type: "CADScript_CMD",
+    usage: "clear()",
+    desc: "Clears the grid and pushes a single undo stroke.",
+    examples: ["clear()"]
+  };
 
   // TODO: describe what it does, and check if this can be used as generic function or it should be a private function
   // INFO: currently only used in beginFreeform(), moveFreeform(), endFreeform()
@@ -1356,10 +1364,9 @@ function ASC()
     return out.join('\n');
   }
 
+
   this.doUndo = function() 
   {
-    this.help = "doUndo()"
-
     const stroke = undoStack.pop();
     if (!stroke) return;
     for (let i = stroke.length - 1; i >= 0; i--) ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
@@ -1367,11 +1374,16 @@ function ASC()
     updateUI();
     draw("doUndo");
   }
+  this.doUndo.help = 
+  {
+    type: "CADScript_CMD",
+    usage: "doUndo()",
+    desc: "Undo last action",
+    examples: ["doUndo()"]
+  };
 
   this.doRedo = function() 
   {
-    this.help = "doRedo()"
-
     const stroke = redoStack.pop();
     if (!stroke) return;
     for (let i = 0; i < stroke.length; i++) ascii[stroke[i].r][stroke[i].c] = stroke[i].next;
@@ -1379,6 +1391,13 @@ function ASC()
     updateUI();
     draw("doRedo");
   }
+  this.doRedo.help = 
+  {
+    type: "CADScript_CMD",
+    usage: "doRedo()",
+    desc: "Redo last undone action",
+    examples: ["doRedo()"]
+  };
 
 
   this.draw = function( str ) 
@@ -1629,9 +1648,6 @@ function ASC()
       ctx.fillStyle = old;
     }
   }
-
-
-
 }
 
 var oASC = new ASC();

@@ -611,14 +611,16 @@ function CMD()
 //     _| |_  __   _   _ .--.   .---.`| |-'__   .--.   _ .--.   .--.                                         
 //    '-| |-'[  | | | [ `.-. | / /'`\]| | [  |/ .'`\ \[ `.-. | ( (`\]                                        
 //      | |   | \_/ |, | | | | | \__. | |, | || \__. | | | | |  `'.'.                                        
-//     [___]  '.__.'_/[___||__]'.___.'\__/[___]'.__.' [___||__][\__) )      
-
+//     [___]  '.__.'_/[___||__]'.___.'\__/[___]'.__.' [___||__][\__) ) 
+//     
+// WORKER THREAD FUNCTIONS
 
 
 
   this.createAscWorker = function() 
   {
     const src = `
+      let CONSTS = Object.create(null);
       let nextId = 1;
       const pending = new Map();
 
@@ -626,7 +628,18 @@ function CMD()
         postMessage({ type: "log", args });
       }
 
+      function ensureCloneableArgs(name, args) {
+        for (let i = 0; i < args.length; i++) {
+          const v = args[i];
+          if (typeof v === "function") {
+            throw new Error("Argument " + i + " to " + name + "() is a function. " +
+                            "Did you pass a misspelled constant like BOX_DOUUBLE?");
+          }
+        }
+      }
+
       function callMain(name, args) {
+        ensureCloneableArgs(name, args);
         const id = nextId++;
         log("callMain ->", name, args);
         postMessage({ type: "call", id, name, args });
@@ -636,7 +649,8 @@ function CMD()
       // The API visible to scripts
       const ASC = new Proxy({}, {
         get(_t, prop) {
-          return (...args) => callMain(String(prop), args);
+          if (prop in CONSTS) return CONSTS[prop];          // constants as values
+          return (...args) => callMain(String(prop), args); // methods as calls
         }
       });
 
@@ -648,11 +662,15 @@ function CMD()
           code = t.slice(1, -1);
         }
 
-        const scope = new Proxy({ ASC }, {
+        const scope = new Proxy({ ASC }, 
+        {
           has() { return true; },
-          get(target, prop) {
+          get(target, prop) 
+          {
             if (prop === Symbol.unscopables) return undefined;
             if (prop in target) return target[prop];
+
+            if (prop in CONSTS) return CONSTS[prop]; // allow bare BOX_DOUBLE etc.
 
             // allow some basics
             if (prop === "Math") return Math;
@@ -661,8 +679,14 @@ function CMD()
             if (prop === "String") return String;
 
             // Allow calling "freeform(...)" without the ASC. prefix:
-            // Any unknown identifier is treated as a callable remote function.
-            return (...args) => callMain(String(prop), args); 
+            // If user meant a constant (BOX_*) but it's not known, fail loudly (prevents DataCloneError)
+            const p = String(prop);
+            if (p.indexOf("BOX_") === 0) {
+              throw new ReferenceError("Unknown constant: " + p + " (did you mean BOX_DOUBLE?)");
+            }
+
+            // Otherwise: treat unknown identifiers as callable commands (freeform(), box(), etc.)
+            return (...args) => callMain(p, args);
           }
         });
 
@@ -675,9 +699,16 @@ function CMD()
       return fn(scope);
       } // <-- CLOSE runInScope()
 
-      onmessage = async (e) => {
+      onmessage = async (e) => 
+      {
         const msg = e.data;
         if (!msg) return;
+
+        if (msg.type === "init") {
+          CONSTS = msg.consts || Object.create(null);
+          log("INIT consts:", Object.keys(CONSTS));
+          return;
+        }
 
         if (msg.type === "ret") {
           const p = pending.get(msg.id);
@@ -819,6 +850,12 @@ function CMD()
 
 var oCMD = new CMD();
 const worker = oCMD.createAscWorker();
+const consts = {};
+for (const k in oASC) {
+  if (k.indexOf("BOX_") === 0) consts[k] = oASC[k];
+}
+worker.postMessage({ type: "init", consts });
+
 worker.addEventListener("message", oCMD.onWorkerMessage);
 
 // Better diagnostics if the Worker fails to parse/execute (often shows as "Script error")

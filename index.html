@@ -1491,34 +1491,17 @@ function __cliHandleTerminal(line)
     const values = Object.values(oASC);
     const types = values.map(v => v === null ? "null" : Array.isArray(v) ? "array" : typeof v);
 
-    var tokenlist = [];
-    var cnt = 0;
-    for(var i=0;i<types.length;i++) 
-    {
-      if(types[i]=="function")
-      {
-        try
-        { 
-          const o = new oASC[names[i]]();
-          if(o.help === undefined) continue;
-
-          if(cnt==0) tokenlist[cnt++] = "<b>"+names[i]+"</b> " + o.help;
-          else tokenlist[cnt++] = "→ "+o.help;
-
-        } catch(e) { continue; }
-
-      }
-    }
-
     const code = script_node.arguments.raw;
-
-    if (script_node.options?.[0]?.key === "h")
+    if (script_node.options?.[0]?.key === "h")    // responding to CADScript -h
     {
-      oTERM.output(oCOM.escapeHTML("Documented commands:\n\n"+
-                                  tokenlist.join("\n")
-                                ));
+      var tokenlist = oCOM.JShelpCollector(oASC);
+      var s = "Documented commands:\n\n";
+      for(var i in tokenlist) s+= tokenlist[i].content.usage+"\n";
+      oTERM.output(oCOM.escapeHTML(s));
       return true;
     }
+
+    //oTERM.output("<br>"+line+"<br>");
 
     // TODO CATCH ERRORS!
     oCMD.runExternalScript(code)

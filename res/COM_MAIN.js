@@ -219,6 +219,8 @@ function COM()
       .replaceAll("&lt;/b&gt;", "</b>")
       .replaceAll("&lt;u&gt;", "<u>")
       .replaceAll("&lt;/u&gt;", "</u>")
+      .replaceAll("&lt;i&gt;", "<i>")
+      .replaceAll("&lt;/i&gt;", "</i>")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;")
       .replaceAll("\n","<br>")
@@ -427,6 +429,18 @@ function COM()
         }
       }
     }
+  }
+
+  this.JShelpCollector = function(JSContainer) 
+  {
+    const tokenlist = [];
+    for (const [name, val] of Object.entries(JSContainer)) {
+      if (typeof val !== "function") continue;
+      if (!val.help) continue;
+      if (typeof(val.help)=="object")tokenlist.push({"name":name,"content":val.help});
+      else if (typeof(val.help)=="string") tokenlist.push({"name":name,"content":{"usage":val.help}});
+    }
+    return tokenlist;
   }
   
 }
