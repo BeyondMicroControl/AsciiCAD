@@ -319,6 +319,8 @@ function COM()
       .replaceAll("&lt;/b&gt;", "</b>")
       .replaceAll("&lt;u&gt;", "<u>")
       .replaceAll("&lt;/u&gt;", "</u>")
+      .replaceAll("&lt;i&gt;", "<i>")
+      .replaceAll("&lt;/i&gt;", "</i>")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;")
       .replaceAll("\n","<br>")
@@ -528,6 +530,18 @@ function COM()
       }
     }
   }
+
+  this.JShelpCollector = function(JSContainer) 
+  {
+    const tokenlist = [];
+    for (const [name, val] of Object.entries(JSContainer)) {
+      if (typeof val !== "function") continue;
+      if (!val.help) continue;
+      if (typeof(val.help)=="object")tokenlist.push({"name":name,"content":val.help});
+      else if (typeof(val.help)=="string") tokenlist.push({"name":name,"content":{"usage":val.help}});
+    }
+    return tokenlist;
+  }
   
 }
 
@@ -566,8 +580,14 @@ function ASC()
 
   this.CADScript = function()
   {
-    this.help = "usage:\nCADScript {<expression>}\ne.g. CADScript {doUndo();doRedo()}\n"
   }
+  this.CADScript.help = 
+  {
+    type: "AsciiCAD_CMD",
+    usage: "CADScript {<expression>}\ne.g. CADScript {doUndo();doRedo()}\n",
+    desc: "Run a CADScript expression",
+    examples: ["CADScript {doUndo();doRedo()}"]
+  };
 
 
   // Stage sizing: ensure integer cell sizes (avoid remainder pixels -> spacing artifacts)
@@ -685,8 +705,6 @@ function ASC()
 
   this.freeform = function(r, c, next) 
   {
-    this.help = "freeform(<col>,<row>,<char>)";
-
     if(r===undefined || c===undefined || next===undefined) return;  // safe escape if no arguments provided
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
       throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
@@ -699,6 +717,7 @@ function ASC()
     this.applyOpAtCell(cell,op);                   // display character on grid & push coordinate to currentStroke
     this.pushStrokeIfNonEmpty(this.currentStroke);   // feed undo buffer
   }
+  this.freeform.help = "freeform(<i>c</i>,<i>r</i>,<i>char</i>)";
 
   // subsection: lines
 
@@ -1002,8 +1021,6 @@ function ASC()
 
   this.box = function(c0,r0,c1,r1, style)
   {
-    this.help = "box(<c0>,<r0>,<c1>,<r1>,<this.BOX_SINGLE|this.BOX_THICK|this.BOX_DOUUBLE>)";
-
      if(c0===undefined || r0===undefined || c1===undefined || r1===undefined) return;  // safe escape if no arguments provided
     if(style===undefined) var style = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
     const path = this.buildBoxPath( {"c":c0,"r":r0} , {"c":c1,"r":r1} , style);
@@ -1026,12 +1043,11 @@ function ASC()
     }
     this.pushStrokeIfNonEmpty(this.currentStroke);   // commit undo buffer 
   }
+  this.box.help = "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>BOX_SINGLE|BOX_THICK|BOX_DOUBLE</i>)";
 
 // TODO: MERGE WITH CORRESPONDING BUTTON FUNCTION
   this.clear = function () 
   {
-    this.help = "clear()";
-
     this.currentStroke = [];
     for(var c=0;c<COLS;c++)
       for(var r=0;r<ROWS;r++)
@@ -1045,7 +1061,13 @@ function ASC()
       };
     this.pushStrokeIfNonEmpty?.(this.currentStroke) ?? {};   // commit undo buffer 
   }
-
+  this.clear.help = 
+  {
+    type: "CADScript_CMD",
+    usage: "clear()",
+    desc: "Clears the grid and pushes a single undo stroke.",
+    examples: ["clear()"]
+  };
 
   // TODO: describe what it does, and check if this can be used as generic function or it should be a private function
   // INFO: currently only used in beginFreeform(), moveFreeform(), endFreeform()
@@ -1893,10 +1915,9 @@ function ASC()
     return out.join('\n');
   }
 
+
   this.doUndo = function() 
   {
-    this.help = "doUndo()"
-
     const stroke = undoStack.pop();
     if (!stroke) return;
     for (let i = stroke.length - 1; i >= 0; i--) ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
@@ -1904,11 +1925,16 @@ function ASC()
     updateUI();
     draw("doUndo");
   }
+  this.doUndo.help = 
+  {
+    type: "CADScript_CMD",
+    usage: "doUndo()",
+    desc: "Undo last action",
+    examples: ["doUndo()"]
+  };
 
   this.doRedo = function() 
   {
-    this.help = "doRedo()"
-
     const stroke = redoStack.pop();
     if (!stroke) return;
     for (let i = 0; i < stroke.length; i++) ascii[stroke[i].r][stroke[i].c] = stroke[i].next;
@@ -1916,6 +1942,13 @@ function ASC()
     updateUI();
     draw("doRedo");
   }
+  this.doRedo.help = 
+  {
+    type: "CADScript_CMD",
+    usage: "doRedo()",
+    desc: "Redo last undone action",
+    examples: ["doRedo()"]
+  };
 
 
   this.draw = function( str ) 
@@ -2166,9 +2199,6 @@ function ASC()
       ctx.fillStyle = old;
     }
   }
-
-
-
 }
 
 var oASC = new ASC();
@@ -3106,14 +3136,16 @@ function CMD()
 //     _| |_  __   _   _ .--.   .---.`| |-'__   .--.   _ .--.   .--.                                         
 //    '-| |-'[  | | | [ `.-. | / /'`\]| | [  |/ .'`\ \[ `.-. | ( (`\]                                        
 //      | |   | \_/ |, | | | | | \__. | |, | || \__. | | | | |  `'.'.                                        
-//     [___]  '.__.'_/[___||__]'.___.'\__/[___]'.__.' [___||__][\__) )      
-
+//     [___]  '.__.'_/[___||__]'.___.'\__/[___]'.__.' [___||__][\__) ) 
+//     
+// WORKER THREAD FUNCTIONS
 
 
 
   this.createAscWorker = function() 
   {
     const src = `
+      let CONSTS = Object.create(null);
       let nextId = 1;
       const pending = new Map();
 
@@ -3121,7 +3153,18 @@ function CMD()
         postMessage({ type: "log", args });
       }
 
+      function ensureCloneableArgs(name, args) {
+        for (let i = 0; i < args.length; i++) {
+          const v = args[i];
+          if (typeof v === "function") {
+            throw new Error("Argument " + i + " to " + name + "() is a function. " +
+                            "Did you pass a misspelled constant like BOX_DOUUBLE?");
+          }
+        }
+      }
+
       function callMain(name, args) {
+        ensureCloneableArgs(name, args);
         const id = nextId++;
         log("callMain ->", name, args);
         postMessage({ type: "call", id, name, args });
@@ -3131,7 +3174,8 @@ function CMD()
       // The API visible to scripts
       const ASC = new Proxy({}, {
         get(_t, prop) {
-          return (...args) => callMain(String(prop), args);
+          if (prop in CONSTS) return CONSTS[prop];          // constants as values
+          return (...args) => callMain(String(prop), args); // methods as calls
         }
       });
 
@@ -3143,11 +3187,15 @@ function CMD()
           code = t.slice(1, -1);
         }
 
-        const scope = new Proxy({ ASC }, {
+        const scope = new Proxy({ ASC }, 
+        {
           has() { return true; },
-          get(target, prop) {
+          get(target, prop) 
+          {
             if (prop === Symbol.unscopables) return undefined;
             if (prop in target) return target[prop];
+
+            if (prop in CONSTS) return CONSTS[prop]; // allow bare BOX_DOUBLE etc.
 
             // allow some basics
             if (prop === "Math") return Math;
@@ -3156,8 +3204,14 @@ function CMD()
             if (prop === "String") return String;
 
             // Allow calling "freeform(...)" without the ASC. prefix:
-            // Any unknown identifier is treated as a callable remote function.
-            return (...args) => callMain(String(prop), args); 
+            // If user meant a constant (BOX_*) but it's not known, fail loudly (prevents DataCloneError)
+            const p = String(prop);
+            if (p.indexOf("BOX_") === 0) {
+              throw new ReferenceError("Unknown constant: " + p + " (did you mean BOX_DOUBLE?)");
+            }
+
+            // Otherwise: treat unknown identifiers as callable commands (freeform(), box(), etc.)
+            return (...args) => callMain(p, args);
           }
         });
 
@@ -3170,9 +3224,16 @@ function CMD()
       return fn(scope);
       } // <-- CLOSE runInScope()
 
-      onmessage = async (e) => {
+      onmessage = async (e) => 
+      {
         const msg = e.data;
         if (!msg) return;
+
+        if (msg.type === "init") {
+          CONSTS = msg.consts || Object.create(null);
+          log("INIT consts:", Object.keys(CONSTS));
+          return;
+        }
 
         if (msg.type === "ret") {
           const p = pending.get(msg.id);
@@ -3314,6 +3375,12 @@ function CMD()
 
 var oCMD = new CMD();
 const worker = oCMD.createAscWorker();
+const consts = {};
+for (const k in oASC) {
+  if (k.indexOf("BOX_") === 0) consts[k] = oASC[k];
+}
+worker.postMessage({ type: "init", consts });
+
 worker.addEventListener("message", oCMD.onWorkerMessage);
 
 // Better diagnostics if the Worker fails to parse/execute (often shows as "Script error")
@@ -6872,34 +6939,17 @@ function __cliHandleTerminal(line)
     const values = Object.values(oASC);
     const types = values.map(v => v === null ? "null" : Array.isArray(v) ? "array" : typeof v);
 
-    var tokenlist = [];
-    var cnt = 0;
-    for(var i=0;i<types.length;i++) 
-    {
-      if(types[i]=="function")
-      {
-        try
-        { 
-          const o = new oASC[names[i]]();
-          if(o.help === undefined) continue;
-
-          if(cnt==0) tokenlist[cnt++] = "<b>"+names[i]+"</b> " + o.help;
-          else tokenlist[cnt++] = "→ "+o.help;
-
-        } catch(e) { continue; }
-
-      }
-    }
-
     const code = script_node.arguments.raw;
-
-    if (script_node.options?.[0]?.key === "h")
+    if (script_node.options?.[0]?.key === "h")    // responding to CADScript -h
     {
-      oTERM.output(oCOM.escapeHTML("Documented commands:\n\n"+
-                                  tokenlist.join("\n")
-                                ));
+      var tokenlist = oCOM.JShelpCollector(oASC);
+      var s = "Documented commands:\n\n";
+      for(var i in tokenlist) s+= tokenlist[i].content.usage+"\n";
+      oTERM.output(oCOM.escapeHTML(s));
       return true;
     }
+
+    //oTERM.output("<br>"+line+"<br>");
 
     // TODO CATCH ERRORS!
     oCMD.runExternalScript(code)
