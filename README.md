@@ -78,7 +78,8 @@ Try online:
 - [ ] Junction resolution is buggy, for the simple reason it is complex (single lines, double lines, double thickness lines, etc...)
 - [ ] Not all UTF8 characters are monospace-friendly, leading to less perfect character selection (still buggy)
 - [ ] Embed a component editor + Import/Export Ascii component catalog
-- [ ] SPIC circuit simulation
+- [ ] SPICE circuit simulation
+- [ ] Tabbed multi-page grid with waypoints
 
 ## Status
 
