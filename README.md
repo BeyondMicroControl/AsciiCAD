@@ -3,8 +3,13 @@
 <img src="res/AsciiCAD_frontpage.png">
 </a>
 
+## Intro
 
-AsciiCAD is a browser-based ASCII / UTF-8 schematic editor designed to **embed digital and electronic schematics directly inside source code**.  Instead of external CAD files, schematics become **readable text** that lives next to the firmware, or documentation it describes.  **Caution**: AsciiCAD does not replace CAD apps for electronic schema design, but adding (e.g. Arduino) sourcecode-embedded schematics makes prototyping circuits and flashing its associated codebase faster.
+This is a browser-based app based on building blocks once raised to the level of art: ASCII. It was designed as a "digital essay" or testimony on how one can fasttrack high complexity by strategising bare-bones simplicity during, but mostly before its very conception.  Its v1.0 codebase was typed out in barely a few weeks time.
+
+Apart from it's higher purpose, thankfully, this PoC "vehicle" generated a by-product for a real use case (hurrah!): **embedding digital and electronic schematics directly inside source code**. Instead of attaching a cluster of external CAD files to source code, by means of AsciiCAD, schematics become **readable text** that live as close as possible to the software, firmware, or documentation they describe. **Caution**: AsciiCAD does not replace CAD apps for driving an entire PCB design workflow end-to-end; it is most effective for fast circuit prototyping.  Adding (e.g., Arduino) source-code-embedded schematics indeed makes prototyping circuits and flashing their associated codebase into a microprocessor  <i>harder, better, faster & stronger</i> (credits: Daft Punk) as, now, **codebase and schematic can be united as one**.
+
+Moreover, not only does AsciiCAD depict the entire schema visually; its 2D aspect has the potential to hold much of the metadata & syntactics of a wiring diagram inside the ASCII composition itself.  In other words, it may even allow logical and even electric behavior simulation (e.g. SPICE), literally by pasting "just text" into the AsciiCAD grid.
 
 Try online:  
 - <a href=https://beyondmicrocontrol.github.io/AsciiCAD/index.html>RUN AsciiCAD</a>
@@ -33,7 +38,7 @@ Try online:
   - Free text placement
 - Component Catalog
   - Integrated component catalog
-  - Parameterized catalog items
+  - Parameterised catalog items
 - Schema Highlighting & Analysis
   - Schema Highlight
   - Schema Match (semantic extraction)
@@ -73,7 +78,8 @@ Try online:
 - [ ] Junction resolution is buggy, for the simple reason it is complex (single lines, double lines, double thickness lines, etc...)
 - [ ] Not all UTF8 characters are monospace-friendly, leading to less perfect character selection (still buggy)
 - [ ] Embed a component editor + Import/Export Ascii component catalog
-- [ ] SPIC circuit simulation
+- [ ] SPICE circuit simulation
+- [ ] Tabbed multi-page grid with waypoints
 
 ## Status
 
