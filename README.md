@@ -46,6 +46,9 @@ Try online:
 - History & Persistence
   - Undo / Redo / Clear
   - Load / Save /Permalink support
+- Terminal
+  - Command-line interface
+  - Scripting (basics) 
 
 ---
 
