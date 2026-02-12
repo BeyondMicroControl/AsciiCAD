@@ -4059,18 +4059,18 @@ pin_data:
 text_data:[
 '╔══╧════╧════╧════╧══╗\n' +
 '║ PA1  PA7  PA6  VCC ║\n' +
-'║ MOSI RX   TX    ●  ║\n' +
+'║ SDA  RX   TX    ●  ║\n' +
 '║                    ║\n' +
 '║   [U# ATTinyX12]   ║\n' +
 '║                    ║\n' +
-'║ MISO UPDI SCK      ║\n' +
+'║ SCL  UPDI SCK      ║\n' +
 '║ PA2  PA0  PA3  GND ║\n' +
 '╚══╤════╤════╤════╤══╝'
 ,
 '╔════════════════════╗\n' +
 '║   [U# ATTinyX12]   ║\n' +
 '║                    ║\n' +
-'╢ PA2 MISO  MOSI PA1 ╟\n' +
+'╢ PA2 SCL    SDA PA1 ╟\n' +
 '║                    ║\n' +
 '╢ PA0 UPDI    RX PA7 ╟\n' +
 '║                    ║\n' +
@@ -4082,12 +4082,12 @@ text_data:[
 ,
 '╔══╧════╧════╧════╧═══╗\n' +
 '║ PA1  PA7  PA6  VCC  ║\n' +
-'║ MOSI RX   TX    ●   ║\n' +
+'║ SDA  RX   TX    ●   ║\n' +
 '║                     ║\n' +
 '║   [U# ATTinyX12]    ║\n' +
 '║                     ║\n' +
-'║      TX   UPDI MISO ║\n' +
-'║ VCC  PA6  PA0  PA2  ║\n' +
+'║      UPDI SCK       ║\n' +
+'║ PA2  PA0  PA3  GND  ║\n' +
 '╚══╤════╤════╤════╤═══╝'
 ,
 '╔════════════════════╗\n' +
@@ -4099,7 +4099,7 @@ text_data:[
 '║                    ║\n' +
 '╢ PA7 RX    UPDI PA0 ╟\n' +
 '║                    ║\n' +
-'╢ PA1 MOSI  MISO PA2 ╟\n' +
+'╢ PA1 SDA    SCL PA2 ╟\n' +
 '║                    ║\n' +
 '╚════════════════════╝'
 ],
