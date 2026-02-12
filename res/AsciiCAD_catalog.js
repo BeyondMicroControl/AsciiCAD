@@ -330,23 +330,14 @@ text_data:[
 '║ ● [U# ATTinyX26]  ║\n' +
 '║                   ║\n' +
 '╢ VCC           GND ╟\n' +
-'║                   ║\n' +
 '╢ PA4       SCK PA3 ╟\n' +
-'║                   ║\n' +
 '╢ PA5  RX1 MISO PA2 ╟\n' +
-'║                   ║\n' +
 '╢ PA6  TX1 MOSI PA1 ╟\n' +
-'║                   ║\n' +
 '╢ PA7      UPDI PA0 ╟\n' +
-'║                   ║\n' +
 '╢ PB5           PC3 ╟\n' +
-'║                   ║\n' +
 '╢ PB4           PC2 ╟\n' +
-'║                   ║\n' +
 '╢ PB3 RX0       PC1 ╟\n' +
-'║                   ║\n' +
 '╢ PB2 TX0       PC0 ╟\n' +
-'║                   ║\n' +
 '╢ PB1 SDA   SCL PB0 ╟\n' +
 '╚═══════════════════╝'
 ,
@@ -365,23 +356,14 @@ text_data:[
 '║   [U# ATTinyX26]  ║\n' +
 '║                   ║\n' +
 '╢ PB0 SCL   SDA PB1 ╟\n' +
-'║                   ║\n' +
 '╢ PC0       TX0 PB2 ╟\n' +
-'║                   ║\n' +
 '╢ PC1       RX0 PB3 ╟\n' +
-'║                   ║\n' +
 '╢ PC2           PB4 ╟\n' +
-'║                   ║\n' +
 '╢ PC3           PB5 ╟\n' +
-'║                   ║\n' +
 '╢ PA0 UPDI      PA7 ╟\n' +
-'║                   ║\n' +
 '╢ PA1 MOSI TX1  PA6 ╟\n' +
-'║                   ║\n' +
 '╢ PA2 MISO RX1  PA5 ╟\n' +
-'║                   ║\n' +
 '╢ PA3 SCK       PA4 ╟\n' +
-'║                   ║\n' +
 '╢ GND         ● VCC ╟\n' +
 '╚═══════════════════╝'
 ,
