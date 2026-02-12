@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>AsciiCAD Worker Test</title>
+  <title>AsciiCAD Worker Test (Proxy + defaultObj)</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 12px; }
     .row { display: flex; gap: 12px; }
@@ -13,11 +13,20 @@
   </style>
 </head>
 <body>
-  <h2>Worker URL Command Tester</h2>
+  <h2>Worker URL Command Tester (Proxy scope + defaultObj)</h2>
   <div class="small">
-    Usage: <code>?command=...</code><br>
-    Recommended: encode the whole command with <code>encodeURIComponent</code>.<br>
-    Example (encoded): <code>?command=%7BoASC.freeform(0,0,'%2B')%7D</code>
+    Params:
+    <ul>
+      <li><code>command</code> (required): JS snippet, usually wrapped in <code>{ ... }</code></li>
+      <li><code>defaultObj</code> (optional): object name to proxy for unqualified calls, e.g. <code>oASC</code> or <code>oCOM</code></li>
+    </ul>
+    Examples (encoded):
+    <ul>
+      <li><code>?defaultObj=oASC&amp;command=%7Bfreeform(0,0,'%2B')%7D</code></li>
+      <li><code>?defaultObj=oCOM&amp;command=%7BisDoubleWidthChar('%2B')%7D</code></li>
+      <li><code>?command=%7BoCOM.isDoubleWidthChar('%2B')%7D</code></li>
+      <li><code>?command=%7Bbox(0,0,3,3,BOX_DOUBLE)%7D</code></li>
+    </ul>
   </div>
 
   <h3>Command</h3>
@@ -35,9 +44,6 @@
   </div>
 
 <script>
-/***********************
- * Minimal output helpers
- ***********************/
 function $(id){ return document.getElementById(id); }
 function log(s){
   $("log").textContent += String(s) + "\n";
@@ -48,7 +54,7 @@ function out(s){
 }
 
 /***********************
- * Your URL parser (with tiny fixes)
+ * URL parser (your version + minimal fixes)
  ***********************/
 function COM(){
   this.URL = {
@@ -60,7 +66,7 @@ function COM(){
       var _i;
       for(_i in _uri1) _o[_i] = _uri1[_i];
       for(_i in _uri2) _o[_i] = _uri2[_i];
-      return _o; // fixed
+      return _o;
     },
     addURI: function (_uri2){
       var _i;
@@ -92,52 +98,66 @@ function COM(){
     }
   };
 }
-
 var oCOM = new COM();
 oCOM.URL.parse(document.location.toString());
 
-function getCommandParam(){
-  var raw = oCOM.URL.uri["command"];
+function getParam(name){
+  var raw = oCOM.URL.uri[name];
   if (!raw) return "";
-
-  // Your parser does not decode; do it here.
-  // Also translate '+' to space only if it was used as query-space (common),
-  // but we DO NOT want to break a literal '+' glyph inside quotes.
-  // So we do NOT auto-replace '+' -> ' '.
   try { raw = decodeURIComponent(raw); } catch(e) {}
-
   return raw;
 }
 
 /***********************
- * Minimal container (main thread)
+ * Two minimal containers on main thread
  ***********************/
 function ASC(){
+  this.BOX_SINGLE = { h:'-', v:'|', tl:'+', tr:'+', bl:'+', br:'+' };
+  this.BOX_DOUBLE = { h:'═', v:'║', tl:'╔', tr:'╗', bl:'╚', br:'╝' };
+
   this.clear = function(){
-    out("command called: clear()");
+    out("oASC.clear()");
   };
   this.freeform = function(c,r,ch){
-    out("command called: freeform(c=" + c + ", r=" + r + ", ch=" + ch + ")");
+    out("oASC.freeform(c=" + c + ", r=" + r + ", ch=" + ch + ")");
+  };
+  this.box = function(r,c,w,h,style){
+    var s = style ? JSON.stringify(style) : "(no style)";
+    out("oASC.box(r=" + r + ", c=" + c + ", w=" + w + ", h=" + h + ", style=" + s + ")");
+  };
+}
+function COM2(){
+  this.isDoubleWidthChar = function(ch){
+    var isDW = (String(ch).length > 0 && String(ch).charCodeAt(0) > 255);
+    out("oCOM.isDoubleWidthChar(" + ch + ") => " + (isDW ? "true" : "false"));
+    return isDW;
   };
 }
 var oASC = new ASC();
+var oCOM2 = new COM2();
 
 /***********************
- * Worker creation (no backticks, no Proxy, no async/await)
- * - worker posts "ready" at startup
- * - main posts {type:'run', code:'...', runId:'...'}
- * - worker sends ack/done/error and call requests
+ * Worker (Proxy + with(scope) + defaultObj)
  ***********************/
 function createWorker(){
   var src = ""
   + "var pending = {};\n"
   + "var nextId = 1;\n"
   + "var runCalls = [];\n"
+  + "var CONSTS_BY_OBJ = {};\n"
+  + "var OBJNAMES = [];\n"
+  + "var PROXIES = {};\n"
   + "\n"
   + "function post(type, obj){\n"
   + "  obj = obj || {};\n"
   + "  obj.type = type;\n"
   + "  postMessage(obj);\n"
+  + "}\n"
+  + "\n"
+  + "function log(){\n"
+  + "  var a = [];\n"
+  + "  for (var i=0;i<arguments.length;i++) a.push(String(arguments[i]));\n"
+  + "  post('log', { args: a });\n"
   + "}\n"
   + "\n"
   + "function callMain(objName, method, args){\n"
@@ -148,20 +168,72 @@ function createWorker(){
   + "  return p;\n"
   + "}\n"
   + "\n"
-  + "function allOk(proms){\n"
-  + "  // Resolve if all resolve; reject on first reject.\n"
-  + "  return Promise.all(proms);\n"
+  + "function makeObjProxy(objName){\n"
+  + "  return new Proxy({}, {\n"
+  + "    get: function(_t, prop){\n"
+  + "      var p = String(prop);\n"
+  + "      var consts = CONSTS_BY_OBJ[objName] || {};\n"
+  + "      if (p in consts) return consts[p];\n"
+  + "      return function(){\n"
+  + "        var a = [];\n"
+  + "        for (var i=0;i<arguments.length;i++) a.push(arguments[i]);\n"
+  + "        return callMain(objName, p, a);\n"
+  + "      };\n"
+  + "    }\n"
+  + "  });\n"
   + "}\n"
   + "\n"
-  + "// Minimal proxy object available to user code\n"
-  + "var oASC = {\n"
-  + "  clear: function(){ return callMain('oASC', 'clear', []); },\n"
-  + "  freeform: function(c,r,ch){ return callMain('oASC', 'freeform', [c,r,ch]); }\n"
-  + "};\n"
+  + "function isBoxName(p){ return (typeof p === 'string' && p.indexOf('BOX_') === 0); }\n"
+  + "\n"
+  + "function runInScope(code, defaultObj){\n"
+  + "  var locals = {};\n"
+  + "  var defName = String(defaultObj || '');\n"
+  + "  var defProxy = PROXIES[defName];\n"
+  + "  if (!defProxy) throw new Error('Unknown defaultObj: ' + defName);\n"
+  + "  var defConsts = CONSTS_BY_OBJ[defName] || {};\n"
+  + "\n"
+  + "  var scope = new Proxy({}, {\n"
+  + "    has: function(){ return true; },\n"
+  + "    get: function(_t, prop){\n"
+  + "      if (prop === Symbol.unscopables) return undefined;\n"
+  + "      var p = String(prop);\n"
+  + "      if (p in locals) return locals[p];\n"
+  + "\n"
+  + "      for (var i=0;i<OBJNAMES.length;i++){\n"
+  + "        if (p === OBJNAMES[i]) return PROXIES[p];\n"
+  + "      }\n"
+  + "\n"
+  + "      if (p in defConsts) return defConsts[p];\n"
+  + "      if (isBoxName(p)) throw new ReferenceError('Unknown constant: ' + p);\n"
+  + "\n"
+  + "      if (p === 'Math') return Math;\n"
+  + "      if (p === 'JSON') return JSON;\n"
+  + "      if (p === 'Number') return Number;\n"
+  + "      if (p === 'String') return String;\n"
+  + "\n"
+  + "      return defProxy[p];\n"
+  + "    },\n"
+  + "    set: function(_t, prop, val){ locals[String(prop)] = val; return true; }\n"
+  + "  });\n"
+  + "\n"
+  + "  var fn = new Function('scope', 'with(scope){\\n' + String(code) + '\\n}');\n"
+  + "  return fn(scope);\n"
+  + "}\n"
   + "\n"
   + "onmessage = function(e){\n"
   + "  var msg = e.data;\n"
   + "  if(!msg) return;\n"
+  + "\n"
+  + "  if(msg.type === 'init'){\n"
+  + "    OBJNAMES = msg.objs || [];\n"
+  + "    CONSTS_BY_OBJ = msg.constsByObj || {};\n"
+  + "    PROXIES = {};\n"
+  + "    for (var i=0;i<OBJNAMES.length;i++){\n"
+  + "      PROXIES[OBJNAMES[i]] = makeObjProxy(OBJNAMES[i]);\n"
+  + "    }\n"
+  + "    post('ready', { ok: true, objs: OBJNAMES });\n"
+  + "    return;\n"
+  + "  }\n"
   + "\n"
   + "  if(msg.type === 'ret'){\n"
   + "    var p = pending[msg.id];\n"
@@ -174,17 +246,14 @@ function createWorker(){
   + "\n"
   + "  if(msg.type === 'run'){\n"
   + "    runCalls = [];\n"
-  + "    post('ack', { runId: msg.runId });\n"
+  + "    post('ack', { runId: msg.runId, defaultObj: msg.defaultObj });\n"
   + "    try {\n"
-  + "      // Compile and run user code as function body; user must reference oASC.\n"
-  + "      var fn = new Function('oASC', String(msg.code));\n"
-  + "      fn(oASC);\n"
+  + "      runInScope(msg.code, msg.defaultObj);\n"
   + "    } catch(err) {\n"
   + "      post('error', { runId: msg.runId, error: { name: err.name, message: err.message, stack: err.stack } });\n"
   + "      return;\n"
   + "    }\n"
-  + "\n"
-  + "    allOk(runCalls).then(function(){\n"
+  + "    Promise.all(runCalls).then(function(){\n"
   + "      post('done', { runId: msg.runId });\n"
   + "    }).catch(function(err){\n"
   + "      post('error', { runId: msg.runId, error: { name: err.name, message: err.message, stack: err.stack } });\n"
@@ -192,8 +261,7 @@ function createWorker(){
   + "  }\n"
   + "};\n"
   + "\n"
-  + "post('ready', { ok: true });\n"
-  + "//# sourceURL=workertest_worker.js\n";
+  + "//# sourceURL=workertest_worker_proxy_defaultObj.js\n";
 
   var blob = new Blob([src], { type: "application/javascript" });
   var url = URL.createObjectURL(blob);
@@ -212,26 +280,49 @@ function createWorker(){
 var worker = createWorker();
 
 /***********************
- * Main-side RPC: handle calls from worker
+ * Main-side RPC + lifecycle logging
  ***********************/
 worker.addEventListener("message", function(e){
   var msg = e.data;
   if(!msg) return;
 
+  if(msg.type === "log"){
+    log("[worker] " + (msg.args || []).join(" "));
+    return;
+  }
+
   if(msg.type === "ready"){
-    log("[main] worker ready");
+    log("[main] worker ready objs=" + JSON.stringify(msg.objs || []));
+    return;
+  }
+
+  if(msg.type === "ack"){
+    log("[main] ack: " + msg.runId + " defaultObj=" + msg.defaultObj);
+    return;
+  }
+
+  if(msg.type === "done"){
+    log("[main] done: " + msg.runId);
+    return;
+  }
+
+  if(msg.type === "error"){
+    log("[main] error: " + msg.runId + " -> " + (msg.error && msg.error.message ? msg.error.message : "unknown"));
     return;
   }
 
   if(msg.type === "call"){
     log("[main] call from worker: " + msg.obj + "." + msg.name + "(" + JSON.stringify(msg.args) + ")");
     try {
-      if(msg.obj !== "oASC") throw new Error("Unknown object: " + msg.obj);
+      var target = null;
+      if (msg.obj === "oASC") target = oASC;
+      if (msg.obj === "oCOM") target = oCOM2;
+      if (!target) throw new Error("Unknown object: " + msg.obj);
 
-      var fn = oASC[msg.name];
-      if(typeof fn !== "function") throw new Error("No such method: oASC." + msg.name);
+      var fn = target[msg.name];
+      if(typeof fn !== "function") throw new Error("No such method: " + msg.obj + "." + msg.name);
 
-      var result = fn.apply(oASC, msg.args || []);
+      var result = fn.apply(target, msg.args || []);
       worker.postMessage({ type: "ret", id: msg.id, ok: true, result: result });
     } catch(err) {
       worker.postMessage({ type: "ret", id: msg.id, ok: false, error: String(err && err.message ? err.message : err) });
@@ -241,15 +332,17 @@ worker.addEventListener("message", function(e){
 });
 
 /***********************
- * runExternalScript with ACK + timeout
+ * runExternalScript(command, { defaultObj: "oASC" })
  ***********************/
-function runExternalScript(code){
+function runExternalScript(code, opts){
   code = String(code || "");
+  opts = opts || {};
+  var defaultObj = String(opts.defaultObj || "oASC");
   var runId = Math.random().toString(16).slice(2);
 
   return new Promise(function(resolve, reject){
     var acked = false;
-    var done = false;
+    var settled = false;
 
     function cleanup(){
       worker.removeEventListener("message", onMsg);
@@ -258,15 +351,15 @@ function runExternalScript(code){
     }
 
     function fail(err){
-      if(done) return;
-      done = true;
+      if(settled) return;
+      settled = true;
       cleanup();
       reject(err);
     }
 
     function succeed(){
-      if(done) return;
-      done = true;
+      if(settled) return;
+      settled = true;
       cleanup();
       resolve();
     }
@@ -275,21 +368,9 @@ function runExternalScript(code){
       var msg = e.data;
       if(!msg || msg.runId !== runId) return;
 
-      if(msg.type === "ack"){
-        acked = true;
-        log("[main] ack: " + runId);
-        return;
-      }
-      if(msg.type === "done"){
-        log("[main] done: " + runId);
-        succeed();
-        return;
-      }
-      if(msg.type === "error"){
-        log("[main] error: " + runId + " -> " + (msg.error && msg.error.message ? msg.error.message : "unknown"));
-        fail(msg.error || { name:"Error", message:"Worker error" });
-        return;
-      }
+      if(msg.type === "ack"){ acked = true; return; }
+      if(msg.type === "done"){ succeed(); return; }
+      if(msg.type === "error"){ fail(msg.error || { name:"Error", message:"Worker error" }); return; }
     }
 
     worker.addEventListener("message", onMsg);
@@ -303,20 +384,35 @@ function runExternalScript(code){
     }, 5000);
 
     log("[main] sending script to worker: " + code);
-    worker.postMessage({ type:"run", runId: runId, code: code });
+    worker.postMessage({ type:"run", runId: runId, code: code, defaultObj: defaultObj });
   });
 }
 
 /***********************
- * Execute from URL
+ * Init worker with object list + const snapshots
  ***********************/
-var command = getCommandParam();
-$("cmd").textContent = command ? command : "(no command param)";
+var constsByObj = { oASC: {}, oCOM: {} };
+for (var k in oASC) {
+  if (k && k.indexOf("BOX_") === 0) constsByObj.oASC[k] = oASC[k];
+}
+worker.postMessage({ type: "init", objs: ["oASC","oCOM"], constsByObj: constsByObj });
+
+/***********************
+ * Execute URL command
+ ***********************/
+var command = getParam("command");
+var defaultObjParam = getParam("defaultObj");
+if (!defaultObjParam) defaultObjParam = "oASC";
+
+$("cmd").textContent = (command ? command : "(no command param)")
+  + "\n\n(defaultObj=" + defaultObjParam + ")";
 
 if(!command){
-  out("No command provided.\nTry:\n?command=%7BoASC.freeform(0,0,'%2B')%7D");
+  out("No command provided. Try:");
+  out("?defaultObj=oASC&command=%7Bfreeform(0,0,'%2B')%7D");
+  out("?defaultObj=oCOM&command=%7BisDoubleWidthChar('%2B')%7D");
 } else {
-  runExternalScript(command)
+  runExternalScript(command, { defaultObj: defaultObjParam })
     .then(function(){ out("[SUCCESS] worker ran."); })
     .catch(function(err){ out("[ERROR] " + JSON.stringify(err)); });
 }
