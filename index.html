@@ -1504,6 +1504,7 @@ function __cliHandleTerminal(line)
       return true;
     }
 
+    // LAUNCH CMD WORKER
     oCMD.runExternalScript(code, { "defaultObj": "oASC" })
       .then(() => { oASC.draw(); })
       .catch((err) => { oTERM.output("[ERROR] worker thread failed:<br><small>"+JSON.stringify(err)+"</small>"); })
