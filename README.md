@@ -80,6 +80,7 @@ Try online:
 - [ ] Embed a component editor + Import/Export Ascii component catalog
 - [ ] SPICE circuit simulation
 - [ ] Tabbed multi-page grid with waypoints
+- [ ] Network analyser (follow the lines)
 - [ ] MCP service to generate AsciiCAD schema within IDE (VSCode, Arduino,..)
 
 ## Status
