@@ -163,20 +163,6 @@ AsciiCAD is designed so the global paste-to-grid behavior does **not** break nor
 - Switch from the UI sidebar to the **CLI sidebar** (toggle control in the sidebar header).
 - The CLI behaves like a terminal: type a line, press **Enter** to run it.
 
-### Modes overview
-
-AsciiCAD’s CLI has two explicit languages/modes:
-
-1. **Terminal mode** (prompt: `AsciiCAD>`)
-   - Linux-like commands (words + options).
-   - Intended for terminal management and switching into scripting.
-
-2. **CADScript mode** (prompt: `CADScript>`)
-   - JavaScript-like function calls (e.g. `freeform(10,5,'+')`).
-   - Intended for scripted grid edits.
-
-This separation avoids ambiguity and keeps errors readable.
-
 ---
 
 ### Terminal mode reference
@@ -193,52 +179,24 @@ Prompt: `AsciiCAD>`
 | `CADScript {<expression>}` | Run a CADScript expression |
 | `exit` | Exit CLI and return to UI sidebar |
 
-Notes:
-- `exec("...")` runs CADScript statements; it is useful for quick one-liners or pasting a short script without switching modes.
-
----
-
-### CADScript reference
-
-Prompt: `CADScript>`
-
-| Function | Meaning |
-|---|---|
-| `help()` | List CADScript functions only |
-| `clear()` | Clear the entire grid |
-| `undo()` | Undo last action |
-| `redo()` | Redo last undone action |
-| `freeform(col,row,char)` | Place one character at the given position |
-| `exec("terminal command ...")` | Run exactly one terminal command (including options) from CADScript (e.g. `exec("clear")`) |
-| `exit()` | Leave CADScript mode and return to Terminal mode |
-
-CADScript parsing rules:
-- Multiple statements can be separated by `;` (semicolon).
-- Quotes are respected; “smart quotes” are normalized to plain ASCII quotes.
-
 ---
 
 ### Examples
 
-#### Switch modes
-```text
-AsciiCAD> script
-CADScript> help()
-```
 
 #### Place a few characters (CADScript)
 ```text
-CADScript> freeform(0,2,'+'); freeform(1,2,'+'); freeform(1,3,'+');
+AsciiCAD> CADScript {freeform(0,2,'+'); freeform(1,2,'+'); freeform(1,3,'+')};
 ```
 
 #### Run CADScript while staying in Terminal mode
 ```text
-AsciiCAD> exec("freeform(10,5,'+'); freeform(11,5,'+');")
+AsciiCAD> CADScript {oCMD
 ```
 
 #### Run a terminal command from CADScript
 ```text
-CADScript> exec("clear")
+AsciiCAD> CADScript {oCMD.line("clear")}
 ```
 
 #### Exit back to UI
@@ -276,10 +234,6 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 ### I can’t copy/select text in the CLI
 - Copy/select should work normally inside the CLI sidebar.
 - If you notice selection collapsing, ensure you’re interacting in the CLI and not triggering canvas shortcuts.
-
-### Undo/Redo doesn’t affect the terminal
-- Undo/redo affect grid operations.
-- Terminal history is separate (use `history -c` to clear terminal history).
 
 ### My diagram looks misaligned in another editor
 - Use a monospace font in your editor.
