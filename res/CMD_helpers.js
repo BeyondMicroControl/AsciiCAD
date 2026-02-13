@@ -1078,7 +1078,7 @@ function CMD()
 
 
   // TODO : put this inline ?   first make sure CMD commands in the shape of serialised data
-this.CMDHelp()
+this.CMDHelp = function()
 {
   oTERM.output(
     oCOM.escapeHTML("Terminal commands:\n" +
