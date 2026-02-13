@@ -1077,6 +1077,19 @@ function CMD()
   }
 
 
+  // TODO : put this inline ?   first make sure CMD commands in the shape of serialised data
+this.CMDHelp()
+{
+  oTERM.output(
+    oCOM.escapeHTML("Terminal commands:\n" +
+      "  <cmd> -h - detailed help\n" +
+      "  CADScript   - run CADScript\n" +
+      "  clear       - clear terminal screen\n" +
+      "  exit        - exit CLI\n"+
+      "  help        - terminal help\n" +
+      "  history     - show command history\n")
+  );
+}
 
 
 this.run = function(line)
@@ -1092,7 +1105,7 @@ this.run = function(line)
   const cmd = m[1].toLowerCase();
   const rest = (m[2] || "").trim();
 
-  if (cmd === "help") { __cliTerminalHelp(); return true; }
+  if (cmd === "help") { CMDHelp(); return true; }
   if (cmd === "clear")
   {
     const usage = "Usage:\n" +
