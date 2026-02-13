@@ -9,7 +9,7 @@ This is a browser-based app based on building blocks once raised to the level of
 
 Apart from demostrating it's higher purpose, the product of this, covers a real need: **embedding digital and electronic schematics directly inside source code**. Whereas microcontroller projects traditionally require different CAD files revolving around ones source code, AsciiCAD schematics made of **readable text** can live, evolve ans remain closest to its codebase, **it enables uniting codebase and schematic as one**.  **Caution**: It does not replace CAD apps for driving an entire PCB design workflow end-to-end; but it can definitely speed up circuit prototyping.
 
-Moreover, not only does AsciiCAD depict the entire schema visually; its 2D aspect has the potential to hold much of the metadata & syntactics of a wiring diagram inside the ASCII composition itself.  In other words, it may even allow logical and even electric behavior simulation (e.g. SPICE), literally by pasting "just text" into the AsciiCAD grid.
+Moreover, not only does AsciiCAD depict the entire schema visually; its 2D arrangement can retain most of the essential metadata & syntactics of a wiring diagram inside the ASCII composition itself.  In other words, it may even allow logical and even electric behavior simulation (e.g. SPICE), literally by pasting "just text" into the grid.
 
 Try online:  
 - <a href=https://beyondmicrocontrol.github.io/AsciiCAD/index.html>RUN AsciiCAD</a>
