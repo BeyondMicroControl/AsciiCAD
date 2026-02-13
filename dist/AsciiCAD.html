@@ -3610,6 +3610,19 @@ function CMD()
   }
 
 
+  // TODO : put this inline ?   first make sure CMD commands in the shape of serialised data
+this.CMDHelp()
+{
+  oTERM.output(
+    oCOM.escapeHTML("Terminal commands:\n" +
+      "  <cmd> -h - detailed help\n" +
+      "  CADScript   - run CADScript\n" +
+      "  clear       - clear terminal screen\n" +
+      "  exit        - exit CLI\n"+
+      "  help        - terminal help\n" +
+      "  history     - show command history\n")
+  );
+}
 
 
 this.run = function(line)
@@ -3625,7 +3638,7 @@ this.run = function(line)
   const cmd = m[1].toLowerCase();
   const rest = (m[2] || "").trim();
 
-  if (cmd === "help") { __cliTerminalHelp(); return true; }
+  if (cmd === "help") { CMDHelp(); return true; }
   if (cmd === "clear")
   {
     const usage = "Usage:\n" +
@@ -5857,7 +5870,7 @@ const PICKER_TABS =
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.10</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.11</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -6962,21 +6975,6 @@ resizeHandleCLI.addEventListener('mousedown', (e) => { startResize(e, cliSidebar
 document.addEventListener('mousemove', doResize);
 document.addEventListener('mouseup', stopResize);
 
-
-
-
-function __cliTerminalHelp()
-{
-  oTERM.output(
-    oCOM.escapeHTML("Terminal commands:\n" +
-      "  <cmd> -h - detailed help\n" +
-      "  CADScript   - run CADScript\n" +
-      "  clear       - clear terminal screen\n" +
-      "  exit        - exit CLI\n"+
-      "  help        - terminal help\n" +
-      "  history     - show command history\n")
-  );
-}
 
 
 
