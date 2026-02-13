@@ -96,10 +96,10 @@ Place individual characters on the grid.
 #### Line routing
 Draw orthogonal wires with automatic merging at intersections.
 - Usually available in **single-line** and **double-line** styles.
-- As you drag, the tool chooses corners, T-junctions, and crossings automatically.
+- As one drags, the tool chooses corners, T-junctions, and crossings automatically.
 
 #### Box drawing
-Draw rectangular frames, with signle, thick or double lines and corresponding corner characters.  In contrast to line routing Box frames are simply overlay their outline edges with the existing content, they do not try to merge or resolve their outline with the environment.  The inner side of the box is also left untouched, this tool does not fill boxes with blanks.  Another tool was purposed for blanking a rectangular area.   
+Draw rectangular frames, with signle, thick or double lines and corresponding corner characters.  In contrast to line routing Box frames are overwriting the outline edges over the existing content, it intentionally does not try to merge or resolve their outline with the environment.  The inner side of the box is also left untouched, this tool does not fill boxes with blanks.  Another tool was purposed for blanking a rectangular area.   
 - Useful for: module boundaries, IC outlines, labeled zones.
 
 #### Blank drawing
