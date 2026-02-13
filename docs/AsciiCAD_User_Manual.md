@@ -103,7 +103,7 @@ Draw rectangular frames, with signle, thick or double lines and corresponding co
 - Useful for: module boundaries, IC outlines, labeled zones.
 
 #### Blank drawing
-
+Fills any selected rectangular region with only blanks, including the edges of that region.
 
 #### Text placement
 Add labels and annotations directly on the grid.
