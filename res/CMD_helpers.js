@@ -1105,7 +1105,7 @@ this.run = function(line)
   const cmd = m[1].toLowerCase();
   const rest = (m[2] || "").trim();
 
-  if (cmd === "help") { CMDHelp(); return true; }
+  if (cmd === "help") { this.CMDHelp(); return true; }
   if (cmd === "clear")
   {
     const usage = "Usage:\n" +
