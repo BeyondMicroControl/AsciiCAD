@@ -35,7 +35,7 @@ Try online:
   - Freeform drawing
   - Orthogonal line routing
   - Box drawing modes
-  - Free text placement
+  - Free text
 - Component Catalog
   - Integrated component catalog
   - Parameterised catalog items
