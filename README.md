@@ -5,7 +5,7 @@
 
 ## Intro
 
-This is a browser-based app based on building blocks once raised to the level of art: ASCII. It was designed as a "digital essay" or testimony on how one can fasttrack complexity by strategising bare-bones simplicity.
+This is a browser-based app based on building blocks once raised to the level of art: ASCII. It was designed as a "digital essay" on fasttracking complexity by strategising bare-bones simplicity at its conception.  As a matter of fact, v1.0 was put together in a few weeks time.
 
 Apart from it's higher purpose, its product covers a real need: **embedding digital and electronic schematics directly inside source code**. Instead of attaching a cluster of external CAD files to source code, by means of AsciiCAD, schematics become **readable text** that live as close as possible to the software, firmware, or documentation they describe. **Caution**: AsciiCAD does not replace CAD apps for driving an entire PCB design workflow end-to-end; it is most effective for fast circuit prototyping.  Adding (e.g., Arduino) source-code-embedded schematics indeed makes prototyping circuits and flashing their associated codebase into a microprocessor  <i>harder, better, faster & stronger</i> (credits: Daft Punk) as, now, **codebase and schematic can be united as one**.
 
