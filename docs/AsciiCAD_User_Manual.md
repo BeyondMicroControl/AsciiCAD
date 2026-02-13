@@ -55,10 +55,14 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
 - **Load** from a plain text file.
 - Optionally use **permalink / URL parameter loading** when available to share a diagram quickly.
 
-### 5) Try the CLI (optional, but powerful)
+### 5) Try the Terminal (optional, but powerful)
+Terminal commands aim two purposes: giving minimal CLI convenience (like clearing the CLI window), secondly, enabling users to access internal drawing functions of AsciiCAD and run 
 - Switch to the CLI sidebar.
-- Type `help` to see terminal commands.
-- Type `script` to enter CADScript mode for function-call style commands like `freeform(10,5,'+')`.
+- Type `help` to see all the documented terminal commands in alphabetical order.  Undocumented commands are usually untested or purposed for UI interaction only.  Type any terminal command 
+- Type `clear` to clear the terminal screen.
+- Use arrow up and down to navigate through the command history.
+- Type `history` to list the command history. Option -c clears the history.
+- Type `CADScript {box(0,0,3,3,BOX_DOUBLE)}` to draw a small double-lined box in the grid
 
 ---
 
@@ -95,8 +99,11 @@ Draw orthogonal wires with automatic merging at intersections.
 - As you drag, the tool chooses corners, T-junctions, and crossings automatically.
 
 #### Box drawing
-Draw rectangular frames with correct corners/sides.
+Draw rectangular frames, with signle, thick or double lines and corresponding corner characters.  In contrast to line routing Box frames are simply overlay their outline edges with the existing content, they do not try to merge or resolve their outline with the environment.  The inner side of the box is also left untouched, this tool does not fill boxes with blanks.  Another tool was purposed for blanking a rectangular area.   
 - Useful for: module boundaries, IC outlines, labeled zones.
+
+#### Blank drawing
+
 
 #### Text placement
 Add labels and annotations directly on the grid.
