@@ -754,7 +754,36 @@ text_data:[
 image_data:
 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRFAAAAAgMNESlTWmNv3eLlvsLHOERYZ3iMNEhm19jYkDYxiQAAAAp0Uk5TAP/+/x/6/DmTiZs+NYQAAAHnSURBVHicjdU9b9swEAZgDgSUlTLg3cdW9UxCBLoJiD1otUDPldQma5oWQbIlaAChc50C/bflUUpj8UvlJEAP717cQTYh/3nuh5s0uIWhWgAwLIG0QADP43Ow1y3vsEZWEVqHASCAp4HUO7ILgEsYD/u5I/XJJ5k+voqhPlX05IKLL1ZgG3ZN6J+KOkEu8lIfoDzYGs+nirhJM2aE0AeOIh9o7YbIGFuX+si1sDUe/JDMirIBeTYxB7C11qLUCLbeai1gK61L8R6Tbr+7YGMF1/pqnIhbYwJGNM04MKcGnQDr9QRgOwctc8UckH/ADAwFjwIUJiYXUTAJFzy9ATt0L8M5QCHgQwLYoSeBGdgxDVivFsDKBV898G4O7pbAN7UEZLsE5mKlPntAbc6B+DQH99KIGXicg+yHVOeCu8D0EGspkkC2/C2oB+jvvlBmA5sYqKX59FneqxjYG2Bur1+D9l6LRiEwogsD00OBrT0G9YFpcjXelRsLvA+c/hrv5jZGAJgYo7BBQwBjYIUWFxsEdI8iN2uTbRBMMQoUsqsCYIwBPa4egsDGKLo+DuiLFFwVcYDCvCykKsLvbQwF0CuIAVI3En9g4gCnATzewsboIAUwRgcpYGKojlcpsZfyYxLQF+39rcXOX9eIntwzgoWWAAAAAElFTkSuQmCC'
 }
-,    {
+,
+
+
+{
+name: 'OLED + Encoder',
+type: 'Display',
+description: '',
+MFR: 'OLED + Encoder',
+pin_data: null,
+text_data:[
+'╔═══╧══╧═══╧═══╧═══╧═══╧═══╧═══╧═══╧═══════════╗\n' +
+'║ COM SDA SCL PSH TRA TRB BAK GND VCC          ║\n' +
+'║┌───────────────────────────────┐     ▢▢      ║\n' +
+'║│ [SSD1306 + R + B]  64x32 OLED │             ║\n' +
+'║│                               │   / ⎺⎺ \    ║\n' +
+'║│                               │ ⎛        ⎞  ║\n' +
+'║│                               │|          | ║\n' +
+'║│                               │ ⎝        ⎠  ║\n' +
+'║│                               │   \ __ /    ║\n' +
+'║│                               │             ║\n' +
+'║└───────────────────────────────┘     ▢▢      ║\n' +
+'╚══════════════════════════════════════════════╝\n'
+],
+image_data:
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAASdAAAEnQB3mYfeAAAAC1QTFRFAAAACwcCDkx5ME96FQ8vQWuNMmeMVHGDsLq+IDhtbYV9t8XMr6aeusv2zdr8ivpZZAAAAA90Uk5TAP/////////8///A/6X/PHnZEgAAAfNJREFUeJztlLFLHEEUxqcRBbli0SJFqjcQdbHJvCJRLkUgRUgnsm4gIETjpj3cYsJViZdiuCwWmmZL3eKW4Qorm5BCRdniChsrsRT/Dd/M7t2Ct5tWCH6wO4+d33wzs2/eMPak/0k3Vtd/rIom11/6bvq9oXw/DKWAQqGU4F5esyN25Xm76x9vb9W67NztDvuhfSbhDZsmYMIMtg6r2yGOAOQILdZgLeNgAd+XUoYjIFMdmGdTzC/XAKUQutEg6vBfF8wrtYq5RAF0zwglYMV5IEMATzCBOqBcKYhaB+C22agC9q1DqpQhWBB8HgfoF6QHjpPO9SqBGF3V/EnBbKZEtYOrsrcmel8HAGobzSTAttbGp1gC/JGHO8C+VgACeAEc1uwC+EkeIk1RsYvSIal1KIDTOgATx3lJuzit3oXg+NqZIeC5rnFwI33yjKJUbVcDcwPU9Ks+9NUGAV/ePVBsson9ZDnJszkG5OluZofwT4BzsAemFkB78kQVQD0ouEadnyhvLQiCzaU4jn/Ts7cQ75nhIuoPsi68APaJHRMA3BCU52HlCkxVhFx1qTYnA2OBBigLj4pXa1ik0suBrWk0xGCnLD4ZLocGuGQTBLSK26RRAu1eU7vfp1jj5tzzvo3um0l8Ja10r01vpR7n2nvSI+keGesWBctHqZ8AAAAASUVORK5CYII='
+}
+,
+
+
+{
 name: 'TFT COM-28380',
 type: 'Display',
 description: 'TFT Touch Screen 320*240 with ILI9341 and XPT2046',
