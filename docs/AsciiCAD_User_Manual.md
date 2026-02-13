@@ -183,14 +183,14 @@ This separation avoids ambiguity and keeps errors readable.
 
 Prompt: `AsciiCAD>`
 
-| Command | Meaning |
+| Command/option | Meaning |
 |---|---|
 | `help` | List terminal commands only |
 | `clear` | Clear terminal screen |
 | `history` | Show command history |
 | `history -c` | Clear command history |
-| `script` | Enter CADScript mode (prompt becomes `CADScript>`) |
-| `exec("...")` | Execute one or more CADScript statements without switching mode |
+| `CADScript -h` | List all documented CADScript functions |
+| `CADScript {<expression>}` | Run a CADScript expression |
 | `exit` | Exit CLI and return to UI sidebar |
 
 Notes:
@@ -198,7 +198,7 @@ Notes:
 
 ---
 
-### CADScript mode reference
+### CADScript reference
 
 Prompt: `CADScript>`
 
