@@ -25,7 +25,7 @@ Try online:
 - Hardware and Software become 'one': **sourcecode**
 - It's text-based schematics allow semantic extraction (beyond 'just a drawing')
 - Ideal for MCU, CPU, and digital designs
-- No binaries, no lock-in
+- One portable file, no binaries, no lock-in
 
 ---
 
