@@ -998,6 +998,13 @@ Introduce an explicit **Debug vs Production** workflow split:
 - The `ExcludeFromDistro` token provides a lightweight, maintainable way to keep dist files lean without complex build tooling.
 
 ---
+
+### Draft Change Notes
+- [ ] 1. Decommission old CADScript parser
+- [ ] 2. Mode 'TERMINAL COMMAND HANDLER' from index.html --> CMD_helpers.js (prep for nr 3)
+- [ ] 3. Allow calling terminal commands in CADScript e.g. CADScript {oCMD.run("clear")}
+
+
 ---
 
 ## Summary of Key Design Principles
