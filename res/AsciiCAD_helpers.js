@@ -494,7 +494,6 @@ function ASC()
   }
   this.box.help = "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>BOX_SINGLE|BOX_THICK|BOX_DOUBLE</i>)";
 
-// TODO: MERGE WITH CORRESPONDING BUTTON FUNCTION
   this.clear = function () 
   {
     this.currentStroke = [];
@@ -1969,3 +1968,6 @@ function TERMINAL(props)
 
   if (welcome) this.output(welcome);
 };
+
+
+var oTERM;

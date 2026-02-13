@@ -239,6 +239,13 @@ function COM()
     .replace(/&amp;/g,  "&");
   }
 
+  this.normaliseQuotes = function(str) 
+  {
+    return String(str || "")
+      .replace(/[‘’‚‛]/g, "'")
+      .replace(/[“”„‟]/g, '"');
+  }
+
   this.escapeREGEXP = function(str)
   {
     return str.replace(/([\.\^\$\*\+\-\?\(\)\[\]\{\}\\\|])/g, "\\$1")

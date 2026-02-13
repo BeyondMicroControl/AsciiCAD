@@ -1029,6 +1029,16 @@ function switchToSidebar(newSidebar)
     titleCLI.innerHTML = "<big>"+sbTitle.querySelector('big').textContent+" CLI</big><br><small>Type commands, press Enter</small>";
     sidebar.classList.add('hidden');
     cliSidebar.classList.remove('hidden');
+
+    // WHEN WORKER IS NOT RUNNING -> LAUNCH!
+    oCMD.runExternalScript("")
+      .then(() => {  })
+      .catch((err) => {
+        document.getElementById("vanilla-terminal").innerHTML = "";
+        //initTerminal();
+        oCMD.launchTerminal();
+      })
+
   }
   else 
   {
@@ -1127,308 +1137,6 @@ document.addEventListener('mouseup', stopResize);
 
 
 
-//     ______                   _             ______  _____     _____  
-//    |_   _ \                 (_)          .' ___  ||_   _|   |_   _| 
-//      | |_) |  .---.  .--./) __   _ .--. / .'   \_|  | |       | |   
-//      |  __'. / /__\\/ /'`\;[  | [ `.-. || |         | |   _   | |   
-//     _| |__) || \__.,\ \._// | |  | | | |\ `.___.'\ _| |__/ | _| |_  
-//    |_______/  '.__.'.',__` [___][___||__]`.____ .'|________||_____| 
-//                    ( ( __))                                         
-
-
-
-// VANILLA-TERMINAL RUNTIME (AsciiCAD CLI)
-// Two modes:
-//  1) Terminal mode (Linux-like): help, clear, history [-c], script, exec("..."), exit
-//  2) Script mode (CADScript): help(), clear(), undo(), redo(), freeform(col,row,char), exit()
-
-
-// object instantiation/initialisation
-const oTERM = new TERMINAL({
-  // We handle all input via oTERM.onInput; commands are kept for discoverability.
-  commands: {
-    help: () => {},
-    clear: () => {},
-    history: () => {},
-    script: () => {},
-    exec: () => {},
-    exit: () => {},
-
-  },
-  welcome: sbTitle.querySelector('big').textContent + " terminal - type <u>help</u>",
-  prompt: "AsciiCAD",
-  separator: '>',
-});
-
-let __cliMode = "terminal"; // "terminal" | "script"
-// --- helpers ---------------------------------------------------------------
-
-function __cliNormalizeQuotes(s) 
-{
-  return String(s || "")
-    .replace(/[‘’‚‛]/g, "'")
-    .replace(/[“”„‟]/g, '"');
-}
-
-function __cliSplitDelimited(src, delimiter, { keepEmpty = false } = {})
-{
-  const out = [];
-  let cur = "";
-  let q = null;
-  let esc = false;
-
-  for (let i = 0; i < src.length; i++)
-  {
-    const ch = src[i];
-
-    if (esc) { cur += ch; esc = false; continue; }
-    if (ch === "\\") { cur += ch; esc = true; continue; }
-    if (q) { cur += ch; if (ch === q) q = null; continue; }
-    if (ch === "'" || ch === '"') { q = ch; cur += ch; continue; }
-
-    if (ch === delimiter)
-    {
-      const t = cur.trim();
-      if (keepEmpty || t !== "") out.push(t);
-      cur = ""; continue;
-    }
-
-    cur += ch;
-  }
-
-  const t = cur.trim();
-  if (keepEmpty || t !== "") out.push(t);
-  return out;
-}
-
-function __cliParseStringLiteral(tok) {
-  tok = tok.trim();
-  if (tok.length < 2) return null;
-
-  const q = tok[0];
-  if ((q !== "'" && q !== '"') || tok[tok.length - 1] !== q) return null;
-
-  let inner = tok.slice(1, -1);
-
-  // Minimal unescape support
-  inner = inner.replaceAll("\\n", "\n").replaceAll("\\r", "\r").replaceAll("\\t", "\t");
-  inner = inner.replaceAll("\\\"", '"').replaceAll("\\'", "'").replaceAll("\\\\", "\\");
-  return inner;
-}
-
-function __cliParseExecArg(rest, usage) 
-{
-  // rest may be: ("...") or ('...') with optional whitespace
-  let s = rest.trim();
-  // Allow a trailing semicolon: exec("...");
-  if (s.endsWith(";")) s = s.slice(0, -1).trim();
-  if (!s) return { ok: false, err: usage };
-
-  if (s.startsWith("\"")) {
-    if (!s.endsWith("\"")) return { ok: false, err: usage };
-    //s = s.slice(1, -1).trim();
-  }
-
-  const lit = __cliParseStringLiteral(s);
-  if (lit === null) return { ok: false, err: usage };
-
-  return { ok: true, value: lit };
-}
-
-function __cliParseCADStatement(stmt) {
-  const m = stmt.match(/^([A-Za-z_]\w*)\s*\((.*)\)\s*$/);
-  if (!m) return { ok: false, err: "Invalid CADScript syntax: " + stmt };
-
-  const name = m[1];
-  const argStr = (m[2] || "").trim();
-  const rawArgs = argStr ? __cliSplitDelimited(argStr, ",", { keepEmpty: false }) : [];
-
-  const args = [];
-  for (const a of rawArgs) {
-    if (a === "") continue;
-
-    const lit = __cliParseStringLiteral(a);
-    if (lit !== null) {
-      args.push(lit);
-      continue;
-    }
-
-    const n = Number(a);
-    if (!Number.isNaN(n) && /^[+-]?(?:\d+\.?\d*|\d*\.?\d+)$/.test(a)) {
-      args.push(n);
-      continue;
-    }
-
-    // Bare words are not allowed in CADScript
-    return { ok: false, err: "Invalid argument: " + a };
-  }
-
-  return { ok: true, value: { name, args } };
-}
-
-function __cliCompileCADScript(src) 
-{
-  const s = __cliNormalizeQuotes(src);
-  const stmts = __cliSplitDelimited(s, ";", { keepEmpty: false });
-  if (!stmts.length) return { ok: true, value: [] };
-
-  const ops = [];
-  for (const st of stmts) {
-    const parsed = __cliParseCADStatement(st);
-    if (!parsed.ok) return parsed;
-
-    const { name, args } = parsed.value;
-    const lname = String(name || "").toLowerCase();
-
-    switch (lname) 
-    {
-      case "exit":
-      case "clear":
-      case "undo":
-      case "redo":
-        if (args.length !== 0) return { ok: false, err: name + "() takes no arguments" };
-        ops.push({ type: lname });
-        break;
-
-      case "freeform":
-        if (args.length !== 3) return { ok: false, err: "Usage: freeform(col, row, char)" };
-        if (!Number.isInteger(args[0]) || !Number.isInteger(args[1]))
-          return { ok: false, err: "freeform(col,row,char): col and row must be integers" };
-        if (typeof args[2] !== "string" || args[2].length !== 1)
-          return { ok: false, err: "freeform(col,row,char): char must be a single character string" };
-
-        ops.push({ type: "freeform", col: args[0], row: args[1], ch: args[2] });
-        
-        break;
-      case "exec":
-        if (args.length !== 1) return { ok: false, err: "Usage: exec(\"..\")" };
-        ops.push({ type: "exec", str: args[0] });
-        break;
-
-      case "help":
-        if (args.length > 1) return { ok: false, err: "Usage: help(\"..\")" };
-        ops.push({ type: "help", str: args[0] });
-        break;
-
-      default:
-        return { ok: false, err: "Unknown CADScript function: " + name + "()" };
-    }
-  }
-
-  return { ok: true, value: ops };
-}
-
-function __cliRunCADOps(ops)
-{
-  // Stage grid mutations so one script line becomes a single undo stroke,
-  // but flush before undo/redo to preserve expected semantics.
-  let strokeMap = new Map();
-
-  function stageCell(r, c, next) {
-    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) {
-      throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
-    }
-
-    const key = r + "," + c;
-    const cur = ascii[r][c];
-
-    if (cur === next) return;
-
-    const rec = strokeMap.get(key);
-    if (!rec) strokeMap.set(key, { r, c, prev: cur, next });
-    else rec.next = next;
-
-    ascii[r][c] = next;
-  }
-
-  function flush(reason) 
-  {
-    if (!strokeMap.size) return;
-    const stroke = Array.from(strokeMap.values());
-    strokeMap.clear();
-    oASC.pushStrokeIfNonEmpty(stroke);
-    draw(reason || "CADScript");
-  }
-
-  for (const op of ops) 
-  {
-    switch (op.type) {
-      case "help":
-          // call native function
-          const q = "\"";
-          var argument = ops[0].str ? (q + ops[0].str + q) : "";
-          var statement = "a.help("+arg+")";
-          eval(statement);
-        break;
-
-      case "exit":
-        flush("CADScript-exit");
-        __cliMode = "terminal";
-        oTERM.setPrompt("AsciiCAD");
-        oTERM.output("Exited CADScript mode.");
-        break;
-
-      case "clear":
-        for (let r = 0; r < ROWS; r++) {
-          for (let c = 0; c < COLS; c++) {
-            if (ascii[r][c] !== " ") stageCell(r, c, " ");
-          }
-        }
-        break;
-
-      case "exec":
-          const usage = "Usage:\n" +
-          "\"<string>\" - run terminal command"
-
-        if (typeof op.str !== "string") {
-          oTERM.output("[ERROR] " + oCOM.escapeHTML(usage));
-          break;
-        }
-        const cmdLine = __cliNormalizeQuotes(op.str).trim();
-        if (!cmdLine) {
-          oTERM.output("[ERROR] " + oCOM.escapeHTML(usage));
-          break;
-        }
-        // Enforce "only one terminal command" (no ';' chaining or newlines)
-        if (/[;\r\n]/.test(cmdLine)) {
-          oTERM.output("[ERROR] exec() accepts only one terminal command (no ';' or newlines)");
-          break;
-        }
-        // TODO RUN terminal command (incl. options) in op.str
-        __cliHandleTerminal(cmdLine);
-        break;
-
-      case "freeform":
-        stageCell(op.row, op.col, op.ch);
-        break;
-
-      case "undo":
-        flush("CADScript-flush-before-undo");
-        if (undoStack.length === 0) oTERM.output("[ERROR] Nothing to undo");
-        else {
-          oASC.doUndo();
-          oTERM.output("[OK] Undo applied");
-        }
-        break;
-
-      case "redo":
-        flush("CADScript-flush-before-redo");
-        if (redoStack.length === 0) oTERM.output("[ERROR] Nothing to redo");
-        else {
-          oASC.doRedo();
-          oTERM.output("[OK] Redo applied");
-        }
-        break;
-
-      default:
-        oTERM.output("[ERROR] Internal: unknown op " + oCOM.escapeHTML(op.type));
-    }
-  }
-
-  flush("CADScript");
-  updateUI();
-}
-
 function __cliTerminalHelp()
 {
   oTERM.output(
@@ -1443,27 +1151,6 @@ function __cliTerminalHelp()
 }
 
 
-//       ______  _____     _____     _____                            _    
-//     .' ___  ||_   _|   |_   _|   |_   _|                          / |_  
-//    / .'   \_|  | |       | |       | |   _ .--.  _ .--.   __   _ `| |-' 
-//    | |         | |   _   | |       | |  [ `.-. |[ '/'`\ \[  | | | | |   
-//    \ `.___.'\ _| |__/ | _| |_     _| |_  | | | | | \__/ | | \_/ |,| |,  
-//     `.____ .'|________||_____|   |_____|[___||__]| ;.__/  '.__.'_/\__/  
-
-
-oTERM.onInput((command, parameters, rawLine) => 
-{
-  const line = __cliNormalizeQuotes(rawLine || "").trim();
-  if (!line) { oTERM.output("&nbsp;"); return true; }
-
-  switch(__cliMode)
-  {
-    case "terminal": return __cliHandleTerminal(line);
-    case "script":   return __cliHandleScript(line);
-  }
-
-});
-
 
 //     _________                              _                   __   
 //    |  _   _  |                            (_)                 [  |  
@@ -1473,20 +1160,21 @@ oTERM.onInput((command, parameters, rawLine) =>
 //      |_____|  '.__.'[___]   [___||__||__][___][___||__]\'-;__/[___] 
 //  
 
+
+// MOVE TERMINAL HANDLER TO oCMD (also rename it to HandleCommandLine, eventually merge it together with onInput ?)
 function __cliHandleTerminal(line) 
 {
-  // TODO: replace oCMD by current cli parsing method, and further develop responses on the JSON !!!
-
   if(bDebug) oTERM.output("<a href=\"tools/CMD_tool.html?d="+encodeURIComponent(line)+"\" target=\"CMD_tool\">visual debug</a>");  // for debugging purposes
   
-  const parsed = oCMD.parseLine(line, { "user": __cliMode });
+  const parsed = oCMD.parseLine(line, { /* any data you want to give it */ });
   if (!parsed.ok && parsed.error) { oTERM.output("[ERROR] "+parsed.error); return true; }
 
   const plan = oCMD.compile(parsed, { envPairs: parsed.data });
   if (!plan.ok && plan.error) { oTERM.output("[ERROR] "+plan.error); return true; }
 
+
   var script_node = plan.plan.groups[0].pipeline[0];
-  if(script_node.token == "CADScript")
+  if(script_node.token == "CADScript")                    // CADScript launcher
   {
     const names = Object.keys(oASC);
     const values = Object.values(oASC);
@@ -1505,199 +1193,22 @@ function __cliHandleTerminal(line)
       return true;
     }
 
-    // LAUNCH CMD WORKER
-    oCMD.runExternalScript(code, { "defaultObj": "oASC" })
+    // SEND A JOB TO THE CMD WORKER
+    oCMD.runExternalScript(code)
       .then(() => { oASC.draw(); })
-      .catch((err) => { oTERM.output("[ERROR] worker thread failed:<br><small>"+JSON.stringify(err)+"</small>"); })
+      .catch((err) => { oTERM.output("[ERROR] worker thread failed:<br><small>"+JSON.stringify(err)+"</small>");
+      })
 
     return true;
-  }
-
-  
-  const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
-  if (!m) {
-    oTERM.output("[ERROR] Invalid command");
-    return true;
-  }
-
-  const cmd = m[1].toLowerCase();
-  const rest = (m[2] || "").trim();
-
-  if (cmd === "help") { __cliTerminalHelp(); return true; }
-  if (cmd === "clear")
-  {
-    const usage = "Usage:\n" +
-    "<bare> - clear terminal screen\n" +
-    " -h    - <command> help\n"
-
-    const opt = rest.trim();
-    if (opt === "-h") oTERM.output(oCOM.escapeHTML(usage));
-    else if (opt == "") oTERM.clear();
-    else  oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
-    return true;
-  }
-
-  if (cmd === "history") 
-  {
-    const opt = rest.trim();
-    const usage = "Usage:\n" +
-       "Navigate command history\n" +
-       "by pushing arrow up/down.\n\n" +
-       "<bare> - show command history\n" +
-       " -c    - clear command history\n" +
-       " -h    - <command> help\n"
-
-    if (!opt) 
-    {
-      if (!oTERM.history || oTERM.history.length === 0) oTERM.output("(history empty)");
-      else {
-        const lines = oTERM.history
-          .map((h, i) => String(i + 1) + ": " + oCOM.escapeHTML(h))
-          .join("<br>");
-        oTERM.output(lines);
-      }
-      return true;
-    }
-
-    if (opt === "-h") {
-      oTERM.output(oCOM.escapeHTML(usage));
-      return true;
-    }
-
-    if (opt === "-c") {
-      try {
-        window.localStorage.removeItem("VanillaTerm");
-      } catch (_) {}
-      oTERM.history = [];
-      oTERM.historyCursor = 0;
-      oTERM.output("History cleared");
-      return true;
-    }
-
-    oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
-    return true;
-  }
-
-  /*
-  if (cmd === "script") {
-    if (rest) {
-      oTERM.output("[ERROR] Usage: script");
-      return true;
-    }
-    __cliMode = "script";
-    oTERM.setPrompt("CADScript");
-    oTERM.output(sbTitle.querySelector('big').textContent+" script - type <u>help()</u>");
-    return true;
-  }
-
-  if (cmd === "exec")
-  {
-    const usage = "Usage:\n" +
-    "\"<string>\" - execute string as script\n" +
-    " -h        - <command> help\n";
-
-    const opt = rest.trim();
-
-    if (opt === "-h") { oTERM.output(oCOM.escapeHTML(usage)); return true; }
-
-    const parsed = __cliParseExecArg(rest, usage);
-    if (!parsed.ok) {
-      oTERM.output("[PARSE ERROR] " + oCOM.escapeHTML(parsed.err));
-      return true;
-    }
-
-    const compiled = __cliCompileCADScript(parsed.value);
-    if (!compiled.ok) {
-      oTERM.output("[COMPILE ERROR] " + oCOM.escapeHTML(compiled.err));
-      return true;
-    }
-
-    try { __cliRunCADOps(compiled.value); oTERM.output("[OK] exec() completed");
-    } catch (e) { oTERM.output("[RUN ERROR] " + oCOM.escapeHTML(e && e.message ? e.message : String(e))); }
-
-    return true;
-  }
-  */
-
-  if (cmd === "exit") {
-    if (typeof switchToSidebar === "function") switchToSidebar("ui");
-    oTERM.output("Switched to UI sidebar");
-    return true;
-  }
-
-  /*
-  // Hint when user types CADScript-style calls in terminal mode
-  if (line.includes("(") && line.endsWith(")")) {
-    oTERM.output(
-      "[ERROR] CADScript syntax detected. Type <u>script</u> to enter CADScript mode, or use <u>exec(\"...\")</u>"
-    );
-    return true;
-  }
-    */
-
-  oTERM.output("[ERROR] Unknown command. Type <u>help</u>");
-  return true;
-}
-
-
-//       ______       _       ______     ______                   _           _    
-//     .' ___  |     / \     |_   _ `. .' ____ \                 (_)         / |_  
-//    / .'   \_|    / _ \      | | `. \| (___ \_| .---.  _ .--.  __  _ .--. `| |-' 
-//    | |          / ___ \     | |  | | _.____`. / /'`\][ `/'`\][  |[ '/'`\ \| |   
-//    \ `.___.'\ _/ /   \ \_  _| |_.' /| \____) || \__.  | |     | | | \__/ || |,  
-//     `.____ .'|____| |____||______.'  \______.''.___.'[___]   [___]| ;.__/ \__/  
-//                                                                  [__|           
-
-function __cliHandleScript(line)
-{
-  if (/^[A-Za-z_]\w*$/.test(line))  { oTERM.output("[ERROR] Script mode expects function calls, e.g. <u>help()</u>"); return true; }
-
-  const compiled = __cliCompileCADScript(line);
-  if (!compiled.ok)                 { oTERM.output("[ERROR] " + oCOM.escapeHTML(compiled.err)); return true; }
-
-  try { __cliRunCADOps(compiled.value); } 
-  catch (e)                         { oTERM.output("[ERROR] " + oCOM.escapeHTML(e && e.message ? e.message : String(e))); }
-
-  return true;
-}
-
-
-
-// TODO: expland scope of help, accept arguments that will find help on other functions
-
-
-/*
-// create a function containter
-oASC.f = {};
-var a = oASC.f; // a = shorthand object for oASC.f
-
-a.help = function(statementID)
-{
-  if(statementID == null || statementID == "help")
-  {
-      oTERM.output(
-      oCOM.escapeHTML("CADScript commands:\n" +
-        " clear()    - clear entire grid\n" +
-        " exec(\"..\") - run terminal command\n" +
-        " exit()     - return to terminal\n" +
-        " freeform(x,y,char) - put character\n" +
-        " redo()     - redo last undone action\n" +
-        " undo()     - undo last action")
-    );
   }
   else
   {
-    oTERM.output("[ERROR] no help found on this topic");
+    oCMD.run(line);
   }
+
+
+
 }
-
-a.clear = function() { oASC.clear() }
-
-a.freeform = function(x,y,c) { oASC.freeform(x,y,c); }
-*/
-
-
-
 
 
 
@@ -1806,38 +1317,6 @@ if(oCOM.URL.filename == "AsciiCAD.html")
 window.addEventListener("load", function()
 {
 });
-
-////////////////////////////////////////
-/////  TEST SNIPPETS FOR WORKER.  ///////
-////////////////////////////////////////
-
-/*
-oCMD.runExternalScript("ASC.freeform(0,0,'+');")
-  .then(() => oASC.draw()) 
-  .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
-
-oCMD.runExternalScript("freeform(1,0,'+');")
-  .then(() => oASC.draw()) 
-  .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
-
-oCMD.runExternalScript("{ freeform(2,0,'+'); }")
-  .then(() => oASC.draw()) 
-  .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
-
-oCMD.runExternalScript("ASC.doUndo()")
-  .then(() => oASC.draw()) 
-  .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
-
-oCMD.runExternalScript("ASC.doUndo()")
-  .then(() => oASC.draw()) 
-  .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
-
-oCMD.runExternalScript("ASC.doUndo()")
-  .then(() => oASC.draw()) 
-  .catch(err => oTERM.output("[ERROR] " + JSON.stringify(err)));
-*/
-
-////////////////////////////////////////
 
 
 

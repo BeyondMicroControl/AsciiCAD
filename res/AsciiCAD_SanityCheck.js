@@ -371,12 +371,20 @@ function runWorkerThreadSmokeTests()
   // Start with a clean area
   oASC.wipeSelection(' ');
 
+  // Authorise terminal access to internal JavaScript objects (by name) 
 
+  // caution: oTERM does not exist yet at this stage (because instantiation has to wait for "onload")
+  oCMD.bind([
+     { name: "oASC", constPrefixes: ["BOX_"] }
+    ,{ name: "oCMD" }
+    ,{ name: "oCOM" }
+  ]);
+  
   console.log("-1-");
   // Place 3 pluses using the three supported syntaxes
-  return oCMD.runExternalScript("{oASC.freeform(0,0,'+');}", { defaultObj: "oASC" })
-    .then(function(){ return oCMD.runExternalScript("freeform(1,0,'+');", { defaultObj: "oASC" }); })
-    .then(function(){ return oCMD.runExternalScript("{ freeform(2,0,'+'); }", { defaultObj: "oASC" }); })
+  return oCMD.runExternalScript("{oASC.freeform(0,0,'+');}")
+    .then(function(){ return oCMD.runExternalScript("freeform(1,0,'+');"); })
+    .then(function(){ return oCMD.runExternalScript("{ freeform(2,0,'+'); oCOM.isDoubleWidthChar('+'); }"); })   // oCOM.isDoubleWidthChar('+')
     .then(function(){
       var got = getSmallGridText(3,1);
       assertGrid("worker freeform syntaxes => 3 pluses", got, small3x1Plus());
@@ -384,7 +392,7 @@ function runWorkerThreadSmokeTests()
     })
     .then(function(){
       // Undo 3 times (all 3 pluses should disappear)
-      return oCMD.runExternalScript("oASC.doUndo();oASC.doUndo();oASC.doUndo();", { defaultObj: "oASC" });
+      return oCMD.runExternalScript("oASC.doUndo();oASC.doUndo();oASC.doUndo();");
     })
     .then(function(){
       console.log("-3-");
@@ -394,7 +402,7 @@ function runWorkerThreadSmokeTests()
     .then(function(){
       console.log("-4-");
       // Redo 3 times (all 3 pluses should reappear)
-      return oCMD.runExternalScript("oASC.doRedo();oASC.doRedo();oASC.doRedo();", { defaultObj: "oASC" });
+      return oCMD.runExternalScript("oASC.doRedo();oASC.doRedo();oASC.doRedo();");
     })
     .then(function(){
       console.log("-5-");
@@ -404,55 +412,55 @@ function runWorkerThreadSmokeTests()
     })
     .then(function(){
       // cleanup
-      return oCMD.runExternalScript("oASC.doUndo();oASC.doUndo();oASC.doUndo();", { defaultObj: "oASC" });
-    });
+      return oCMD.runExternalScript("oASC.doUndo();oASC.doUndo();oASC.doUndo();");
+    })
+    .then(function() { worker?.terminate?.(); });
 }
 
 // TEST RUNNER
 
 (function init() 
 {
-if (bDebug != true) return;  // only run assertions if we have a debug flag
+  if (bDebug != true) return;  // only run assertions if we have a debug flag
 
-stageSize = oASC.computeStageSize();
-stage.style.width = stageSize.w + 'px';
-stage.style.height = stageSize.h + 'px';
-oASC.syncCanvasBufferToStage();
+  stageSize = oASC.computeStageSize();
+  stage.style.width = stageSize.w + 'px';
+  stage.style.height = stageSize.h + 'px';
+  oASC.syncCanvasBufferToStage();
 
-// Light sanity checks
-console.assert(oASC.serializeToText().split('\n')[0].length === COLS, 'serializeToText -> COLS chars/line');
-console.assert(oCOM.toLines('A\r\nB\rC\nD').length === 4, 'newline normalization');
-console.assert(!oASC.serializeToText().includes("\\n"), "Save must not contain literal \\n");
+  // Light sanity checks
+  console.assert(oASC.serializeToText().split('\n')[0].length === COLS, 'serializeToText -> COLS chars/line');
+  console.assert(oCOM.toLines('A\r\nB\rC\nD').length === 4, 'newline normalization');
+  console.assert(!oASC.serializeToText().includes("\\n"), "Save must not contain literal \\n");
 
-console.assert(
-    oASC.sanitizeForSave("A\\nB\\rC\\r\\nD").split("\n").length === 4,
-    "Literal escape normalization failed"
-);
+  console.assert(
+      oASC.sanitizeForSave("A\\nB\\rC\\r\\nD").split("\n").length === 4,
+      "Literal escape normalization failed"
+  );
 
-console.assert(
-    oASC.sanitizeForSave("A   \nB\t\t\n\n").endsWith("A\nB"),
-    "Trailing whitespace or empty-line trimming failed"
-);
+  console.assert(
+      oASC.sanitizeForSave("A   \nB\t\t\n\n").endsWith("A\nB"),
+      "Trailing whitespace or empty-line trimming failed"
+  );
 
-console.assert(
-    !oASC.sanitizeForSave("A\\nB").includes("\\n"),
-    "Saved text must not contain literal \\n"
-);
+  console.assert(
+      !oASC.sanitizeForSave("A\\nB").includes("\\n"),
+      "Saved text must not contain literal \\n"
+  );
 
-console.assert(!oASC.catalogTypes().includes(null), "catalogTypes contains null");
+  console.assert(!oASC.catalogTypes().includes(null), "catalogTypes contains null");
 
-console.assert(!oASC.catalogTypes().includes(""), "catalogTypes contains empty string");
+  console.assert(!oASC.catalogTypes().includes(""), "catalogTypes contains empty string");
 
 
-runJunctionTests(); oASC.wipeSelection(' ');
-runMixedJunctionTests(); oASC.wipeSelection(' ');
-testDoubleBusCross(); oASC.wipeSelection(' ');
+  runJunctionTests(); oASC.wipeSelection(' ');
+  runMixedJunctionTests(); oASC.wipeSelection(' ');
+  testDoubleBusCross(); oASC.wipeSelection(' ');
 
-// Run worker sandbox tests after the synchronous sanity checks.
-runWorkerThreadSmokeTests()
-  .then(function(){ updateUI(); draw(); })
-  .catch(function(err){ console.error('Worker smoke tests failed:', err); updateUI(); draw(); });
-})();
-
+  // Run worker sandbox tests after the synchronous sanity checks.
+  runWorkerThreadSmokeTests()
+    .then(function(){ updateUI(); draw(); })
+    .catch(function(err){ console.error('Worker smoke tests failed:', err); updateUI(); draw(); });
+  })();
 
 }

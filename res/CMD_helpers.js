@@ -788,13 +788,15 @@ function CMD()
       "  });",
       "}",
       "",
-      "function buildScope(defaultObj) {",
+      "function buildScope(defaultObj, scopeObj) {",
       "  DEFAULT_OBJ = defaultObj || DEFAULT_OBJ;",
       "",
       "  // Base API objects (oASC, oCOM, ...)",
       "  const api = Object.create(null);",
-      "  for (const name in BINDINGS) api[name] = makeContainerProxy(name);",
-      "  for (const a in ALIAS) api[a] = api[ALIAS[a]];",
+      "  const allowed = Array.isArray(scopeObj) ? scopeObj.map(String) : Object.keys(BINDINGS);",
+      "  if (DEFAULT_OBJ && allowed.indexOf(DEFAULT_OBJ) < 0) allowed.push(DEFAULT_OBJ);",
+      "  for (let i=0;i<allowed.length;i++){ const name=allowed[i]; if (name in BINDINGS) api[name] = makeContainerProxy(name); }",
+      "  for (const a in ALIAS) { const n = ALIAS[a]; if (api[n]) api[a] = api[n]; }",
       "",
       "  return new Proxy(api, {",
       "    has() { return true; },",
@@ -827,14 +829,14 @@ function CMD()
       "  });",
       "}",
       "",
-      "function runInScope(code, defaultObj) {",
+      "function runInScope(code, defaultObj, scopeObj) {",
       "  // Allow '{ ... }' wrapper blocks",
       "  const t = String(code).trim();",
       "  if (t.length >= 2 && t.charAt(0) === '{' && t.charAt(t.length - 1) === '}') {",
       "    code = t.slice(1, -1);",
       "  }",
       "",
-      "  const scope = buildScope(defaultObj);",
+      "  const scope = buildScope(defaultObj, scopeObj);",
       "  const fn = new Function('scope', 'return (async function(){ with(scope){\\n' + code + '\\n} })();');",
       "  return fn(scope);",
       "}",
@@ -869,10 +871,11 @@ function CMD()
       "    const runId = msg.runId;",
       "    const code = msg.code;",
       "    const def  = msg.defaultObj || DEFAULT_OBJ;",
+      "    const scopeObj = msg.scopeObj || null;",
       "    log('RUN start', runId, 'default=' + def, code);",
       "    postMessage({ type: 'ack', runId: runId });",
       "    try {",
-      "      await runInScope(code, def);",
+      "      await runInScope(code, def, scopeObj);",
       "      log('RUN end', runId);",
       "      postMessage({ type: 'done', runId: runId });",
       "    } catch (err) {",
@@ -1006,13 +1009,20 @@ function CMD()
           type: 'run',
           runId: runId,
           code: String(code),
-          defaultObj: String(opts.defaultObj || cmd._defaultObj)
+          defaultObj: String(opts.defaultObj || cmd._defaultObj),
+          scopeObj: Array.isArray(opts.scopeObj) ? opts.scopeObj.map(String) : null
         });
       } catch (ex) {
         fail({ name: ex && ex.name ? String(ex.name) : 'Error', message: ex && ex.message ? String(ex.message) : String(ex), runId: runId }, onMsg, onErr, onMsgErr);
       }
     });
   };
+
+      // LAUNCH CMD WORKER
+  this.run = function(line)
+  { 
+    
+  }
 
 
   this.onWorkerMessage = function(e)
@@ -1068,7 +1078,87 @@ function CMD()
 
 
 
-////////////////////////////
+
+this.run = function(line)
+{
+  // TERMINAL COMMAND HANDLER
+  
+  const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
+  if (!m) {
+    oTERM.output("[ERROR] Invalid command");
+    return true;
+  }
+
+  const cmd = m[1].toLowerCase();
+  const rest = (m[2] || "").trim();
+
+  if (cmd === "help") { __cliTerminalHelp(); return true; }
+  if (cmd === "clear")
+  {
+    const usage = "Usage:\n" +
+    "<bare> - clear terminal screen\n" +
+    " -h    - <command> help\n"
+
+    const opt = rest.trim();
+    if (opt === "-h") oTERM.output(oCOM.escapeHTML(usage));
+    else if (opt == "") oTERM.clear();
+    else  oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
+    return true;
+  }
+
+  if (cmd === "history") 
+  {
+    const opt = rest.trim();
+    const usage = "Usage:\n" +
+       "Navigate command history\n" +
+       "by pushing arrow up/down.\n\n" +
+       "<bare> - show command history\n" +
+       " -c    - clear command history\n" +
+       " -h    - <command> help\n"
+
+    if (!opt) 
+    {
+      if (!oTERM.history || oTERM.history.length === 0) oTERM.output("(history empty)");
+      else {
+        const lines = oTERM.history
+          .map((h, i) => String(i + 1) + ": " + oCOM.escapeHTML(h))
+          .join("<br>");
+        oTERM.output(lines);
+      }
+      return true;
+    }
+
+    if (opt === "-h") {
+      oTERM.output(oCOM.escapeHTML(usage));
+      return true;
+    }
+
+    if (opt === "-c") {
+      try {
+        window.localStorage.removeItem("VanillaTerm");
+      } catch (_) {}
+      oTERM.history = [];
+      oTERM.historyCursor = 0;
+      oTERM.output("History cleared");
+      return true;
+    }
+
+    oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
+    return true;
+  }
+
+  if (cmd === "exit") {
+    if (typeof switchToSidebar === "function") switchToSidebar("ui");
+    oTERM.output("Switched to UI sidebar");
+    return true;
+  }
+
+  oTERM.output("[ERROR] Unknown command. Type <u>help</u>");
+    return true;
+}
+
+
+   ////////////////////////////
    // OTHER HELPER FUNCTIONS //
    ////////////////////////////
 
@@ -1108,26 +1198,66 @@ function CMD()
   }
 
 
+  this.bind = function( bindings )
+  {
+    for(var i=0;i<bindings.length;i++)
+    {
+        bindings[i].obj = globalThis[bindings[i].name];
+        if (bindings[i].obj === undefined) 
+          { console.warn(`Global '${bindings[i].name}' not found`); delete bindings[i];  }
+          //throw new Error(`Global '${bindings[i].name}' not found`);
+    }
+    worker = this.createCMDWorker( bindings );  // RUN THE WORKER TO TELL WE HAVE NEW BINDINGS
+  }
+
+
+  this.launchTerminal = function(terminalObj)
+  {
+    // VANILLA-TERMINAL RUNTIME (AsciiCAD CLI)
+    // Two modes:
+    //  1) Terminal mode (Linux-like): help, clear, history [-c], script, exec("..."), exit
+    //  2) Script mode (CADScript): help(), clear(), undo(), redo(), freeform(col,row,char), exit()
+
+    // object instantiation/initialisation
+    oTERM = new TERMINAL(
+    {
+      // We handle all input via oTERM.onInput; commands are kept for discoverability.
+      commands: 
+      {
+        help: () => {},
+        clear: () => {},
+        history: () => {},
+        script: () => {},
+        exec: () => {},
+        exit: () => {}
+      },
+      welcome: sbTitle.querySelector("big").textContent + " terminal - type <u>help</u>",
+      prompt: "AsciiCAD",
+      separator: '>',
+    });
+
+    // Authorise terminal access to internal JavaScript objects (by name) 
+    this.bind([
+      { name: "oASC", constPrefixes: ["BOX_"] }
+      ,{ name: "oCMD" }
+      ,{ name: "oTERM" }
+      ,{ name: "oCOM" }
+    ]);
+
+    // Start capturing Terminal command lines (after user pushed 'enter')
+    oTERM.onInput((command, parameters, rawLine) => 
+    {
+      const line =  oCOM.normaliseQuotes(rawLine || "").trim();
+      if (!line) { oTERM.output("&nbsp;"); return true; }
+      return __cliHandleTerminal(line);  // TODO MOVE __cliHandleTerminal somewhere here instead of index.html ?
+    });
+  }
+
 }
 
-
+var worker; 
 var oCMD = new CMD();
 
-// Default Worker: proxy only the first container (oASC) for unqualified calls,
-// but keep "ASC" as an alias for backward compatibility.
-var worker = oCMD.createCMDWorker(
-  [{ name: "oASC", obj: oASC, constPrefixes: ["BOX_"] }],
-  { defaultObj: "oASC" }
-);
-
-// Example: multiple containers (only oASC is proxied; oCOM must be called by name)
-// var worker = oCMD.createCMDWorker(
-//   [
-//     { name: "oASC", obj: oASC, constPrefixes: ["BOX_"], aliases: ["ASC"] },
-//     { name: "oCOM", obj: oCOM }
-//   ],
-//   { defaultObj: "oASC" }
-// );
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////
