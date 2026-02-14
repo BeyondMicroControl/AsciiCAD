@@ -1,16 +1,24 @@
-/* ZeroRun: simple RLE for a single byte value (the "zero" marker).
+/* ZeroRun: simple RLE for a marker "zero word".
  *
- * Encoding format:
+ * Default (byte mode): wordsize=1, seq=[zeroByte]
+ * Encoding format (byte mode):
  *  - Any byte != zero: emitted as-is
- *  - A run of N consecutive 'zero' bytes (1..255):
- *      emitted as: [zero, N]
- *    If literal 'zero' occurs, it is always encoded as a run (N>=1).
+ *  - A run of N consecutive zero bytes (1..255): emitted as: [zero, N]
+ *
+ * Word mode (wordsize>1):
+ *  - Input is treated as fixed-size words of `wordsize` bytes.
+ *  - The marker word is `seq` (Uint8Array length = wordsize).
+ *  - Any non-marker word is emitted as-is (wordsize bytes).
+ *  - A run of N consecutive marker words (1..255) is emitted as:
+ *        [seq bytes..., N]
+ *    Literal marker words are always encoded as runs (N>=1), so seq never
+ *    appears in the output except as a run marker.
  *
  * Notes:
- *  - This is streaming-friendly in the sense of push() calls, but:
- *    - Inflate() supports streaming (handles split [zero,count] across chunks).
- *    - Deflate() supports streaming too (keeps pending run across chunks),
- *      but flushes the final run only on push(lastChunk, true).
+ *  - Streaming-friendly across push() calls.
+ *  - For wordsize>1, input length MUST be a multiple of wordsize.
+ *  - Optional XOR (per byte) can be applied before compression and after
+ *    decompression via opts.xor.
  */
 
 const ZeroRun = (() => {
@@ -31,20 +39,45 @@ const ZeroRun = (() => {
     return u8;
   }
 
+  function makeSeqAndWordsize(opts = {}) {
+    const wordsize = Math.max(1, (opts.wordsize ?? 1) | 0);
+
+    if (opts.seq != null) {
+      const seqArr = Array.isArray(opts.seq) ? opts.seq : Array.from(opts.seq);
+      const seq = Uint8Array.from(seqArr.map(x => (x ?? 0) & 0xff));
+      if (seq.length !== wordsize) {
+        throw new TypeError(`ZeroRun: opts.seq length (${seq.length}) must equal wordsize (${wordsize}).`);
+      }
+      return { wordsize, seq };
+    }
+
+    // Backward-compatible byte mode: use opts.zero
+    const zero = (opts.zero ?? 0x00) & 0xff;
+    return { wordsize: 1, seq: Uint8Array.of(zero) };
+  }
+
+  function wordEquals(u8, i, seq) {
+    for (let k = 0; k < seq.length; k++) {
+      if (u8[i + k] !== seq[k]) return false;
+    }
+    return true;
+  }
+
   class Inflate {
     constructor(opts = {}) {
-      // If you want runs of SPACE directly: zero=0x20, xor=0
-      // If you prefer true-zero runs but data has many spaces:
-      //   set xor=0x20 and zero=0x00
-      this.zero = (opts.zero ?? 0x00) & 0xff;
+      const { wordsize, seq } = makeSeqAndWordsize(opts);
+      this.wordsize = wordsize;
+      this.seq = seq;
       this.xor = (opts.xor ?? 0x00) & 0xff;
 
       this.err = 0;
       this.msg = "";
       this.result = undefined;
 
-      // streaming state if a chunk ends right after `zero`
-      this._awaitCount = false;
+      // Streaming state
+      this._awaitCount = false;       // true when seq marker has been consumed
+      this._partial = new Uint8Array(0); // buffered bytes (< wordsize)
+
       this._outChunks = [];
       this._outLen = 0;
     }
@@ -61,38 +94,50 @@ const ZeroRun = (() => {
         const inU8 = this.xor ? new Uint8Array(inU8raw) : inU8raw;
         xorInPlace(inU8, this.xor);
 
-        // Worst-case output is about input length * 255 if malicious,
-        // but for valid encoding it’s bounded. We'll push to an array and concat once.
-        const out = [];
-
-        let i = 0;
-
-        // If previous chunk ended with a lone `zero`, first byte must be count
-        if (this._awaitCount) {
-          if (inU8.length === 0) {
-            // still waiting
-          } else {
-            const count = inU8[0];
-            if (count === 0) throw new Error("Invalid ZeroRun stream: zero-run count cannot be 0.");
-            for (let k = 0; k < count; k++) out.push(this.zero);
-            i = 1;
-            this._awaitCount = false;
-          }
+        // Prepend any buffered partial
+        let buf;
+        if (this._partial.length) {
+          buf = new Uint8Array(this._partial.length + inU8.length);
+          buf.set(this._partial, 0);
+          buf.set(inU8, this._partial.length);
+          this._partial = new Uint8Array(0);
+        } else {
+          buf = inU8;
         }
 
-        for (; i < inU8.length; i++) {
-          const b = inU8[i];
-          if (b !== this.zero) {
-            out.push(b);
-          } else {
-            // need count byte next; if missing, carry state to next push
-            if (i + 1 >= inU8.length) {
-              this._awaitCount = true;
-              break;
+        const out = [];
+        let i = 0;
+
+        while (i < buf.length) {
+          if (this._awaitCount) {
+            // Need 1 byte count
+            if (i >= buf.length) break;
+            const count = buf[i++];
+            if (count === 0) throw new Error("Invalid ZeroRun stream: run count cannot be 0.");
+            // Emit seq repeated count times
+            for (let r = 0; r < count; r++) {
+              for (let k = 0; k < this.wordsize; k++) out.push(this.seq[k]);
             }
-            const count = inU8[++i];
-            if (count === 0) throw new Error("Invalid ZeroRun stream: zero-run count cannot be 0.");
-            for (let k = 0; k < count; k++) out.push(this.zero);
+            this._awaitCount = false;
+            continue;
+          }
+
+          // Need a full word to decide marker vs literal
+          if (i + this.wordsize > buf.length) {
+            // Buffer remainder
+            this._partial = buf.slice(i);
+            i = buf.length;
+            break;
+          }
+
+          if (wordEquals(buf, i, this.seq)) {
+            // Marker word; next byte is run count (may arrive later)
+            i += this.wordsize;
+            this._awaitCount = true;
+          } else {
+            // Literal word
+            for (let k = 0; k < this.wordsize; k++) out.push(buf[i + k]);
+            i += this.wordsize;
           }
         }
 
@@ -100,8 +145,6 @@ const ZeroRun = (() => {
         this._outChunks.push(chunk);
         this._outLen += chunk.length;
 
-        // Update result as “all output so far”, like pako does after push
-        // (pako’s result may change each push; this mimics that behavior)
         const joined = new Uint8Array(this._outLen);
         let off = 0;
         for (const c of this._outChunks) {
@@ -125,7 +168,9 @@ const ZeroRun = (() => {
 
   class Deflate {
     constructor(opts = {}) {
-      this.zero = (opts.zero ?? 0x00) & 0xff;
+      const { wordsize, seq } = makeSeqAndWordsize(opts);
+      this.wordsize = wordsize;
+      this.seq = seq;
       this.xor = (opts.xor ?? 0x00) & 0xff;
 
       this.err = 0;
@@ -135,8 +180,11 @@ const ZeroRun = (() => {
       this._outChunks = [];
       this._outLen = 0;
 
-      // pending run of `zero` across chunks
-      this._run = 0;
+      // pending run of `seq` words across chunks
+      this._runWords = 0;
+
+      // buffer partial input words if chunk doesn't end on word boundary
+      this._partial = new Uint8Array(0);
     }
 
     push(data, final = false) {
@@ -146,28 +194,61 @@ const ZeroRun = (() => {
           ? (this.xor ? xorInPlace(new Uint8Array(inU8raw), this.xor) : inU8raw)
           : new Uint8Array(0);
 
-        const out = [];
+        // Prepend partial
+        let buf;
+        if (this._partial.length) {
+          buf = new Uint8Array(this._partial.length + inU8.length);
+          buf.set(this._partial, 0);
+          buf.set(inU8, this._partial.length);
+          this._partial = new Uint8Array(0);
+        } else {
+          buf = inU8;
+        }
 
-        const flushRun = () => {
-          while (this._run > 0) {
-            const n = Math.min(255, this._run);
-            out.push(this.zero, n);
-            this._run -= n;
-          }
-        };
-
-        for (let i = 0; i < inU8.length; i++) {
-          const b = inU8[i];
-          if (b === this.zero) {
-            this._run++;
-            if (this._run === 255) flushRun(); // keep bounded
-          } else {
-            if (this._run > 0) flushRun();
-            out.push(b);
+        if (this.wordsize > 1) {
+          // In word mode, we require full words. Keep remainder for next push unless final.
+          const rem = buf.length % this.wordsize;
+          if (rem !== 0) {
+            if (final) {
+              throw new Error(`ZeroRun (word mode): input length (${buf.length}) not divisible by wordsize (${this.wordsize}).`);
+            }
+            this._partial = buf.slice(buf.length - rem);
+            buf = buf.slice(0, buf.length - rem);
           }
         }
 
-        if (final && this._run > 0) flushRun();
+        const out = [];
+
+        const flushRun = () => {
+          while (this._runWords > 0) {
+            const n = Math.min(255, this._runWords);
+            // Emit marker seq + count
+            for (let k = 0; k < this.wordsize; k++) out.push(this.seq[k]);
+            out.push(n);
+            this._runWords -= n;
+          }
+        };
+
+        // Iterate input in word steps
+        for (let i = 0; i < buf.length; i += this.wordsize) {
+          const isZeroWord = wordEquals(buf, i, this.seq);
+
+          if (isZeroWord) {
+            this._runWords++;
+            if (this._runWords === 255) flushRun();
+          } else {
+            if (this._runWords > 0) flushRun();
+            for (let k = 0; k < this.wordsize; k++) out.push(buf[i + k]);
+          }
+        }
+
+        if (final) {
+          if (this._partial.length) {
+            // Should not happen in word mode; in byte mode partial is always empty.
+            throw new Error("ZeroRun: internal partial buffer not empty at final.");
+          }
+          if (this._runWords > 0) flushRun();
+        }
 
         const chunk = Uint8Array.from(out);
         this._outChunks.push(chunk);
