@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Compression Lab (pako-like codecs)</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    header { padding: 12px 16px; border-bottom: 1px solid #8884; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    main { display:flex; height: calc(100vh - 56px); }
+    #left, #right { overflow:auto; padding: 14px 16px; }
+    #left { width: 45%; border-right: 1px solid #8884; }
+    #right { width: 55%; }
+    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .small { font-size: 12px; opacity: .85; }
+    .card { border: 1px solid #8884; border-radius: 10px; padding: 12px; margin: 10px 0; }
+    .card h3 { margin: 0 0 8px 0; font-size: 14px; }
+    textarea { width: 100%; min-height: 72px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align:left; padding: 6px 6px; border-bottom: 1px solid #8884; vertical-align: top; }
+    .ok { color: #2b8a3e; font-weight: 600; }
+    .bad { color: #c92a2a; font-weight: 600; }
+    .pill { display:inline-block; padding: 2px 8px; border: 1px solid #8884; border-radius: 999px; font-size: 12px; }
+    .muted { opacity:.8; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .btn { cursor:pointer; padding: 6px 10px; border: 1px solid #8884; border-radius: 8px; background: transparent; }
+    .btn:active { transform: translateY(1px); }
+    input[type="number"] { width: 90px; }
+    #status { padding: 6px 10px; border: 1px dashed #8884; border-radius: 10px; }
+  </style>
+
+  <!-- Optional: load pako from CDN.
+       If you prefer fully standalone/offline: download pako.min.js next to this file and replace src with "./pako.min.js" -->
+    <script type="text/javascript"  src="res/pako.min.js"></script>
+    <script type="text/javascript"  src="res/zeroRun.js"></script>
+    <script type="text/javascript"  src="res/packBits.js"></script>
+</head>
+
+<body>
+<header>
+  <div class="row">
+    <label class="pill">
+      <input id="file" type="file" accept=".txt,.log,.json,.md,text/plain,application/json" />
+    </label>
+
+    <span class="small">Threshold coverage:</span>
+    <label class="pill small">2-byte ≥ <input id="th2" type="number" min="0" max="100" step="0.5" value="10"> %</label>
+    <label class="pill small">3-byte ≥ <input id="th3" type="number" min="0" max="100" step="0.5" value="10"> %</label>
+    <label class="pill small">4-byte ≥ <input id="th4" type="number" min="0" max="100" step="0.5" value="10"> %</label>
+
+    <button id="rerun" class="btn">Recompute & Run</button>
+  </div>
+
+  <div id="status" class="small muted">Load a text file to begin.</div>
+</header>
+
+<main>
+  <section id="left">
+    <div class="card">
+      <h3>Input summary</h3>
+      <div id="inputSummary" class="small muted">No file loaded.</div>
+    </div>
+
+    <div class="card">
+      <h3>Top 16 bytes (histogram)</h3>
+      <pre id="histText" class="mono muted">—</pre>
+    </div>
+
+    <div class="card">
+      <h3>Frequent sequences above threshold (coverage of total bytes)</h3>
+      <div class="small muted">Coverage = occurrences × sequenceLength ÷ totalBytes.</div>
+      <div style="height:10px"></div>
+      <div id="seqTables" class="mono muted">—</div>
+    </div>
+  </section>
+
+  <section id="right">
+    <div class="card">
+      <h3>Test bench</h3>
+      <div class="small muted">
+        Each codec is used pako-style: <span class="mono">new Deflate(args).push(u8,true)</span> and <span class="mono">new Inflate(args).push(u8,true)</span>.
+        Results are compared against the original bytes.
+      </div>
+    </div>
+
+    <div id="bench"></div>
+  </section>
+</main>
+
+<script>
+/* =========================
+   Utilities
+========================= */
+function asU8(input) {
+  if (input == null) return null;
+  if (input instanceof Uint8Array) return input;
+  if (input instanceof ArrayBuffer) return new Uint8Array(input);
+  if (ArrayBuffer.isView(input) && input.buffer) {
+    return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+  }
+  throw new TypeError("Expected Uint8Array, ArrayBuffer, or a view.");
+}
+
+function bytesEqual(a, b) {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+function fmtBytes(n) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024*1024) return `${(n/1024).toFixed(2)} KiB`;
+  return `${(n/(1024*1024)).toFixed(2)} MiB`;
+}
+
+function hex2(b) { return b.toString(16).padStart(2, "0").toUpperCase(); }
+
+function safeParseJSON(text, fallback = {}) {
+  try {
+    const o = JSON.parse(text);
+    return (o && typeof o === "object") ? o : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/* =========================
+   Histogram (top-N)
+========================= */
+function byteHistogramTop(u8, topN = 16, barWidth = 42) {
+  const counts = new Uint32Array(256);
+  for (let i = 0; i < u8.length; i++) counts[u8[i]]++;
+
+  const items = [];
+  for (let b = 0; b < 256; b++) if (counts[b] > 0) items.push({ b, c: counts[b] });
+  items.sort((x, y) => y.c - x.c || x.b - y.b);
+
+  const shown = items.slice(0, topN);
+  const max = shown.length ? shown[0].c : 0;
+
+  const lines = [];
+  lines.push(`Bytes: ${u8.length}`);
+  if (shown.length) {
+    const { b, c } = shown[0];
+    lines.push(`Most prevalent: 0x${hex2(b)} (${b}) count=${c} (${(c*100/u8.length).toFixed(2)}%)`);
+  }
+  lines.push("");
+
+  for (const { b, c } of shown) {
+    const pct = (c * 100 / u8.length).toFixed(2);
+    const barLen = max ? Math.round((c / max) * barWidth) : 0;
+    const bar = "#".repeat(barLen);
+    lines.push(`0x${hex2(b)} (${String(b).padStart(3," ")})  ${String(c).padStart(9," ")}  ${pct.padStart(6," ")}%  ${bar}`);
+  }
+
+  return { counts, items, text: lines.join("\n") };
+}
+
+/* =========================
+   Sequence prevalence (2/3/4 byte)
+   We list sequences whose coverage >= threshold.
+   Coverage = count * len / totalBytes.
+========================= */
+function sequenceStats(u8, len, thresholdPct, maxReport = 50) {
+  const total = u8.length;
+  const minCoverage = thresholdPct / 100;
+
+  if (total < len) return [];
+
+  // Count sequences
+  const map = new Map();
+  // Key as packed hex string to keep it simple & readable:
+  // e.g. "E2-94-80"
+  for (let i = 0; i <= total - len; i++) {
+    let key = "";
+    for (let k = 0; k < len; k++) {
+      if (k) key += "-";
+      key += hex2(u8[i + k]);
+    }
+    map.set(key, (map.get(key) || 0) + 1);
+  }
+
+  // Filter by coverage
+  const out = [];
+  for (const [key, count] of map.entries()) {
+    const coverage = (count * len) / total;
+    if (coverage >= minCoverage) out.push({ key, count, coverage });
+  }
+  out.sort((a, b) => b.coverage - a.coverage || b.count - a.count || a.key.localeCompare(b.key));
+  return out.slice(0, maxReport);
+}
+
+function renderSeqTable(title, rows, len) {
+  if (!rows.length) return `<div class="small muted">No ${len}-byte sequences exceed the threshold.</div>`;
+  let html = `<div class="small"><b>${title}</b></div>`;
+  html += `<table><thead><tr>
+    <th style="width:38%">Sequence (hex)</th>
+    <th>Occurrences</th>
+    <th>Coverage</th>
+  </tr></thead><tbody>`;
+  for (const r of rows) {
+    html += `<tr>
+      <td class="mono">${r.key}</td>
+      <td>${r.count}</td>
+      <td>${(r.coverage*100).toFixed(2)}%</td>
+    </tr>`;
+  }
+  html += `</tbody></table>`;
+  return html;
+}
+
+/* =========================
+   ZeroRun (pako-like)
+========================= */
+const ZeroRun = (() => {
+  function xorInPlace(u8, xorByte) {
+    if (!xorByte) return u8;
+    for (let i = 0; i < u8.length; i++) u8[i] ^= xorByte;
+    return u8;
+  }
+
+  class Inflate {
+    constructor(opts = {}) {
+      this.zero = (opts.zero ?? 0x00) & 0xff;
+      this.xor  = (opts.xor  ?? 0x00) & 0xff;
+      this.err = 0; this.msg = ""; this.result = undefined;
+
+      this._awaitCount = false;
+      this._outChunks = [];
+      this._outLen = 0;
+    }
+    push(data /*, modeIgnored */) {
+      try {
+        const inU8raw = asU8(data) ?? new Uint8Array(0);
+        const inU8 = this.xor ? xorInPlace(new Uint8Array(inU8raw), this.xor) : inU8raw;
+
+        const out = [];
+        let i = 0;
+
+        if (this._awaitCount) {
+          if (inU8.length) {
+            const count = inU8[0];
+            if (count === 0) throw new Error("Invalid ZeroRun: count cannot be 0.");
+            for (let k = 0; k < count; k++) out.push(this.zero);
+            i = 1;
+            this._awaitCount = false;
+          }
+        }
+
+        for (; i < inU8.length; i++) {
+          const b = inU8[i];
+          if (b !== this.zero) out.push(b);
+          else {
+            if (i + 1 >= inU8.length) { this._awaitCount = true; break; }
+            const count = inU8[++i];
+            if (count === 0) throw new Error("Invalid ZeroRun: count cannot be 0.");
+            for (let k = 0; k < count; k++) out.push(this.zero);
+          }
+        }
+
+        const chunk = Uint8Array.from(out);
+        this._outChunks.push(chunk);
+        this._outLen += chunk.length;
+
+        const joined = new Uint8Array(this._outLen);
+        let off = 0;
+        for (const c of this._outChunks) { joined.set(c, off); off += c.length; }
+
+        if (this.xor) xorInPlace(joined, this.xor);
+        this.result = joined;
+        return true;
+      } catch (e) {
+        this.err = 1; this.msg = String(e?.message ?? e); this.result = undefined;
+        return false;
+      }
+    }
+  }
+
+  class Deflate {
+    constructor(opts = {}) {
+      this.zero = (opts.zero ?? 0x00) & 0xff;
+      this.xor  = (opts.xor  ?? 0x00) & 0xff;
+      this.err = 0; this.msg = ""; this.result = undefined;
+
+      this._outChunks = [];
+      this._outLen = 0;
+      this._run = 0;
+    }
+    push(data, final = false) {
+      try {
+        const inU8raw = asU8(data) ?? new Uint8Array(0);
+        const inU8 = this.xor ? xorInPlace(new Uint8Array(inU8raw), this.xor) : inU8raw;
+
+        const out = [];
+        const flushRun = () => {
+          while (this._run > 0) {
+            const n = Math.min(255, this._run);
+            out.push(this.zero, n);
+            this._run -= n;
+          }
+        };
+
+        for (let i = 0; i < inU8.length; i++) {
+          const b = inU8[i];
+          if (b === this.zero) {
+            this._run++;
+            if (this._run === 255) flushRun();
+          } else {
+            if (this._run) flushRun();
+            out.push(b);
+          }
+        }
+        if (final && this._run) flushRun();
+
+        const chunk = Uint8Array.from(out);
+        this._outChunks.push(chunk);
+        this._outLen += chunk.length;
+
+        const joined = new Uint8Array(this._outLen);
+        let off = 0;
+        for (const c of this._outChunks) { joined.set(c, off); off += c.length; }
+
+        if (this.xor) xorInPlace(joined, this.xor);
+        this.result = joined;
+        return true;
+      } catch (e) {
+        this.err = 1; this.msg = String(e?.message ?? e); this.result = undefined;
+        return false;
+      }
+    }
+  }
+
+  return { Inflate, Deflate };
+})();
+
+/* =========================
+   PackBits (pako-like)
+========================= */
+const PackBits = (() => {
+  function concatChunks(chunks, totalLen) {
+    const out = new Uint8Array(totalLen);
+    let off = 0;
+    for (const c of chunks) { out.set(c, off); off += c.length; }
+    return out;
+  }
+
+  class Inflate {
+    constructor() {
+      this.err = 0; this.msg = ""; this.result = undefined;
+      this._outChunks = []; this._outLen = 0;
+
+      this._needCtrl = true;
+      this._litRemaining = 0;
+      this._needRunByte = false;
+      this._runCount = 0;
+      this._ctrl = 0;
+    }
+
+    push(data /*, modeIgnored */) {
+      try {
+        const inU8 = asU8(data) ?? new Uint8Array(0);
+        const out = [];
+        let i = 0;
+
+        while (i < inU8.length) {
+          if (this._litRemaining > 0) {
+            const take = Math.min(this._litRemaining, inU8.length - i);
+            for (let k = 0; k < take; k++) out.push(inU8[i + k]);
+            i += take;
+            this._litRemaining -= take;
+            if (this._litRemaining === 0) this._needCtrl = true;
+            continue;
+          }
+
+          if (this._needRunByte) {
+            if (i >= inU8.length) break;
+            const b = inU8[i++];
+            for (let k = 0; k < this._runCount; k++) out.push(b);
+            this._needRunByte = false;
+            this._needCtrl = true;
+            continue;
+          }
+
+          if (this._needCtrl) {
+            if (i >= inU8.length) break;
+            this._ctrl = inU8[i++];
+            this._needCtrl = false;
+
+            const n = (this._ctrl << 24) >> 24; // int8
+            if (n >= 0 && n <= 127) {
+              this._litRemaining = n + 1;
+              continue;
+            } else if (n >= -127 && n <= -1) {
+              this._runCount = 1 - n;
+              this._needRunByte = true;
+              continue;
+            } else {
+              // -128 NOP
+              this._needCtrl = true;
+              continue;
+            }
+          }
+        }
+
+        const chunk = Uint8Array.from(out);
+        this._outChunks.push(chunk);
+        this._outLen += chunk.length;
+
+        this.result = concatChunks(this._outChunks, this._outLen);
+        return true;
+      } catch (e) {
+        this.err = 1; this.msg = String(e?.message ?? e); this.result = undefined;
+        return false;
+      }
+    }
+  }
+
+  class Deflate {
+    constructor() {
+      this.err = 0; this.msg = ""; this.result = undefined;
+      this._outChunks = []; this._outLen = 0;
+      this._lit = [];
+      this._runByte = -1;
+      this._runLen = 0;
+      this._have = false;
+    }
+
+    push(data, final = false) {
+      try {
+        const inU8 = asU8(data) ?? new Uint8Array(0);
+        const out = [];
+
+        const flushLiterals = () => {
+          let idx = 0;
+          while (idx < this._lit.length) {
+            const n = Math.min(128, this._lit.length - idx);
+            out.push((n - 1) & 0xff);
+            for (let k = 0; k < n; k++) out.push(this._lit[idx + k]);
+            idx += n;
+          }
+          this._lit.length = 0;
+        };
+
+        const flushRun = () => {
+          let remaining = this._runLen;
+          while (remaining > 0) {
+            const n = Math.min(128, remaining);
+            out.push((1 - n) & 0xff, this._runByte & 0xff);
+            remaining -= n;
+          }
+          this._runLen = 0; this._runByte = -1;
+        };
+
+        const commitRunOrLit = () => {
+          if (this._runLen >= 3) {
+            flushLiterals();
+            flushRun();
+          } else if (this._runLen > 0) {
+            for (let k = 0; k < this._runLen; k++) this._lit.push(this._runByte);
+            this._runLen = 0; this._runByte = -1;
+          }
+        };
+
+        for (let i = 0; i < inU8.length; i++) {
+          const b = inU8[i];
+          if (!this._have) {
+            this._have = true;
+            this._runByte = b; this._runLen = 1;
+            continue;
+          }
+          if (b === this._runByte) {
+            this._runLen++;
+            if (this._runLen === 128) {
+              commitRunOrLit();
+              this._runByte = b;
+              this._runLen = 0;
+            }
+          } else {
+            commitRunOrLit();
+            this._runByte = b;
+            this._runLen = 1;
+          }
+
+          if (this._lit.length >= 128) flushLiterals();
+        }
+
+        if (final) {
+          commitRunOrLit();
+          flushLiterals();
+        } else {
+          if (this._lit.length > 256) flushLiterals();
+        }
+
+        const chunk = Uint8Array.from(out);
+        this._outChunks.push(chunk);
+        this._outLen += chunk.length;
+
+        const joined = new Uint8Array(this._outLen);
+        let off = 0;
+        for (const c of this._outChunks) { joined.set(c, off); off += c.length; }
+
+        this.result = joined;
+        return true;
+      } catch (e) {
+        this.err = 1; this.msg = String(e?.message ?? e); this.result = undefined;
+        return false;
+      }
+    }
+  }
+
+  return { Inflate, Deflate };
+})();
+
+/* =========================
+   Codec registry (add more later)
+========================= */
+const CODECS = [
+  {
+    id: "pako",
+    name: "pako (DEFLATE)",
+    defaultArgs: { level: 9 },
+    available: () => (typeof window.pako !== "undefined"),
+    makeDeflate: (args) => new pako.Deflate(args),
+    makeInflate: (args) => new pako.Inflate(args),
+    // Size: try to estimate script bytes (best-effort).
+    scriptSizeBytes: async () => estimateExternalScriptBytes(/pako(\.min)?\.js|pako@/i)
+  },
+  {
+    id: "packbits",
+    name: "PackBits",
+    defaultArgs: {},
+    available: () => true,
+    makeDeflate: (args) => new PackBits.Deflate(args),
+    makeInflate: (args) => new PackBits.Inflate(args),
+    scriptSizeBytes: async () => estimateInlineObjectBytes(PackBits)
+  },
+  {
+    id: "zerorun_space",
+    name: "ZeroRun (space=0x20)",
+    defaultArgs: { zero: 0x20 },
+    available: () => true,
+    makeDeflate: (args) => new ZeroRun.Deflate(args),
+    makeInflate: (args) => new ZeroRun.Inflate(args),
+    scriptSizeBytes: async () => estimateInlineObjectBytes(ZeroRun)
+  },
+  {
+    id: "zerorun_xor",
+    name: "ZeroRun (xor=0x20, zero=0x00)",
+    defaultArgs: { xor: 0x20, zero: 0x00 },
+    available: () => true,
+    makeDeflate: (args) => new ZeroRun.Deflate(args),
+    makeInflate: (args) => new ZeroRun.Inflate(args),
+    scriptSizeBytes: async () => estimateInlineObjectBytes(ZeroRun)
+  }
+];
+
+async function estimateExternalScriptBytes(pattern) {
+  // Try: find matching script tag and fetch its content length (may fail due to CORS).
+  try {
+    const scripts = [...document.querySelectorAll("script[src]")];
+    const s = scripts.find(x => pattern.test(x.src));
+    if (!s) return null;
+
+    // Prefer PerformanceResourceTiming transferSize if available
+    const entries = performance.getEntriesByName(s.src);
+    if (entries && entries.length) {
+      const e = entries[0];
+      if (e.transferSize && e.transferSize > 0) return e.transferSize;
+    }
+
+    const res = await fetch(s.src, { mode: "cors" });
+    if (!res.ok) return null;
+    const txt = await res.text();
+    return txt.length;
+  } catch {
+    return null;
+  }
+}
+
+async function estimateInlineObjectBytes(obj) {
+  // Best-effort: stringify available function sources from the object.
+  // Not exact, but gives a comparable “ballpark” for your own codecs.
+  try {
+    let s = "";
+    for (const k of Object.keys(obj)) {
+      const v = obj[k];
+      if (typeof v === "function") s += v.toString();
+      else if (v && typeof v === "object") s += JSON.stringify(v);
+    }
+    return s.length || null;
+  } catch {
+    return null;
+  }
+}
+
+/* =========================
+   UI / Lab execution
+========================= */
+const els = {
+  file: document.getElementById("file"),
+  th2: document.getElementById("th2"),
+  th3: document.getElementById("th3"),
+  th4: document.getElementById("th4"),
+  rerun: document.getElementById("rerun"),
+  status: document.getElementById("status"),
+  inputSummary: document.getElementById("inputSummary"),
+  histText: document.getElementById("histText"),
+  seqTables: document.getElementById("seqTables"),
+  bench: document.getElementById("bench"),
+};
+
+let INPUT = null; // Uint8Array
+let INPUT_NAME = "";
+
+function setStatus(msg) { els.status.textContent = msg; }
+
+function buildBench() {
+  els.bench.innerHTML = "";
+  for (const codec of CODECS) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.dataset.codecId = codec.id;
+
+    const available = codec.available();
+    card.innerHTML = `
+      <h3>${codec.name} ${available ? "" : `<span class="pill bad">not loaded</span>`}</h3>
+      <div class="small muted row" style="justify-content:space-between;">
+        <div>Args (JSON):</div>
+        <div class="pill small">Script size: <span class="mono" data-role="scriptSize">…</span></div>
+      </div>
+      <textarea class="mono" data-role="args"></textarea>
+
+      <div class="row" style="margin-top:8px;">
+        <button class="btn" data-role="runOne">Run this codec</button>
+        <span class="small muted" data-role="runMsg">—</span>
+      </div>
+
+      <div style="height:10px"></div>
+      <table>
+        <tbody>
+          <tr><th>Compressed size</th><td class="mono" data-role="cSize">—</td></tr>
+          <tr><th>Ratio</th><td class="mono" data-role="ratio">—</td></tr>
+          <tr><th>Roundtrip</th><td class="mono" data-role="ok">—</td></tr>
+          <tr><th>Time</th><td class="mono" data-role="time">—</td></tr>
+        </tbody>
+      </table>
+    `;
+
+    const ta = card.querySelector('[data-role="args"]');
+    ta.value = JSON.stringify(codec.defaultArgs ?? {}, null, 2);
+
+    card.querySelector('[data-role="runOne"]').addEventListener("click", () => runCodecCard(codec.id));
+
+    // Debounced rerun on args change (only if input loaded)
+    let t = null;
+    ta.addEventListener("input", () => {
+      if (!INPUT) return;
+      clearTimeout(t);
+      t = setTimeout(() => runCodecCard(codec.id), 350);
+    });
+
+    els.bench.appendChild(card);
+    // fill script size async
+    codec.scriptSizeBytes().then(n => {
+      const spot = card.querySelector('[data-role="scriptSize"]');
+      spot.textContent = (n == null) ? "n/a" : `${n} B`;
+    });
+  }
+}
+
+async function runCodecCard(codecId) {
+  const card = els.bench.querySelector(`[data-codec-id="${codecId}"]`);
+  const codec = CODECS.find(c => c.id === codecId);
+  if (!card || !codec) return;
+
+  const msg = card.querySelector('[data-role="runMsg"]');
+  const cSize = card.querySelector('[data-role="cSize"]');
+  const ratio = card.querySelector('[data-role="ratio"]');
+  const ok = card.querySelector('[data-role="ok"]');
+  const time = card.querySelector('[data-role="time"]');
+  msg.textContent = "Running…";
+
+  if (!INPUT) {
+    msg.textContent = "Load a file first.";
+    return;
+  }
+  if (!codec.available()) {
+    msg.textContent = "Codec not available (e.g. pako not loaded).";
+    ok.innerHTML = `<span class="bad">NO</span>`;
+    return;
+  }
+
+  const argsText = card.querySelector('[data-role="args"]').value;
+  const args = safeParseJSON(argsText, codec.defaultArgs ?? {});
+
+  try {
+    const t0 = performance.now();
+
+    // Compress
+    const def = codec.makeDeflate(args);
+    // pako style: push(data, true)
+    def.push(INPUT, true);
+    const compressed = asU8(def.result);
+    if (!compressed) throw new Error("No compressed result produced.");
+
+    // Decompress
+    const inf = codec.makeInflate(args);
+    inf.push(compressed, true);
+    const decompressed = asU8(inf.result);
+    if (!decompressed) throw new Error("No decompressed result produced.");
+
+    const t1 = performance.now();
+
+    const same = bytesEqual(INPUT, decompressed);
+
+    cSize.textContent = `${fmtBytes(compressed.length)} (${compressed.length})`;
+    ratio.textContent = (compressed.length / INPUT.length).toFixed(4);
+    ok.innerHTML = same ? `<span class="ok">OK</span>` : `<span class="bad">FAIL</span>`;
+    time.textContent = `${(t1 - t0).toFixed(2)} ms`;
+
+    msg.textContent = same ? "Done." : "Roundtrip mismatch!";
+  } catch (e) {
+    msg.textContent = `Error: ${String(e?.message ?? e)}`;
+    ok.innerHTML = `<span class="bad">ERROR</span>`;
+    cSize.textContent = "—";
+    ratio.textContent = "—";
+    time.textContent = "—";
+  }
+}
+
+async function runAllCodecs() {
+  for (const c of CODECS) await runCodecCard(c.id);
+}
+
+function recomputeLeftPanel() {
+  if (!INPUT) return;
+
+  els.inputSummary.innerHTML = `
+    <div><b>File:</b> ${INPUT_NAME || "(unnamed)"}</div>
+    <div><b>Bytes:</b> ${INPUT.length} (${fmtBytes(INPUT.length)})</div>
+    <div><b>UTF-8 preview:</b> <span class="muted">(first 200 chars)</span></div>
+    <pre class="mono" style="margin-top:6px; max-height:160px; overflow:auto; border:1px solid #8884; padding:8px; border-radius:8px;">${
+      (() => {
+        try {
+          const td = new TextDecoder("utf-8", { fatal: false });
+          const s = td.decode(INPUT.slice(0, Math.min(INPUT.length, 4096)));
+          return s.slice(0, 200);
+        } catch { return "(decode error)"; }
+      })()
+    }</pre>
+  `;
+
+  // histogram
+  const hist = byteHistogramTop(INPUT, 16, 44);
+  els.histText.textContent = hist.text;
+
+  // sequences
+  const th2 = Number(els.th2.value) || 10;
+  const th3 = Number(els.th3.value) || 10;
+  const th4 = Number(els.th4.value) || 10;
+
+  // NOTE: sequenceStats is O(n * len) and Map-heavy; for huge files, this can be slow.
+  // If needed later, we can optimize by hashing integers instead of strings.
+  const s2 = sequenceStats(INPUT, 2, th2, 60);
+  const s3 = sequenceStats(INPUT, 3, th3, 60);
+  const s4 = sequenceStats(INPUT, 4, th4, 60);
+
+  els.seqTables.innerHTML =
+    renderSeqTable("2-byte sequences", s2, 2) +
+    `<div style="height:12px"></div>` +
+    renderSeqTable("3-byte sequences", s3, 3) +
+    `<div style="height:12px"></div>` +
+    renderSeqTable("4-byte sequences", s4, 4);
+}
+
+/* =========================
+   File load flow
+========================= */
+els.file.addEventListener("change", async (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+
+  setStatus("Reading file…");
+  INPUT_NAME = f.name;
+
+  const ab = await f.arrayBuffer();
+  INPUT = new Uint8Array(ab);
+
+  setStatus(`Loaded ${f.name} (${fmtBytes(INPUT.length)}). Computing stats…`);
+  recomputeLeftPanel();
+
+  setStatus("Running all codecs…");
+  await runAllCodecs();
+  setStatus("Done.");
+});
+
+els.rerun.addEventListener("click", async () => {
+  if (!INPUT) { setStatus("Load a file first."); return; }
+  setStatus("Recomputing stats & running all codecs…");
+  recomputeLeftPanel();
+  await runAllCodecs();
+  setStatus("Done.");
+});
+
+[els.th2, els.th3, els.th4].forEach(x => x.addEventListener("change", () => {
+  if (!INPUT) return;
+  recomputeLeftPanel();
+}));
+
+/* Init */
+buildBench();
+</script>
+</body>
+</html>
