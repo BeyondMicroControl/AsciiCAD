@@ -36,6 +36,7 @@
     <script type="text/javascript"  src="../res/pako.min.js"></script>
     <script type="text/javascript"  src="../res/zeroRun.js"></script>
     <script type="text/javascript"  src="../res/packBits.js"></script>
+  <script type="text/javascript"  src="../res/topToken.js"></script>
 </head>
 
 <body>
@@ -236,9 +237,19 @@ const CODECS = [
     scriptSizeBytes: async () => estimateInlineObjectBytes(PackBits)
   },
   {
+    id: "toptoken4",
+    name: "TopToken (Top-4 + ESC, 3-bit)",
+    defaultArgs: { top: [0x20, 0xE2, 0x94, 0x80] },
+    available: () => (typeof window.TopToken !== "undefined"),
+    makeDeflate: (args) => new TopToken.Deflate(args),
+    makeInflate: (args) => new TopToken.Inflate(args),
+    scriptSizeBytes: async () => estimateExternalScriptBytes(/topToken\.js/i) ?? await estimateInlineObjectBytes(TopToken)
+  },
+
+  {
     id: "zerorun_space",
-    name: "ZeroRun (space=0x20)",
-    defaultArgs: { zero: 0x20 },
+    name: "ZeroRun (zero=[0x20])",
+    defaultArgs: { zero: [0x20] },
     available: () => true,
     makeDeflate: (args) => new ZeroRun.Deflate(args),
     makeInflate: (args) => new ZeroRun.Inflate(args),
@@ -246,8 +257,8 @@ const CODECS = [
   },
   {
     id: "zerorun_xor",
-    name: "ZeroRun (xor=0x20, zero=0x00)",
-    defaultArgs: { xor: 0x20, zero: 0x00 },
+    name: "ZeroRun (zero=[0x20,0x20,0x20,0x20])",
+    defaultArgs: { zero: [0x20,0x20,0x20,0x20]},
     available: () => true,
     makeDeflate: (args) => new ZeroRun.Deflate(args),
     makeInflate: (args) => new ZeroRun.Inflate(args),
