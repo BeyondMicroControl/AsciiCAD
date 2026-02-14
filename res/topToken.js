@@ -200,3 +200,9 @@ const TopToken = (() => {
 
   return { Deflate, Inflate };
 })();
+
+// Expose as a classic-script global (like pako does).
+// Note: a top-level `const` does NOT create `window.TopToken`, so the lab's
+// availability check (`typeof window.TopToken !== "undefined"`) would fail.
+// Using `globalThis` keeps it working in browsers and other JS runtimes.
+globalThis.TopToken = TopToken;
