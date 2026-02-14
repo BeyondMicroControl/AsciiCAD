@@ -34,9 +34,10 @@
   <!-- Optional: load pako from CDN.
        If you prefer fully standalone/offline: download pako.min.js next to this file and replace src with "./pako.min.js" -->
     <script type="text/javascript"  src="../res/pako.min.js"></script>
-    <script type="text/javascript"  src="../res/zeroRun.js"></script>
+    <!-- Updated ZeroRun (word-aware, supports {zero:[...]} with per-word XOR preprocessing) -->
+    <script type="text/javascript"  src="../res/zeroRun_wordxor.js"></script>
     <script type="text/javascript"  src="../res/packBits.js"></script>
-  <script type="text/javascript"  src="../res/topToken.js"></script>
+    <script type="text/javascript"  src="../res/topToken.js"></script>
 </head>
 
 <body>
@@ -120,6 +121,7 @@ function fmtBytes(n) {
 function hex2(b) { return b.toString(16).padStart(2, "0").toUpperCase(); }
 
 function safeParseJSON(text, fallback = {}) {
+  // Lab mode: keep UI responsive, but surface full error details in the console + UI.
   try {
     const o = JSON.parse(text);
     return (o && typeof o === "object") ? o : fallback;
@@ -165,17 +167,17 @@ function byteHistogramTop(u8, topN = 16, barWidth = 42) {
    We list sequences whose coverage >= threshold.
    Coverage = count * len / totalBytes.
 ========================= */
-function sequenceStats(u8, len, thresholdPct, maxReport = 50) {
+function sequenceStatsAligned(u8, len, thresholdPct, maxReport = 50) {
+  // Aligned (non-overlapping) sequences starting at offsets 0, len, 2*len, ...
+  // Coverage = occurrences * len / totalBytes.
   const total = u8.length;
   const minCoverage = thresholdPct / 100;
 
   if (total < len) return [];
 
-  // Count sequences
   const map = new Map();
-  // Key as packed hex string to keep it simple & readable:
-  // e.g. "E2-94-80"
-  for (let i = 0; i <= total - len; i++) {
+  const limit = total - (total % len);
+  for (let i = 0; i <= limit - len; i += len) {
     let key = "";
     for (let k = 0; k < len; k++) {
       if (k) key += "-";
@@ -184,7 +186,6 @@ function sequenceStats(u8, len, thresholdPct, maxReport = 50) {
     map.set(key, (map.get(key) || 0) + 1);
   }
 
-  // Filter by coverage
   const out = [];
   for (const [key, count] of map.entries()) {
     const coverage = (count * len) / total;
@@ -194,24 +195,58 @@ function sequenceStats(u8, len, thresholdPct, maxReport = 50) {
   return out.slice(0, maxReport);
 }
 
-function renderSeqTable(title, rows, len) {
+function sequenceStatsWindowed(u8, len, thresholdPct, maxReport = 50) {
+  // Sliding-window sequences at every offset i, i+1, ...
+  // Coverage = occurrences * len / totalBytes.
+  const total = u8.length;
+  const minCoverage = thresholdPct / 100;
+
+  if (total < len) return [];
+
+  const map = new Map();
+  for (let i = 0; i <= total - len; i++) {
+    let key = "";
+    for (let k = 0; k < len; k++) {
+      if (k) key += "-";
+      key += hex2(u8[i + k]);
+    }
+    map.set(key, (map.get(key) || 0) + 1);
+  }
+
+  const out = [];
+  for (const [key, count] of map.entries()) {
+    const coverage = (count * len) / total;
+    if (coverage >= minCoverage) out.push({ key, count, coverage });
+  }
+  out.sort((a, b) => b.coverage - a.coverage || b.count - a.count || a.key.localeCompare(b.key));
+  return out.slice(0, maxReport);
+}
+
+function renderSeqTable(title, rows, windowedMap, len) {
   if (!rows.length) return `<div class="small muted">No ${len}-byte sequences exceed the threshold.</div>`;
   let html = `<div class="small"><b>${title}</b></div>`;
   html += `<table><thead><tr>
-    <th style="width:38%">Sequence (hex)</th>
+    <th style="width:30%">Sequence (hex)</th>
     <th>Occurrences</th>
     <th>Coverage</th>
+    <th>Windowed_Occurrences</th>
+    <th>Windowed_Coverage</th>
   </tr></thead><tbody>`;
+
   for (const r of rows) {
+    const w = windowedMap.get(r.key) || { count: 0, coverage: 0 };
     html += `<tr>
       <td class="mono">${r.key}</td>
       <td>${r.count}</td>
       <td>${(r.coverage*100).toFixed(2)}%</td>
+      <td>${w.count}</td>
+      <td>${(w.coverage*100).toFixed(2)}%</td>
     </tr>`;
   }
   html += `</tbody></table>`;
   return html;
 }
+
 
 /* =========================
    Codec registry (add more later)
@@ -228,6 +263,15 @@ const CODECS = [
     scriptSizeBytes: async () => estimateExternalScriptBytes(/pako(\.min)?\.js|pako@/i)
   },
   {
+    id: "toptoken_top4",
+    name: "TopToken (Top-4 + ESC, 3-bit)",
+    defaultArgs: { top: [0x20,0xE2,0x94,0x80] },
+    available: () => (typeof window.TopToken !== "undefined"),
+    makeDeflate: (args) => new TopToken.Deflate(args),
+    makeInflate: (args) => new TopToken.Inflate(args),
+    scriptSizeBytes: async () => estimateExternalScriptBytes(/topToken\.js/i)
+  },
+  {
     id: "packbits",
     name: "PackBits",
     defaultArgs: {},
@@ -237,19 +281,9 @@ const CODECS = [
     scriptSizeBytes: async () => estimateInlineObjectBytes(PackBits)
   },
   {
-    id: "toptoken4",
-    name: "TopToken (Top-4 + ESC, 3-bit)",
-    defaultArgs: { top: [0x20, 0xE2, 0x94, 0x80] },
-    available: () => (typeof window.TopToken !== "undefined"),
-    makeDeflate: (args) => new TopToken.Deflate(args),
-    makeInflate: (args) => new TopToken.Inflate(args),
-    scriptSizeBytes: async () => estimateExternalScriptBytes(/topToken\.js/i) ?? await estimateInlineObjectBytes(TopToken)
-  },
-
-  {
     id: "zerorun_space",
-    name: "ZeroRun (zero=[0x20])",
-    defaultArgs: { zero: [0x20] },
+    name: "ZeroRun byte (zero=0x20)",
+    defaultArgs: { zero: 0x20 },
     available: () => true,
     makeDeflate: (args) => new ZeroRun.Deflate(args),
     makeInflate: (args) => new ZeroRun.Inflate(args),
@@ -257,8 +291,8 @@ const CODECS = [
   },
   {
     id: "zerorun_xor",
-    name: "ZeroRun (zero=[0x20,0x20,0x20,0x20])",
-    defaultArgs: { zero: [0x20,0x20,0x20,0x20]},
+    name: "ZeroRun word-xor (zero=[0x20,0x20,0x20,0x20],trailing=0x20)",
+    defaultArgs: { zero: [0x20,0x20,0x20,0x20],trailing:0x20 },
     available: () => true,
     makeDeflate: (args) => new ZeroRun.Deflate(args),
     makeInflate: (args) => new ZeroRun.Inflate(args),
@@ -267,6 +301,22 @@ const CODECS = [
 ];
 
 async function estimateExternalScriptBytes(pattern) {
+  // Note: Browsers generally block fetch() for file:// URLs.
+  if (location.protocol === "file:") {
+    // Try ResourceTiming only; otherwise return null.
+    try {
+      const scripts = [...document.querySelectorAll("script[src]")];
+      const sc = scripts.find(x => pattern.test(x.src));
+      if (!sc) return null;
+      const entries = performance.getEntriesByName(sc.src);
+      if (entries && entries.length) {
+        const e = entries[0];
+        if (e.transferSize && e.transferSize > 0) return e.transferSize;
+      }
+    } catch {}
+    return null;
+  }
+
   // Try: find matching script tag and fetch its content length (may fail due to CORS).
   try {
     const scripts = [...document.querySelectorAll("script[src]")];
@@ -411,13 +461,19 @@ async function runCodecCard(codecId) {
     // Compress
     const def = codec.makeDeflate(args);
     // pako style: push(data, true)
-    def.push(INPUT, true);
+    const okDef = def.push(INPUT, true);
+    if (okDef === false || def.err) {
+      throw new Error(`Deflate failed: ${def.msg || def.err || 'unknown error'}`);
+    }
     const compressed = asU8(def.result);
     if (!compressed) throw new Error("No compressed result produced.");
 
     // Decompress
     const inf = codec.makeInflate(args);
-    inf.push(compressed, true);
+    const okInf = inf.push(compressed, true);
+    if (okInf === false || inf.err) {
+      throw new Error(`Inflate failed: ${inf.msg || inf.err || 'unknown error'}`);
+    }
     const decompressed = asU8(inf.result);
     if (!decompressed) throw new Error("No decompressed result produced.");
 
@@ -432,7 +488,15 @@ async function runCodecCard(codecId) {
 
     msg.textContent = same ? "Done." : "Roundtrip mismatch!";
   } catch (e) {
-    msg.textContent = `Error: ${String(e?.message ?? e)}`;
+    // Print full error + stack trace (file/line) to the console.
+    console.groupCollapsed(`[${codecId}] codec error`);
+    console.error(e);
+    if (e && e.stack) console.error(e.stack);
+    console.groupEnd();
+
+    // Also show the full stack in the UI so it's copy/pastable.
+    const details = (e && (e.stack || e.message)) ? (e.stack || e.message) : String(e);
+    msg.textContent = `Error:\n${details}`;
     ok.innerHTML = `<span class="bad">ERROR</span>`;
     cSize.textContent = "—";
     ratio.textContent = "—";
@@ -473,16 +537,24 @@ function recomputeLeftPanel() {
 
   // NOTE: sequenceStats is O(n * len) and Map-heavy; for huge files, this can be slow.
   // If needed later, we can optimize by hashing integers instead of strings.
-  const s2 = sequenceStats(INPUT, 2, th2, 60);
-  const s3 = sequenceStats(INPUT, 3, th3, 60);
-  const s4 = sequenceStats(INPUT, 4, th4, 60);
+  const s2 = sequenceStatsAligned(INPUT, 2, th2, 60);
+  const s3 = sequenceStatsAligned(INPUT, 3, th3, 60);
+  const s4 = sequenceStatsAligned(INPUT, 4, th4, 60);
+
+  const w2 = sequenceStatsWindowed(INPUT, 2, th2, 2000);
+  const w3 = sequenceStatsWindowed(INPUT, 3, th3, 2000);
+  const w4 = sequenceStatsWindowed(INPUT, 4, th4, 2000);
+
+  const w2m = new Map(w2.map(r => [r.key, r]));
+  const w3m = new Map(w3.map(r => [r.key, r]));
+  const w4m = new Map(w4.map(r => [r.key, r]));
 
   els.seqTables.innerHTML =
-    renderSeqTable("2-byte sequences", s2, 2) +
+    renderSeqTable("2-byte sequences", s2, w2m, 2) +
     `<div style="height:12px"></div>` +
-    renderSeqTable("3-byte sequences", s3, 3) +
+    renderSeqTable("3-byte sequences", s3, w3m, 3) +
     `<div style="height:12px"></div>` +
-    renderSeqTable("4-byte sequences", s4, 4);
+    renderSeqTable("4-byte sequences", s4, w4m, 4);
 }
 
 /* =========================
