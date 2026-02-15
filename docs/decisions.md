@@ -1002,8 +1002,8 @@ Introduce an explicit **Debug vs Production** workflow split:
 ### Draft Change Notes
 - [x] 1. Decommission old CADScript parser
 - [ ] 2. Mode 'TERMINAL COMMAND HANDLER' from index.html --> CMD_helpers.js (prep for nr 3)
-- [x] 3. Allow calling terminal commands in CADScript e.g. CADScript {oCMD.run("clear")}
-- [x] 4. Use by less heavy compression/decompression codec than Pako --> found LZSS after experimentation with <a href=../tools/codecTool.html>codecTool</a>
+- [x] 3. Allow calling terminal commands in CADScript <pre>CADScript {oCMD.run("clear")}</pre>
+- [x] 4. Use by less heavy compression/decompression codec than Pako --> found LZSS after experimentation with <a href="../tools/codecTool.html">codecTool</a>
 
 
 ---
