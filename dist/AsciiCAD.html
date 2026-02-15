@@ -726,6 +726,72 @@ function ASC()
   }
   this.freeform.help = "freeform(<i>c</i>,<i>r</i>,<i>char</i>)";
 
+
+  this.text = function(r, c, str) 
+  {
+    if(r===undefined || c===undefined || str===undefined) return;  // safe escape if no arguments provided
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
+      throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
+     
+    this.currentStroke = [];
+    for(var i=0;i<str.length;i++)
+    {
+      op.ch    = str.charAt(i);
+      op.type  = "place";
+      var cell = {"r":r,"c":c+i};
+      if(cell.c < COLS)
+        this.applyOpAtCell(cell,op);                   // display character on grid & push coordinate to currentStroke
+    }
+
+    this.pushStrokeIfNonEmpty(this.currentStroke);     // feed undo buffer
+  }
+  this.text.help = "text(<i>c</i>,<i>r</i>,<i>string</i>)";
+
+
+  // subsection catalog items
+  this.cat = function(c, r, a, uid)       // TODO: CONTINUE 
+  {
+    it = this.findCatalogItemByUID(uid);
+
+    if(pasteDrag==null) pasteDrag = {item_data:{}};
+    pasteDrag.item_data.rotation = a;                           // default rotation
+    pasteDrag.item_data.uid = uid   // unique id for this catalog item
+    const text_data = it.text_data[ pasteDrag.item_data.rotation ];
+
+    updateOpLine("catalog",it);
+
+    const expanded = oASC.expandWideCharsForGrid(text_data || "");
+    const forPaste = expanded.replace(/§/g, " ");   // WILDCARD_U becomes a real space for placement
+    oASC.startPasteWithText(forPaste);
+
+
+    var cell = {"r":r,"c":c}; 
+    oASC.commitPasteAt(cell);
+
+  }
+  this.cat.help = "cat(<i>c</i>,<i>r</i>,<i>angle</i>,<i>uid</i>) e.g. \"ATTINY85V-10PU\"";
+
+
+  this.lcat = function() 
+  {
+
+    // TODO : list catalog items
+    const items = (typeof CATALOG !== "undefined") ? CATALOG : [];
+    var tokenlist = [];
+
+    for (let i = 0; i < items.length; i++) 
+    {
+      const it = items[i];
+      const itUID = it.name + "_" + it.type + "_" + it.MFR;
+      tokenlist.push(itUID);
+    }
+    tokenlist.sort();
+    oTERM.output(oCOM.escapeHTML( "CATALOG ITEMS:\n\n"+tokenlist.join("\n") ));
+  }
+  this.lcat.help = "lcat() - list catalog";
+
+
+
   // subsection: lines
 
   this.beginLine = function(cell,kind) 
@@ -1155,6 +1221,13 @@ function ASC()
 
     return out;
   }
+
+  this.blank = function(c0,r0,c1,r1)
+  {
+    const rect = {"c0":c0,"r0":r0,"c1":c1,"r1":r1};
+    this.applyBlankRect(rect);
+  }
+  this.blank.help = "blank(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>)";
 
   this.applyBlankRect = function(rect)
   {
@@ -6155,7 +6228,7 @@ const PICKER_TABS =
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.12</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.13</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
         <div class="card">
