@@ -38,6 +38,7 @@
     <script type="text/javascript"  src="../res/zeroRun_wordxor.js"></script>
     <script type="text/javascript"  src="../res/packBits.js"></script>
     <script type="text/javascript"  src="../res/topToken.js"></script>
+    <script type="text/javascript"  src="../res/lzss.js"></script>
 </head>
 
 <body>
@@ -297,7 +298,16 @@ const CODECS = [
     makeDeflate: (args) => new ZeroRun.Deflate(args),
     makeInflate: (args) => new ZeroRun.Inflate(args),
     scriptSizeBytes: async () => estimateInlineObjectBytes(ZeroRun)
-  }
+  },
+  {
+  id: "lzss",
+  name: "LZSS (4KB window)",
+  defaultArgs: { windowBits: 12, lookahead: 18, threshold: 3 },
+  available: () => (typeof window.LZSS !== "undefined"),
+  makeDeflate: (args) => new LZSS.Deflate(args),
+  makeInflate: (args) => new LZSS.Inflate(args),
+  scriptSizeBytes: async () => null // (or your inline estimator)
+}
 ];
 
 async function estimateExternalScriptBytes(pattern) {

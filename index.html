@@ -21,9 +21,11 @@
     <script type="text/javascript"  src="res/AsciiCAD_helpers.js"></script>
     <script type="text/javascript"  src="res/CMD_helpers.js"></script>
     <script type="text/javascript"  src="res/AsciiCAD_catalog.js"></script>
-    <script type="text/javascript"  src="res/pako.min.js"></script>
+    <!--script type="text/javascript"  src="res/pako.min.js"></script-->
     <!--script type="text/javascript"  src="res/zeroRun.js"></script-->
     <!--script type="text/javascript"  src="res/packBits.js"></script-->
+    <!--script type="text/javascript"  src="../res/topToken.js"></script-->
+    <script type="text/javascript"  src="../res/lzss.js"></script>
 </head>
 <body>
   <div class="app">
@@ -31,7 +33,7 @@
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.11</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.12</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -1201,91 +1203,106 @@ function __cliHandleTerminal(line)
 
 
 
-    
 
-  
-  
+var inflator = null, deflator = null, DataToLoad = null;
+
+function initCompressionMethod(name)
+{
+   if(inflator!=null) return false;
+   const names = {"d":globalThis.pako ?? null,"pako":globalThis.pako ?? null,"lzss":globalThis.LZSS ?? null}
+   if(names[name]==null) return false;  // uri does not match a compression method
+
+   try
+   {
+     inflator = new names[name].Inflate();
+     DataToLoad = oCOM.base64ToArrayBuffer( oCOM.URL.uri[name] );
+     return true;
+   }
+   catch(err)
+   {
+    console.error("Missing decompression method '"+name+"'. Data was not decompressed. "+err.message)
+   }
+
+}
+
+function update_data_to_grid()
+{
+  // TODO: test what we can drag out of onload();
+  window.addEventListener("load", () => 
+  { 
+    const db = URIdata;
+    if(db!=null)
+    {
+      //const inflator = new ZeroRun.Inflate();
+      //const inflator = new PackBits.Inflate();
+      inflator.push(DataToLoad);
+      var bin = inflator.result;
+      if(typeof(bin)!="undefined")
+      {
+        DataToLoad = null;
+        // TODO check similarities with fileInput.addEventListener("change") {}
+
+        var enc = new TextDecoder("utf-8");
+        var txt = enc.decode(bin);
+        // TODO: PASTE this text in grid
+
+        try
+        {
+            // Expand wide chars (⬤ etc.) so the grid aligns with IDE rendering
+            const expanded = oASC.expandWideCharsForGrid(txt);
+            // Convert to lines (using your existing normalizeNewlines)
+            const lines = oCOM.toLines(expanded); // <-- IMPORTANT
+            const stroke = [];
+            for (let r = 0; r < ROWS; r++)
+            {
+              const line = lines[r] || "";
+              for (let c = 0; c < COLS; c++) 
+              {
+                  const prev = ascii[r][c];
+                  const next = line[c] || ' ';
+                  if (prev !== next)
+                  {
+                    stroke.push({ r, c, prev, next });
+                    ascii[r][c] = next;
+                  }
+              }
+            }
+
+            selection = null;
+            selectDrag = null;
+            moveDrag = null;
+            textDrag = null;
+            boxDrag = null;
+            oASC.cancelPaste();
+            oASC.pushStrokeIfNonEmpty(stroke);
+
+            oASC.draw();
+
+            fileInput.value = "";
+        } catch (err)
+        {
+            console.error("Load failed:", err);
+            alert("Load failed. See console for details");
+        }
+      }
+    }
+  });
+}
+
 
 
 oCOM.URL.parse(document.location.toString());
-
 for(var uri in oCOM.URL.uri)
 {
+  const isCompressedURI = initCompressionMethod(uri);
+  if(isCompressedURI==true) update_data_to_grid();
+
   switch(uri)
   {
     case "bDebug":
       if(bDebug == true) break;   // if bDebug==true was hardcoded, always debug
       bDebug = oCOM.URL.uri[uri] == "true" ? true : false;
       document.getElementById("toolDebug").style.visibility = bDebug==true ? "hidden" : "visible";
-    break;
-
-    case "pako":
-    case "d":
-
-      // TODO: test what we can drag out of onload();
-      window.addEventListener("load", () => 
-      { 
-        var db = oCOM.base64ToArrayBuffer(oCOM.URL.uri["pako"]);
-        if(db==null) var db = oCOM.base64ToArrayBuffer(oCOM.URL.uri["d"]);
-
-        if(db!=null)
-        {
-          const inflator = new pako.Inflate();
-          //const inflator = new ZeroRun.Inflate();
-          //const inflator = new PackBits.Inflate();
-          inflator.push(db);
-          var bin = inflator.result;
-          if(typeof(bin)!="undefined")
-          {
-
-            // TODO check similarities with fileInput.addEventListener("change") {}
-
-            var enc = new TextDecoder("utf-8");
-            var txt = enc.decode(bin);
-            // TODO: PASTE this text in grid
-
-            try
-            {
-                // Expand wide chars (⬤ etc.) so the grid aligns with IDE rendering
-                const expanded = oASC.expandWideCharsForGrid(txt);
-                // Convert to lines (using your existing normalizeNewlines)
-                const lines = oCOM.toLines(expanded); // <-- IMPORTANT
-                const stroke = [];
-                for (let r = 0; r < ROWS; r++)
-                {
-                  const line = lines[r] || "";
-                  for (let c = 0; c < COLS; c++) 
-                  {
-                      const prev = ascii[r][c];
-                      const next = line[c] || ' ';
-                      if (prev !== next)
-                      {
-                        stroke.push({ r, c, prev, next });
-                        ascii[r][c] = next;
-                      }
-                  }
-                }
-
-                selection = null;
-                selectDrag = null;
-                moveDrag = null;
-                textDrag = null;
-                boxDrag = null;
-                oASC.cancelPaste();
-                oASC.pushStrokeIfNonEmpty(stroke);
-
-                oASC.draw();
-
-                fileInput.value = "";
-            } catch (err)
-            {
-                console.error("Load failed:", err);
-                alert("Load failed. See console for details");
-            }
-          }
-        }
-      });
-
     break;
     case "download":
 
