@@ -1004,8 +1004,8 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [x] 2. Mode 'TERMINAL COMMAND HANDLER' from index.html --> CMD_helpers.js (prep for nr 3)
 - [x] 3. Allow calling terminal commands in CADScript <pre>CADScript {oCMD.run("clear")}</pre>
 - [x] 4. Use by less heavy compression/decompression codec than Pako --> found LZSS after experimentation with <a href="../tools/codecTool.html">codecTool</a>, turns out almost 38KB smaller and code is more readable
-- [x] 5. Integrate new CADScript functions:  catalog item, blank box, text(string), move/copy
-- [ ] 6. Integrate new CADScript functions: line(override) and line (resolve) - v1.13
+- [x] 5. Integrate new CADScript functions:  catalog item, blank box, text(string)  - v1.13
+- [ ] 6. Integrate new CADScript functions: line(override) and line (resolve), move/copy 
 
 
 ---
