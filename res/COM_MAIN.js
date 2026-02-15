@@ -431,7 +431,7 @@ function COM()
       {
         if(!(_urlargs[_i]===undefined))
         {
-          var a = _urlargs[_i].split("=");
+          var a = _urlargs[_i].split(/=(.+)/);
           this.uri[ a[0] ] = a[1];
         }
       }
