@@ -21,7 +21,7 @@
     <script type="text/javascript"  src="res/AsciiCAD_helpers.js"></script>
     <script type="text/javascript"  src="res/CMD_helpers.js"></script>
     <script type="text/javascript"  src="res/AsciiCAD_catalog.js"></script>
-    <!--script type="text/javascript"  src="res/pako.min.js"></script-->
+    <script type="text/javascript"  src="res/pako.min.js"></script>
     <!--script type="text/javascript"  src="res/zeroRun.js"></script-->
     <!--script type="text/javascript"  src="res/packBits.js"></script-->
     <!--script type="text/javascript"  src="res/topToken.js"></script-->
@@ -1267,9 +1267,10 @@ globalThis.RAWHANDLER = (() => {
 
 // global variables
 var inflator = null, deflator = null, DataToLoad = null;
+// Darg = deflate settings, Iarg = inflate settings
 const CompressionMethods = 
 {
-   "d"     : {"obj":globalThis.pako ?? null, "Darg":{"level": 9} } // Darg = deflate settings, Iarg = inflate settings
+   "d"     : {"obj":globalThis.pako ?? null, "Darg":{"level": 9} }
   ,"pako"  : {"obj":globalThis.pako ?? null, "Darg":{"level": 9} }
   ,"LZSS"  : {"obj":globalThis.LZSS ?? null, "Darg":{"windowBits": 12,"lookahead": 18,"threshold": 3}, "Iarg" : {"windowBits": 12,"lookahead": 18,"threshold": 3}  }
 }
@@ -1291,11 +1292,11 @@ function initCompressionMethod(name)
     {
       name="raw";
       CompressionMethods[name] = {"obj":globalThis.RAWHANDLER };
-      deflator = { "obj": new CompressionMethods[name].obj.Deflate( CompressionMethods[i].Darg ), "name":name }
+      deflator = { "obj": new CompressionMethods[name].obj.Deflate( CompressionMethods[name].Darg ), "name":name }
     }
 
     // instantiate the inflator we need (as given by the function argument)
-    inflator = { "obj": new CompressionMethods[name].obj.Inflate(  CompressionMethods[i].Iarg  ) , "name":name }
+    inflator = { "obj": new CompressionMethods[name].obj.Inflate(  CompressionMethods[name].Iarg===undefined?{}:CompressionMethods[name].Iarg  ) , "name":name }
     DataToLoad = oCOM.base64ToArrayBuffer( oCOM.URL.uri[name] );
     return true;
   }
