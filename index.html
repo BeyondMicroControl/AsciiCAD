@@ -25,7 +25,7 @@
     <!--script type="text/javascript"  src="res/zeroRun.js"></script-->
     <!--script type="text/javascript"  src="res/packBits.js"></script-->
     <!--script type="text/javascript"  src="res/topToken.js"></script-->
-    <script type="text/javascript"  src="res/lzss.js"></script>
+    <!--script type="text/javascript"  src="res/lzss.js"></script-->
 </head>
 <body>
   <div class="app">
@@ -1273,6 +1273,7 @@ const CompressionMethods =
    "d"     : {"obj":globalThis.pako ?? null, "Darg":{"level": 9} }
   ,"pako"  : {"obj":globalThis.pako ?? null, "Darg":{"level": 9} }
   ,"LZSS"  : {"obj":globalThis.LZSS ?? null, "Darg":{"windowBits": 12,"lookahead": 18,"threshold": 3}, "Iarg" : {"windowBits": 12,"lookahead": 18,"threshold": 3}  }
+  ,"raw"  :  {"obj":globalThis.RAWHANDLER ?? null }
 }
 
 function initCompressionMethod(name)
@@ -1296,7 +1297,7 @@ function initCompressionMethod(name)
     }
 
     // instantiate the inflator we need (as given by the function argument)
-    inflator = { "obj": new CompressionMethods[name].obj.Inflate(  CompressionMethods[name].Iarg===undefined?{}:CompressionMethods[name].Iarg  ) , "name":name }
+    inflator = { "obj": new CompressionMethods[name].obj.Inflate(  CompressionMethods[name].Iarg  ) , "name":name }
     DataToLoad = oCOM.base64ToArrayBuffer( oCOM.URL.uri[name] );
     return true;
   }
