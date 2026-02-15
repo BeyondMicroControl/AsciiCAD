@@ -24,8 +24,8 @@
     <!--script type="text/javascript"  src="res/pako.min.js"></script-->
     <!--script type="text/javascript"  src="res/zeroRun.js"></script-->
     <!--script type="text/javascript"  src="res/packBits.js"></script-->
-    <!--script type="text/javascript"  src="../res/topToken.js"></script-->
-    <!--script type="text/javascript"  src="res/lzss.js"></script-->
+    <!--script type="text/javascript"  src="res/topToken.js"></script-->
+    <script type="text/javascript"  src="res/lzss.js"></script>
 </head>
 <body>
   <div class="app">
@@ -1271,7 +1271,7 @@ const CompressionMethods =
 {
    "d"     : {"obj":globalThis.pako ?? null, "Darg":{"level": 9} } // Darg = deflate settings, Iarg = inflate settings
   ,"pako"  : {"obj":globalThis.pako ?? null, "Darg":{"level": 9} }
-  ,"LZSS"  : {"obj":globalThis.LZSS ?? null}
+  ,"LZSS"  : {"obj":globalThis.LZSS ?? null, "Darg":{"windowBits": 12,"lookahead": 18,"threshold": 3}, "Iarg" : {"windowBits": 12,"lookahead": 18,"threshold": 3}  }
 }
 
 function initCompressionMethod(name)
@@ -1285,17 +1285,17 @@ function initCompressionMethod(name)
     for(var i in CompressionMethods) 
     {
       if(CompressionMethods[i].obj!=null && deflator==null)
-        deflator =  { "obj": new CompressionMethods[i].obj.Deflate(), "name":i }
+        deflator =  { "obj": new CompressionMethods[i].obj.Deflate( CompressionMethods[i].Darg ), "name":i }
     }
     if(deflator==null)   // set RAW if no compression/decompression method found
     {
       name="raw";
       CompressionMethods[name] = {"obj":globalThis.RAWHANDLER };
-      deflator = { "obj": new CompressionMethods[name].obj.Deflate(), "name":name }
+      deflator = { "obj": new CompressionMethods[name].obj.Deflate( CompressionMethods[i].Darg ), "name":name }
     }
 
     // instantiate the inflator we need (as given by the function argument)
-    inflator = { "obj": new CompressionMethods[name].obj.Inflate() , "name":name }
+    inflator = { "obj": new CompressionMethods[name].obj.Inflate(  CompressionMethods[i].Iarg  ) , "name":name }
     DataToLoad = oCOM.base64ToArrayBuffer( oCOM.URL.uri[name] );
     return true;
   }
@@ -1315,7 +1315,7 @@ function update_data_to_grid()
     {
       //const inflator = new ZeroRun.Inflate();
       //const inflator = new PackBits.Inflate();
-      inflator.obj.push(DataToLoad);
+      inflator.obj.push( DataToLoad, true);
       var bin = inflator.obj.result;
       if(typeof(bin)!="undefined")
       {
