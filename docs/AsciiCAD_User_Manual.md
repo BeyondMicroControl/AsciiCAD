@@ -24,6 +24,8 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
    - [Examples](#examples)
 4. [Concepts](#concepts)
 5. [Troubleshooting](#troubleshooting)
+6. [Appendix](#appendix)
+  - [User interactions per feature](#userinteractions)
 
 ---
 
@@ -238,6 +240,83 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 ### My diagram looks misaligned in another editor
 - Use a monospace font in your editor.
 - Some UTF‑8 characters are not perfectly monospace in all fonts; prefer box-drawing characters and common symbols.
+
+
+---
+
+## Appendix
+
+### User interactions per feature
+
+#### Grid / Canvas zone
+
+| Feature / mode                                | Input device          | Gesture (order)                                                         | Events observed in code                                                                                                                                                                                     | Modifiers / special keys                     | Outcome / notes                                                                                                              |
+| --------------------------------------------- | --------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Hover / live cell coordinate**              | Mouse                 | move pointer                                                            | `canvas.mousemove` → `setHoverFromEvent()` → `canvasPointToCell()`                                                                                                                                          | —                                            | Updates hover cell + UI “Cell: Ln…, Col…”                                                                                    |
+| **Pan (drag)**                                | Mouse                 | middle-drag **or** right-drag                                           | `canvas.mousedown` (button 1 or 2) → sets `panDrag` → `canvas.mousemove` updates `panX/panY` → `window.mouseup` clears `panDrag`                                                                            | —                                            | Pan is clamped so screen center stays within grid (prevents grid fully leaving view)                                         |
+| **Pan (two-finger scroll)**                   | Trackpad              | two-finger scroll                                                       | `canvas.wheel` with “looksLikeTrackpad” heuristic → adjust `panX/panY`                                                                                                                                      | —                                            | Uses wheel deltas as pan; also clamped                                                                                       |
+| **Zoom (pinch)**                              | Trackpad              | pinch gesture                                                           | `canvas.wheel` with `e.ctrlKey` (browser pinch heuristic) → `__zoomAtCanvasPoint(mx,my, zoomFactor)`                                                                                                        | —                                            | Zoom anchor is the **pointer position** (mouse location in canvas coords)                                                    |
+| **Zoom (wheel)**                              | Mouse wheel           | wheel up/down                                                           | `canvas.wheel` (not trackpad-like) → `__zoomAtCanvasPoint(mx,my, zoomFactor)`                                                                                                                               | —                                            | Wheel zooms; anchor is pointer position; clamped after zoom                                                                  |
+| **Freeform draw (modeFreeform)**              | Mouse                 | left-down → drag → release                                              | `canvas.mousedown` (left) → `oASC.beginFreeform(cell)` → `canvas.mousemove` → `oASC.moveFreeform(cell)` → `window.mouseup` → `oASC.endFreeform()`                                                           | —                                            | Draw cell-by-cell; stroke is pushed for undo on end                                                                          |
+| **Select / Move (modeSelect)**                | Mouse                 | left-down → drag select → release                                       | `canvas.mousedown` → `oASC.beginSelect(cell)` → `canvas.mousemove` → `oASC.moveSelect(cell)` → `window.mouseup` → `oASC.endSelect()`                                                                        | —                                            | Drag makes selection rectangle; release finalizes. If starting inside an existing selection, it turns into a move-drag.      |
+| **Copy (modeCopy)**                           | Mouse                 | same as Select/Move                                                     | same chain as Select                                                                                                                                                                                        | —                                            | Same mechanics, but moveDrag action becomes `"copy"` and source remains                                                      |
+| **Blank (modeBlank)**                         | Mouse                 | left-down → drag select → release                                       | Select chain                                                                                                                                                                                                | —                                            | On endSelect, selected area is blanked and overlay cleared                                                                   |
+| **Lines (modeSLine / TLine / DLine)**         | Mouse                 | left-down set start → move preview → release commit                     | `canvas.mousedown` → `oASC.beginLine(cell, kind)` → `canvas.mousemove` → `oASC.moveLine(cell)` → `window.mouseup` → `oASC.commitLineWithOptionalMerge(lineDrag.merge, lineDrag.kind)`                       | `Shift` and `o` affect preview+commit (live) | `Shift` toggles “flip” behavior and `o` toggles merge/override; updates during drag on keydown/keyup                         |
+| **Boxes (modeSBox / TBox / DBox)**            | Mouse                 | left-down set start → move preview → release commit                     | `canvas.mousedown` → `oASC.beginBox(cell, kind)` → `canvas.mousemove` → `oASC.moveBox(cell)` → `window.mouseup` → `oASC.commitBox()`                                                                        | —                                            | Commit builds box path and writes chars as a stroke (undoable)                                                               |
+| **Free text preview (modeFreetext)**          | Mouse + keyboard      | click to set anchor → type → Enter commit / Esc cancel                  | `canvas.mousedown` → `oASC.beginFreetext(cell)`; then `window.keydown` intercepts while `textDrag` active                                                                                                   | Enter / Escape / Backspace                   | While `textDrag` active: keys are consumed; Enter commits, Esc cancels, Backspace edits; printable chars append to preview   |
+| **Clipboard paste into grid (paste preview)** | Keyboard (Cmd/Ctrl+V) | paste → preview follows mouse → click to place                          | `window.paste` (only if not in sidebar + not editing text) → `oASC.startPasteWithText(text)`; then `canvas.mousemove` updates `pasteDrag.anchor`; `canvas.mousedown` commits via `oASC.commitPasteAt(cell)` | —                                            | Paste is **context-dependent**: if focus is in sidebars, paste is NOT hijacked                                               |
+| **Catalog item paste (preview + rotate)**     | Mouse + keyboard      | pick catalog item → preview in grid → optional rotate (r) → click place | catalog item click calls `startPasteWithText(...)`; during paste preview `keydown` “r” rotates by swapping `text_data[...]` and restarting paste; click commits same as normal paste                        | `r` rotates                                  | Rotation keeps anchor stable across rotations                                                                                |
+| **Undo / Redo**                               | Keyboard              | Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z                                           | `window.keydown` always allows undo/redo (even when typing)                                                                                                                                                 | Cmd/Ctrl                                     | `Z` undo, `Shift+Z` redo                                                                                                     |
+| **Context menu suppression on canvas**        | Mouse                 | right click                                                             | `canvas.contextmenu` → `preventDefault()`                                                                                                                                                                   | —                                            | Prevents native context menu on canvas                                                                                       |
+
+
+#### Left UI Sidebar zone (buttons, tools, load/save)
+
+| Feature                              | Input device | Gesture (order)     | Events in code                                                                           | Outcome / notes                                                                     |
+| ------------------------------------ | ------------ | ------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| **Mode buttons (radio behavior)**    | Mouse        | click button        | `button.click` → `setMode(...)` → clears active drags + cancels paste                    | Sets active draw mode; updates hint line; behaves like radio UI                     |
+| **Eraser**                           | Mouse        | click               | `eraserBtn.click` sets `op={type:"erase"}` and forces Free mode                          | Turns Free mode into “erase”                                                        |
+| **Undo / Redo (buttons)**            | Mouse        | click               | buttons call `oASC.doUndo()` / `oASC.doRedo()` (wired elsewhere in file)                 | Mirrors keyboard undo/redo; buttons are disabled when stacks empty (UI update)      |
+| **Load**                             | Mouse        | click → choose file | `loadBtn.click` → hidden file input; `fileInput.change` loads text and writes it to grid | Uses `toLines()` + writes full ROWS/COLS buffer, then clears drags and push stroke  |
+| **Clear grid**                       | Mouse        | click               | `clearBtn.click` → `oASC.wipeSelection(' ')`                                             | Clears grid (and cancels selection/paste)                                           |
+| **PermaLink / Save**                 | Mouse        | click               | generates compressed URI and injects link                                                | Produces link to open saved state; debug variant routes to debug wrapper            |
+| **Schema Highlight / Match toggles** | Mouse        | click (toggle)      | `schemaHighlightBtn.click` / `schemaMatchBtn.click` → toggle + clear caches + redraw     | Toggle-style buttons (primary class indicates active)                               |
+
+
+#### CLI Sidebar zone (vanilla-terminal)
+
+| Feature                                       | Input device | Gesture (order)       | Events in code                                                             | Outcome / notes                                                                                     |
+| --------------------------------------------- | ------------ | --------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **Open CLI**                                  | Mouse        | click ⌘ button        | `toggleSidebar.click` → `switchToSidebar('cli')`                           | Shows CLI sidebar, hides UI sidebar; launches terminal if needed                                    |
+| **Close CLI / back to UI**                    | Mouse        | click ◀ button        | `toggleCLI.click` → `switchToSidebar('ui')`                                | Shows UI sidebar again                                                                              |
+| **Typing commands**                           | Keyboard     | type → Enter          | vanilla-terminal `input.keydown` Enter → dispatch → host `onInputCallback` | Terminal collects history; echoes commands; uses your `__cliHandleTerminal` to parse/compile/run    |
+| **History navigation**                        | Keyboard     | ↑ / ↓                 | terminal `input.keyup` handles arrow up/down                               | Loads previous commands into input                                                                  |
+| **Click-to-focus without breaking selection** | Mouse        | click inside terminal | terminal root `click` focuses input **unless** clicking on output area     | Prevents “stealing focus” when selecting/copying output text                                        |
+
+
+#### Modal dialogs zone (char picker & catalog)
+
+| Feature                  | Input device | Gesture (order)          | Events in code                                        | Outcome / notes                                               |
+| ------------------------ | ------------ | ------------------------ | ----------------------------------------------------- | ------------------------------------------------------------- |
+| **Char picker open**     | Mouse        | click “Pick char”        | opens modal + renders tabs/grid                       | Select char sets current op + closes picker                   |
+| **Char picker close**    | Mouse        | click backdrop or Close  | `pickerBackdrop.click` / `pickerClose.click`          | Closes modal and returns to Free mode                         |
+| **Catalog open / close** | Mouse        | open → pick item → close | `openCatalogBtn.click`, `catalogClose/backdrop.click` | Picking item starts paste-preview in grid and focuses canvas  |
+
+
+#### “Global” behaviors that affect all zones
+
+| Behavior                                                 | Input device   | Events                                                                                      | What it does                                                                                                                         |                                                      |
+| -------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| **Paste hijack is context-dependent**                    | Keyboard paste | `window.paste` checks `isInSidebar(target or activeElement)` and `isEditingTextTarget(...)` | If user is in **UI/CLI sidebar** or typing in input/textarea, paste is **not hijacked**; otherwise it becomes a grid paste-preview   |                                                      |
+| **Canvas shortcuts do not run while typing in sidebars** | Keyboard       | `window.keydown` early-return if `isEditingTextTarget(e)` or `isInSidebar(...)`             | Prevents “grid shortcuts” from interfering with terminal / text inputs (undo/redo is still allowed)                                  |                                                      |
+| **Sidebar resizing**                                     | Mouse          | resize handle mousedown → drag → mouseup                                                    | `resizeHandle*.mousedown` + `document.mousemove/mouseup`                                                                             | Width clamped to min 180px and max 50% window width  |
+
+
+
+
+
+
+
 
 ---
 
