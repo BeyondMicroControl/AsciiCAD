@@ -33,9 +33,9 @@ function ASC()
   this.CADScript.help = 
   {
     type: "AsciiCAD_CMD",
-    usage: "<b>CADScript {<i>expression</i>}</b>",
+    usage: "CADScript {<i>expression</i>}",
     desc: "Run a CADScript expression",
-    examples: ["CADScript {doUndo();doRedo()}"]
+    examples: ["CADScript {clear();doUndo()}"]
   };
 
   // Stage sizing: ensure integer cell sizes (avoid remainder pixels -> spacing artifacts)
@@ -562,7 +562,15 @@ function ASC()
     }
     this.pushStrokeIfNonEmpty(this.currentStroke);   // commit undo buffer 
   }
-  this.box.help = "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>lineStyle</i>)";
+  this.box.help = 
+  {
+    type: "CADScript_Fn",
+    usage: "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)",
+    desc: "Draw a box in line style BOX_DOUBLE|BOX_THICK|BOX_DOUBLE",
+    examples: ["box(1,0,3,2,BOX_DOUBLE)"]
+  }
+  
+  "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)";
 
   this.clear = function () 
   {
