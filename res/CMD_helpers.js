@@ -31,6 +31,24 @@ function CMD()
   //                                   
   /// Lex line into tokens: words + operators ; && || | &
 
+  /// Internal: render a "raw" string that is human-friendly and keeps grouping visible.
+  /// Since lexLine strips quote characters, this reconstructs a safe representation:
+  /// - wraps args containing whitespace (or empty) in double quotes
+  /// - escapes backslash and double quote inside those quoted args
+  this._renderRawWords = function(words)
+  {
+    if (!Array.isArray(words)) return "";
+    const needsQuotes = (s) => (s === "") || /\s/.test(s);
+    const escForDq = (s) => String(s).replace(/\\/g, "\\\\").replace(/\"/g, '\\"');
+    return words.map(w => {
+      const s = String(w);
+      return needsQuotes(s) ? ('"' + escForDq(s) + '"') : s;
+    }).join(" ");
+  };
+
+  // Public alias (handy if you export a reduced API)
+  this.renderRawWords = this._renderRawWords;
+
   this.lexLine = function(line) 
   {
     const ops = new Set([";", "&&", "||", "|", "&"]);
@@ -176,24 +194,6 @@ function CMD()
           if (next != null && !(next.startsWith("-") && next !== "-")) { pushOpt(opt, next); i++; }
           else pushOpt(opt, true);
         }
-
-        /// Internal: render a "raw" string that is human-friendly and keeps grouping visible.
-        /// Since lexLine strips quote characters, this reconstructs a safe representation:
-        /// - wraps args containing whitespace (or empty) in double quotes
-        /// - escapes backslash and double quote inside those quoted args
-        this._renderRawWords = function(words)
-        {
-          if (!Array.isArray(words)) return "";
-          const needsQuotes = (s) => (s === "") || /\s/.test(s);
-          const escForDq = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-          return words.map(w => {
-            const s = String(w);
-            return needsQuotes(s) ? '"${escForDq(s)}"' : s;
-          }).join(" ");
-        }
-
-          // Public alias (handy if you export a reduced API)
-        this.renderRawWords = this._renderRawWords;
 
         continue;
       }
@@ -1417,14 +1417,14 @@ JSON.prettify = function makeInteractiveJson(mountEl, boundaryStyles, indent = 2
     if (activePair === pairId) return;
     clearActive();
     activePair = pairId;
-    root.querySelectorAll('.json-boundary[data-pair="${CSS.escape(pairId)}"]')
-      .forEach(el => el.classList.add("active"));
+    const sel = '.json-boundary[data-pair="' + CSS.escape(String(pairId)) + '"]';
+    root.querySelectorAll(sel).forEach(el => el.classList.add("active"));
   }
 
   function clearActive() {
     if (activePair == null) return;
-    root.querySelectorAll('.json-boundary[data-pair="${CSS.escape(activePair)}"]')
-      .forEach(el => el.classList.remove("active"));
+    const sel = '.json-boundary[data-pair="' + CSS.escape(String(activePair)) + '"]';
+    root.querySelectorAll(sel).forEach(el => el.classList.remove("active"));
     activePair = null;
   }
 
@@ -1457,10 +1457,13 @@ function prettyJsonAllman(value, indent = 2) {
     (m, ws, key, open, maybeClose, comma) => {
       // Case: inline empty {} or [] on same line
       if (maybeClose) {
-        return '${ws}"${key}":\n${ws}${open}\n${ws}${" ".repeat(indent)}\n${ws}${maybeClose}${comma}';
+        return ws + '"' + key + '":\n' +
+               ws + open + '\n' +
+               ws + ' '.repeat(indent) + '\n' +
+               ws + maybeClose + comma;
       }
       // Case: normal ': {' or ': ['
-      return '${ws}"${key}":\n${ws}${open}';
+      return ws + '"' + key + '":\n' + ws + open;
     }
   );
 
