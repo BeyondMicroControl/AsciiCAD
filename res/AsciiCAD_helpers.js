@@ -1951,6 +1951,9 @@ function TERMINAL(props)
       }
     }
 
+    /*
+    // REMOVED, we prefer to have no built-ins as such, everything should be handled as user command
+
     // Dispatch (built-ins / user commands)
     var callback = self.commands[command];
 
@@ -1959,6 +1962,7 @@ function TERMINAL(props)
     } else {
       self.output("<u>" + escapeHtml(command) + "</u>: command not found.");
     }
+    */
   }
 
   // ---- public API (instance methods defined here) ---------------------------
