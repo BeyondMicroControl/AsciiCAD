@@ -23,6 +23,7 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
 4. [Concepts](#concepts)
 5. [Troubleshooting](#troubleshooting)
 6. [Appendix](#appendix)
+   - [User Interaction zones](#user-interaction-zones)
    - [User interactions per feature](#user-interactions-per-feature)
       - [Grid zone](#grid-zone)
       - [Left Sidebar zone](#left-sidebar-zone)
@@ -248,6 +249,35 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 ---
 
 ## Appendix
+
+### User interaction zones
+
+<pre>
+                                        Grid zone
+┌─────────┐┌─────────┐┌┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┐
+│   CLI   ││  Button │├┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┤
+│ sidebar ││ sidebar │├┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┤
+│  zone   ││  zone   │├┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┼┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴╁┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┤         Modal dialog zone         ┠┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┾┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯╃┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┤
+│         ││         │├┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┤
+└─────────┘└─────────┘└┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┘
+   
+</pre>
 
 ### User interactions per feature
 
