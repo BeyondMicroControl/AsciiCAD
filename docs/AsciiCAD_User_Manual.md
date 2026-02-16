@@ -269,6 +269,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 | **Undo / Redo**                               | Keyboard              | Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z                                           | `window.keydown` always allows undo/redo (even when typing)                                                                                                                                                 | Cmd/Ctrl                                     | `Z` undo, `Shift+Z` redo                                                                                                     |
 | **Context menu suppression on canvas**        | Mouse                 | right click                                                             | `canvas.contextmenu` → `preventDefault()`                                                                                                                                                                   | —                                            | Prevents native context menu on canvas                                                                                       |
 
+<br><br><br>
 
 #### Left UI Sidebar zone (buttons, tools, load/save)
 
@@ -282,6 +283,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 | **PermaLink / Save**                 | Mouse        | click               | generates compressed URI and injects link                                                | Produces link to open saved state; debug variant routes to debug wrapper            |
 | **Schema Highlight / Match toggles** | Mouse        | click (toggle)      | `schemaHighlightBtn.click` / `schemaMatchBtn.click` → toggle + clear caches + redraw     | Toggle-style buttons (primary class indicates active)                               |
 
+<br><br><br>
 
 #### CLI Sidebar zone (vanilla-terminal)
 
@@ -293,6 +295,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 | **History navigation**                        | Keyboard     | ↑ / ↓                 | terminal `input.keyup` handles arrow up/down                               | Loads previous commands into input                                                                  |
 | **Click-to-focus without breaking selection** | Mouse        | click inside terminal | terminal root `click` focuses input **unless** clicking on output area     | Prevents “stealing focus” when selecting/copying output text                                        |
 
+<br><br><br>
 
 #### Modal dialogs zone (char picker & catalog)
 
@@ -302,6 +305,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 | **Char picker close**    | Mouse        | click backdrop or Close  | `pickerBackdrop.click` / `pickerClose.click`          | Closes modal and returns to Free mode                         |
 | **Catalog open / close** | Mouse        | open → pick item → close | `openCatalogBtn.click`, `catalogClose/backdrop.click` | Picking item starts paste-preview in grid and focuses canvas  |
 
+<br><br><br>
 
 #### “Global” behaviors that affect all zones
 
