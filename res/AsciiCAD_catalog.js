@@ -254,7 +254,7 @@ image_data:
 name: 'ATTinyX24',
 type: 'MCU',
 description: '',
-MFR: 'ATTINY3224-SSU',
+MFR: 'ATTINY3224',
 pin_data: null,
 text_data:[
 '╔═══════════════════╗\n' +
@@ -323,7 +323,7 @@ image_data:
 name: 'ATTinyX26',
 type: 'MCU',
 description: '',
-MFR: 'ATTINY3226-SSU',
+MFR: 'ATTINY3226',
 pin_data: null,
 text_data:[
 '╔═══════════════════╗\n' +
@@ -384,7 +384,7 @@ image_data:
 ,
 {
 name: 'CH340N',
-type: 'Power/Driver',
+type: 'Power-Driver',
 description: 'USB to TTL Serial Port Module CH340N 5V to 3.3V Converter Adapter Board',
 MFR: 'CH340N',
 pin_data: null,
@@ -412,7 +412,7 @@ image_data:
 ,
 {
 name: '8SSR',
-type: 'Power/Driver',
+type: 'Power-Driver',
 description: '8 x Solid State Relay - Low Level Trigger',
 MFR: '8SSR',
 pin_data: null,
@@ -652,7 +652,7 @@ image_data:
 }
 ,
 {
-name: 'Fanstel BC805M',
+name: 'FanstelBLE',
 type: 'MCU',
 description: 'Compact, Lowest Cost BLE 5.2 Module based on Nordic NRF52',
 MFR: 'BC805M',
@@ -678,7 +678,7 @@ image_data:
 ,
 {
 name: 'TMC2209 V4.0',
-type: 'Power/Driver',
+type: 'Power-Driver',
 description: 'Ultra-silent motor driver IC for two phase stepper motors',
 MFR: 'TMC22209',
 instructions:'https://wiki.fysetc.com/docs/Silent2209',
@@ -703,7 +703,7 @@ image_data:
 }
 ,
 {
-name: 'OLED SSD1306',
+name: 'OLED_SSD1306',
 type: 'Display',
 description: '',
 MFR: 'SSD1306',
@@ -758,10 +758,10 @@ image_data:
 
 
 {
-name: 'OLED + Encoder',
+name: 'OLED+encoder+knobs',
 type: 'Display',
 description: '',
-MFR: 'OLED + Encoder',
+MFR: 'SSD1306',
 pin_data: null,
 text_data:[
 '╔═══╧══╧═══╧═══╧═══╧═══╧═══╧═══╧═══╧═══════════╗\n' +
@@ -784,7 +784,7 @@ image_data:
 
 
 {
-name: 'TFT COM-28380',
+name: 'TFT-COM28380',
 type: 'Display',
 description: 'TFT Touch Screen 320*240 with ILI9341 and XPT2046',
 MFR: 'COM-28380',
@@ -813,7 +813,7 @@ image_data:
 } 
 ,
 {
-name: 'ST7789V2',
+name: 'TFT-ST7789V2',
 type: 'Display',
 description: '2.4 inch TFT Display 240x280 with ST7789V2 Driver',
 MFR: 'ST7789V2',
@@ -843,7 +843,7 @@ image_data:
 }
 ,
 {
-name: 'ENS160 + AHT2X ',
+name: 'ENS160+AHT2X',
 type: 'Sensor',
 description: 'Air Quality Sensor ENS160 with AHT2X Temperature and Humidity Sensor',
 MFR: 'COM-28380',
@@ -905,7 +905,7 @@ image_data:
 }
 ,
 {
-name: 'INA226',
+name: 'CurrentSensor226',
 type: 'Sensor',
 description: 'INA226 High-Side Voltage and Current Sensor',
 MFR: 'INA226',
@@ -924,7 +924,7 @@ image_data:
 }
 ,
 {
-name: 'DHT22',
+name: 'HumiditySensor22',
 type: 'Sensor',
 description: 'DHT22 Temperature and Humidity Sensor',
 MFR: 'DHT22',
@@ -962,8 +962,8 @@ image_data:
 } 
 ,
 {
-name: '6N137/8 Optocopler',
-type: 'OpAmp/Opto',
+name: 'Optocopler137',
+type: 'OpAmp-Opto',
 description: 'High Speed Optocoupler',
 MFR: '6N137',
 instructions:'https://www.vishay.com/docs/84732/6n137_vo2601_vo2611.pdf',
@@ -991,8 +991,8 @@ image_data:
 } 
 ,
 {
-name: 'L78L Positive voltage regulator',
-type: 'Power/Driver',
+name: 'L78L-voltRegulator',
+type: 'Power-Driver',
 description: 'Positive voltage regulator',
 MFR: 'L78L',
 instructions:'https://www.st.com/resource/en/datasheet/l78l.pdf',
@@ -1015,8 +1015,8 @@ image_data:
 } 
 ,
 {
-name: 'Digital isolator',
-type: 'OpAmp/Opto',
+name: 'DigitalIsolator',
+type: 'OpAmp-Opto',
 description: 'High-Speed, Robust EMC, Reinforced Dual Digital Isolator',
 MFR: 'ISO7720DR',
 instructions:'https://www.ti.com/lit/ds/symlink/iso7720.pdf?ts=1767651970378',
@@ -1103,10 +1103,10 @@ image_data:
 }
 ,
 {
-name: 'Stepper motor',
+name: 'StepperMotor',
 type: 'Discrete',
 description: 'Stepper motor',
-MFR: 'Stepper motor',
+MFR: 'gen',
 pin_data: null,
 text_data:
 [
@@ -1129,10 +1129,10 @@ image_data:
 }
 ,
 {
-name: 'Dimmer module',
+name: 'DimmerModule',
 type: 'Electric',
 description: 'Connected lighting micromodule (with dimmer option) 0 648 99',
-MFR: 'LEG 064899',
+MFR: 'LEG-064899',
 instructions:'https://assets.legrand.com/pim/NP-FT-GT/LE13719AA_EN.pdf',
 pin_data: null,
 text_data:
@@ -1170,32 +1170,49 @@ image_data:
 }     
 ,
 {
-name: 'Transistor',
+name: 'NPN',
 type: 'Discrete',
 description: 'Transistor',
-MFR: 'Q',
+MFR: 'gen',
+SPICE: 'QNPN',
 pin_data: null,
 text_data:
 [
 '⸝⎻⎺⎻⸜\n' +
 '│⎺⎺⎺│\n' +
-'└┬┬┬┘\n'
+'└┬┬┬┛\n'
 ,
 '       │\n' +
-'  ⟋  ⎺⎺⏌ ⟍\n' +
+'  ⟋  ⎺⎺│ ⟍\n' +
 ' ⎛   ╷⟋   ⎞\n' +
 '─────┤    ▕\n' +
 ' ⎝   ╵↘   ⎠\n' +
-'  ⟍  __⏋ ⟋\n' + 
-'       │\n' 
+'  ⟍  __│ ⟋\n' + 
+'       │\n'
+],
+image_data:
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAB5QTFRFAAAAR0dHr6+vbW1tlpaWs7Ozt7e3TExMjIyMVVVV9weW8wAAAAp0Uk5TAP72/7VsF6YvSZ1EwLoAAADWSURBVHicY2BABhnTy8vLKxsYcACO6YJgID4BhwKovKCgJA4DYPKC4mQq4CTWBGFhHArYINLGxrhMYADJA6VxWgFRgMcNDBAn4LGikEgFuK0ohPrTEEdQwxQY41dgbGyIX4GwISETDHFGN8wNBKwAOQK/FcK4FUyEGlA5A58CQ0HcqRqcpMSLHXDJMzB0FgoWm+FTwNBkMdmsKAC/AgUnfAqSNJoJKFBtGlVAjAKmwaIggaYKWKihQI0yBawjRoHGUFCgFkpAgQMeaZACNnz6gVWnK4YQAJ4OXF8E1+IVAAAAAElFTkSuQmCC'    } 
+,
+{
+name: 'PNP',
+type: 'Discrete',
+description: 'Transistor',
+MFR: 'gen',
+SPICE: 'QPNP',
+pin_data: null,
+text_data:
+[
+'⸝⎻⎺⎻⸜\n' +
+'│⎺⎺⎺│\n' +
+'┗┬┬┬┘\n'
 ,
 '       │\n' +
-'  ⟋  ⎺⎺⏌ ⟍\n' +
+'  ⟋  ⎺⎺│ ⟍\n' +
 ' ⎛   ╷⟋   ⎞\n' +
 '─────┤    ▕\n' +
 ' ⎝   ╵↖   ⎠\n' +
-'  ⟍  __⏋ ⟋\n' +
-'       │\n' 
+'  ⟍  __│ ⟋\n' +
+'       │\n'
 ],
 image_data:
 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAB5QTFRFAAAAR0dHr6+vbW1tlpaWs7Ozt7e3TExMjIyMVVVV9weW8wAAAAp0Uk5TAP72/7VsF6YvSZ1EwLoAAADWSURBVHicY2BABhnTy8vLKxsYcACO6YJgID4BhwKovKCgJA4DYPKC4mQq4CTWBGFhHArYINLGxrhMYADJA6VxWgFRgMcNDBAn4LGikEgFuK0ohPrTEEdQwxQY41dgbGyIX4GwISETDHFGN8wNBKwAOQK/FcK4FUyEGlA5A58CQ0HcqRqcpMSLHXDJMzB0FgoWm+FTwNBkMdmsKAC/AgUnfAqSNJoJKFBtGlVAjAKmwaIggaYKWKihQI0yBawjRoHGUFCgFkpAgQMeaZACNnz6gVWnK4YQAJ4OXF8E1+IVAAAAAElFTkSuQmCC'    } 
@@ -1204,7 +1221,7 @@ image_data:
 name: 'GND',
 type: 'Discrete',
 description: 'Ground',
-MFR: 'GND',
+MFR: 'gen',
 pin_data: null,
 text_data:[
 '§\n' +
@@ -1218,7 +1235,8 @@ image_data:
 name: 'Capacitor',
 type: 'Discrete',
 description: 'Polarised Capacitor',
-MFR: 'C',
+MFR: 'gen',
+SPICE: 'C',
 pin_data: null,
 text_data:[
 '  +[###$F]\n' +
@@ -1263,6 +1281,7 @@ name: 'Diode',
 type: 'Discrete',
 description: 'Diode',
 MFR: 'Diode',
+SPICE: 'D',
 pin_data: null,
 text_data:[
 '§─▶├─\n'+
@@ -1289,7 +1308,8 @@ image_data:
 name: 'Shottky Diode',
 type: 'Discrete',
 description: 'Shottky Diode',
-MFR: 'Shottky Diode',
+MFR: 'gen',
+SPICE: 'D',
 pin_data: null,
 text_data:[
 '§─▶S─\n'+
@@ -1316,7 +1336,7 @@ image_data:
 name: 'LED',
 type: 'Discrete',
 description: 'LED',
-MFR: 'LED',
+MFR: 'gen',
 pin_data: null,
 text_data:[
 ' ⬈⬈\n' +  
@@ -1347,7 +1367,8 @@ image_data:
 name: 'Switch',
 type: 'Discrete',
 description: 'Switch',
-MFR: 'SW',
+MFR: 'gen',
+SPICE: 'SW',
 pin_data: null,
 text_data:[
 '  ╷\n' +
@@ -1395,7 +1416,7 @@ image_data:
 name: 'TRS plug',
 type: 'Connector',
 description: 'TRS Connector',
-MFR: 'TRS Connector',
+MFR: 'gen',
 pin_data: null,
 text_data:[
 '│───▅─▅⏜\\\n' +
@@ -1414,10 +1435,10 @@ image_data:
 }
 ,
 {
-name: 'TRS jack',
+name: 'TRSjack',
 type: 'Connector',
 description: 'TRS Connector',
-MFR: 'TRS Connector',
+MFR: 'gen',
 pin_data: null,
 text_data:[
 ' ╔════════╗\n' +
@@ -1441,10 +1462,10 @@ image_data:
 }
 ,
 {
-name: 'DIP connector',
+name: 'DIPcon',
 type: 'Connector',
 description: 'DIP Connector',
-MFR: 'DIP Connector',
+MFR: 'gen',
 pin_data: null,
 text_data:[
 '─━ ##)─\n'
@@ -1455,8 +1476,8 @@ image_data:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAA
 }
 ,   
 {
-name: 'Power Delivery',
-type: 'Power/Driver',
+name: 'PowerDeliveryUnit',
+type: 'Power-Driver',
 description: '140W USB-C Fast Charge Trigger Board Module PD/QC Decoy Board PD3.1 28V/36V/48V',
 MFR: 'PD',
 pin_data: null,
@@ -1472,8 +1493,8 @@ image_data:
 }
 ,
 {
-name: 'DC/DC Converter',
-type: 'Power/Driver',
+name: 'DC-DC+-12V',
+type: 'Power-Driver',
 description: 'DC/DC Converters - Through Hole 40W 18-75Vin +/-12V +/-1667mA DIP 1X1',
 MFR: 'DKMW40G-12',
 instructions:'https://www.meanwellusa.com/webapp/product/search.aspx?prod=SKMW40',
@@ -1492,7 +1513,7 @@ image_data:
 ,
 {
 name: 'PCM5102',
-type: 'DAC/ADC',
+type: 'DAC-ADC',
 description: 'Low Power Digital Audio Converters I2S Module for Raspberry Projects 0.3V/5V Digital Stereo Converters',
 MFR: 'DAC',
 pin_data: null,
@@ -1515,7 +1536,7 @@ image_data:
 ,
 {
 name: 'SGTL5000',
-type: 'DAC/ADC',
+type: 'DAC-ADC',
 description: 'Low Power Stereo Codec with Headphone Amp',
 MFR: 'ADC/DAC',
 pin_data: null,
@@ -1563,9 +1584,9 @@ image_data:
 ,
 {
 name: 'OpAmp',
-type: 'OpAmp/Opto',
+type: 'OpAmp-Opto',
 description: 'Operational Amplifier',
-MFR: 'OpAmp',
+MFR: 'gen',
 pin_data: null,
 text_data:[
 ' ⌠⟍ │\n' +
@@ -1641,7 +1662,7 @@ image_data:
 name: 'Gates',
 type: 'Logic',
 description: 'Logic gates',
-MFR: 'Gates',
+MFR: 'gen',
 pin_data: null,
 text_data:[
 ' ↽──╌_\n' +
