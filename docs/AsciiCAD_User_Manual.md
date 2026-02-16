@@ -18,14 +18,18 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
    - [Clipboard and paste-to-grid](#clipboard-and-paste-to-grid)
 3. [CLI manual](#cli-manual)
    - [Opening the CLI](#opening-the-cli)
-   - [Modes overview](#modes-overview)
-   - [Terminal mode reference](#terminal-mode-reference)
-   - [CADScript mode reference](#cadscript-mode-reference)
+   - [Terminal reference](#terminal-mode-reference)
    - [Examples](#examples)
 4. [Concepts](#concepts)
 5. [Troubleshooting](#troubleshooting)
 6. [Appendix](#appendix)
-  - [User interactions per feature](#userinteractions)
+   - [User Interaction zones](#user-interaction-zones)
+   - [User interactions per feature](#user-interactions-per-feature)
+      - [Grid zone](#grid-zone)
+      - [Left Sidebar zone](#left-sidebar-zone)
+      - [CLI Sidebar zone](#CLI-Sidebar-Zone)
+      - [Modal dialogs zone](#modal-dialogs-zone)
+      - [Behaviors that affect all zones](#behaviors-that-affect-all-zones)
 
 ---
 
@@ -191,11 +195,6 @@ Prompt: `AsciiCAD>`
 AsciiCAD> CADScript {freeform(0,2,'+'); freeform(1,2,'+'); freeform(1,3,'+')};
 ```
 
-#### Run CADScript while staying in Terminal mode
-```text
-AsciiCAD> CADScript {oCMD
-```
-
 #### Run a terminal command from CADScript
 ```text
 AsciiCAD> CADScript {oCMD.line("clear")}
@@ -246,9 +245,38 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 
 ## Appendix
 
+### User interaction zones
+
+<pre>
+                                        Grid zone
+   ┌─────────┐┌─────────┐┌┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┬┐
+   │   CLI   ││  Button │├┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┤
+   │ sidebar ││ sidebar │├┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┤
+   │  zone   ││  zone   │├┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┼┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴╁┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┤         Modal dialog zone         ┠┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+   │         ◀▶         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┤                                   ┠┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┾┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯┯╃┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┤
+   │         ││         │├┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┼┤
+   └─────────┘└─────────┘└┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┴┘
+   
+</pre>
+
 ### User interactions per feature
 
-#### Grid / Canvas zone
+#### Grid zone
 
  | Feature / mode                                | Input device          | Gesture (order)                                                         | Events observed in code                                                                                                                                                                                     | Modifiers / special keys                     | Outcome / notes                                                                                                              |
 | --------------------------------------------- | --------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -271,7 +299,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 
 <br><br><br>
 
-#### Left UI Sidebar zone (buttons, tools, load/save)
+#### Left Sidebar zone
 
  | Feature                              | Input device | Gesture (order)     | Events in code                                                                           | Outcome / notes                                                                     |
 | ------------------------------------ | ------------ | ------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
@@ -285,7 +313,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 
 <br><br><br>
 
-#### CLI Sidebar zone (vanilla-terminal)
+#### CLI Sidebar zone
 
  | Feature                                       | Input device | Gesture (order)       | Events in code                                                             | Outcome / notes                                                                                     |
 | --------------------------------------------- | ------------ | --------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
@@ -297,7 +325,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 
 <br><br><br>
 
-#### Modal dialogs zone (char picker & catalog)
+#### Modal dialogs zone
 
  | Feature                  | Input device | Gesture (order)          | Events in code                                        | Outcome / notes                                               |
 | ------------------------ | ------------ | ------------------------ | ----------------------------------------------------- | ------------------------------------------------------------- |
