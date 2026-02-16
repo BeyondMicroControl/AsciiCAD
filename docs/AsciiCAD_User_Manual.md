@@ -250,7 +250,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 
 #### Grid / Canvas zone
 
-| Feature / mode                                | Input device          | Gesture (order)                                                         | Events observed in code                                                                                                                                                                                     | Modifiers / special keys                     | Outcome / notes                                                                                                              |
+ | Feature / mode                                | Input device          | Gesture (order)                                                         | Events observed in code                                                                                                                                                                                     | Modifiers / special keys                     | Outcome / notes                                                                                                              |
 | --------------------------------------------- | --------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | **Hover / live cell coordinate**              | Mouse                 | move pointer                                                            | `canvas.mousemove` → `setHoverFromEvent()` → `canvasPointToCell()`                                                                                                                                          | —                                            | Updates hover cell + UI “Cell: Ln…, Col…”                                                                                    |
 | **Pan (drag)**                                | Mouse                 | middle-drag **or** right-drag                                           | `canvas.mousedown` (button 1 or 2) → sets `panDrag` → `canvas.mousemove` updates `panX/panY` → `window.mouseup` clears `panDrag`                                                                            | —                                            | Pan is clamped so screen center stays within grid (prevents grid fully leaving view)                                         |
@@ -272,7 +272,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 
 #### Left UI Sidebar zone (buttons, tools, load/save)
 
-| Feature                              | Input device | Gesture (order)     | Events in code                                                                           | Outcome / notes                                                                     |
+ | Feature                              | Input device | Gesture (order)     | Events in code                                                                           | Outcome / notes                                                                     |
 | ------------------------------------ | ------------ | ------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | **Mode buttons (radio behavior)**    | Mouse        | click button        | `button.click` → `setMode(...)` → clears active drags + cancels paste                    | Sets active draw mode; updates hint line; behaves like radio UI                     |
 | **Eraser**                           | Mouse        | click               | `eraserBtn.click` sets `op={type:"erase"}` and forces Free mode                          | Turns Free mode into “erase”                                                        |
@@ -285,7 +285,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 
 #### CLI Sidebar zone (vanilla-terminal)
 
-| Feature                                       | Input device | Gesture (order)       | Events in code                                                             | Outcome / notes                                                                                     |
+ | Feature                                       | Input device | Gesture (order)       | Events in code                                                             | Outcome / notes                                                                                     |
 | --------------------------------------------- | ------------ | --------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | **Open CLI**                                  | Mouse        | click ⌘ button        | `toggleSidebar.click` → `switchToSidebar('cli')`                           | Shows CLI sidebar, hides UI sidebar; launches terminal if needed                                    |
 | **Close CLI / back to UI**                    | Mouse        | click ◀ button        | `toggleCLI.click` → `switchToSidebar('ui')`                                | Shows UI sidebar again                                                                              |
@@ -296,7 +296,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 
 #### Modal dialogs zone (char picker & catalog)
 
-| Feature                  | Input device | Gesture (order)          | Events in code                                        | Outcome / notes                                               |
+ | Feature                  | Input device | Gesture (order)          | Events in code                                        | Outcome / notes                                               |
 | ------------------------ | ------------ | ------------------------ | ----------------------------------------------------- | ------------------------------------------------------------- |
 | **Char picker open**     | Mouse        | click “Pick char”        | opens modal + renders tabs/grid                       | Select char sets current op + closes picker                   |
 | **Char picker close**    | Mouse        | click backdrop or Close  | `pickerBackdrop.click` / `pickerClose.click`          | Closes modal and returns to Free mode                         |
@@ -305,7 +305,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 
 #### “Global” behaviors that affect all zones
 
-| Behavior                                                 | Input device   | Events                                                                                      | What it does                                                                                                                         |                                                      |
+ | Behavior                                                 | Input device   | Events                                                                                      | What it does                                                                                                                         |                                                      |
 | -------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
 | **Paste hijack is context-dependent**                    | Keyboard paste | `window.paste` checks `isInSidebar(target or activeElement)` and `isEditingTextTarget(...)` | If user is in **UI/CLI sidebar** or typing in input/textarea, paste is **not hijacked**; otherwise it becomes a grid paste-preview   |                                                      |
 | **Canvas shortcuts do not run while typing in sidebars** | Keyboard       | `window.keydown` early-return if `isEditingTextTarget(e)` or `isInSidebar(...)`             | Prevents “grid shortcuts” from interfering with terminal / text inputs (undo/redo is still allowed)                                  |                                                      |
