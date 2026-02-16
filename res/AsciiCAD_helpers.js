@@ -165,8 +165,13 @@ function ASC()
     this.applyOpAtCell(cell,op);                   // display character on grid & push coordinate to currentStroke
     this.pushStrokeIfNonEmpty(this.currentStroke);   // feed undo buffer
   }
-  this.freeform.help = "freeform(<i>c</i>,<i>r</i>,<i>char</i>)";
-
+  this.freeform.help = 
+    {
+      type: "CADScript_FN",
+      usage: "freeform(<i>c</i>,<i>r</i>,<i>char</i>)",
+      desc: "",
+      examples: ["oASC.freeform(0,0,'+')"]
+    }
 
   this.text = function(r, c, str) 
   {
@@ -187,7 +192,13 @@ function ASC()
     this.pushStrokeIfNonEmpty(this.currentStroke);     // feed undo buffer
   }
   this.text.help = "text(<i>c</i>,<i>r</i>,<i>string</i>)";
-
+  this.text.help = 
+    {
+      type: "CADScript_FN",
+      usage: "text(<i>c</i>,<i>r</i>,<i>string</i>)",
+      desc: "",
+      examples: ["oASC.text(0,0,\"TEST\")"]
+  }
 
   // subsection catalog items
   this.cat = function(c, r, a, uid)       // TODO: CONTINUE 
@@ -234,8 +245,13 @@ function ASC()
     tokenlist.sort();
     oTERM.output(oCOM.escapeHTML( "CATALOG ITEMS:\n\n"+tokenlist.join("\n") ));
   }
-  this.lcat.help = "lcat() - list catalog";
-
+  this.lcat.help = 
+  {
+    type: "CADScript_FN",
+    usage: "lcat()",
+    desc: "list all catalog item UIDs",
+    examples: ["oASC.lcat()"]
+  }
 
 
   // subsection: lines
@@ -592,7 +608,7 @@ function ASC()
     type: "CADScript_CMD",
     usage: "clear()",
     desc: "Clears the grid and pushes a single undo stroke.",
-    examples: ["clear()"]
+    examples: ["oASC.clear()"]
   };
 
   // TODO: describe what it does, and check if this can be used as generic function or it should be a private function
@@ -681,7 +697,13 @@ function ASC()
     const rect = {"c0":c0,"r0":r0,"c1":c1,"r1":r1};
     this.applyBlankRect(rect);
   }
-  this.blank.help = "blank(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>)";
+  this.blank.help = 
+  {
+    type: "CADScript_FN",
+    usage: "blank(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>)",
+    desc: "",
+    examples: ["oASC.blank()"]
+  }
 
   this.applyBlankRect = function(rect)
   {
@@ -1463,7 +1485,7 @@ function ASC()
     type: "CADScript_CMD",
     usage: "doUndo()",
     desc: "Undo last action",
-    examples: ["doUndo()"]
+    examples: ["oASC.doUndo()"]
   };
 
   this.doRedo = function() 
@@ -1480,7 +1502,7 @@ function ASC()
     type: "CADScript_CMD",
     usage: "doRedo()",
     desc: "Redo last undone action",
-    examples: ["doRedo()"]
+    examples: ["oASC.doRedo()"]
   };
 
 
