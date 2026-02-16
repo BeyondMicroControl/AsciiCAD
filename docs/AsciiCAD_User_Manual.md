@@ -25,7 +25,7 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
 6. [Appendix](#appendix)
    - [User interactions per feature](#user-interactions-per-feature)
       - [Grid zone](#grid-zone)
-      - [Left UI Sidebar zone](#left-ui-sidebar-zone)
+      - [Left Sidebar zone](#left-sidebar-zone)
       - [CLI Sidebar zone](#CLI-Sidebar-Zone)
       - [Modal dialogs zone](#modal-dialogs-zone)
       - [Behaviors that affect all zones](#behaviors-that-affect-all-zones)
@@ -274,7 +274,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 
 <br><br><br>
 
-#### Left UI Sidebar zone (buttons, tools, load/save)
+#### Left Sidebar zone
 
  | Feature                              | Input device | Gesture (order)     | Events in code                                                                           | Outcome / notes                                                                     |
 | ------------------------------------ | ------------ | ------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
@@ -288,7 +288,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 
 <br><br><br>
 
-#### CLI Sidebar zone (vanilla-terminal)
+#### CLI Sidebar zone
 
  | Feature                                       | Input device | Gesture (order)       | Events in code                                                             | Outcome / notes                                                                                     |
 | --------------------------------------------- | ------------ | --------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
@@ -300,7 +300,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 
 <br><br><br>
 
-#### Modal dialogs zone (char picker & catalog)
+#### Modal dialogs zone
 
  | Feature                  | Input device | Gesture (order)          | Events in code                                        | Outcome / notes                                               |
 | ------------------------ | ------------ | ------------------------ | ----------------------------------------------------- | ------------------------------------------------------------- |
