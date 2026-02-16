@@ -195,11 +195,6 @@ Prompt: `AsciiCAD>`
 AsciiCAD> CADScript {freeform(0,2,'+'); freeform(1,2,'+'); freeform(1,3,'+')};
 ```
 
-#### Run CADScript while staying in Terminal mode
-```text
-AsciiCAD> CADScript {oCMD
-```
-
 #### Run a terminal command from CADScript
 ```text
 AsciiCAD> CADScript {oCMD.line("clear")}
