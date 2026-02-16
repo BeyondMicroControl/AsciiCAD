@@ -1028,9 +1028,9 @@ function ASC()
   this.CADScript.help = 
   {
     type: "AsciiCAD_CMD",
-    usage: "<b>CADScript {<i>expression</i>}</b>",
+    usage: "CADScript {<i>expression</i>}",
     desc: "Run a CADScript expression",
-    examples: ["CADScript {doUndo();doRedo()}"]
+    examples: ["CADScript {clear();doUndo()}"]
   };
 
   // Stage sizing: ensure integer cell sizes (avoid remainder pixels -> spacing artifacts)
@@ -1557,7 +1557,15 @@ function ASC()
     }
     this.pushStrokeIfNonEmpty(this.currentStroke);   // commit undo buffer 
   }
-  this.box.help = "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>lineStyle</i>)";
+  this.box.help = 
+  {
+    type: "CADScript_Fn",
+    usage: "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)",
+    desc: "Draw a box in line style BOX_DOUBLE|BOX_THICK|BOX_DOUBLE",
+    examples: ["box(1,0,3,2,BOX_DOUBLE)"]
+  }
+  
+  "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)";
 
   this.clear = function () 
   {
@@ -7849,57 +7857,58 @@ function __cliHandleTerminal(line)
     {
       switch(options[i]?.key)
       {
-        case "h":                 // responding to CADScript -h
-          var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["usage"]});
-          var str = oCOM.AsciiTable(tokenlist,
-          {"sort":null
-          ,"header":false
-          ,"style":"─│├┼┤└┴┘┌┬┐ ┃"
-          ,"max":[null,null]
-          ,"rowLine":false
-          ,"colLine":false
-          ,"align":["LL"]});
+        case "h":                 
 
-          oTERM.output(oCOM.escapeHTML( "<u>Options:</u>\n"+
-            "-h command help\n" +
-            "-l [<i>objName</i>] objList / objTokens\n"
-           ));
-
-          oTERM.output(oCOM.escapeHTML( "<u>Documented commands:</u>\n"+str ));
-          return true;
-        break;
-        case "l":                   // responding to CADScript -l
-        
-          var list = [];
-          if(options[i]?.value == true)     // list all bound objects
+          if(options[i]?.value == true)         // responding to CADScript -h
           {
-            list.push("All objects in scope:");
+            var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["usage"]});
+            var str = oCOM.AsciiTable(tokenlist,
+            {"sort":null
+            ,"header":false
+            ,"style":"─│├┼┤└┴┘┌┬┐ ┃"
+            ,"max":[null,null]
+            ,"rowLine":false
+            ,"colLine":false
+            ,"align":["LL"]});
+
+            oTERM.output(oCOM.escapeHTML( "<u>Options:</u>\n"+
+              "-h [<i>objName</i>] objList / objTokens\n"
+            ));
+
+            oTERM.output(oCOM.escapeHTML( "<u>BuiltIn (oASC) token scope:</u>\n"+str ));
+
+            var list = [];
+            list.push("<u>Other object names:</u>");
             for(var i in oCMD._bindings)
               list.push(i);
+            oTERM.output(oCOM.escapeHTML( list.join("\n") ));
           }
-          else if(typeof(options[i]?.value)=="string")  // list all (documented) tokens from a specified object
+          else if(typeof(options[i]?.value)=="string")  // // responding to CADScript -h [objName]
           {
-            var searchBindings = options[i]?.value.split(",");
-            
-            for(var i=0;i<searchBindings.length;i++)
-            {
-              list.push("All objTokens from "+searchBindings[i]+":");
-              var obj = oCMD._bindings[searchBindings[i]]
-              var tokenlist = [["<u>COMMANDS</u>","<u>EXAMPLES</u>"]]
-                              .concat( oCOM.JShelpCollector(obj,{"sort":true,"filter":["usage","examples"]}) );
-              var str = oCOM.AsciiTable(tokenlist,
-                {"sort":null
-                ,"header":false
-                ,"style":"─│├┼┤└┴┘┌┬┐ ┃"
-                ,"max":[null,null]
-                ,"rowLine":false
-                ,"colLine":false
-                ,"align":["LL"]});
-                }
-             list.push( str );
-          }
-          oTERM.output(oCOM.escapeHTML( list.join("\n") ));
+              var list = [];
+              var searchBindings = options[i]?.value.split(",");
+              for(var i=0;i<searchBindings.length;i++)
+              {
+                list.push("<<u>"+searchBindings[i]+" token details:</u>");
+                var obj = oCMD._bindings[searchBindings[i]]
+                var tokenlist = [["SYNTAX","EXAMPLES"]]
+                                .concat( oCOM.JShelpCollector(obj,{"sort":true,"filter":["usage","examples"]}) );
+                var str = oCOM.AsciiTable(tokenlist,
+                  {"sort":null
+                  ,"header":false
+                  ,"style":"─│├┼┤└┴┘┌┬┐ ┃"
+                  ,"max":[null,null]
+                  ,"rowLine":true
+                  ,"colLine":true
+                  ,"align":["LL"]});
+                  }
+              list.push( str );
+              oTERM.output(oCOM.escapeHTML( list.join("\n") )); 
+            }         
+
+            return true;
         break;
+       
       }
 
     }
