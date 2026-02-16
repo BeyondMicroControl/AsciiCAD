@@ -1187,20 +1187,31 @@ function __cliHandleTerminal(line)
           ,"rowLine":false
           ,"colLine":false
           ,"align":["LL"]});
-          oTERM.output(oCOM.escapeHTML( "Documented commands:\n\n"+str ));
+
+          oTERM.output(oCOM.escapeHTML( "<u>Options:</u>\n"+
+            "-h command help\n" +
+            "-l [<i>objName</i>] objList / objTokens\n"
+           ));
+
+          oTERM.output(oCOM.escapeHTML( "<u>Documented commands:</u>\n"+str ));
           return true;
         break;
         case "l":                   // responding to CADScript -l
         
           var list = [];
-          if(options[i]?.value == true) for(var i in oCMD._bindings) list.push(i);
-          if(typeof(options[i]?.value)=="string")
+          if(options[i]?.value == true)     // list all bound objects
+          {
+            list.push("All objects in scope:");
+            for(var i in oCMD._bindings)
+              list.push(i);
+          }
+          else if(typeof(options[i]?.value)=="string")  // list all (documented) tokens from a specified object
           {
             var searchBindings = options[i]?.value.split(",");
             
             for(var i=0;i<searchBindings.length;i++)
             {
-              list.push("content from "+searchBindings[i]);
+              list.push("All objTokens from "+searchBindings[i]+":");
               var obj = oCMD._bindings[searchBindings[i]]
               var tokenlist = [["<u>COMMANDS</u>","<u>EXAMPLES</u>"]]
                               .concat( oCOM.JShelpCollector(obj,{"sort":true,"filter":["usage","examples"]}) );
