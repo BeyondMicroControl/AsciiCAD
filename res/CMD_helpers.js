@@ -1168,7 +1168,7 @@ function CMD()
     type: "AsciiCAD_CMD",
     usage: "run(<i>CMD</i>)",
     desc: "",
-    examples: ["run(\"clear\")"]
+    examples: ["oCMD.run(\"clear\")"]
   }
 
    ////////////////////////////
