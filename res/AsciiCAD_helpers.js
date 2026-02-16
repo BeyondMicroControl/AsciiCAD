@@ -33,11 +33,10 @@ function ASC()
   this.CADScript.help = 
   {
     type: "AsciiCAD_CMD",
-    usage: "CADScript {<expression>}\ne.g. CADScript {doUndo();doRedo()}\n",
+    usage: "<b>CADScript {<i>expression</i>}</b>",
     desc: "Run a CADScript expression",
     examples: ["CADScript {doUndo();doRedo()}"]
   };
-
 
   // Stage sizing: ensure integer cell sizes (avoid remainder pixels -> spacing artifacts)
   this.computeStageSize = function() 
@@ -211,8 +210,13 @@ function ASC()
     oASC.commitPasteAt(cell);
 
   }
-  this.cat.help = "cat(<i>c</i>,<i>r</i>,<i>angle</i>,<i>uid</i>) e.g. \"ATTINY85V-10PU\"";
-
+  this.cat.help = 
+  {
+    type: "CADScript_CMD",
+    usage: "cat(<i>c</i>,<i>r</i>,<i>angle</i>,<i>uid</i>)",
+    desc: "",
+    examples: ["cat(0,0,0,\"ATTINY85V-10PU\")"]
+  }
 
   this.lcat = function() 
   {
@@ -558,7 +562,7 @@ function ASC()
     }
     this.pushStrokeIfNonEmpty(this.currentStroke);   // commit undo buffer 
   }
-  this.box.help = "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>BOX_SINGLE|BOX_THICK|BOX_DOUBLE</i>)";
+  this.box.help = "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>lineStyle</i>)";
 
   this.clear = function () 
   {
@@ -1989,6 +1993,18 @@ function TERMINAL(props)
     self.DOM.output.insertAdjacentHTML("beforeEnd", "<span>" + html + "</span>");
     resetCommand();
   };
+
+  this.print = function(str)
+  {
+    this.output(str);
+  }
+  this.print.help = 
+  {
+    type: "",
+    usage: "print(<i>str</i>)",
+    desc: "",
+    examples: ["oTERM.print(\"DONE\")"]    
+  }
 
   this.setPrompt = function (newPrompt) {
     if (newPrompt === undefined) newPrompt = self.shell.prompt;

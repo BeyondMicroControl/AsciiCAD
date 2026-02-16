@@ -1018,12 +1018,6 @@ function CMD()
     });
   };
 
-      // LAUNCH CMD WORKER
-  this.run = function(line)
-  { 
-    
-  }
-
 
   this.onWorkerMessage = function(e)
   {
@@ -1077,99 +1071,105 @@ function CMD()
   }
 
 
-  // TODO : put this inline ?   first make sure CMD commands in the shape of serialised data
-this.CMDHelp = function()
-{
-  oTERM.output(
-    oCOM.escapeHTML("Terminal commands:\n" +
-      "  <cmd> -h - detailed help\n" +
-      "  CADScript   - run CADScript\n" +
-      "  clear       - clear terminal screen\n" +
-      "  exit        - exit CLI\n"+
-      "  help        - terminal help\n" +
-      "  history     - show command history\n")
-  );
-}
-
-
-this.run = function(line)
-{
-  // TERMINAL COMMAND HANDLER
-  
-  const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
-  if (!m) {
-    oTERM.output("[ERROR] Invalid command");
-    return true;
+    // TODO : put this inline ?   first make sure CMD commands in the shape of serialised data
+  this.CMDHelp = function()
+  {
+    oTERM.output(
+      oCOM.escapeHTML("Terminal commands:\n" +
+        "  <cmd> -h - detailed help\n" +
+        "  CADScript   - run CADScript\n" +
+        "  clear       - clear terminal screen\n" +
+        "  exit        - exit CLI\n"+
+        "  help        - terminal help\n" +
+        "  history     - show command history\n")
+    );
   }
 
-  const cmd = m[1].toLowerCase();
-  const rest = (m[2] || "").trim();
 
-  if (cmd === "help") { this.CMDHelp(); return true; }
-  if (cmd === "clear")
+  this.run = function(line)
   {
-    const usage = "Usage:\n" +
-    "<bare> - clear terminal screen\n" +
-    " -h    - <command> help\n"
+    // TERMINAL COMMAND HANDLER
+    
+    const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
+    if (!m) {
+      oTERM.output("[ERROR] Invalid command");
+      return true;
+    }
 
-    const opt = rest.trim();
-    if (opt === "-h") oTERM.output(oCOM.escapeHTML(usage));
-    else if (opt == "") oTERM.clear();
-    else  oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
-    return true;
-  }
+    const cmd = m[1].toLowerCase();
+    const rest = (m[2] || "").trim();
 
-  if (cmd === "history") 
-  {
-    const opt = rest.trim();
-    const usage = "Usage:\n" +
-       "Navigate command history\n" +
-       "by pushing arrow up/down.\n\n" +
-       "<bare> - show command history\n" +
-       " -c    - clear command history\n" +
-       " -h    - <command> help\n"
-
-    if (!opt) 
+    if (cmd === "help") { this.CMDHelp(); return true; }
+    if (cmd === "clear")
     {
-      if (!oTERM.history || oTERM.history.length === 0) oTERM.output("(history empty)");
-      else {
-        const lines = oTERM.history
-          .map((h, i) => String(i + 1) + ": " + oCOM.escapeHTML(h))
-          .join("<br>");
-        oTERM.output(lines);
+      const usage = "Usage:\n" +
+      "<bare> - clear terminal screen\n" +
+      " -h    - <command> help\n"
+
+      const opt = rest.trim();
+      if (opt === "-h") oTERM.output(oCOM.escapeHTML(usage));
+      else if (opt == "") oTERM.clear();
+      else  oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
+      return true;
+    }
+
+    if (cmd === "history") 
+    {
+      const opt = rest.trim();
+      const usage = "Usage:\n" +
+        "Navigate command history\n" +
+        "by pushing arrow up/down.\n\n" +
+        "<bare> - show command history\n" +
+        " -c    - clear command history\n" +
+        " -h    - <command> help\n"
+
+      if (!opt) 
+      {
+        if (!oTERM.history || oTERM.history.length === 0) oTERM.output("(history empty)");
+        else {
+          const lines = oTERM.history
+            .map((h, i) => String(i + 1) + ": " + oCOM.escapeHTML(h))
+            .join("<br>");
+          oTERM.output(lines);
+        }
+        return true;
       }
+
+      if (opt === "-h") {
+        oTERM.output(oCOM.escapeHTML(usage));
+        return true;
+      }
+
+      if (opt === "-c") {
+        try {
+          window.localStorage.removeItem("VanillaTerm");
+        } catch (_) {}
+        oTERM.history = [];
+        oTERM.historyCursor = 0;
+        oTERM.output("History cleared");
+        return true;
+      }
+
+      oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
       return true;
     }
 
-    if (opt === "-h") {
-      oTERM.output(oCOM.escapeHTML(usage));
+    if (cmd === "exit") {
+      if (typeof switchToSidebar === "function") switchToSidebar("ui");
+      oTERM.output("Switched to UI sidebar");
       return true;
     }
 
-    if (opt === "-c") {
-      try {
-        window.localStorage.removeItem("VanillaTerm");
-      } catch (_) {}
-      oTERM.history = [];
-      oTERM.historyCursor = 0;
-      oTERM.output("History cleared");
+    oTERM.output("[ERROR] Unknown command. Type <u>help</u>");
       return true;
-    }
-
-    oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
-    return true;
   }
-
-  if (cmd === "exit") {
-    if (typeof switchToSidebar === "function") switchToSidebar("ui");
-    oTERM.output("Switched to UI sidebar");
-    return true;
+  this.run.help =   
+  {
+    type: "AsciiCAD_CMD",
+    usage: "run(<i>CMD</i>)",
+    desc: "",
+    examples: ["run(\"clear\")"]
   }
-
-  oTERM.output("[ERROR] Unknown command. Type <u>help</u>");
-    return true;
-}
-
 
    ////////////////////////////
    // OTHER HELPER FUNCTIONS //
@@ -1223,6 +1223,11 @@ this.run = function(line)
     worker = this.createCMDWorker( bindings );  // RUN THE WORKER TO TELL WE HAVE NEW BINDINGS
   }
 
+  this.list_bindings = function()
+  {
+    return cmd._bindings;
+  }
+
 
   this.launchTerminal = function(terminalObj)
   {
@@ -1235,15 +1240,6 @@ this.run = function(line)
     oTERM = new TERMINAL(
     {
       // We handle all input via oTERM.onInput; commands are kept for discoverability.
-      commands: 
-      {
-        help: () => {},
-        clear: () => {},
-        history: () => {},
-        script: () => {},
-        exec: () => {},
-        exit: () => {}
-      },
       welcome: sbTitle.querySelector("big").textContent + " terminal - type <u>help</u>",
       prompt: "AsciiCAD",
       separator: '>',

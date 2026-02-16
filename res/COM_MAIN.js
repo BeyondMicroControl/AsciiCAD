@@ -100,7 +100,7 @@ function COM()
   this.ltrim = function(s) { return s.replace(/^ */,"") }
   this.rtrim = function(s) { return s.replace(/ *$/,"") }
   this.trim  = function(s) { return this.rtrim(this.ltrim(s)) }
-  this.stripHTML = function(s) { return s.replace(/(&nbsp;|<([^>]+)>)/ig,"") }
+  this.stripHTML = function(s) { s = String(s ?? ""); s = s.replace(/&nbsp;/ig, " "); return s.replace(/<[^>]*>/g, ""); }
 
   this.MathParser = function()
   {
@@ -438,18 +438,455 @@ function COM()
     }
   }
 
-  this.JShelpCollector = function(JSContainer) 
+  this.JShelpCollector = function(JSContainer,param) 
   {
     const tokenlist = [];
     for (const [name, val] of Object.entries(JSContainer)) {
       if (typeof val !== "function") continue;
       if (!val.help) continue;
-      if (typeof(val.help)=="object")tokenlist.push({"name":name,"content":val.help});
+      if (typeof(val.help)=="object") tokenlist.push({"name":name,"content":val.help});
       else if (typeof(val.help)=="string") tokenlist.push({"name":name,"content":{"usage":val.help}});
     }
-    return tokenlist;
+
+    const filterlist = [];
+    for(var i in tokenlist)
+    {
+      if(param?.filter===undefined) filterlist.push( JSON.stringify( tokenlist[i].content) )
+      else
+      {
+          var filteredItems = [];
+          for(var j in param.filter)
+          {
+              var content = tokenlist[i].content;
+              if(content[ param.filter[j] ]===undefined) continue;
+              filteredItems.push( content[ param.filter[j] ] );
+          }
+          filterlist.push(filteredItems); // extract only usage information
+      }
+    }
+    
+    if(param?.sort==true) filterlist.sort(); // sort string content alphabetically
+
+
+    return filterlist;
   }
-  
+
+
+
+
+
+
+/*  AsciiTable(data2d, opts)  — drop-in version with:
+    - tight cells (no leading/trailing padding)
+    - correct width measurement using stripHTML() + &nbsp;->space
+    - safe truncation by visible width while preserving HTML and auto-closing tags
+    - multiline cells (\n) expand row height
+    - optional header underline
+    - optional sorting by column
+    - row/col dividers, plus top+bottom borders when (rowLine && colLine)
+    - truncation boundary uses VT (prefer style[12], else style[9], else style[5], else V)
+
+    Style mapping (string, missing chars fall back):
+      0 H  (─)  horizontal
+      1 V  (│)  vertical
+      2 ML (├)  midline left
+      3 MM (┼)  midline middle
+      4 MR (┤)  midline right
+      5 BL (└)  bottom left
+      6 BM (┴)  bottom mid
+      7 BR (┘)  bottom right
+      8 TL (┌)  top left
+      9 TM (┬)  top mid   (NOTE: if you use a short style and put VT at index 9, we still detect VT via fallback rules)
+     10 TR (┐)  top right
+     12 VT (┃)  truncation vertical
+*/
+
+function stripHTML(s) {
+  s = String(s ?? "");
+  s = s.replace(/&nbsp;/ig, " ");
+  return s.replace(/<[^>]*>/g, "");
+}
+
+function truncateHTMLByVisible(input, maxVisible, align = "L") {
+  const s = String(input ?? "");
+  if (maxVisible === null || maxVisible === undefined) {
+    const vis = stripHTML(s);
+    return { html: s, visible: vis, truncL: false, truncR: false };
+  }
+  maxVisible = Math.max(0, maxVisible | 0);
+
+  // Tokenize into tags and text
+  const tokens = s.match(/<\/?[^>]+>|[^<]+/g) || [];
+
+  const VOID_TAGS = new Set(["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]);
+
+  function tagName(tag) {
+    const m = tag.match(/^<\/?\s*([a-zA-Z0-9:-]+)/);
+    return m ? m[1].toLowerCase() : null;
+  }
+  function isClosing(tag) { return /^<\s*\//.test(tag); }
+  function isSelfClosing(tag) {
+    if (/\/\s*>$/.test(tag)) return true;
+    const n = tagName(tag);
+    return n ? VOID_TAGS.has(n) : false;
+  }
+  function visibleTextOf(text) {
+    return text.replace(/&nbsp;/ig, " ");
+  }
+
+  function takeFromStart() {
+    if (maxVisible === 0) {
+      const full = stripHTML(s);
+      return { html: "", visible: "", truncL: false, truncR: full.length > 0 };
+    }
+
+    let out = "";
+    let visibleCount = 0;
+    const open = [];
+
+    for (const tok of tokens) {
+      if (tok.startsWith("<")) {
+        out += tok;
+        const n = tagName(tok);
+        if (!n || isSelfClosing(tok)) continue;
+
+        if (isClosing(tok)) {
+          const idx = open.lastIndexOf(n);
+          if (idx !== -1) open.splice(idx, 1);
+        } else {
+          open.push(n);
+        }
+      } else {
+        if (visibleCount >= maxVisible) break;
+
+        const vis = visibleTextOf(tok);
+        const remaining = maxVisible - visibleCount;
+
+        if (vis.length <= remaining) {
+          out += tok;
+          visibleCount += vis.length;
+        } else {
+          // cut inside this text chunk by visible char counting (&nbsp; counts as 1)
+          let cutIndex = 0;
+          let visSeen = 0;
+
+          for (let i = 0; i < tok.length && visSeen < remaining; i++) {
+            if (tok.slice(i, i + 6).toLowerCase() === "&nbsp;") {
+              visSeen += 1;
+              i += 5;
+              cutIndex = i + 1;
+            } else {
+              visSeen += 1;
+              cutIndex = i + 1;
+            }
+          }
+
+          out += tok.slice(0, cutIndex);
+          visibleCount += remaining;
+          break;
+        }
+      }
+    }
+
+    // auto-close what we opened
+    for (let i = open.length - 1; i >= 0; i--) out += `</${open[i]}>`;
+
+    const fullVisible = stripHTML(s);
+    return { html: out, visible: fullVisible.slice(0, maxVisible), truncL: false, truncR: fullVisible.length > maxVisible };
+  }
+
+  // Right truncation: do a full forward scan, but only start emitting when
+  // we reach the "startVisible" position, while maintaining a stack of active tags
+  // so we can re-open them at the emission start.
+  function takeFromEnd() {
+    const fullVisible = stripHTML(s);
+    if (fullVisible.length <= maxVisible) return { html: s, visible: fullVisible, truncL: false, truncR: false };
+    if (maxVisible === 0) return { html: "", visible: "", truncL: true, truncR: false };
+
+    const startVisible = fullVisible.length - maxVisible;
+
+    let out = "";
+    let visiblePos = 0;
+
+    const active = [];   // active tags during scan
+    let emitted = false;
+    const emitActiveOpen = () => {
+      // reopen all currently active tags
+      for (const n of active) out += `<${n}>`;
+    };
+
+    for (const tok of tokens) {
+      if (tok.startsWith("<")) {
+        const n = tagName(tok);
+        const selfClose = isSelfClosing(tok);
+        const closing = isClosing(tok);
+
+        // update active stack regardless of emitted
+        if (n && !selfClose) {
+          if (closing) {
+            const idx = active.lastIndexOf(n);
+            if (idx !== -1) active.splice(idx, 1);
+          } else {
+            active.push(n);
+          }
+        }
+
+        if (emitted) {
+          out += tok;
+        }
+      } else {
+        const vis = visibleTextOf(tok);
+        const len = vis.length;
+
+        if (!emitted) {
+          if (visiblePos + len <= startVisible) {
+            visiblePos += len;
+            continue;
+          }
+
+          // start emitting mid-text chunk
+          emitted = true;
+          out = "";
+          emitActiveOpen();
+
+          const needSkip = startVisible - visiblePos;
+
+          // compute start index in tok by visible counting
+          let startIndex = 0;
+          let visSeen = 0;
+
+          for (let i = 0; i < tok.length && visSeen < needSkip; i++) {
+            if (tok.slice(i, i + 6).toLowerCase() === "&nbsp;") {
+              visSeen += 1;
+              i += 5;
+              startIndex = i + 1;
+            } else {
+              visSeen += 1;
+              startIndex = i + 1;
+            }
+          }
+
+          out += tok.slice(startIndex);
+          visiblePos = startVisible + (len - needSkip);
+        } else {
+          out += tok;
+          visiblePos += len;
+        }
+      }
+    }
+
+    // close any tags still active at end of emitted fragment
+    for (let i = active.length - 1; i >= 0; i--) out += `</${active[i]}>`;
+
+    return { html: out, visible: fullVisible.slice(-maxVisible), truncL: true, truncR: false };
+  }
+
+  align = (align || "L").toUpperCase();
+  if (align === "R") return takeFromEnd();
+  if (align === "C") {
+    const leftKeep = Math.ceil(maxVisible / 2);
+    const rightKeep = Math.floor(maxVisible / 2);
+    const a = truncateHTMLByVisible(s, leftKeep, "L");
+    const b = truncateHTMLByVisible(s, rightKeep, "R");
+    return { html: a.html + b.html, visible: a.visible + b.visible, truncL: true, truncR: true };
+  }
+  return takeFromStart();
+}
+
+this.AsciiTable = function(data2d, opts = {}) 
+{
+  if (!Array.isArray(data2d) || data2d.length === 0) return "";
+
+  const o = {
+    sort: (typeof opts.sort === "number" ? opts.sort : null),
+    header: (opts.header !== false),
+    style: (typeof opts.style === "string" ? opts.style : "─│├┼┤└┴┘┌┬┐  ┃"),
+    max: (Array.isArray(opts.max) ? opts.max : []),
+    rowLine: (opts.rowLine !== false),
+    colLine: (opts.colLine !== false),
+    align: (opts.align ?? []),
+  };
+
+  // ---- style decode (with safe fallbacks) ----
+  const style = o.style;
+  const H  = style[0] ?? "─";
+  const V  = style[1] ?? "│";
+
+  const ML = style[2] ?? "├";
+  const MM = style[3] ?? "┼";
+  const MR = style[4] ?? "┤";
+
+  const BL = style[5] ?? "└";
+  const BM = style[6] ?? "┴";
+  const BR = style[7] ?? "┘";
+
+  const TL = style[8]  ?? "┌";
+  const TM = style[9]  ?? "┬";
+  const TR = style[10] ?? "┐";
+
+  // VT: prefer style[12], else style[9] (your 10th-char convention), else style[5], else V
+  const VT = style[12] ?? style[9] ?? style[5] ?? V;
+
+  // ---- normalize input ----
+  let rows = data2d.map(r =>
+    (Array.isArray(r) ? r : [r]).map(v => String(v ?? ""))
+  );
+
+  // header + sorting
+  let headerRow = null;
+  if (o.header && rows.length > 0) {
+    headerRow = rows[0];
+    rows = rows.slice(1);
+  }
+  if (o.sort !== null) {
+    const k = o.sort;
+    rows.sort((a, b) => stripHTML(a[k] ?? "").localeCompare(stripHTML(b[k] ?? "")));
+  }
+  if (headerRow) rows.unshift(headerRow);
+
+  const colCount = rows.reduce((m, r) => Math.max(m, r.length), 0);
+
+  // align: allow ["LL"] or ["LCR"] shorthand or per-col entries
+  function getAlign(ci) {
+    const a = o.align;
+    if (Array.isArray(a) && a.length === 1 && typeof a[0] === "string" && a[0].length > 1) {
+      return (a[0][ci] ?? "L").toUpperCase();
+    }
+    if (Array.isArray(a) && typeof a[0] === "string" && a.length === 1 && a[0].length === colCount) {
+      return (a[0][ci] ?? "L").toUpperCase();
+    }
+    if (Array.isArray(a)) return (a[ci] ?? "L").toUpperCase();
+    return "L";
+  }
+
+  function getMax(ci) {
+    const m = o.max?.[ci];
+    return (m === null || m === undefined) ? null : Math.max(0, m | 0);
+  }
+
+  function padVisibleHTML(html, visibleLen, width, align) {
+    if (visibleLen >= width) return html;
+    const gap = width - visibleLen;
+
+    if (align === "R") return " ".repeat(gap) + html;
+    if (align === "C") {
+      const left = Math.floor(gap / 2);
+      const right = gap - left;
+      return " ".repeat(left) + html + " ".repeat(right);
+    }
+    return html + " ".repeat(gap); // L
+  }
+
+  // ---- compute column widths using visible text lengths AFTER truncation ----
+  const colWidths = Array(colCount).fill(0);
+
+  for (let ci = 0; ci < colCount; ci++) {
+    const maxLen = getMax(ci);
+    const align = getAlign(ci);
+
+    let longest = 0;
+    for (const r of rows) {
+      const cell = String(r[ci] ?? "");
+      for (const line of cell.split("\n")) {
+        const t = truncateHTMLByVisible(line, maxLen, align);
+        longest = Math.max(longest, t.visible.length);
+      }
+    }
+
+    // If maxLen is set, width cannot exceed it (visible chars)
+    colWidths[ci] = (maxLen === null) ? longest : Math.min(longest, maxLen);
+  }
+
+  function makeLine(left, mid, right) {
+    const segs = colWidths.map(w => H.repeat(w));
+    if (!o.colLine) return segs.join(H);
+    return left + segs.join(mid) + right;
+  }
+
+  const makeTopLine = () => makeLine(TL, TM, TR);
+  const makeMidLine = () => makeLine(ML, MM, MR);
+  const makeBottomLine = () => makeLine(BL, BM, BR);
+
+  function renderLogicalRow(row) {
+    const splitCells = [];
+    let rowHeight = 1;
+
+    for (let ci = 0; ci < colCount; ci++) {
+      const raw = String(row[ci] ?? "");
+      const lines = raw.split("\n");
+      splitCells.push(lines);
+      rowHeight = Math.max(rowHeight, lines.length);
+    }
+
+    const outLines = [];
+
+    for (let li = 0; li < rowHeight; li++) {
+      const renderedCells = [];
+      const truncFlags = [];
+
+      for (let ci = 0; ci < colCount; ci++) {
+        const align = getAlign(ci);
+        const maxLen = getMax(ci);
+        const rawLine = (splitCells[ci][li] ?? "");
+
+        const t = truncateHTMLByVisible(rawLine, maxLen, align);
+        const paddedHTML = padVisibleHTML(t.html, t.visible.length, colWidths[ci], align);
+
+        renderedCells.push(paddedHTML);
+        truncFlags.push({ L: t.truncL, R: t.truncR });
+      }
+
+      if (!o.colLine) {
+        outLines.push(renderedCells.join(" "));
+        continue;
+      }
+
+      // separators: VT when truncation touches boundary, else V
+      const seps = [];
+      seps.push(truncFlags[0]?.L ? VT : V);
+      for (let i = 0; i < colCount - 1; i++) {
+        const boundaryTrunc = truncFlags[i]?.R || truncFlags[i + 1]?.L;
+        seps.push(boundaryTrunc ? VT : V);
+      }
+      seps.push(truncFlags[colCount - 1]?.R ? VT : V);
+
+      let lineOut = "";
+      for (let i = 0; i < colCount; i++) lineOut += seps[i] + renderedCells[i];
+      lineOut += seps[colCount];
+      outLines.push(lineOut);
+    }
+
+    return outLines;
+  }
+
+  // ---- assemble output ----
+  const lines = [];
+  const hasHeader = o.header && rows.length > 0;
+
+  // top border when both true (like your bottom border rule)
+  if (o.colLine && o.rowLine) lines.push(makeTopLine());
+
+  for (let ri = 0; ri < rows.length; ri++) {
+    lines.push(...renderLogicalRow(rows[ri]));
+
+    if (hasHeader && ri === 0) {
+      lines.push(makeMidLine());
+      continue;
+    }
+
+    if (o.rowLine && ri < rows.length - 1) {
+      lines.push(makeMidLine());
+    }
+  }
+
+  if (o.colLine && o.rowLine) lines.push(makeBottomLine());
+
+  return lines.join("\n");
+}
+
+
+
+
 }
 
 oCOM = new COM();

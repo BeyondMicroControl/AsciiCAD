@@ -1171,16 +1171,54 @@ function __cliHandleTerminal(line)
     const types = values.map(v => v === null ? "null" : Array.isArray(v) ? "array" : typeof v);
 
     const code = script_node.arguments.raw;
-    if (script_node.options?.[0]?.key === "h")    // responding to CADScript -h
+    const options = script_node.options;
+
+    for(i in options)
     {
-      var tokenlist = oCOM.JShelpCollector(oASC);
-     
-      var usage = [];
-      for(var i in tokenlist) 
-        usage.push(tokenlist[i].content.usage); // extract only usage information
-      usage.sort();                             // sort commands alphabetically
-      oTERM.output(oCOM.escapeHTML( "Documented commands:\n\n"+usage.join("\n") ));
-      return true;
+      switch(options[i]?.key)
+      {
+        case "h":                 // responding to CADScript -h
+          var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["usage"]});
+          var str = oCOM.AsciiTable(tokenlist,
+          {"sort":null
+          ,"header":false
+          ,"style":"─│├┼┤└┴┘┌┬┐ ┃"
+          ,"max":[null,null]
+          ,"rowLine":false
+          ,"colLine":false
+          ,"align":["LL"]});
+          oTERM.output(oCOM.escapeHTML( "Documented commands:\n\n"+str ));
+          return true;
+        break;
+        case "l":                   // responding to CADScript -l
+        
+          var list = [];
+          if(options[i]?.value == true) for(var i in oCMD._bindings) list.push(i);
+          if(typeof(options[i]?.value)=="string")
+          {
+            var searchBindings = options[i]?.value.split(",");
+            
+            for(var i=0;i<searchBindings.length;i++)
+            {
+              list.push("content from "+searchBindings[i]);
+              var obj = oCMD._bindings[searchBindings[i]]
+              var tokenlist = [["<u>COMMANDS</u>","<u>EXAMPLES</u>"]]
+                              .concat( oCOM.JShelpCollector(obj,{"sort":true,"filter":["usage","examples"]}) );
+              var str = oCOM.AsciiTable(tokenlist,
+                {"sort":null
+                ,"header":false
+                ,"style":"─│├┼┤└┴┘┌┬┐ ┃"
+                ,"max":[null,null]
+                ,"rowLine":false
+                ,"colLine":false
+                ,"align":["LL"]});
+                }
+             list.push( str );
+          }
+          oTERM.output(oCOM.escapeHTML( list.join("\n") ));
+        break;
+      }
+
     }
 
     // SEND A JOB TO THE CMD WORKER
