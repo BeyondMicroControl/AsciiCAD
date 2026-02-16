@@ -25,7 +25,7 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
 4. [Concepts](#concepts)
 5. [Troubleshooting](#troubleshooting)
 6. [Appendix](#appendix)
-  - [User interactions per feature](#userinteractions)
+   - [User interactions per feature](#user-interactions-per-feature)
 
 ---
 
