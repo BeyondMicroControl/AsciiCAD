@@ -1209,7 +1209,7 @@ function __cliHandleTerminal(line)
               var searchBindings = options[i]?.value.split(",");
               for(var i=0;i<searchBindings.length;i++)
               {
-                list.push("<<u>"+searchBindings[i]+" token details:</u>");
+                list.push("<u>"+searchBindings[i]+" token details:</u>");
                 var obj = oCMD._bindings[searchBindings[i]]
                 var tokenlist = [["SYNTAX","EXAMPLES"]]
                                 .concat( oCOM.JShelpCollector(obj,{"sort":true,"filter":["usage","examples"]}) );
