@@ -200,7 +200,7 @@ function COM()
   this.ltrim = function(s) { return s.replace(/^ */,"") }
   this.rtrim = function(s) { return s.replace(/ *$/,"") }
   this.trim  = function(s) { return this.rtrim(this.ltrim(s)) }
-  this.stripHTML = function(s) { return s.replace(/(&nbsp;|<([^>]+)>)/ig,"") }
+  this.stripHTML = function(s) { s = String(s ?? ""); s = s.replace(/&nbsp;/ig, " "); return s.replace(/<[^>]*>/g, ""); }
 
   this.MathParser = function()
   {
@@ -538,18 +538,455 @@ function COM()
     }
   }
 
-  this.JShelpCollector = function(JSContainer) 
+  this.JShelpCollector = function(JSContainer,param) 
   {
     const tokenlist = [];
     for (const [name, val] of Object.entries(JSContainer)) {
       if (typeof val !== "function") continue;
       if (!val.help) continue;
-      if (typeof(val.help)=="object")tokenlist.push({"name":name,"content":val.help});
+      if (typeof(val.help)=="object") tokenlist.push({"name":name,"content":val.help});
       else if (typeof(val.help)=="string") tokenlist.push({"name":name,"content":{"usage":val.help}});
     }
-    return tokenlist;
+
+    const filterlist = [];
+    for(var i in tokenlist)
+    {
+      if(param?.filter===undefined) filterlist.push( JSON.stringify( tokenlist[i].content) )
+      else
+      {
+          var filteredItems = [];
+          for(var j in param.filter)
+          {
+              var content = tokenlist[i].content;
+              if(content[ param.filter[j] ]===undefined) continue;
+              filteredItems.push( content[ param.filter[j] ] );
+          }
+          filterlist.push(filteredItems); // extract only usage information
+      }
+    }
+    
+    if(param?.sort==true) filterlist.sort(); // sort string content alphabetically
+
+
+    return filterlist;
   }
-  
+
+
+
+
+
+
+/*  AsciiTable(data2d, opts)  — drop-in version with:
+    - tight cells (no leading/trailing padding)
+    - correct width measurement using stripHTML() + &nbsp;->space
+    - safe truncation by visible width while preserving HTML and auto-closing tags
+    - multiline cells (\n) expand row height
+    - optional header underline
+    - optional sorting by column
+    - row/col dividers, plus top+bottom borders when (rowLine && colLine)
+    - truncation boundary uses VT (prefer style[12], else style[9], else style[5], else V)
+
+    Style mapping (string, missing chars fall back):
+      0 H  (─)  horizontal
+      1 V  (│)  vertical
+      2 ML (├)  midline left
+      3 MM (┼)  midline middle
+      4 MR (┤)  midline right
+      5 BL (└)  bottom left
+      6 BM (┴)  bottom mid
+      7 BR (┘)  bottom right
+      8 TL (┌)  top left
+      9 TM (┬)  top mid   (NOTE: if you use a short style and put VT at index 9, we still detect VT via fallback rules)
+     10 TR (┐)  top right
+     12 VT (┃)  truncation vertical
+*/
+
+function stripHTML(s) {
+  s = String(s ?? "");
+  s = s.replace(/&nbsp;/ig, " ");
+  return s.replace(/<[^>]*>/g, "");
+}
+
+function truncateHTMLByVisible(input, maxVisible, align = "L") {
+  const s = String(input ?? "");
+  if (maxVisible === null || maxVisible === undefined) {
+    const vis = stripHTML(s);
+    return { html: s, visible: vis, truncL: false, truncR: false };
+  }
+  maxVisible = Math.max(0, maxVisible | 0);
+
+  // Tokenize into tags and text
+  const tokens = s.match(/<\/?[^>]+>|[^<]+/g) || [];
+
+  const VOID_TAGS = new Set(["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]);
+
+  function tagName(tag) {
+    const m = tag.match(/^<\/?\s*([a-zA-Z0-9:-]+)/);
+    return m ? m[1].toLowerCase() : null;
+  }
+  function isClosing(tag) { return /^<\s*\//.test(tag); }
+  function isSelfClosing(tag) {
+    if (/\/\s*>$/.test(tag)) return true;
+    const n = tagName(tag);
+    return n ? VOID_TAGS.has(n) : false;
+  }
+  function visibleTextOf(text) {
+    return text.replace(/&nbsp;/ig, " ");
+  }
+
+  function takeFromStart() {
+    if (maxVisible === 0) {
+      const full = stripHTML(s);
+      return { html: "", visible: "", truncL: false, truncR: full.length > 0 };
+    }
+
+    let out = "";
+    let visibleCount = 0;
+    const open = [];
+
+    for (const tok of tokens) {
+      if (tok.startsWith("<")) {
+        out += tok;
+        const n = tagName(tok);
+        if (!n || isSelfClosing(tok)) continue;
+
+        if (isClosing(tok)) {
+          const idx = open.lastIndexOf(n);
+          if (idx !== -1) open.splice(idx, 1);
+        } else {
+          open.push(n);
+        }
+      } else {
+        if (visibleCount >= maxVisible) break;
+
+        const vis = visibleTextOf(tok);
+        const remaining = maxVisible - visibleCount;
+
+        if (vis.length <= remaining) {
+          out += tok;
+          visibleCount += vis.length;
+        } else {
+          // cut inside this text chunk by visible char counting (&nbsp; counts as 1)
+          let cutIndex = 0;
+          let visSeen = 0;
+
+          for (let i = 0; i < tok.length && visSeen < remaining; i++) {
+            if (tok.slice(i, i + 6).toLowerCase() === "&nbsp;") {
+              visSeen += 1;
+              i += 5;
+              cutIndex = i + 1;
+            } else {
+              visSeen += 1;
+              cutIndex = i + 1;
+            }
+          }
+
+          out += tok.slice(0, cutIndex);
+          visibleCount += remaining;
+          break;
+        }
+      }
+    }
+
+    // auto-close what we opened
+    for (let i = open.length - 1; i >= 0; i--) out += `</${open[i]}>`;
+
+    const fullVisible = stripHTML(s);
+    return { html: out, visible: fullVisible.slice(0, maxVisible), truncL: false, truncR: fullVisible.length > maxVisible };
+  }
+
+  // Right truncation: do a full forward scan, but only start emitting when
+  // we reach the "startVisible" position, while maintaining a stack of active tags
+  // so we can re-open them at the emission start.
+  function takeFromEnd() {
+    const fullVisible = stripHTML(s);
+    if (fullVisible.length <= maxVisible) return { html: s, visible: fullVisible, truncL: false, truncR: false };
+    if (maxVisible === 0) return { html: "", visible: "", truncL: true, truncR: false };
+
+    const startVisible = fullVisible.length - maxVisible;
+
+    let out = "";
+    let visiblePos = 0;
+
+    const active = [];   // active tags during scan
+    let emitted = false;
+    const emitActiveOpen = () => {
+      // reopen all currently active tags
+      for (const n of active) out += `<${n}>`;
+    };
+
+    for (const tok of tokens) {
+      if (tok.startsWith("<")) {
+        const n = tagName(tok);
+        const selfClose = isSelfClosing(tok);
+        const closing = isClosing(tok);
+
+        // update active stack regardless of emitted
+        if (n && !selfClose) {
+          if (closing) {
+            const idx = active.lastIndexOf(n);
+            if (idx !== -1) active.splice(idx, 1);
+          } else {
+            active.push(n);
+          }
+        }
+
+        if (emitted) {
+          out += tok;
+        }
+      } else {
+        const vis = visibleTextOf(tok);
+        const len = vis.length;
+
+        if (!emitted) {
+          if (visiblePos + len <= startVisible) {
+            visiblePos += len;
+            continue;
+          }
+
+          // start emitting mid-text chunk
+          emitted = true;
+          out = "";
+          emitActiveOpen();
+
+          const needSkip = startVisible - visiblePos;
+
+          // compute start index in tok by visible counting
+          let startIndex = 0;
+          let visSeen = 0;
+
+          for (let i = 0; i < tok.length && visSeen < needSkip; i++) {
+            if (tok.slice(i, i + 6).toLowerCase() === "&nbsp;") {
+              visSeen += 1;
+              i += 5;
+              startIndex = i + 1;
+            } else {
+              visSeen += 1;
+              startIndex = i + 1;
+            }
+          }
+
+          out += tok.slice(startIndex);
+          visiblePos = startVisible + (len - needSkip);
+        } else {
+          out += tok;
+          visiblePos += len;
+        }
+      }
+    }
+
+    // close any tags still active at end of emitted fragment
+    for (let i = active.length - 1; i >= 0; i--) out += `</${active[i]}>`;
+
+    return { html: out, visible: fullVisible.slice(-maxVisible), truncL: true, truncR: false };
+  }
+
+  align = (align || "L").toUpperCase();
+  if (align === "R") return takeFromEnd();
+  if (align === "C") {
+    const leftKeep = Math.ceil(maxVisible / 2);
+    const rightKeep = Math.floor(maxVisible / 2);
+    const a = truncateHTMLByVisible(s, leftKeep, "L");
+    const b = truncateHTMLByVisible(s, rightKeep, "R");
+    return { html: a.html + b.html, visible: a.visible + b.visible, truncL: true, truncR: true };
+  }
+  return takeFromStart();
+}
+
+this.AsciiTable = function(data2d, opts = {}) 
+{
+  if (!Array.isArray(data2d) || data2d.length === 0) return "";
+
+  const o = {
+    sort: (typeof opts.sort === "number" ? opts.sort : null),
+    header: (opts.header !== false),
+    style: (typeof opts.style === "string" ? opts.style : "─│├┼┤└┴┘┌┬┐  ┃"),
+    max: (Array.isArray(opts.max) ? opts.max : []),
+    rowLine: (opts.rowLine !== false),
+    colLine: (opts.colLine !== false),
+    align: (opts.align ?? []),
+  };
+
+  // ---- style decode (with safe fallbacks) ----
+  const style = o.style;
+  const H  = style[0] ?? "─";
+  const V  = style[1] ?? "│";
+
+  const ML = style[2] ?? "├";
+  const MM = style[3] ?? "┼";
+  const MR = style[4] ?? "┤";
+
+  const BL = style[5] ?? "└";
+  const BM = style[6] ?? "┴";
+  const BR = style[7] ?? "┘";
+
+  const TL = style[8]  ?? "┌";
+  const TM = style[9]  ?? "┬";
+  const TR = style[10] ?? "┐";
+
+  // VT: prefer style[12], else style[9] (your 10th-char convention), else style[5], else V
+  const VT = style[12] ?? style[9] ?? style[5] ?? V;
+
+  // ---- normalize input ----
+  let rows = data2d.map(r =>
+    (Array.isArray(r) ? r : [r]).map(v => String(v ?? ""))
+  );
+
+  // header + sorting
+  let headerRow = null;
+  if (o.header && rows.length > 0) {
+    headerRow = rows[0];
+    rows = rows.slice(1);
+  }
+  if (o.sort !== null) {
+    const k = o.sort;
+    rows.sort((a, b) => stripHTML(a[k] ?? "").localeCompare(stripHTML(b[k] ?? "")));
+  }
+  if (headerRow) rows.unshift(headerRow);
+
+  const colCount = rows.reduce((m, r) => Math.max(m, r.length), 0);
+
+  // align: allow ["LL"] or ["LCR"] shorthand or per-col entries
+  function getAlign(ci) {
+    const a = o.align;
+    if (Array.isArray(a) && a.length === 1 && typeof a[0] === "string" && a[0].length > 1) {
+      return (a[0][ci] ?? "L").toUpperCase();
+    }
+    if (Array.isArray(a) && typeof a[0] === "string" && a.length === 1 && a[0].length === colCount) {
+      return (a[0][ci] ?? "L").toUpperCase();
+    }
+    if (Array.isArray(a)) return (a[ci] ?? "L").toUpperCase();
+    return "L";
+  }
+
+  function getMax(ci) {
+    const m = o.max?.[ci];
+    return (m === null || m === undefined) ? null : Math.max(0, m | 0);
+  }
+
+  function padVisibleHTML(html, visibleLen, width, align) {
+    if (visibleLen >= width) return html;
+    const gap = width - visibleLen;
+
+    if (align === "R") return " ".repeat(gap) + html;
+    if (align === "C") {
+      const left = Math.floor(gap / 2);
+      const right = gap - left;
+      return " ".repeat(left) + html + " ".repeat(right);
+    }
+    return html + " ".repeat(gap); // L
+  }
+
+  // ---- compute column widths using visible text lengths AFTER truncation ----
+  const colWidths = Array(colCount).fill(0);
+
+  for (let ci = 0; ci < colCount; ci++) {
+    const maxLen = getMax(ci);
+    const align = getAlign(ci);
+
+    let longest = 0;
+    for (const r of rows) {
+      const cell = String(r[ci] ?? "");
+      for (const line of cell.split("\n")) {
+        const t = truncateHTMLByVisible(line, maxLen, align);
+        longest = Math.max(longest, t.visible.length);
+      }
+    }
+
+    // If maxLen is set, width cannot exceed it (visible chars)
+    colWidths[ci] = (maxLen === null) ? longest : Math.min(longest, maxLen);
+  }
+
+  function makeLine(left, mid, right) {
+    const segs = colWidths.map(w => H.repeat(w));
+    if (!o.colLine) return segs.join(H);
+    return left + segs.join(mid) + right;
+  }
+
+  const makeTopLine = () => makeLine(TL, TM, TR);
+  const makeMidLine = () => makeLine(ML, MM, MR);
+  const makeBottomLine = () => makeLine(BL, BM, BR);
+
+  function renderLogicalRow(row) {
+    const splitCells = [];
+    let rowHeight = 1;
+
+    for (let ci = 0; ci < colCount; ci++) {
+      const raw = String(row[ci] ?? "");
+      const lines = raw.split("\n");
+      splitCells.push(lines);
+      rowHeight = Math.max(rowHeight, lines.length);
+    }
+
+    const outLines = [];
+
+    for (let li = 0; li < rowHeight; li++) {
+      const renderedCells = [];
+      const truncFlags = [];
+
+      for (let ci = 0; ci < colCount; ci++) {
+        const align = getAlign(ci);
+        const maxLen = getMax(ci);
+        const rawLine = (splitCells[ci][li] ?? "");
+
+        const t = truncateHTMLByVisible(rawLine, maxLen, align);
+        const paddedHTML = padVisibleHTML(t.html, t.visible.length, colWidths[ci], align);
+
+        renderedCells.push(paddedHTML);
+        truncFlags.push({ L: t.truncL, R: t.truncR });
+      }
+
+      if (!o.colLine) {
+        outLines.push(renderedCells.join(" "));
+        continue;
+      }
+
+      // separators: VT when truncation touches boundary, else V
+      const seps = [];
+      seps.push(truncFlags[0]?.L ? VT : V);
+      for (let i = 0; i < colCount - 1; i++) {
+        const boundaryTrunc = truncFlags[i]?.R || truncFlags[i + 1]?.L;
+        seps.push(boundaryTrunc ? VT : V);
+      }
+      seps.push(truncFlags[colCount - 1]?.R ? VT : V);
+
+      let lineOut = "";
+      for (let i = 0; i < colCount; i++) lineOut += seps[i] + renderedCells[i];
+      lineOut += seps[colCount];
+      outLines.push(lineOut);
+    }
+
+    return outLines;
+  }
+
+  // ---- assemble output ----
+  const lines = [];
+  const hasHeader = o.header && rows.length > 0;
+
+  // top border when both true (like your bottom border rule)
+  if (o.colLine && o.rowLine) lines.push(makeTopLine());
+
+  for (let ri = 0; ri < rows.length; ri++) {
+    lines.push(...renderLogicalRow(rows[ri]));
+
+    if (hasHeader && ri === 0) {
+      lines.push(makeMidLine());
+      continue;
+    }
+
+    if (o.rowLine && ri < rows.length - 1) {
+      lines.push(makeMidLine());
+    }
+  }
+
+  if (o.colLine && o.rowLine) lines.push(makeBottomLine());
+
+  return lines.join("\n");
+}
+
+
+
+
 }
 
 oCOM = new COM();
@@ -591,11 +1028,10 @@ function ASC()
   this.CADScript.help = 
   {
     type: "AsciiCAD_CMD",
-    usage: "CADScript {<expression>}\ne.g. CADScript {doUndo();doRedo()}\n",
+    usage: "<b>CADScript {<i>expression</i>}</b>",
     desc: "Run a CADScript expression",
     examples: ["CADScript {doUndo();doRedo()}"]
   };
-
 
   // Stage sizing: ensure integer cell sizes (avoid remainder pixels -> spacing artifacts)
   this.computeStageSize = function() 
@@ -769,8 +1205,13 @@ function ASC()
     oASC.commitPasteAt(cell);
 
   }
-  this.cat.help = "cat(<i>c</i>,<i>r</i>,<i>angle</i>,<i>uid</i>) e.g. \"ATTINY85V-10PU\"";
-
+  this.cat.help = 
+  {
+    type: "CADScript_CMD",
+    usage: "cat(<i>c</i>,<i>r</i>,<i>angle</i>,<i>uid</i>)",
+    desc: "",
+    examples: ["cat(0,0,0,\"ATTINY85V-10PU\")"]
+  }
 
   this.lcat = function() 
   {
@@ -1116,7 +1557,7 @@ function ASC()
     }
     this.pushStrokeIfNonEmpty(this.currentStroke);   // commit undo buffer 
   }
-  this.box.help = "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>BOX_SINGLE|BOX_THICK|BOX_DOUBLE</i>)";
+  this.box.help = "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>lineStyle</i>)";
 
   this.clear = function () 
   {
@@ -2548,6 +2989,18 @@ function TERMINAL(props)
     resetCommand();
   };
 
+  this.print = function(str)
+  {
+    this.output(str);
+  }
+  this.print.help = 
+  {
+    type: "",
+    usage: "print(<i>str</i>)",
+    desc: "",
+    examples: ["oTERM.print(\"DONE\")"]    
+  }
+
   this.setPrompt = function (newPrompt) {
     if (newPrompt === undefined) newPrompt = self.shell.prompt;
 
@@ -2636,6 +3089,24 @@ function CMD()
   //     |________|[___][___||__]'.__.'       
   //                                   
   /// Lex line into tokens: words + operators ; && || | &
+
+  /// Internal: render a "raw" string that is human-friendly and keeps grouping visible.
+  /// Since lexLine strips quote characters, this reconstructs a safe representation:
+  /// - wraps args containing whitespace (or empty) in double quotes
+  /// - escapes backslash and double quote inside those quoted args
+  this._renderRawWords = function(words)
+  {
+    if (!Array.isArray(words)) return "";
+    const needsQuotes = (s) => (s === "") || /\s/.test(s);
+    const escForDq = (s) => String(s).replace(/\\/g, "\\\\").replace(/\"/g, '\\"');
+    return words.map(w => {
+      const s = String(w);
+      return needsQuotes(s) ? ('"' + escForDq(s) + '"') : s;
+    }).join(" ");
+  };
+
+  // Public alias (handy if you export a reduced API)
+  this.renderRawWords = this._renderRawWords;
 
   this.lexLine = function(line) 
   {
@@ -2782,24 +3253,6 @@ function CMD()
           if (next != null && !(next.startsWith("-") && next !== "-")) { pushOpt(opt, next); i++; }
           else pushOpt(opt, true);
         }
-
-        /// Internal: render a "raw" string that is human-friendly and keeps grouping visible.
-        /// Since lexLine strips quote characters, this reconstructs a safe representation:
-        /// - wraps args containing whitespace (or empty) in double quotes
-        /// - escapes backslash and double quote inside those quoted args
-        this._renderRawWords = function(words)
-        {
-          if (!Array.isArray(words)) return "";
-          const needsQuotes = (s) => (s === "") || /\s/.test(s);
-          const escForDq = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-          return words.map(w => {
-            const s = String(w);
-            return needsQuotes(s) ? '"${escForDq(s)}"' : s;
-          }).join(" ");
-        }
-
-          // Public alias (handy if you export a reduced API)
-        this.renderRawWords = this._renderRawWords;
 
         continue;
       }
@@ -3624,12 +4077,6 @@ function CMD()
     });
   };
 
-      // LAUNCH CMD WORKER
-  this.run = function(line)
-  { 
-    
-  }
-
 
   this.onWorkerMessage = function(e)
   {
@@ -3683,99 +4130,105 @@ function CMD()
   }
 
 
-  // TODO : put this inline ?   first make sure CMD commands in the shape of serialised data
-this.CMDHelp = function()
-{
-  oTERM.output(
-    oCOM.escapeHTML("Terminal commands:\n" +
-      "  <cmd> -h - detailed help\n" +
-      "  CADScript   - run CADScript\n" +
-      "  clear       - clear terminal screen\n" +
-      "  exit        - exit CLI\n"+
-      "  help        - terminal help\n" +
-      "  history     - show command history\n")
-  );
-}
-
-
-this.run = function(line)
-{
-  // TERMINAL COMMAND HANDLER
-  
-  const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
-  if (!m) {
-    oTERM.output("[ERROR] Invalid command");
-    return true;
+    // TODO : put this inline ?   first make sure CMD commands in the shape of serialised data
+  this.CMDHelp = function()
+  {
+    oTERM.output(
+      oCOM.escapeHTML("Terminal commands:\n" +
+        "  <cmd> -h - detailed help\n" +
+        "  CADScript   - run CADScript\n" +
+        "  clear       - clear terminal screen\n" +
+        "  exit        - exit CLI\n"+
+        "  help        - terminal help\n" +
+        "  history     - show command history\n")
+    );
   }
 
-  const cmd = m[1].toLowerCase();
-  const rest = (m[2] || "").trim();
 
-  if (cmd === "help") { this.CMDHelp(); return true; }
-  if (cmd === "clear")
+  this.run = function(line)
   {
-    const usage = "Usage:\n" +
-    "<bare> - clear terminal screen\n" +
-    " -h    - <command> help\n"
+    // TERMINAL COMMAND HANDLER
+    
+    const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
+    if (!m) {
+      oTERM.output("[ERROR] Invalid command");
+      return true;
+    }
 
-    const opt = rest.trim();
-    if (opt === "-h") oTERM.output(oCOM.escapeHTML(usage));
-    else if (opt == "") oTERM.clear();
-    else  oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
-    return true;
-  }
+    const cmd = m[1].toLowerCase();
+    const rest = (m[2] || "").trim();
 
-  if (cmd === "history") 
-  {
-    const opt = rest.trim();
-    const usage = "Usage:\n" +
-       "Navigate command history\n" +
-       "by pushing arrow up/down.\n\n" +
-       "<bare> - show command history\n" +
-       " -c    - clear command history\n" +
-       " -h    - <command> help\n"
-
-    if (!opt) 
+    if (cmd === "help") { this.CMDHelp(); return true; }
+    if (cmd === "clear")
     {
-      if (!oTERM.history || oTERM.history.length === 0) oTERM.output("(history empty)");
-      else {
-        const lines = oTERM.history
-          .map((h, i) => String(i + 1) + ": " + oCOM.escapeHTML(h))
-          .join("<br>");
-        oTERM.output(lines);
+      const usage = "Usage:\n" +
+      "<bare> - clear terminal screen\n" +
+      " -h    - <command> help\n"
+
+      const opt = rest.trim();
+      if (opt === "-h") oTERM.output(oCOM.escapeHTML(usage));
+      else if (opt == "") oTERM.clear();
+      else  oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
+      return true;
+    }
+
+    if (cmd === "history") 
+    {
+      const opt = rest.trim();
+      const usage = "Usage:\n" +
+        "Navigate command history\n" +
+        "by pushing arrow up/down.\n\n" +
+        "<bare> - show command history\n" +
+        " -c    - clear command history\n" +
+        " -h    - <command> help\n"
+
+      if (!opt) 
+      {
+        if (!oTERM.history || oTERM.history.length === 0) oTERM.output("(history empty)");
+        else {
+          const lines = oTERM.history
+            .map((h, i) => String(i + 1) + ": " + oCOM.escapeHTML(h))
+            .join("<br>");
+          oTERM.output(lines);
+        }
+        return true;
       }
+
+      if (opt === "-h") {
+        oTERM.output(oCOM.escapeHTML(usage));
+        return true;
+      }
+
+      if (opt === "-c") {
+        try {
+          window.localStorage.removeItem("VanillaTerm");
+        } catch (_) {}
+        oTERM.history = [];
+        oTERM.historyCursor = 0;
+        oTERM.output("History cleared");
+        return true;
+      }
+
+      oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
       return true;
     }
 
-    if (opt === "-h") {
-      oTERM.output(oCOM.escapeHTML(usage));
+    if (cmd === "exit") {
+      if (typeof switchToSidebar === "function") switchToSidebar("ui");
+      oTERM.output("Switched to UI sidebar");
       return true;
     }
 
-    if (opt === "-c") {
-      try {
-        window.localStorage.removeItem("VanillaTerm");
-      } catch (_) {}
-      oTERM.history = [];
-      oTERM.historyCursor = 0;
-      oTERM.output("History cleared");
+    oTERM.output("[ERROR] Unknown command. Type <u>help</u>");
       return true;
-    }
-
-    oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
-    return true;
   }
-
-  if (cmd === "exit") {
-    if (typeof switchToSidebar === "function") switchToSidebar("ui");
-    oTERM.output("Switched to UI sidebar");
-    return true;
+  this.run.help =   
+  {
+    type: "AsciiCAD_CMD",
+    usage: "run(<i>CMD</i>)",
+    desc: "",
+    examples: ["run(\"clear\")"]
   }
-
-  oTERM.output("[ERROR] Unknown command. Type <u>help</u>");
-    return true;
-}
-
 
    ////////////////////////////
    // OTHER HELPER FUNCTIONS //
@@ -3829,6 +4282,11 @@ this.run = function(line)
     worker = this.createCMDWorker( bindings );  // RUN THE WORKER TO TELL WE HAVE NEW BINDINGS
   }
 
+  this.list_bindings = function()
+  {
+    return cmd._bindings;
+  }
+
 
   this.launchTerminal = function(terminalObj)
   {
@@ -3841,15 +4299,6 @@ this.run = function(line)
     oTERM = new TERMINAL(
     {
       // We handle all input via oTERM.onInput; commands are kept for discoverability.
-      commands: 
-      {
-        help: () => {},
-        clear: () => {},
-        history: () => {},
-        script: () => {},
-        exec: () => {},
-        exit: () => {}
-      },
       welcome: sbTitle.querySelector("big").textContent + " terminal - type <u>help</u>",
       prompt: "AsciiCAD",
       separator: '>',
@@ -4023,14 +4472,14 @@ JSON.prettify = function makeInteractiveJson(mountEl, boundaryStyles, indent = 2
     if (activePair === pairId) return;
     clearActive();
     activePair = pairId;
-    root.querySelectorAll('.json-boundary[data-pair="${CSS.escape(pairId)}"]')
-      .forEach(el => el.classList.add("active"));
+    const sel = '.json-boundary[data-pair="' + CSS.escape(String(pairId)) + '"]';
+    root.querySelectorAll(sel).forEach(el => el.classList.add("active"));
   }
 
   function clearActive() {
     if (activePair == null) return;
-    root.querySelectorAll('.json-boundary[data-pair="${CSS.escape(activePair)}"]')
-      .forEach(el => el.classList.remove("active"));
+    const sel = '.json-boundary[data-pair="' + CSS.escape(String(activePair)) + '"]';
+    root.querySelectorAll(sel).forEach(el => el.classList.remove("active"));
     activePair = null;
   }
 
@@ -4063,10 +4512,13 @@ function prettyJsonAllman(value, indent = 2) {
     (m, ws, key, open, maybeClose, comma) => {
       // Case: inline empty {} or [] on same line
       if (maybeClose) {
-        return '${ws}"${key}":\n${ws}${open}\n${ws}${" ".repeat(indent)}\n${ws}${maybeClose}${comma}';
+        return ws + '"' + key + '":\n' +
+               ws + open + '\n' +
+               ws + ' '.repeat(indent) + '\n' +
+               ws + maybeClose + comma;
       }
       // Case: normal ': {' or ': ['
-      return '${ws}"${key}":\n${ws}${open}';
+      return ws + '"' + key + '":\n' + ws + open;
     }
   );
 
@@ -7387,16 +7839,54 @@ function __cliHandleTerminal(line)
     const types = values.map(v => v === null ? "null" : Array.isArray(v) ? "array" : typeof v);
 
     const code = script_node.arguments.raw;
-    if (script_node.options?.[0]?.key === "h")    // responding to CADScript -h
+    const options = script_node.options;
+
+    for(i in options)
     {
-      var tokenlist = oCOM.JShelpCollector(oASC);
-     
-      var usage = [];
-      for(var i in tokenlist) 
-        usage.push(tokenlist[i].content.usage); // extract only usage information
-      usage.sort();                             // sort commands alphabetically
-      oTERM.output(oCOM.escapeHTML( "Documented commands:\n\n"+usage.join("\n") ));
-      return true;
+      switch(options[i]?.key)
+      {
+        case "h":                 // responding to CADScript -h
+          var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["usage"]});
+          var str = oCOM.AsciiTable(tokenlist,
+          {"sort":null
+          ,"header":false
+          ,"style":"─│├┼┤└┴┘┌┬┐ ┃"
+          ,"max":[null,null]
+          ,"rowLine":false
+          ,"colLine":false
+          ,"align":["LL"]});
+          oTERM.output(oCOM.escapeHTML( "Documented commands:\n\n"+str ));
+          return true;
+        break;
+        case "l":                   // responding to CADScript -l
+        
+          var list = [];
+          if(options[i]?.value == true) for(var i in oCMD._bindings) list.push(i);
+          if(typeof(options[i]?.value)=="string")
+          {
+            var searchBindings = options[i]?.value.split(",");
+            
+            for(var i=0;i<searchBindings.length;i++)
+            {
+              list.push("content from "+searchBindings[i]);
+              var obj = oCMD._bindings[searchBindings[i]]
+              var tokenlist = [["<u>COMMANDS</u>","<u>EXAMPLES</u>"]]
+                              .concat( oCOM.JShelpCollector(obj,{"sort":true,"filter":["usage","examples"]}) );
+              var str = oCOM.AsciiTable(tokenlist,
+                {"sort":null
+                ,"header":false
+                ,"style":"─│├┼┤└┴┘┌┬┐ ┃"
+                ,"max":[null,null]
+                ,"rowLine":false
+                ,"colLine":false
+                ,"align":["LL"]});
+                }
+             list.push( str );
+          }
+          oTERM.output(oCOM.escapeHTML( list.join("\n") ));
+        break;
+      }
+
     }
 
     // SEND A JOB TO THE CMD WORKER
