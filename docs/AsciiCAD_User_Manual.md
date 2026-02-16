@@ -18,15 +18,13 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
    - [Clipboard and paste-to-grid](#clipboard-and-paste-to-grid)
 3. [CLI manual](#cli-manual)
    - [Opening the CLI](#opening-the-cli)
-   - [Modes overview](#modes-overview)
-   - [Terminal mode reference](#terminal-mode-reference)
-   - [CADScript mode reference](#cadscript-mode-reference)
+   - [Terminal reference](#terminal-mode-reference)
    - [Examples](#examples)
 4. [Concepts](#concepts)
 5. [Troubleshooting](#troubleshooting)
 6. [Appendix](#appendix)
    - [User interactions per feature](#user-interactions-per-feature)
-      - [Grid / Canvas zone](#Grid-/-Canvas-zone)
+      - [Grid zone](#grid-zone)
       - [Left UI Sidebar zone (buttons, tools, load/save)](#Left-UI-Sidebar-zone-(buttons,-tools,-load/save))
       - CLI Sidebar zone (vanilla-terminal)
       - Modal dialogs zone (char picker & catalog)
@@ -253,7 +251,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 
 ### User interactions per feature
 
-#### Grid / Canvas zone
+#### Grid zone
 
  | Feature / mode                                | Input device          | Gesture (order)                                                         | Events observed in code                                                                                                                                                                                     | Modifiers / special keys                     | Outcome / notes                                                                                                              |
 | --------------------------------------------- | --------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
