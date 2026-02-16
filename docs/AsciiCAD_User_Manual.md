@@ -25,10 +25,10 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
 6. [Appendix](#appendix)
    - [User interactions per feature](#user-interactions-per-feature)
       - [Grid zone](#grid-zone)
-      - [Left UI Sidebar zone (buttons, tools, load/save)](#Left-UI-Sidebar-zone-(buttons,-tools,-load/save))
-      - CLI Sidebar zone (vanilla-terminal)
-      - Modal dialogs zone (char picker & catalog)
-      - Behaviors that affect all zones
+      - [Left UI Sidebar zone](#left-ui-sidebar-zone)
+      - [CLI Sidebar zone](cli-sidebar-zone)
+      - [Modal dialogs zone](modal-dialogs-zone)
+      - [Behaviors that affect all zones](behaviors-that-affect-all-zones)
 
 ---
 
