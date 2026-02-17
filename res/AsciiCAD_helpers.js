@@ -226,7 +226,7 @@ function ASC()
     type: "CADScript_CMD",
     usage: "cat(<i>c</i>,<i>r</i>,<i>angle</i>,<i>uid</i>)",
     desc: "",
-    examples: ["cat(0,0,0,\"ATTINY85V-10PU\")"]
+    examples: ["oASC.cat(0,0,0,\"ATTINY85V-10PU\")"]
   }
 
   this.lcat = function() 
@@ -583,7 +583,7 @@ function ASC()
     type: "CADScript_Fn",
     usage: "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)",
     desc: "Draw a box in line style BOX_DOUBLE|BOX_THICK|BOX_DOUBLE",
-    examples: ["box(1,0,3,2,BOX_DOUBLE)"]
+    examples: ["oASC.box(1,0,3,2,BOX_SINGLE)","oASC.box(1,0,3,2,BOX_THICK)","oASC.box(1,0,3,2,BOX_DOUBLE)"]
   }
   
   "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)";

@@ -1183,13 +1183,16 @@ function __cliHandleTerminal(line)
           {
             var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["usage"]});
             var str = oCOM.AsciiTable(tokenlist,
-            {"sort":null
-            ,"header":false
-            ,"style":"─│├┼┤└┴┘┌┬┐ ┃"
-            ,"max":[null,null]
+            {"header":false
             ,"rowLine":false
             ,"colLine":false
-            ,"align":["LL"]});
+            ,"style" :"─│├┼┤└┴┘┏┳┓ ┃"
+            ,"Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║"
+            ,"sort":null
+            ,"max":[null,null]
+            ,"align":"LL"
+            ,"Halign":"CC"
+            });
 
             oTERM.output(oCOM.escapeHTML( "<u>Options:</u>\n"+
               "-h [<i>objName</i>] objList / objTokens\n"
@@ -1214,25 +1217,25 @@ function __cliHandleTerminal(line)
                 var tokenlist = [["SYNTAX","EXAMPLES"]]
                                 .concat( oCOM.JShelpCollector(obj,{"sort":true,"filter":["usage","examples"]}) );
                 var str = oCOM.AsciiTable(tokenlist,
-                  {"sort":null
-                  ,"header":false
-                  ,"style":"─│├┼┤└┴┘┌┬┐ ┃"
-                  ,"max":[null,null]
+                  {"header":true
                   ,"rowLine":true
                   ,"colLine":true
-                  ,"align":["LL"]});
-                  }
+                  ,"style" : "─│├┼┤└┴┘┌┬┐ ┃"
+                  ,"Hstyle": "━┃┡╇┩┗┻┛┏┳┓ ║"
+                  ,"sort":0
+                  ,"max":[null,null]
+                  ,"align":"LL"
+                  ,"Halign":"CC"
+                  });
               list.push( str );
               oTERM.output(oCOM.escapeHTML( list.join("\n") )); 
             }         
-
-            return true;
+          }
+          return true;
         break;
        
       }
-
     }
-
     // SEND A JOB TO THE CMD WORKER
     oCMD.runExternalScript(code)
       .then(() => { oASC.draw(); })
@@ -1245,9 +1248,6 @@ function __cliHandleTerminal(line)
   {
     oCMD.run(line);
   }
-
-
-
 }
 
 
