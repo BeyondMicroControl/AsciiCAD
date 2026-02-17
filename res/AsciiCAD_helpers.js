@@ -1103,33 +1103,39 @@ function ASC()
     this.pushStrokeIfNonEmpty(stroke);
   }
 
-  this.commitPasteAt = function(cell) 
-  {
-    if (!pasteDrag || !cell) return;
-    const a = { r: cell.r, c: cell.c };
+  this.commitPasteAt = function() {
+    if (!pasteDrag || !pasteDrag.anchor) return;
+
+    const a = pasteDrag.anchor; // <-- use live anchor (may be outside grid)
     const stroke = [];
 
     for (let rr = 0; rr < pasteDrag.h; rr++) {
-        const line = pasteDrag.lines[rr] || '';
-        for (let cc = 0; cc < pasteDrag.w; cc++) {
+      const line = pasteDrag.lines[rr] || '';
+      for (let cc = 0; cc < pasteDrag.w; cc++) {
         const chx = line[cc] || ' ';
         if (pasteDrag.transparentSpaces && chx === ' ') continue;
+
         const tr = a.r + rr;
         const tc = a.c + cc;
-        if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) continue; // clip
+
+        // commit: clip to grid
+        if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) continue;
+
         const prev = ascii[tr][tc];
         const next = chx;
         if (prev === next) continue;
+
         stroke.push({ r: tr, c: tc, prev, next });
         ascii[tr][tc] = next;
-        }
+      }
     }
 
     pasteDrag = null;
     this.pushStrokeIfNonEmpty(stroke);
     updateUI();
-    draw("commitPasteAt");
-  }
+    draw("commitPasteAt(anchor)");
+  };
+
 
   this.cancelPaste = function() 
   {
@@ -1153,38 +1159,57 @@ function ASC()
 
 
   // Paste (preview + commit)
-  this.startPasteWithText = function(text) 
-  {
-    const raw = oCOM.normalizeNewlines(text).split('\n');
-    while (raw.length > 0 && raw[raw.length - 1] === '') raw.pop();
-    if (raw.length === 0) { pasteDrag = null; updateUI(); draw("startPasteWithText"); return; }
+this.startPasteWithText = function(text) 
+{
+  const raw = oCOM.normalizeNewlines(text).split('\n');
+  while (raw.length > 0 && raw[raw.length - 1] === '') raw.pop();
+  if (raw.length === 0) { pasteDrag = null; updateUI(); draw("startPasteWithText"); return; }
 
-    let w = 0;
-    for (const ln of raw) w = Math.max(w, ln.length);
+  let w = 0;
+  for (const ln of raw) w = Math.max(w, ln.length);
 
-    const maxH = Math.min(raw.length, ROWS);
-    const maxW = Math.min(w, COLS);
-    const lines = raw.slice(0, maxH).map(ln => ln.slice(0, maxW));
+  const maxH = Math.min(raw.length, ROWS);
+  const maxW = Math.min(w, COLS);
+  const lines = raw.slice(0, maxH).map(ln => ln.slice(0, maxW));
 
-    pasteDrag = {
-        lines,
-        h: lines.length,
-        w: maxW,
-        item_data: pasteDrag==null ? null : pasteDrag.item_data, // carry over item data if any 
-        anchor: hoverCell ? { r: hoverCell.r, c: hoverCell.c } : { r: Math.floor(ROWS/2), c: Math.floor(COLS/2) },
-        transparentSpaces: true,
-    };
+  // Pointer/hover cell is where the user "is"
+  const pointer = hoverCell
+    ? { r: hoverCell.r, c: hoverCell.c }
+    : { r: Math.floor(ROWS/2), c: Math.floor(COLS/2) };
 
-    // Paste mode implies Select tool (so cursor behavior matches your workflow)
-    setMode("modeSelect");
-    // Clear selection overlay while pasting
-    selection = null;
-    selectDrag = null;
-    moveDrag = null;
+  // Center offset so the pointer sits in the middle of the paste rect
+  const offR = Math.floor(lines.length / 2);
+  const offC = Math.floor(maxW / 2);
 
-    updateUI();
-    draw("startPasteWithText");
-  }
+  // Convert pointer cell -> top-left anchor (clamped to grid)
+  let anchorR = pointer.r - offR;
+  let anchorC = pointer.c - offC;
+
+  //anchorR = Math.max(0, Math.min(anchorR, ROWS - lines.length));
+  //anchorC = Math.max(0, Math.min(anchorC, COLS - maxW));
+
+  pasteDrag = {
+    lines,
+    h: lines.length,
+    w: maxW,
+    item_data: pasteDrag == null ? null : pasteDrag.item_data, // carry over item data if any
+
+    anchor: { r: anchorR, c: anchorC },
+    anchorMode: "center",
+    anchorOffset: { r: offR, c: offC },
+
+    transparentSpaces: true,
+  };
+
+  setMode("modeSelect");
+  selection = null;
+  selectDrag = null;
+  moveDrag = null;
+
+  updateUI();
+  draw("startPasteWithText");
+}
+
 
   //       ______         _          __ 
   //     .' ___  |       / |_       [  |

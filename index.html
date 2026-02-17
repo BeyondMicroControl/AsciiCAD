@@ -159,7 +159,7 @@
     </div>
   </div>
 
-  <textarea id="pasteSink" aria-hidden="true"></textarea>
+  <textarea id="pasteSink" tabindex="-1" aria-hidden="true"></textarea>
 
   <script>
   'use strict';
@@ -834,45 +834,57 @@ function draw( str )
 
   // stays in index.html, because it is handling HTML5 / canvas ctx
   // moreover, it does not call any helper function
-  function drawPastePreview(cw, ch, snap) 
-  {
-    if (!pasteDrag || !pasteDrag.anchor) return;
-    const a = pasteDrag.anchor;
+  function drawPastePreview(cw, ch, snap) {
+  if (!pasteDrag || !pasteDrag.anchor) return;
+  const a = pasteDrag.anchor;
 
-    // Preview fill (clipped to visible grid)
-    const pxW = Math.max(0, Math.min(pasteDrag.w, COLS - a.c)) * cw;
-    const pxH = Math.max(0, Math.min(pasteDrag.h, ROWS - a.r)) * ch;
-    if (pxW > 0 && pxH > 0)
-    {
-        ctx.save();
-        ctx.globalAlpha = 0.75;
-        ctx.fillStyle = "rgba(16,185,129,0.10)";
-        ctx.fillRect(a.c * cw, a.r * ch, pxW, pxH);
-        ctx.restore();
+  // Intersection of paste rect with grid bounds
+  const r0 = Math.max(0, a.r);
+  const c0 = Math.max(0, a.c);
+  const r1 = Math.min(ROWS, a.r + pasteDrag.h);
+  const c1 = Math.min(COLS, a.c + pasteDrag.w);
+
+  const visH = r1 - r0;
+  const visW = c1 - c0;
+  if (visW <= 0 || visH <= 0) return; // fully outside
+
+  // Preview fill (only the visible intersection)
+  ctx.save();
+  ctx.globalAlpha = 0.75;
+  ctx.fillStyle = "rgba(16,185,129,0.10)";
+  ctx.fillRect(c0 * cw, r0 * ch, visW * cw, visH * ch);
+  ctx.restore();
+
+  // Draw visible chars (clip at grid)
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+
+  for (let rr = 0; rr < pasteDrag.h; rr++) {
+    const tr = a.r + rr;
+    if (tr < 0 || tr >= ROWS) continue;
+
+    const line = pasteDrag.lines[rr] || "";
+    for (let cc = 0; cc < pasteDrag.w; cc++) {
+      const tc = a.c + cc;
+      if (tc < 0 || tc >= COLS) continue;
+
+      const chx = line[cc] || " ";
+      if (pasteDrag.transparentSpaces && chx === " ") continue;
+
+      ctx.fillText(chx, snap(tc * cw + cw / 2), snap(tr * ch + ch / 2));
     }
-
-    ctx.save();
-    ctx.globalAlpha = 0.9;
-    for (let rr = 0; rr < pasteDrag.h; rr++) {
-        const line = pasteDrag.lines[rr] || '';
-        for (let cc = 0; cc < pasteDrag.w; cc++) {
-        const chx = line[cc] || ' ';
-        if (pasteDrag.transparentSpaces && chx === ' ') continue;
-        const tr = a.r + rr;
-        const tc = a.c + cc;
-        if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) continue;
-        ctx.fillText(chx, snap(tc * cw + cw/2), snap(tr * ch + ch/2));
-        }
-    }
-    ctx.restore();
-
-    ctx.save();
-    ctx.lineWidth = 2 / scale;
-    ctx.setLineDash([6 / scale, 4 / scale]);
-    ctx.strokeStyle = "rgba(16,185,129,0.95)";
-    ctx.strokeRect(a.c * cw, a.r * ch, pasteDrag.w * cw, pasteDrag.h * ch);
-    ctx.restore();
   }
+  ctx.restore();
+
+  // Dashed outline (only the visible intersection)
+  ctx.save();
+  ctx.lineWidth = 2 / scale;
+  ctx.setLineDash([6 / scale, 4 / scale]);
+  ctx.strokeStyle = "rgba(16,185,129,0.95)";
+  ctx.strokeRect(c0 * cw, r0 * ch, visW * cw, visH * ch);
+  ctx.restore();
+}
+
 
 
 
@@ -979,11 +991,27 @@ function updateUI()
   historyLine.textContent = "Undo stack: " + undoStack.length + " · Redo stack: " + redoStack.length;
 }
 
+
+function setPasteAnchorFromPointerCell(pointerCell) {
+  if (!pasteDrag) return null;
+
+  const offR = pasteDrag.anchorOffset?.r ?? Math.floor(pasteDrag.h / 2);
+  const offC = pasteDrag.anchorOffset?.c ?? Math.floor(pasteDrag.w / 2);
+
+  const r = pointerCell.r - offR;
+  const c = pointerCell.c - offC;
+
+  const a = { r, c };
+  pasteDrag.anchor = a;
+  return a;
+}
+
+
 // Events
 function setHoverFromEvent(e)
 {
   hoverCell = oASC.canvasPointToCell(e.clientX, e.clientY);
-  if (pasteDrag && hoverCell) pasteDrag.anchor = { r: hoverCell.r, c: hoverCell.c };
+  if (pasteDrag && hoverCell) setPasteAnchorFromPointerCell({ r: hoverCell.r, c: hoverCell.c });
   updateUI();
 }
 
@@ -1059,6 +1087,39 @@ function isInSidebar(el)
   if (!el || !el.closest) return false;
   return !!el.closest("#sidebar, #cliSidebar");
 }
+
+let lastPointer = { x: 0, y: 0, zone: "unknown" }; // zone: "canvas" | "sidebar" | "text" | "unknown"
+
+function classifyZoneFromPoint(x, y) {
+  const el = document.elementFromPoint(x, y);
+  if (!el) return "unknown";
+  if (isInSidebar(el)) return "sidebar";
+
+  // Any editable element: treat as text
+  const tag = (el.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || el.isContentEditable) return "text";
+
+  // Canvas / stage / container count as canvas zone
+  if (el === canvas || el.closest("#stage, #container, canvas")) return "canvas";
+
+  return "unknown";
+}
+
+// Capture pointer position globally (works even if canvas not focused)
+window.addEventListener("pointermove", (e) => {
+  lastPointer.x = e.clientX;
+  lastPointer.y = e.clientY;
+  lastPointer.zone = classifyZoneFromPoint(e.clientX, e.clientY);
+}, { capture: true, passive: true });
+
+// Also update on pointerdown (covers “no move then paste” cases)
+window.addEventListener("pointerdown", (e) => {
+  lastPointer.x = e.clientX;
+  lastPointer.y = e.clientY;
+  lastPointer.zone = classifyZoneFromPoint(e.clientX, e.clientY);
+}, { capture: true, passive: true });
+
+
 
 // LISTENERS - capture slider bar clicks
 toggleSidebar.addEventListener("click", () => { switchToSidebar('cli'); });
@@ -1605,6 +1666,8 @@ fileInput.addEventListener("change", async (e) =>
 // Clear
 clearBtn.addEventListener("click", () => { oASC.wipeSelection(' '); });
 
+
+/*
 // Paste capture (also allow direct paste anywhere)
 // Paste capture (context-dependent):
 // - If user is working in sidebars (UI or CLI), DO NOT hijack (let native paste work).
@@ -1627,7 +1690,31 @@ window.addEventListener("paste", (e) =>
     canvas.focus();
   }
 });
+*/
 
+window.addEventListener("paste", (e) => {
+  // Decide based on where the user is operating (mouse/pointer), not focus
+  const zone = lastPointer.zone;
+
+  // If user is operating in sidebars, do not hijack
+  if (zone === "sidebar") return;
+
+  // If user is operating in a text field (in main area), do not hijack
+  if (zone === "text") return;
+
+  // Only hijack when user is operating on the canvas/grid
+  if (zone !== "canvas") return;
+
+  const text = e.clipboardData ? oASC.expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : "";
+  if (typeof text === "string" && text.length > 0) {
+    e.preventDefault();
+    oASC.startPasteWithText(text);
+    canvas.focus(); // keep your current behavior
+  }
+});
+
+
+/*
 pasteSink.addEventListener("paste", (e) => 
 {
   const t = e.target;
@@ -1648,6 +1735,24 @@ pasteSink.addEventListener("paste", (e) =>
 {
   const text = e.clipboardData ? oASC.expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
   if (typeof text === "string" && text.length > 0) { e.preventDefault(); oASC.startPasteWithText(text); canvas.focus(); }
+});
+*/
+
+pasteSink.addEventListener("paste", (e) => {
+  if (lastPointer.zone !== "canvas") return;
+
+  const text = e.clipboardData ? oASC.expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : "";
+  if (typeof text === "string" && text.length > 0) {
+    e.preventDefault();
+    oASC.startPasteWithText(text);
+    canvas.focus();
+  }
+});
+
+
+pasteSink.addEventListener("focus", () => {
+  // If focus lands here, immediately bounce back to canvas if user is operating there
+  if (lastPointer.zone === "canvas") canvas.focus();
 });
 
 // Zoom / pan with wheel
@@ -1721,7 +1826,7 @@ canvas.addEventListener("mousemove", (e) =>
 
   if (pasteDrag)
   {
-      if (cell) pasteDrag.anchor = { r: cell.r, c: cell.c };
+      if (cell) setPasteAnchorFromPointerCell({ r: cell.r, c: cell.c });
       draw();
       return;
   }
@@ -1766,12 +1871,13 @@ canvas.addEventListener("mousedown", (e) =>
   const cell = oASC.canvasPointToCell(e.clientX, e.clientY);
 
   if (pasteDrag)
-  { 
-      oASC.commitPasteAt(cell); 
+  {
+      oASC.commitPasteAt(); // uses pasteDrag.anchor
       if(bDebug) console.log("setMode('"+modeRECALL+"')");
       setMode(modeRECALL);
       return;
   }
+
 
   // TODO SERIALISE (BEGIN functions)??
   if (tool === "modeFreeform")      oASC.beginFreeform(cell);
