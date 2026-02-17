@@ -544,6 +544,9 @@ function COM()
     for (const [name, val] of Object.entries(JSContainer)) {
       if (typeof val !== "function") continue;
       if (!val.help) continue;
+
+      for(var i in val.help) if(typeof(val.help[i])=="object") val.help[i] = val.help[i].join("\n");
+
       if (typeof(val.help)=="object") tokenlist.push({"name":name,"content":val.help});
       else if (typeof(val.help)=="string") tokenlist.push({"name":name,"content":{"usage":val.help}});
     }
@@ -574,31 +577,36 @@ function COM()
 
 
 
+/*  AsciiTable(data2d, opts)  — drop-in version with header framing + separate header align
 
-
-/*  AsciiTable(data2d, opts)  — drop-in version with:
+    Features:
     - tight cells (no leading/trailing padding)
     - correct width measurement using stripHTML() + &nbsp;->space
     - safe truncation by visible width while preserving HTML and auto-closing tags
     - multiline cells (\n) expand row height
-    - optional header underline
-    - optional sorting by column
-    - row/col dividers, plus top+bottom borders when (rowLine && colLine)
-    - truncation boundary uses VT (prefer style[12], else style[9], else style[5], else V)
+    - optional header row (opts.header)
+    - optional sorting by column (opts.sort) on visible text
+    - row/col dividers (opts.rowLine/opts.colLine)
+    - top+bottom borders for body when (rowLine && colLine)
 
-    Style mapping (string, missing chars fall back):
-      0 H  (─)  horizontal
-      1 V  (│)  vertical
-      2 ML (├)  midline left
-      3 MM (┼)  midline middle
-      4 MR (┤)  midline right
-      5 BL (└)  bottom left
-      6 BM (┴)  bottom mid
-      7 BR (┘)  bottom right
-      8 TL (┌)  top left
-      9 TM (┬)  top mid   (NOTE: if you use a short style and put VT at index 9, we still detect VT via fallback rules)
-     10 TR (┐)  top right
-     12 VT (┃)  truncation vertical
+    NEW:
+    - opts.Hstyle: header frame/lines style (defaults to "━┃┡╇┩┗┻┛┏┳┓ ║")
+      mapping is identical to body style mapping, but applied to header region:
+        0 H, 1 V, 2 ML, 3 MM, 4 MR, 5 BL, 6 BM, 7 BR, 8 TL, 9 TM, 10 TR, 12 VT
+      note: Hstyle[5..7] (bottom border) are only used when header exists AND body has no rows.
+    - opts.Halign: alignment string for header cells, e.g. "CC"
+    - opts.align: alignment string for body cells, e.g. "LCR" (string, not ["LCR"])
+
+    Style strings:
+      - You can use short styles; missing chars fall back to box defaults.
+      - VT (trunc separator) prefer style[12], else style[9], else style[5], else V.
+
+    Example expected:
+      ┏━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
+      ┃ SYNTAX ┃    EXAMPLES     ┃
+      ┡━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
+      │run(CMD)│oCMD.run("clear")│
+      └────────┴─────────────────┘
 */
 
 function stripHTML(s) {
@@ -607,17 +615,42 @@ function stripHTML(s) {
   return s.replace(/<[^>]*>/g, "");
 }
 
+
+/* DROP-IN FIX: replace ONLY truncateHTMLByVisible() with this version.
+
+Fixes your center-align bugs:
+- No more “EXEX” / mingled text when content does NOT overflow.
+- No more false overflow flags on both sides for "C".
+- Correct center-truncation: keeps the *middle* visible slice (not prefix+suffix concat).
+
+Also improves HTML re-opening:
+- When we need to re-open tags after slicing, we re-open using the *original opening tag*
+  (preserving attributes), not just `<tagname>`.
+*/
+
 function truncateHTMLByVisible(input, maxVisible, align = "L") {
   const s = String(input ?? "");
+
+  // no max => never truncate
   if (maxVisible === null || maxVisible === undefined) {
     const vis = stripHTML(s);
     return { html: s, visible: vis, truncL: false, truncR: false };
   }
+
   maxVisible = Math.max(0, maxVisible | 0);
+  const fullVisible = stripHTML(s);
 
-  // Tokenize into tags and text
+  // IMPORTANT: if it fits, do NOT truncate (fixes EXEX + false overflow flags)
+  if (fullVisible.length <= maxVisible) {
+    return { html: s, visible: fullVisible, truncL: false, truncR: false };
+  }
+
+  // trivial
+  if (maxVisible === 0) {
+    return { html: "", visible: "", truncL: fullVisible.length > 0, truncR: fullVisible.length > 0 };
+  }
+
   const tokens = s.match(/<\/?[^>]+>|[^<]+/g) || [];
-
   const VOID_TAGS = new Set(["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]);
 
   function tagName(tag) {
@@ -630,90 +663,74 @@ function truncateHTMLByVisible(input, maxVisible, align = "L") {
     const n = tagName(tag);
     return n ? VOID_TAGS.has(n) : false;
   }
-  function visibleTextOf(text) {
-    return text.replace(/&nbsp;/ig, " ");
-  }
+  function visibleTextOf(text) { return text.replace(/&nbsp;/ig, " "); }
 
-  function takeFromStart() {
-    if (maxVisible === 0) {
-      const full = stripHTML(s);
-      return { html: "", visible: "", truncL: false, truncR: full.length > 0 };
-    }
-
-    let out = "";
-    let visibleCount = 0;
-    const open = [];
-
-    for (const tok of tokens) {
-      if (tok.startsWith("<")) {
-        out += tok;
-        const n = tagName(tok);
-        if (!n || isSelfClosing(tok)) continue;
-
-        if (isClosing(tok)) {
-          const idx = open.lastIndexOf(n);
-          if (idx !== -1) open.splice(idx, 1);
+  // cut a raw TEXT token by visible char count, treating &nbsp; as 1 visible char
+  function cutTextByVisible(textTok, takeCount, fromStart) {
+    // fromStart=true => take first takeCount visible chars
+    // fromStart=false => take last takeCount visible chars (rarely used here)
+    // We only need fromStart in this implementation.
+    if (!fromStart) {
+      // not used; keep for completeness
+      const vis = visibleTextOf(textTok);
+      if (vis.length <= takeCount) return textTok;
+      // brute: compute start index by skipping (vis.length - takeCount)
+      const skip = vis.length - takeCount;
+      let startIndex = 0;
+      let visSeen = 0;
+      for (let i = 0; i < textTok.length && visSeen < skip; i++) {
+        if (textTok.slice(i, i + 6).toLowerCase() === "&nbsp;") {
+          visSeen += 1; i += 5; startIndex = i + 1;
         } else {
-          open.push(n);
-        }
-      } else {
-        if (visibleCount >= maxVisible) break;
-
-        const vis = visibleTextOf(tok);
-        const remaining = maxVisible - visibleCount;
-
-        if (vis.length <= remaining) {
-          out += tok;
-          visibleCount += vis.length;
-        } else {
-          // cut inside this text chunk by visible char counting (&nbsp; counts as 1)
-          let cutIndex = 0;
-          let visSeen = 0;
-
-          for (let i = 0; i < tok.length && visSeen < remaining; i++) {
-            if (tok.slice(i, i + 6).toLowerCase() === "&nbsp;") {
-              visSeen += 1;
-              i += 5;
-              cutIndex = i + 1;
-            } else {
-              visSeen += 1;
-              cutIndex = i + 1;
-            }
-          }
-
-          out += tok.slice(0, cutIndex);
-          visibleCount += remaining;
-          break;
+          visSeen += 1; startIndex = i + 1;
         }
       }
+      return textTok.slice(startIndex);
     }
 
-    // auto-close what we opened
-    for (let i = open.length - 1; i >= 0; i--) out += `</${open[i]}>`;
+    const vis = visibleTextOf(textTok);
+    if (vis.length <= takeCount) return textTok;
 
-    const fullVisible = stripHTML(s);
-    return { html: out, visible: fullVisible.slice(0, maxVisible), truncL: false, truncR: fullVisible.length > maxVisible };
+    let cutIndex = 0;
+    let visSeen = 0;
+    for (let i = 0; i < textTok.length && visSeen < takeCount; i++) {
+      if (textTok.slice(i, i + 6).toLowerCase() === "&nbsp;") {
+        visSeen += 1;
+        i += 5;
+        cutIndex = i + 1;
+      } else {
+        visSeen += 1;
+        cutIndex = i + 1;
+      }
+    }
+    return textTok.slice(0, cutIndex);
   }
 
-  // Right truncation: do a full forward scan, but only start emitting when
-  // we reach the "startVisible" position, while maintaining a stack of active tags
-  // so we can re-open them at the emission start.
-  function takeFromEnd() {
-    const fullVisible = stripHTML(s);
-    if (fullVisible.length <= maxVisible) return { html: s, visible: fullVisible, truncL: false, truncR: false };
-    if (maxVisible === 0) return { html: "", visible: "", truncL: true, truncR: false };
-
-    const startVisible = fullVisible.length - maxVisible;
-
+  // Slice HTML by visible range [startVisible, endVisible) and auto-close.
+  // Re-opens active tags using the original opening tag text (preserves attrs).
+  function sliceHTMLVisibleRange(startVisible, endVisible) {
     let out = "";
     let visiblePos = 0;
+    let emitting = false;
 
-    const active = [];   // active tags during scan
-    let emitted = false;
-    const emitActiveOpen = () => {
-      // reopen all currently active tags
-      for (const n of active) out += `<${n}>`;
-    };
+    // stack of {name, openTag}
+    const active = [];
+
+    function pushOpen(tagTok) {
+      const n = tagName(tagTok);
+      if (!n) return;
+      active.push({ name: n, openTag: tagTok });
+    }
+    function popClose(tagTok) {
+      const n = tagName(tagTok);
+      if (!n) return;
+      for (let i = active.length - 1; i >= 0; i--) {
+        if (active[i].name === n) { active.splice(i, 1); break; }
+      }
+    }
+    function reopenActive() {
+      for (const it of active) out += it.openTag;
+    }
 
     for (const tok of tokens) {
       if (tok.startsWith("<")) {
@@ -721,77 +738,115 @@ function truncateHTMLByVisible(input, maxVisible, align = "L") {
         const selfClose = isSelfClosing(tok);
         const closing = isClosing(tok);
 
-        // update active stack regardless of emitted
+        // update stack regardless of emitting
         if (n && !selfClose) {
-          if (closing) {
-            const idx = active.lastIndexOf(n);
-            if (idx !== -1) active.splice(idx, 1);
-          } else {
-            active.push(n);
-          }
+          if (closing) popClose(tok);
+          else pushOpen(tok);
         }
 
-        if (emitted) {
-          out += tok;
-        }
-      } else {
-        const vis = visibleTextOf(tok);
-        const len = vis.length;
+        if (emitting) out += tok;
+        continue;
+      }
 
-        if (!emitted) {
-          if (visiblePos + len <= startVisible) {
-            visiblePos += len;
-            continue;
-          }
+      // text
+      const vis = visibleTextOf(tok);
+      const len = vis.length;
 
-          // start emitting mid-text chunk
-          emitted = true;
-          out = "";
-          emitActiveOpen();
+      // fully before start
+      if (!emitting && visiblePos + len <= startVisible) {
+        visiblePos += len;
+        continue;
+      }
 
-          const needSkip = startVisible - visiblePos;
+      // start emitting (maybe mid token)
+      if (!emitting) {
+        emitting = true;
+        out = "";
+        reopenActive();
 
-          // compute start index in tok by visible counting
+        const needSkip = startVisible - visiblePos; // 0..len-1
+        if (needSkip > 0) {
+          // skip needSkip visible chars inside tok
           let startIndex = 0;
           let visSeen = 0;
-
           for (let i = 0; i < tok.length && visSeen < needSkip; i++) {
             if (tok.slice(i, i + 6).toLowerCase() === "&nbsp;") {
-              visSeen += 1;
-              i += 5;
-              startIndex = i + 1;
+              visSeen += 1; i += 5; startIndex = i + 1;
             } else {
-              visSeen += 1;
-              startIndex = i + 1;
+              visSeen += 1; startIndex = i + 1;
             }
           }
+          // now we are at startVisible
+          const remainingInTokVisible = len - needSkip;
+          const allowed = endVisible - startVisible;
+          const take = Math.min(remainingInTokVisible, allowed);
+          const piece = cutTextByVisible(tok.slice(startIndex), take, true);
+          out += piece;
+          visiblePos = startVisible + take;
 
-          out += tok.slice(startIndex);
-          visiblePos = startVisible + (len - needSkip);
-        } else {
-          out += tok;
-          visiblePos += len;
+          if (visiblePos >= endVisible) break;
+          continue;
         }
+        // needSkip==0 => fall through to normal emitting below
+      }
+
+      // emitting and not done yet
+      const remaining = endVisible - visiblePos;
+      if (remaining <= 0) break;
+
+      if (len <= remaining) {
+        out += tok;
+        visiblePos += len;
+      } else {
+        out += cutTextByVisible(tok, remaining, true);
+        visiblePos += remaining;
+        break;
       }
     }
 
-    // close any tags still active at end of emitted fragment
-    for (let i = active.length - 1; i >= 0; i--) out += `</${active[i]}>`;
-
-    return { html: out, visible: fullVisible.slice(-maxVisible), truncL: true, truncR: false };
+    // close whatever is still active in the emitted fragment
+    for (let i = active.length - 1; i >= 0; i--) out += `</${active[i].name}>`;
+    return out;
   }
 
   align = (align || "L").toUpperCase();
-  if (align === "R") return takeFromEnd();
-  if (align === "C") {
-    const leftKeep = Math.ceil(maxVisible / 2);
-    const rightKeep = Math.floor(maxVisible / 2);
-    const a = truncateHTMLByVisible(s, leftKeep, "L");
-    const b = truncateHTMLByVisible(s, rightKeep, "R");
-    return { html: a.html + b.html, visible: a.visible + b.visible, truncL: true, truncR: true };
+
+  if (align === "R") {
+    // keep last maxVisible
+    const start = fullVisible.length - maxVisible;
+    const end = fullVisible.length;
+    return {
+      html: sliceHTMLVisibleRange(start, end),
+      visible: fullVisible.slice(start, end),
+      truncL: true,
+      truncR: false
+    };
   }
-  return takeFromStart();
+
+  if (align === "C") {
+    // keep middle maxVisible
+    const overflow = fullVisible.length - maxVisible;
+    const cutLeft = Math.floor(overflow / 2);
+    const start = cutLeft;
+    const end = start + maxVisible;
+
+    return {
+      html: sliceHTMLVisibleRange(start, end),
+      visible: fullVisible.slice(start, end),
+      truncL: start > 0,
+      truncR: end < fullVisible.length
+    };
+  }
+
+  // default L: keep first maxVisible
+  return {
+    html: sliceHTMLVisibleRange(0, maxVisible),
+    visible: fullVisible.slice(0, maxVisible),
+    truncL: false,
+    truncR: true
+  };
 }
+
 
 this.AsciiTable = function(data2d, opts = {}) 
 {
@@ -800,63 +855,75 @@ this.AsciiTable = function(data2d, opts = {})
   const o = {
     sort: (typeof opts.sort === "number" ? opts.sort : null),
     header: (opts.header !== false),
+
     style: (typeof opts.style === "string" ? opts.style : "─│├┼┤└┴┘┌┬┐  ┃"),
+    Hstyle: (typeof opts.Hstyle === "string" ? opts.Hstyle : "━┃┡╇┩┗┻┛┏┳┓  ║"),
+
     max: (Array.isArray(opts.max) ? opts.max : []),
     rowLine: (opts.rowLine !== false),
     colLine: (opts.colLine !== false),
-    align: (opts.align ?? []),
+
+    // NEW: simplified align to string
+    align: (typeof opts.align === "string" ? opts.align : ""),
+    Halign: (typeof opts.Halign === "string" ? opts.Halign : ""),
   };
 
-  // ---- style decode (with safe fallbacks) ----
-  const style = o.style;
-  const H  = style[0] ?? "─";
-  const V  = style[1] ?? "│";
+  function decodeStyle(styleStr, defaults) {
+    const s = styleStr || "";
+    const d = defaults;
 
-  const ML = style[2] ?? "├";
-  const MM = style[3] ?? "┼";
-  const MR = style[4] ?? "┤";
+    const H  = s[0]  ?? d.H;
+    const V  = s[1]  ?? d.V;
 
-  const BL = style[5] ?? "└";
-  const BM = style[6] ?? "┴";
-  const BR = style[7] ?? "┘";
+    const ML = s[2]  ?? d.ML;
+    const MM = s[3]  ?? d.MM;
+    const MR = s[4]  ?? d.MR;
 
-  const TL = style[8]  ?? "┌";
-  const TM = style[9]  ?? "┬";
-  const TR = style[10] ?? "┐";
+    const BL = s[5]  ?? d.BL;
+    const BM = s[6]  ?? d.BM;
+    const BR = s[7]  ?? d.BR;
 
-  // VT: prefer style[12], else style[9] (your 10th-char convention), else style[5], else V
-  const VT = style[12] ?? style[9] ?? style[5] ?? V;
+    const TL = s[8]  ?? d.TL;
+    const TM = s[9]  ?? d.TM;
+    const TR = s[10] ?? d.TR;
 
-  // ---- normalize input ----
-  let rows = data2d.map(r =>
-    (Array.isArray(r) ? r : [r]).map(v => String(v ?? ""))
-  );
+    const VT = s[12] ?? s[9] ?? s[5] ?? d.VT ?? V;
 
-  // header + sorting
+    return { H,V,ML,MM,MR,BL,BM,BR,TL,TM,TR,VT };
+  }
+
+  const bodyStyle = decodeStyle(o.style, {
+    H:"─", V:"│", ML:"├", MM:"┼", MR:"┤", BL:"└", BM:"┴", BR:"┘", TL:"┌", TM:"┬", TR:"┐", VT:"┃"
+  });
+
+  const headerStyle = decodeStyle(o.Hstyle, {
+    H:"━", V:"┃", ML:"┡", MM:"╇", MR:"┩", BL:"┗", BM:"┻", BR:"┛", TL:"┏", TM:"┳", TR:"┓", VT:"║"
+  });
+
+  // normalize rows to strings
+  let rows = data2d.map(r => (Array.isArray(r) ? r : [r]).map(v => String(v ?? "")));
+
+  // Extract header row if enabled
   let headerRow = null;
   if (o.header && rows.length > 0) {
     headerRow = rows[0];
     rows = rows.slice(1);
   }
+
+  // sort body rows (NOT the header)
   if (o.sort !== null) {
     const k = o.sort;
     rows.sort((a, b) => stripHTML(a[k] ?? "").localeCompare(stripHTML(b[k] ?? "")));
   }
-  if (headerRow) rows.unshift(headerRow);
 
-  const colCount = rows.reduce((m, r) => Math.max(m, r.length), 0);
+  const bodyRows = rows;               // may be empty
+  const allRowsForSizing = headerRow ? [headerRow, ...bodyRows] : bodyRows;
 
-  // align: allow ["LL"] or ["LCR"] shorthand or per-col entries
-  function getAlign(ci) {
-    const a = o.align;
-    if (Array.isArray(a) && a.length === 1 && typeof a[0] === "string" && a[0].length > 1) {
-      return (a[0][ci] ?? "L").toUpperCase();
-    }
-    if (Array.isArray(a) && typeof a[0] === "string" && a.length === 1 && a[0].length === colCount) {
-      return (a[0][ci] ?? "L").toUpperCase();
-    }
-    if (Array.isArray(a)) return (a[ci] ?? "L").toUpperCase();
-    return "L";
+  const colCount = allRowsForSizing.reduce((m, r) => Math.max(m, r.length), 0);
+
+  function getAlign(alignStr, ci) {
+    const c = (alignStr?.[ci] ?? "L").toUpperCase();
+    return (c === "L" || c === "C" || c === "R") ? c : "L";
   }
 
   function getMax(ci) {
@@ -874,40 +941,39 @@ this.AsciiTable = function(data2d, opts = {})
       const right = gap - left;
       return " ".repeat(left) + html + " ".repeat(right);
     }
-    return html + " ".repeat(gap); // L
+    return html + " ".repeat(gap);
   }
 
-  // ---- compute column widths using visible text lengths AFTER truncation ----
+  // compute column widths based on visible lengths AFTER truncation (max applied)
   const colWidths = Array(colCount).fill(0);
-
   for (let ci = 0; ci < colCount; ci++) {
     const maxLen = getMax(ci);
-    const align = getAlign(ci);
 
     let longest = 0;
-    for (const r of rows) {
+    for (const r of allRowsForSizing) {
       const cell = String(r[ci] ?? "");
       for (const line of cell.split("\n")) {
-        const t = truncateHTMLByVisible(line, maxLen, align);
+        // width depends on either header/body align for truncation side,
+        // but width is capped at maxLen anyway; we can use body align as default.
+        const t = truncateHTMLByVisible(line, maxLen, getAlign(o.align, ci));
         longest = Math.max(longest, t.visible.length);
       }
     }
 
-    // If maxLen is set, width cannot exceed it (visible chars)
     colWidths[ci] = (maxLen === null) ? longest : Math.min(longest, maxLen);
   }
 
-  function makeLine(left, mid, right) {
-    const segs = colWidths.map(w => H.repeat(w));
-    if (!o.colLine) return segs.join(H);
+  function makeLine(styleObj, left, mid, right) {
+    const segs = colWidths.map(w => styleObj.H.repeat(w));
+    if (!o.colLine) return segs.join(styleObj.H);
     return left + segs.join(mid) + right;
   }
 
-  const makeTopLine = () => makeLine(TL, TM, TR);
-  const makeMidLine = () => makeLine(ML, MM, MR);
-  const makeBottomLine = () => makeLine(BL, BM, BR);
+  const makeTopLine    = (st) => makeLine(st, st.TL, st.TM, st.TR);
+  const makeMidLine    = (st) => makeLine(st, st.ML, st.MM, st.MR);
+  const makeBottomLine = (st) => makeLine(st, st.BL, st.BM, st.BR);
 
-  function renderLogicalRow(row) {
+  function renderLogicalRow(row, alignStr, st) {
     const splitCells = [];
     let rowHeight = 1;
 
@@ -925,7 +991,7 @@ this.AsciiTable = function(data2d, opts = {})
       const truncFlags = [];
 
       for (let ci = 0; ci < colCount; ci++) {
-        const align = getAlign(ci);
+        const align = getAlign(alignStr, ci);
         const maxLen = getMax(ci);
         const rawLine = (splitCells[ci][li] ?? "");
 
@@ -941,14 +1007,14 @@ this.AsciiTable = function(data2d, opts = {})
         continue;
       }
 
-      // separators: VT when truncation touches boundary, else V
+      // separators: trunc-style VT when truncation touches boundary, else style V
       const seps = [];
-      seps.push(truncFlags[0]?.L ? VT : V);
+      seps.push(truncFlags[0]?.L ? st.VT : st.V);
       for (let i = 0; i < colCount - 1; i++) {
         const boundaryTrunc = truncFlags[i]?.R || truncFlags[i + 1]?.L;
-        seps.push(boundaryTrunc ? VT : V);
+        seps.push(boundaryTrunc ? st.VT : st.V);
       }
-      seps.push(truncFlags[colCount - 1]?.R ? VT : V);
+      seps.push(truncFlags[colCount - 1]?.R ? st.VT : st.V);
 
       let lineOut = "";
       for (let i = 0; i < colCount; i++) lineOut += seps[i] + renderedCells[i];
@@ -961,28 +1027,44 @@ this.AsciiTable = function(data2d, opts = {})
 
   // ---- assemble output ----
   const lines = [];
-  const hasHeader = o.header && rows.length > 0;
+  const hasHeader = !!headerRow;
+  const hasBody = bodyRows.length > 0;
 
-  // top border when both true (like your bottom border rule)
-  if (o.colLine && o.rowLine) lines.push(makeTopLine());
+  // If header exists, frame header region (top line always when colLine&&rowLine)
+  if (hasHeader && o.colLine && o.rowLine) {
+    lines.push(makeTopLine(headerStyle));
+    lines.push(...renderLogicalRow(headerRow, o.Halign || o.align, headerStyle));
 
-  for (let ri = 0; ri < rows.length; ri++) {
-    lines.push(...renderLogicalRow(rows[ri]));
+    // Header underline uses headerStyle mid-line
+    lines.push(makeMidLine(headerStyle));
 
-    if (hasHeader && ri === 0) {
-      lines.push(makeMidLine());
-      continue;
+    // If no body, close header with header bottom (Hstyle[5..7]) as requested
+    if (!hasBody) {
+      lines.push(makeBottomLine(headerStyle));
+      return lines.join("\n");
     }
+  } else if (o.colLine && o.rowLine) {
+    // No header: body top border
+    lines.push(makeTopLine(bodyStyle));
+  }
 
-    if (o.rowLine && ri < rows.length - 1) {
-      lines.push(makeMidLine());
+  // Render body
+  for (let ri = 0; ri < bodyRows.length; ri++) {
+    lines.push(...renderLogicalRow(bodyRows[ri], o.align, bodyStyle));
+
+    if (o.rowLine && ri < bodyRows.length - 1) {
+      lines.push(makeMidLine(bodyStyle));
     }
   }
 
-  if (o.colLine && o.rowLine) lines.push(makeBottomLine());
+  // Body bottom border when both true
+  if (o.colLine && o.rowLine) {
+    lines.push(makeBottomLine(bodyStyle));
+  }
 
   return lines.join("\n");
 }
+
 
 
 
@@ -1221,7 +1303,7 @@ function ASC()
     type: "CADScript_CMD",
     usage: "cat(<i>c</i>,<i>r</i>,<i>angle</i>,<i>uid</i>)",
     desc: "",
-    examples: ["cat(0,0,0,\"ATTINY85V-10PU\")"]
+    examples: ["oASC.cat(0,0,0,\"ATTINY85V-10PU\")"]
   }
 
   this.lcat = function() 
@@ -1578,7 +1660,7 @@ function ASC()
     type: "CADScript_Fn",
     usage: "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)",
     desc: "Draw a box in line style BOX_DOUBLE|BOX_THICK|BOX_DOUBLE",
-    examples: ["box(1,0,3,2,BOX_DOUBLE)"]
+    examples: ["oASC.box(1,0,3,2,BOX_SINGLE)","oASC.box(1,0,3,2,BOX_THICK)","oASC.box(1,0,3,2,BOX_DOUBLE)"]
   }
   
   "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)";
@@ -7885,13 +7967,16 @@ function __cliHandleTerminal(line)
           {
             var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["usage"]});
             var str = oCOM.AsciiTable(tokenlist,
-            {"sort":null
-            ,"header":false
-            ,"style":"─│├┼┤└┴┘┌┬┐ ┃"
-            ,"max":[null,null]
+            {"header":false
             ,"rowLine":false
             ,"colLine":false
-            ,"align":["LL"]});
+            ,"style" :"─│├┼┤└┴┘┏┳┓ ┃"
+            ,"Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║"
+            ,"sort":null
+            ,"max":[null,null]
+            ,"align":"LL"
+            ,"Halign":"CC"
+            });
 
             oTERM.output(oCOM.escapeHTML( "<u>Options:</u>\n"+
               "-h [<i>objName</i>] objList / objTokens\n"
@@ -7916,25 +8001,25 @@ function __cliHandleTerminal(line)
                 var tokenlist = [["SYNTAX","EXAMPLES"]]
                                 .concat( oCOM.JShelpCollector(obj,{"sort":true,"filter":["usage","examples"]}) );
                 var str = oCOM.AsciiTable(tokenlist,
-                  {"sort":null
-                  ,"header":false
-                  ,"style":"─│├┼┤└┴┘┌┬┐ ┃"
-                  ,"max":[null,null]
+                  {"header":true
                   ,"rowLine":true
                   ,"colLine":true
-                  ,"align":["LL"]});
-                  }
+                  ,"style" : "─│├┼┤└┴┘┌┬┐ ┃"
+                  ,"Hstyle": "━┃┡╇┩┗┻┛┏┳┓ ║"
+                  ,"sort":0
+                  ,"max":[null,null]
+                  ,"align":"LL"
+                  ,"Halign":"CC"
+                  });
               list.push( str );
               oTERM.output(oCOM.escapeHTML( list.join("\n") )); 
             }         
-
-            return true;
+          }
+          return true;
         break;
        
       }
-
     }
-
     // SEND A JOB TO THE CMD WORKER
     oCMD.runExternalScript(code)
       .then(() => { oASC.draw(); })
@@ -7947,9 +8032,6 @@ function __cliHandleTerminal(line)
   {
     oCMD.run(line);
   }
-
-
-
 }
 
 
