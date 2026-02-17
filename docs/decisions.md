@@ -1007,7 +1007,7 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [x] 5. Integrate new CADScript functions:  catalog list, place catalog item, blank box, text(string)  - v1.13
 - [ ] 6. Integrate new CADScript functions: line(override) and line (resolve), move/copy
 - [x] 7. Extend self-help documentation: display syntax and usage in an Ascii table - AsciiTable() became factually a generic function 
-- [ ] 8. One single zone-sensitive pasteSink (instead of 3 confusing event handlers)
+- [ ] 8. One single zone-sensitive pasteSink (instead of 3 confusing event handlers), pasteSink anchor placed in the center and clipped when navigating over the grid edges
 
 
 ---
