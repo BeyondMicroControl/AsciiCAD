@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>🍦terminal</title>
+    <meta name="description" content="🍦A simple and lightweight Javascript web browser terminal">
+    <meta charset="utf-8">
+    <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="theme-color" content="#000">
+    <style>
+      body { margin: 0; padding: 0; }
+
+      #vanilla-terminal {
+        width: 100vw;
+        height: 100vh;
+      }
+
+      *{box-sizing:border-box;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+      .VanillaTerm{background-color:#222;color:#fff;font-family:"Inconsolata","Courier New",Courier,monospace;font-weight:700;overflow:hidden;padding:.75em 1em}
+      .VanillaTerm .container{width:100%;height:100%;overflow-y:scroll}
+      .VanillaTerm .container ::selection{background-color:#f3e5ab;text-shadow:none!important}
+      .VanillaTerm output{clear:both;line-height:1.25em;width:100%}
+      .VanillaTerm output pre{margin:0}
+      .VanillaTerm output span{display:block;font-weight:400;color:#ddd}
+      .VanillaTerm .prompt,.VanillaTerm a{color:#f3e5ab;font-weight:700}
+      .VanillaTerm .prompt{line-height:1.25em;margin-right:.5em}
+      .VanillaTerm .command{display:flex}
+      .VanillaTerm .command.input .prompt{color:#fff;font-weight:400}
+      .VanillaTerm .command.idle .input{display:none}
+      .VanillaTerm .command.hidden .prompt{display:none}
+      .VanillaTerm .command.hidden .input{max-width:1px}
+      .VanillaTerm .command .input{background-color:#fff0;border:none;color:inherit;font:inherit;flex:1;margin:0;outline:none;padding:0}
+      .VanillaTerm .command .spinner:before{display:inline-block;content:"\280B";animation:spin 1s linear infinite;vertical-align:middle;margin-right:10px}
+      @keyframes spin{0%{content:"\280B"}
+      10%{content:"\2819"}
+      20%{content:"\2839"}
+      30%{content:"\2838"}
+      40%{content:"\283C"}
+      50%{content:"\2834"}
+      60%{content:"\2826"}
+      70%{content:"\2827"}
+      80%{content:"\2807"}
+      90%{content:"\280F"}}
+
+    </style>
+</head>
+  <body>
+    <div id="vanilla-terminal"></div>
+<script>
+
+
+//     ______             _   __   _            _                                  
+//    |_   _ \           (_) [  | / |_         (_)                                 
+//      | |_) | __   _   __   | |`| |-'______  __   _ .--.                         
+//      |  __'.[  | | | [  |  | | | | |______|[  | [ `.-. |                        
+//     _| |__) || \_/ |, | |  | | | |,         | |  | | | |                        
+//    |_______/ '.__.'_/[___][___]\__/        [___][___||__]            __         
+//     .' ___  |                                                       |  ]        
+//    / .'   \_|  .--.   _ .--..--.   _ .--..--.   ,--.   _ .--.   .--.| |  .--.   
+//    | |       / .'`\ \[ `.-. .-. | [ `.-. .-. | `'_\ : [ `.-. |/ /'`\' | ( (`\]  
+//    \ `.___.'\| \__. | | | | | | |  | | | | | | // | |, | | | || \__/  |  `'.'.  
+//     `.____ .' '.__.' [___||__||__][___||__||__]\'-;__/[___||__]'.__.;__][\__) )
+
+/*!
+  Vanilla Terminal - built-in commands (plain globals, no IIFE)
+
+  Exposes:
+    - VanillaTerminalBuiltins (object)
+      - VERSION
+      - createBuiltInCommands()
+*/
+
+var VanillaTerminalBuiltins = (function () {
+  "use strict";
+
+  var STORAGE_KEY = "VanillaTerm";
+  var VERSION = "0.0.11";
+
+  
+
+  var HELP = {
+    clear: "clear the terminal screen",
+    version: "print the terminal version",
+    wipe: "Remove all your history of command lines",
+    help: "print this message",
+  };
+
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function createBuiltInCommands() {
+    return {
+      "clear": function (terminal) {
+        terminal.clear();
+      },
+
+      "help": function (terminal, params) {
+        params = params || [];
+        var command = params[0];
+
+        if (command) {
+          terminal.output(
+            "help: " +
+              (HELP[command] || ("no help topics match <u>" + escapeHtml(command) + "</u>"))
+          );
+          return;
+        }
+
+        terminal.output(
+          "These shell commands are defined internally. Type <u>help</u> for see the list."
+        );
+        terminal.output(
+          "Type <u>help name</u> to find out more about the function <u>name</u>."
+        );
+        terminal.output(Object.keys(terminal.commands).join(", "));
+      },
+
+      "version": function (terminal) {
+        terminal.output("Vanilla Terminal v" + VERSION);
+      },
+
+      "wipe": function (terminal) {
+        terminal.prompt("Are you sure remove all your commands history? Y/N", function (value) {
+          if (String(value).trim().toUpperCase() === "Y") {
+            try {
+              window.localStorage.removeItem(STORAGE_KEY);
+            } catch (_) {}
+            terminal.history = [];
+            terminal.historyCursor = 0;
+            terminal.output("History of commands wiped.");
+          }
+        });
+      },
+
+      "eval": function (terminal, params) 
+      {
+        params = params || [];
+        var expression = params[0];
+        var result  = eval('(function() {' + expression + '; return {"key":key,"value":value} }())');
+        // TODO populate global object with key-value pair data
+      }
+
+    };
+  }
+
+  return {
+    VERSION: VERSION,
+    createBuiltInCommands: createBuiltInCommands,
+  };
+})();
+
+//     _________                              _                   __   
+//    |  _   _  |                            (_)                 [  |  
+//    |_/ | | \_|.---.  _ .--.  _ .--..--.   __   _ .--.   ,--.   | |  
+//        | |   / /__\\[ `/'`\][ `.-. .-. | [  | [ `.-. | `'_\ :  | |  
+//       _| |_  | \__., | |     | | | | | |  | |  | | | | // | |, | |  
+//      |_____|  '.__.'[___]   [___||__||__][___][___||__]\'-;__/[___] 
+//     .' ___  |                                                       
+//    / .'   \_|  .--.   _ .--.  .---.                                 
+//    | |       / .'`\ \[ `/'`\]/ /__\\                                
+//    \ `.___.'\| \__. | | |    | \__.,                                
+//     `.____ .' '.__.' [___]    '.__.'
+
+/*!
+  Vanilla Terminal (plain globals + instance methods, no IIFE, no prototype)
+
+  Requirements:
+  - Load commands.plain.js before this file (for built-in commands).
+  - Include VanillaTerminal.css via <link rel="stylesheet">.
+
+  Usage:
+    var oVanillaTerminal = new VanillaTerminal({ container: "vanilla-terminal" });
+*/
+
+"use strict";
+
+var VanillaTerminal = function VanillaTerminal(props) {
+  props = props || {};
+
+  // ---- config --------------------------------------------------------------
+  var containerId = props.container || "vanilla-terminal";
+  var userCommands = props.commands || {};
+  var welcome =
+    props.welcome !== undefined ? props.welcome : 'Welcome to <a href="">Vanilla</a> terminal.';
+  var prompt = props.prompt || "";
+  var separator = props.separator || "&gt;";
+
+  // ---- constants -----------------------------------------------------------
+  var STORAGE_KEY = "VanillaTerm";
+  var ROOT_CLASS = "VanillaTerm";
+
+  // ---- helpers -------------------------------------------------------------
+
+  function renderMarkup(shell) {
+    return (
+      '\n      <div class="container">\n' +
+      "        <output></output>\n" +
+      '        <div class="command">\n' +
+      '          <div class="prompt">' +
+      shell.prompt +
+      shell.separator +
+      "</div>\n" +
+      '          <input class="input" spellcheck="false" autofocus />\n' +
+      "        </div>\n" +
+      "      </div>\n    "
+    );
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function cloneCommandNode(commandEl) {
+    var line = commandEl.cloneNode(true);
+    var input = line.querySelector(".input");
+
+    input.autofocus = false;
+    input.readOnly = true;
+    input.insertAdjacentHTML("beforebegin", escapeHtml(input.value));
+    input.parentNode.removeChild(input);
+
+    line.classList.add("line");
+    return line;
+  }
+
+  function loadHistory() {
+    try {
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveHistory(history) {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    } catch (_) {
+      // ignore quota / privacy mode errors
+    }
+  }
+
+  // ---- instance state ------------------------------------------------------
+
+  var builtins =
+    window.VanillaTerminalBuiltins &&
+    typeof window.VanillaTerminalBuiltins.createBuiltInCommands === "function"
+      ? window.VanillaTerminalBuiltins.createBuiltInCommands()
+      : {};
+
+  this.commands = Object.assign({}, userCommands, builtins);
+
+  this.history = loadHistory();
+  this.historyCursor = this.history.length;
+
+  this.shell = { prompt: prompt, separator: separator };
+
+  this.state = {
+    prompt: false, // prompt mode = next ENTER answers a question
+    idle: false,
+    // raw mode: pass-through input (e.g. ngspice REPL)
+    rawMode: false,
+    rawHandler: null,
+    rawEscapePrefix: ":",
+    rawSavedPrompt: undefined,
+  };
+
+  this.onAskCallback = function () {};
+  this.onInputCallback = null;
+
+  // ---- DOM -----------------------------------------------------------------
+
+  var root = document.getElementById(containerId);
+  if (!root) {
+    throw new Error("Container #" + containerId + " doesn't exists.");
+  }
+
+  // Cache DOM
+  root.classList.add(ROOT_CLASS);
+  root.insertAdjacentHTML("beforeEnd", renderMarkup(this.shell));
+
+  var container = root.querySelector(".container");
+  this.DOM = {
+    root: root,
+    container: container,
+    output: container.querySelector("output"),
+    command: container.querySelector(".command"),
+    input: container.querySelector(".command .input"),
+    prompt: container.querySelector(".command .prompt"),
+  };
+
+  // ---- internal methods that need `this` -----------------------------------
+
+  var self = this;
+
+  function resetCommand() {
+    self.DOM.input.value = "";
+    self.DOM.command.classList.remove("input");
+    self.DOM.command.classList.remove("hidden");
+
+    if (typeof self.DOM.input.scrollIntoView === "function") {
+      self.DOM.input.scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  function handleKeyUp(event) {
+    var key = event.key || "";
+    var code = event.keyCode;
+
+    if (key === "Escape" || code === 27) {
+      self.DOM.input.value = "";
+      event.stopPropagation();
+      event.preventDefault();
+      return;
+    }
+
+    var isUp = key === "ArrowUp" || code === 38;
+    var isDown = key === "ArrowDown" || code === 40;
+    if (!isUp && !isDown) return;
+
+    if (isUp && self.historyCursor > 0) self.historyCursor -= 1;
+    if (isDown && self.historyCursor < self.history.length - 1) self.historyCursor += 1;
+
+    var value = self.history[self.historyCursor];
+    if (value !== undefined) self.DOM.input.value = value;
+  }
+
+  function handleKeyDown(event) {
+    var key = event.key || "";
+    var code = event.keyCode;
+
+    var isEnter = key === "Enter" || code === 13;
+    if (!isEnter) return;
+
+    var commandLine = self.DOM.input.value.trim();
+    if (!commandLine) return;
+
+    // Prompt mode: answer a question instead of dispatching a command
+    if (self.state.prompt) {
+      self.state.prompt = false;
+      self.onAskCallback(commandLine);
+      self.setPrompt(); // restore normal prompt
+      resetCommand();
+      return;
+    }
+
+    // Raw pass-through mode (e.g. ngspice REPL). Use ":" prefix to escape back
+    // to terminal commands while staying in raw mode.
+    if (self.state.rawMode && typeof self.state.rawHandler === "function") {
+      var prefix = self.state.rawEscapePrefix || ":";
+      if (commandLine.indexOf(prefix) === 0) {
+        // Escape to terminal commands: strip prefix and continue normal dispatch.
+        // Note: we keep the original input text for echoing.
+        commandLine = commandLine.slice(prefix.length).trim();
+        if (!commandLine) return;
+      } else {
+        // Save in history
+        self.history.push(commandLine);
+        saveHistory(self.history);
+        self.historyCursor = self.history.length;
+
+        // Echo command as output line
+        self.DOM.output.appendChild(cloneCommandNode(self.DOM.command));
+
+        // Hide live command line while processing
+        self.DOM.command.classList.add("hidden");
+        self.DOM.input.value = "";
+
+        try {
+          self.state.rawHandler(commandLine);
+        } catch (e) {
+          self.output("Raw handler error: " + escapeHtml(String(e && e.message ? e.message : e)));
+        }
+
+        // Immediately restore prompt so user can type the next command.
+        self.DOM.command.classList.remove("hidden");
+        resetCommand();
+        return;
+      }
+    }
+
+    // Save in history
+      self.history.push(commandLine);
+      saveHistory(self.history);
+      self.historyCursor = self.history.length;
+
+      // Echo command as output line
+      self.DOM.output.appendChild(cloneCommandNode(self.DOM.command));
+
+      // Hide live command line while processing
+      self.DOM.command.classList.add("hidden");
+      self.DOM.input.value = "";
+
+      var prefix = self.state.rawEscapePrefix || ":";
+      if (commandLine.indexOf(prefix) === 0) {
+        // run as terminal command (strip prefix and continue below)
+        commandLine = commandLine.slice(prefix.length).trim();
+        if (!commandLine) {
+          self.output("Empty command after " + escapeHtml(prefix) + ".");
+          return;
+        }
+      } else {
+        try {
+          self.state.rawHandler(commandLine);
+        } catch (e) {
+          self.output("Raw handler error: " + escapeHtml(String(e && e.message ? e.message : e)));
+        }
+        // Immediately restore prompt so user can type the next command.
+        self.DOM.command.classList.remove("hidden");
+        resetCommand();
+        return;
+      }
+    }
+
+    // Save in history
+    self.history.push(commandLine);
+    saveHistory(self.history);
+    self.historyCursor = self.history.length;
+
+    // Echo command as output line
+    self.DOM.output.appendChild(cloneCommandNode(self.DOM.command));
+
+    // Hide live command line while processing
+    self.DOM.command.classList.add("hidden");
+    self.DOM.input.value = "";
+
+    // Dispatch
+    var parts = commandLine.split(" ");
+    var command = parts[0];
+    var params = parts.slice(1);
+    var callback = self.commands[command];
+
+    if (typeof callback === "function") {
+      callback(self, params);
+      if (typeof self.onInputCallback === "function") {
+        self.onInputCallback(command, params);
+      }
+    } else {
+      self.output("<u>" + escapeHtml(command) + "</u>: command not found.");
+    }
+  }
+
+  // ---- public API (instance methods defined here) ---------------------------
+
+  this.clear = function () {
+    self.DOM.output.innerHTML = "";
+    resetCommand();
+  };
+
+  this.idle = function () {
+    self.state.idle = true;
+    self.DOM.command.classList.add("idle");
+    self.DOM.prompt.innerHTML = '<div class="spinner"></div>';
+  };
+
+  this.prompt = function (question, callback) {
+    self.state.prompt = true;
+    self.onAskCallback = typeof callback === "function" ? callback : function () {};
+
+    self.DOM.prompt.innerHTML = String(question) + ":";
+    resetCommand();
+    self.DOM.command.classList.add("input");
+  };
+
+  this.onInput = function (callback) {
+    self.onInputCallback = callback;
+  };
+
+  this.output = function (html) {
+    if (html === undefined) html = "&nbsp;";
+    self.DOM.output.insertAdjacentHTML("beforeEnd", "<span>" + html + "</span>");
+    resetCommand();
+  };
+
+  this.setPrompt = function (newPrompt) {
+    if (newPrompt === undefined) newPrompt = self.shell.prompt;
+
+    self.shell = { prompt: newPrompt, separator: self.shell.separator };
+    self.state.idle = false;
+
+    self.DOM.command.classList.remove("idle");
+    self.DOM.prompt.innerHTML = String(newPrompt) + self.shell.separator;
+    self.DOM.input.focus();
+  };
+
+  // Enable/disable raw pass-through mode (for REPL-style integrations).
+  // While in raw mode:
+  //   - Enter sends the entire line to rawHandler(line)
+  //   - Prefix a line with ":" to execute it as a normal terminal command
+  this.setRawMode = function (enabled, rawHandler, opts) {
+    opts = opts || {};
+    if (enabled) {
+      self.state.rawMode = true;
+      self.state.rawHandler = rawHandler;
+      self.state.rawEscapePrefix = (opts.escapePrefix !== undefined) ? String(opts.escapePrefix) : ":";
+      if (self.state.rawSavedPrompt === undefined) self.state.rawSavedPrompt = self.shell.prompt;
+      if (opts.prompt !== undefined) self.setPrompt(opts.prompt);
+    } else {
+      self.state.rawMode = false;
+      self.state.rawHandler = null;
+      self.state.rawEscapePrefix = ":";
+      if (self.state.rawSavedPrompt !== undefined) {
+        var p = self.state.rawSavedPrompt;
+        self.state.rawSavedPrompt = undefined;
+        self.setPrompt(p);
+      }
+    }
+  };
+
+  this.isRawMode = function () {
+    return !!self.state.rawMode;
+  };
+
+  // ---- listeners -----------------------------------------------------------
+
+  // Auto-scroll when new output is appended.
+  var observer = new MutationObserver(function () {
+    setTimeout(function () {
+      self.DOM.input.scrollIntoView({ block: "nearest" });
+    }, 0);
+  });
+  observer.observe(self.DOM.output, { childList: true, subtree: true });
+
+  // Focus handling
+  window.addEventListener(
+    "click",
+    function () {
+      self.DOM.input.focus();
+    },
+    false
+  );
+
+  self.DOM.output.addEventListener(
+    "click",
+    function (ev) {
+      ev.stopPropagation();
+    },
+    false
+  );
+
+  self.DOM.command.addEventListener(
+    "click",
+    function () {
+      self.DOM.input.focus();
+    },
+    false
+  );
+
+  self.DOM.input.addEventListener("keyup", handleKeyUp, false);
+  self.DOM.input.addEventListener("keydown", handleKeyDown, false);
+
+  window.addEventListener(
+    "keyup",
+    function (ev) {
+      self.DOM.input.focus();
+      ev.stopPropagation();
+      ev.preventDefault();
+    },
+    false
+  );
+
+  // ---- initial output ------------------------------------------------------
+
+  if (welcome) this.output(welcome);
+};
+
+
+//     ____   ____                _   __   __                _________                              _                   __   
+//    |_  _| |_  _|              (_) [  | [  |              |  _   _  |                            (_)                 [  |  
+//      \ \   / /,--.   _ .--.   __   | |  | |  ,--.  ______|_/ | | \_|.---.  _ .--.  _ .--..--.   __   _ .--.   ,--.   | |  
+//       \ \ / /`'_\ : [ `.-. | [  |  | |  | | `'_\ :|______|   | |   / /__\\[ `/'`\][ `.-. .-. | [  | [ `.-. | `'_\ :  | |  
+//        \ ' / // | |, | | | |  | |  | |  | | // | |,         _| |_  | \__., | |     | | | | | |  | |  | | | | // | |, | |  
+//     ____\_/  \'-;__/[___||__][___][___][___]\'-;__/        |_____|  '.__.'[___]   [___||__||__][___][___||__]\'-;__/[___] 
+//    |_   __ \                                     / |_                                                                     
+//      | |__) |_ .--.   .--.   _ .--..--.  _ .--. `| |-'  _ .--.  __   _   _ .--.   _ .--.  .---.  _ .--.                   
+//      |  ___/[ `/'`\]/ .'`\ \[ `.-. .-. |[ '/'`\ \| |   [ `/'`\][  | | | [ `.-. | [ `.-. |/ /__\\[ `/'`\]                  
+//     _| |_    | |    | \__. | | | | | | | | \__/ || |,   | |     | \_/ |, | | | |  | | | || \__., | |                      
+//    |_____|  [___]    '.__.' [___||__||__]| ;.__/ \__/  [___]    '.__.'_/[___||__][___||__]'.__.'[___]                     
+//                                         [__|                                                                         
+
+/*!
+  Vanilla Terminal - run the prompt
+*/
+
+
+      /* ------------------------------------------------------------------
+         ngspice (WASM) integration – "double-click mode" loader
+         - Works without a web server: user selects ngspice build artifacts
+         - Provides an interactive CLI via terminal raw mode
+         Notes:
+           * This assumes an Emscripten build that supports stdin/stdout piping.
+             Concord Consortium's proof-of-concept shows the approach using FS.init
+             and ngspice "-p" (pipe) mode. See their pre.js/README for details.
+         ------------------------------------------------------------------ */
+
+      const NgSpice = (() => {
+        let ModuleRef = null;
+        let readyResolve, readyReject;
+        let readyPromise = null;
+
+        // stdin queue as array of characters (each returned as a byte to Emscripten)
+        let stdinQueue = [];
+
+        // map dependency filename -> blob URL (for locateFile)
+        const fileUrl = new Map();
+
+        const escapeHtml = (s) =>
+          String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+        const makeLineStream = (emitLine) => {
+          let buf = "";
+          return (charCode) => {
+            if (charCode === null || charCode === 10) {
+              // flush on newline or null
+              if (buf.length) emitLine(buf);
+              buf = "";
+              return;
+            }
+            buf += String.fromCharCode(charCode);
+          };
+        };
+
+        const pickFiles = (accept, multiple) =>
+          new Promise((resolve) => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = accept || "";
+            input.multiple = !!multiple;
+            input.style.display = "none";
+            document.body.appendChild(input);
+            input.addEventListener("change", () => {
+              const files = Array.from(input.files || []);
+              document.body.removeChild(input);
+              resolve(files);
+            });
+            input.click();
+          });
+
+        const injectScriptFromFile = async (file) => {
+          const url = URL.createObjectURL(file);
+          return new Promise((resolve, reject) => {
+            const s = document.createElement("script");
+            s.src = url;
+            s.onload = () => resolve(url);
+            s.onerror = (e) => reject(e);
+            document.head.appendChild(s);
+          });
+        };
+
+        const reset = () => {
+          ModuleRef = null;
+          stdinQueue = [];
+          fileUrl.forEach((u) => URL.revokeObjectURL(u));
+          fileUrl.clear();
+          readyPromise = null;
+          readyResolve = null;
+          readyReject = null;
+          // best-effort cleanup: do not delete window.Module (some builds reference it)
+        };
+
+        const isLoaded = () => !!ModuleRef;
+
+        const status = () => ({
+          loaded: !!ModuleRef,
+          running: !!(ModuleRef && ModuleRef.__ngspiceRunning),
+        });
+
+        const load = async (terminal) => {
+          // Ask for ngspice.js + ngspice.wasm (+ optional .data/.mem)
+          terminal.output(
+            "Select your <b>ngspice Emscripten build</b> files (at least <u>ngspice.js</u> and <u>ngspice.wasm</u>; optionally <u>.data</u>/<u>.mem</u>)."
+          );
+          const files = await pickFiles(".js,.wasm,.data,.mem", true);
+          if (!files.length) {
+            terminal.output("No files selected.");
+            return false;
+          }
+
+          const jsFile = files.find((f) => f.name.toLowerCase().endsWith(".js"));
+          const wasmFile = files.find((f) => f.name.toLowerCase().endsWith(".wasm"));
+          const otherFiles = files.filter((f) => f !== jsFile && f !== wasmFile);
+
+          if (!jsFile || !wasmFile) {
+            terminal.output("Missing ngspice.js and/or ngspice.wasm in the selection.");
+            return false;
+          }
+
+          reset();
+
+          // Build locateFile map for any dependencies (wasm/data/mem)
+          const allDeps = [wasmFile, ...otherFiles];
+          for (const f of allDeps) fileUrl.set(f.name, URL.createObjectURL(f));
+
+          const wasmBinary = new Uint8Array(await wasmFile.arrayBuffer());
+
+          // Make a fresh ready promise for this load
+          readyPromise = new Promise((res, rej) => {
+            readyResolve = res;
+            readyReject = rej;
+          });
+
+          // Emscripten module config must exist BEFORE loading ngspice.js
+          window.Module = {
+            // Prevent auto main(); we will call it ourselves
+            noInitialRun: true,
+            noExitRuntime: true,
+
+            // Provide the wasm bytes directly (avoids fetch/MIME issues in file://)
+            wasmBinary,
+
+            // Ensure ngspice reads commands from stdin (pipe mode)
+            arguments: ["-p"],
+
+            locateFile: function (path, prefix) {
+              // Try exact match and basename match
+              const base = path.split("/").pop();
+              if (fileUrl.has(path)) return fileUrl.get(path);
+              if (fileUrl.has(base)) return fileUrl.get(base);
+              return (prefix || "") + path;
+            },
+
+            preRun: [],
+
+            print: function (txt) {
+              terminal.output(escapeHtml(txt));
+            },
+            printErr: function (txt) {
+              terminal.output('<span style="color:#c00">' + escapeHtml(txt) + "</span>");
+            },
+
+            onRuntimeInitialized: function () {
+              ModuleRef = window.Module;
+              readyResolve(true);
+            },
+          };
+
+          // Wire stdin/stdout/stderr via FS.init (byte-level streams)
+          window.Module.preRun.push(function () {
+            const M = window.Module;
+            if (!M || !M.FS || !M.FS.init) return;
+
+            const input = function () {
+              const chr = stdinQueue.shift();
+              if (!chr) {
+                // IMPORTANT:
+                // Emscripten treats null/undefined as EOF/error. Return '\n' (10) instead.
+                // Some ngspice WASM builds patch main loop to "yield" on empty newline.
+                return 10;
+              }
+              return chr.charCodeAt(0);
+            };
+
+            const stdout = makeLineStream((line) => terminal.output(escapeHtml(line)));
+            const stderr = makeLineStream((line) => terminal.output('<span style="color:#c00">' + escapeHtml(line) + "</span>"));
+
+            M.FS.init(input, stdout, stderr);
+          });
+
+          // Load the JS glue
+          terminal.idle();
+          try {
+            await injectScriptFromFile(jsFile);
+            await readyPromise;
+            terminal.output("ngspice runtime loaded. Use <b>ng.start</b> and then type ngspice commands directly.");
+            terminal.setPrompt();
+            return true;
+          } catch (e) {
+            terminal.output("Failed to load ngspice runtime: " + escapeHtml(String(e && e.message ? e.message : e)));
+            terminal.setPrompt();
+            if (readyReject) readyReject(e);
+            return false;
+          }
+        };
+
+        const start = async (terminal) => {
+          if (!ModuleRef) {
+            terminal.output("ngspice not loaded. Run <b>ng.load</b> first.");
+            return false;
+          }
+          if (ModuleRef.__ngspiceRunning) {
+            terminal.output("ngspice already running.");
+            return true;
+          }
+          // (Re)create a ready promise if needed
+          if (readyPromise) await readyPromise;
+
+          try {
+            ModuleRef.__ngspiceRunning = true;
+            // Start ngspice main in pipe mode
+            ModuleRef.callMain(ModuleRef.arguments || ["-p"]);
+            terminal.output("ngspice started. Entering raw mode. Use <b>:term</b> to return to terminal commands.");
+            return true;
+          } catch (e) {
+            ModuleRef.__ngspiceRunning = false;
+            terminal.output("Failed to start ngspice: " + escapeHtml(String(e && e.message ? e.message : e)));
+            return false;
+          }
+        };
+
+        const send = (line) => {
+          if (!ModuleRef) return false;
+          const s = String(line).replace(/\r/g, "");
+          const full = s.endsWith("\n") ? s : s + "\n";
+          stdinQueue = stdinQueue.concat(full.split(""));
+          return true;
+        };
+
+        const putFiles = async (terminal) => {
+          if (!ModuleRef || !ModuleRef.FS) {
+            terminal.output("ngspice not ready. Run <b>ng.load</b> first.");
+            return false;
+          }
+          terminal.output("Select one or more netlist/library files to copy into ngspice's virtual FS.");
+          const files = await pickFiles(".cir,.sp,.lib,.txt,*/*", true);
+          if (!files.length) {
+            terminal.output("No files selected.");
+            return false;
+          }
+          for (const f of files) {
+            const bytes = new Uint8Array(await f.arrayBuffer());
+            // Write into root ("/") so you can 'source filename'
+            ModuleRef.FS.writeFile("/" + f.name, bytes);
+            terminal.output("FS: wrote <u>/" + escapeHtml(f.name) + "</u> (" + bytes.length + " bytes)");
+          }
+          return true;
+        };
+
+        const ls = (terminal, path) => {
+          if (!ModuleRef || !ModuleRef.FS) {
+            terminal.output("ngspice not ready. Run <b>ng.load</b> first.");
+            return;
+          }
+          const p = path || "/";
+          try {
+            const entries = ModuleRef.FS.readdir(p).filter((x) => x !== "." && x !== "..");
+            terminal.output("FS " + escapeHtml(p) + ": " + escapeHtml(entries.join("  ")));
+          } catch (e) {
+            terminal.output("FS error: " + escapeHtml(String(e && e.message ? e.message : e)));
+          }
+        };
+
+        return { load, start, send, putFiles, ls, status, isLoaded };
+      })();
+
+      const term = new VanillaTerminal({
+        
+        commands: {
+          help: (terminal) => {
+            terminal.output(
+              [
+                "<b>VanillaTerminal commands</b>",
+                "  - <u>help</u>: this help",
+                "  - <u>clear</u>: clear output",
+                "  - <u>flavour</u>, <u>async</u>: demo commands",
+                "",
+                "<b>ngspice (WASM) commands</b>",
+                "  - <u>ng.load</u>        : select ngspice.js + ngspice.wasm (and optional .data/.mem)",
+                "  - <u>ng.start</u>       : start ngspice and enter raw REPL mode",
+                "  - <u>ng.put</u>         : upload netlists/libs into ngspice virtual FS (then 'source filename')",
+                "  - <u>ng.ls [path]</u>   : list files in ngspice virtual FS (default /)",
+                "  - <u>ng.cmd ...</u>     : send a single ngspice command line (without entering raw mode)",
+                "  - <u>ng.status</u>      : show ngspice loader/running status",
+                "",
+                "<b>Raw REPL mode</b>",
+                "  - Type ngspice commands directly (e.g. <code>source test.cir</code>, <code>run</code>, <code>print v(1)</code>)",
+                "  - Prefix with <code>:</code> to run terminal commands while staying in raw mode (e.g. <code>:term</code>, <code>:help</code>)",
+                "  - <u>:term</u> returns to normal terminal prompt",
+              ].join("<br>")
+            );
+            terminal.setPrompt();
+          },
+
+          clear: (terminal) => terminal.clear(),
+
+          term: (terminal) => {
+            if (terminal.isRawMode && terminal.isRawMode()) {
+              terminal.setRawMode(false);
+              terminal.output("Back to terminal mode.");
+            } else {
+              terminal.output("Not in raw mode.");
+            }
+            terminal.setPrompt();
+          },
+
+          'ng.load': async (terminal) => {
+            await NgSpice.load(terminal);
+          },
+
+          'ng.start': async (terminal) => {
+            const ok = await NgSpice.start(terminal);
+            if (!ok) return;
+
+            // enter raw mode so the user can type ngspice commands directly
+            terminal.setRawMode(true, (line) => {
+              // Allow a very small convenience: ':term' already handled by escape prefix.
+              NgSpice.send(line);
+            }, { prompt: "ngspice", escapePrefix: ":" });
+
+            // Optional initial command: show ngspice help banner
+            // NgSpice.send("help");
+          },
+
+          'ng.put': async (terminal) => {
+            await NgSpice.putFiles(terminal);
+          },
+
+          'ng.ls': (terminal, params) => {
+            NgSpice.ls(terminal, params && params[0] ? params[0] : "/");
+            terminal.setPrompt();
+          },
+
+          'ng.cmd': (terminal, params) => {
+            const line = (params || []).join(" ").trim();
+            if (!line) {
+              terminal.output("Usage: ng.cmd <ngspice command line>");
+              terminal.setPrompt();
+              return;
+            }
+            if (!NgSpice.isLoaded()) {
+              terminal.output("ngspice not loaded. Run <b>ng.load</b> first.");
+              terminal.setPrompt();
+              return;
+            }
+            NgSpice.send(line);
+            terminal.setPrompt();
+          },
+
+          'ng.status': (terminal) => {
+            const st = NgSpice.status();
+            terminal.output("ngspice loaded: <b>" + st.loaded + "</b>, running: <b>" + st.running + "</b>");
+            terminal.setPrompt();
+          },
+
+          flavour: (terminal) => {
+            terminal.output('There is only one flavour for your favorite🍦and it is <b>vanilla<b>.');
+            terminal.setPrompt('@soyjavi <small>❤️</small> <u>vanilla</u> ');
+          },
+
+          async: (terminal) => {
+            terminal.idle();
+            setTimeout(() => terminal.output('Async 300'), 300);
+            setTimeout(() => terminal.output('Async 1300'), 1300);
+            setTimeout(() => {
+              terminal.output('Async 2000');
+              terminal.setPrompt();
+            }, 2000);
+          },
+        },
+
+
+        // welcome: 'Welcome...',
+        // prompt: 'soyjavi at <u>Macbook-Pro</u> ',
+        separator: '>',
+      });
+
+
+      term.setPrompt("AsciiCAD");
+      
+      term.onInput((command, parameters) => {
+        console.log('⚡️onInput', command, parameters);
+      });
+
+      /*
+      term.prompt('Your name', (name) => {
+        term.output(`Hi ${name}!`);
+        term.setPrompt(`${name} `);
+      });
+      */
+
+    </script>
+  </body>
+</html>
