@@ -22,6 +22,7 @@ Try online:
 
 ## Why AsciiCAD?
 
+### Real-world use
 - Hardware and Software become 'one': **sourcecode**
 - It's text-based schematics allow semantic extraction (beyond 'just a drawing')
 - Ideal for MCU, CPU, and digital designs
