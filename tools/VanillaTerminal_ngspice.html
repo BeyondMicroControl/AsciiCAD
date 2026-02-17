@@ -390,37 +390,6 @@ var VanillaTerminal = function VanillaTerminal(props) {
     }
 
     // Save in history
-      self.history.push(commandLine);
-      saveHistory(self.history);
-      self.historyCursor = self.history.length;
-
-      // Echo command as output line
-      self.DOM.output.appendChild(cloneCommandNode(self.DOM.command));
-
-      // Hide live command line while processing
-      self.DOM.command.classList.add("hidden");
-      self.DOM.input.value = "";
-
-      var prefix = self.state.rawEscapePrefix || ":";
-      if (commandLine.indexOf(prefix) === 0) {
-        // run as terminal command (strip prefix and continue below)
-        commandLine = commandLine.slice(prefix.length).trim();
-        if (!commandLine) {
-          self.output("Empty command after " + escapeHtml(prefix) + ".");
-          return;
-        }
-      } else {
-        try {
-          self.state.rawHandler(commandLine);
-        } catch (e) {
-          self.output("Raw handler error: " + escapeHtml(String(e && e.message ? e.message : e)));
-        }
-        // Immediately restore prompt so user can type the next command.
-        self.DOM.command.classList.remove("hidden");
-        resetCommand();
-        return;
-      }
-    }
 
     // Save in history
     self.history.push(commandLine);
