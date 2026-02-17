@@ -181,7 +181,7 @@ Prompt: `AsciiCAD>`
 | `clear` | Clear terminal screen |
 | `history` | Show command history |
 | `history -c` | Clear command history |
-| `CADScript -h` | List all documented CADScript functions |
+| `CADScript -h [objName]` | List authorised CADScript objects and their documented functions |
 | `CADScript {<expression>}` | Run a CADScript expression |
 | `exit` | Exit CLI and return to UI sidebar |
 
@@ -197,10 +197,10 @@ AsciiCAD> CADScript {freeform(0,2,'+'); freeform(1,2,'+'); freeform(1,3,'+')};
 
 #### Run a terminal command from CADScript
 ```text
-AsciiCAD> CADScript {oCMD.line("clear")}
+AsciiCAD> CADScript {oCMD.run("clear")};
 ```
 
-#### Exit back to UI
+#### Exit back to the UI
 ```text
 AsciiCAD> exit
 ```
