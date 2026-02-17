@@ -181,7 +181,7 @@ Prompt: `AsciiCAD>`
 | `clear` | Clear terminal screen |
 | `history` | Show command history |
 | `history -c` | Clear command history |
-| `CADScript -h \[objName\] | List authorised CADScript objects and documented functions |
+| `CADScript -h [objName]` | List authorised CADScript objects and their documented functions |
 | `CADScript {<expression>}` | Run a CADScript expression |
 | `exit` | Exit CLI and return to UI sidebar |
 
