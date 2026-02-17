@@ -200,7 +200,7 @@ AsciiCAD> CADScript {freeform(0,2,'+'); freeform(1,2,'+'); freeform(1,3,'+')};
 AsciiCAD> CADScript {oCMD.run("clear")};
 ```
 
-#### Exit back to UI
+#### Exit back to the UI
 ```text
 AsciiCAD> exit
 ```
