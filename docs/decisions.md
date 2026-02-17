@@ -1006,7 +1006,8 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [x] 4. Use by less heavy compression/decompression codec than Pako --> found LZSS after experimentation with <a href="../tools/codecTool.html">codecTool</a>, turns out almost 38KB smaller and code is more readable
 - [x] 5. Integrate new CADScript functions:  catalog list, place catalog item, blank box, text(string)  - v1.13
 - [ ] 6. Integrate new CADScript functions: line(override) and line (resolve), move/copy
-- [x] 7. Extend self-help documentation: display syntax and usage in an Ascii table
+- [x] 7. Extend self-help documentation: display syntax and usage in an Ascii table - AsciiTable() became factually a generic function 
+- [ ] 8. One single zone-sensitive pasteSink (instead of 3 confusing event handlers)
 
 
 ---
