@@ -1005,7 +1005,8 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [x] 3. Allow calling terminal commands in CADScript <pre>CADScript {oCMD.run("clear")}</pre>
 - [x] 4. Use by less heavy compression/decompression codec than Pako --> found LZSS after experimentation with <a href="../tools/codecTool.html">codecTool</a>, turns out almost 38KB smaller and code is more readable
 - [x] 5. Integrate new CADScript functions:  catalog list, place catalog item, blank box, text(string)  - v1.13
-- [ ] 6. Integrate new CADScript functions: line(override) and line (resolve), move/copy 
+- [ ] 6. Integrate new CADScript functions: line(override) and line (resolve), move/copy
+- [x] 7. Extend self-help documentation: display syntax and usage in an Ascii table
 
 
 ---
