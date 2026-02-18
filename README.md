@@ -11,7 +11,7 @@ Apart from demostrating it's higher purpose, the product of this concept covers 
 
 Moreover, not only does AsciiCAD depict the entire schema visually; its 2D arrangement can retain most of the essential metadata & syntactics of a wiring diagram inside the ASCII composition itself.  In other words, it may even allow logical and even electric behavior simulation (e.g. SPICE), literally by pasting "just text" into a grid.  
 
-Check the [design phylosophy](#design-philosophy), or witout further due:
+Check the [design phylosophy](#design-philosphy), or witout further due:
 
 Immediately online on GitHub.io:  
 - <a href=https://beyondmicrocontrol.github.io/AsciiCAD/index.html>Try AsciiCAD</a>
