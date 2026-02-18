@@ -213,7 +213,8 @@ function ASC()
     updateOpLine("catalog",it);
 
     const expanded = oASC.expandWideCharsForGrid(text_data || "");
-    const forPaste = expanded.replace(/§/g, " ");   // WILDCARD_U becomes a real space for placement
+
+    const forPaste = expanded.replace(new RegExp(WILDCHAR_U, 'g'), " ");   // WILDCARD_U becomes a real space for placement
     oASC.startPasteWithText(forPaste);
 
 
@@ -1288,7 +1289,7 @@ this.startPasteWithText = function(text)
   {
     if (patCh === "#") return WILD_D_SET.has(gridCh);
     if (patCh === "$") return WILD_S_SET.has(gridCh);
-    if (patCh === "§") return WILD_U_SET.has(gridCh);
+    if (patCh === WILDCHAR_U) return WILD_U_SET.has(gridCh);
     return patCh === gridCh;
   }
 
@@ -1369,8 +1370,8 @@ this.startPasteWithText = function(text)
     
     //const banned = new Set();
     const banned = this.computeNetlistBannedSet?.() ?? new Set();
-    overlay.redSet?.forEach(k => banned.add(k));
-    overlay.insideSet?.forEach(k => banned.add(k));
+    //overlay.redSet?.forEach(k => banned.add(k));
+    //overlay.insideSet?.forEach(k => banned.add(k));
 
     function krc(r,c){ return r + "," + c; }
 
@@ -1703,10 +1704,10 @@ this.startPasteWithText = function(text)
     hl.redSet?.forEach(k => banned.add(k));
     hl.insideSet?.forEach(k => banned.add(k));
 
-    // 2) Exclude matched catalog components — NON-SPACE GLYPH CELLS ONLY
-    // computeMatchOverlay already builds greenSet by skipping spaces in the pattern.
-    const mo = this.computeMatchOverlay?.() ?? { greenSet: new Set(), rects: [] };
-    mo.greenSet?.forEach(k => banned.add(k));
+    // 2) Exclude matched catalog components (pattern cells only; skip spaces + '§')
+    const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() };
+    const banSet = mo.solidSet ?? mo.greenSet ?? new Set();
+    banSet.forEach(k => banned.add(k));
 
     return banned;
   }
@@ -1716,6 +1717,7 @@ this.startPasteWithText = function(text)
   {
     const greenSet = new Set();
     const rects = [];
+    const solidSet = new Set(); // NEW: for netlist masking (skip ' ' and '§')
 
     if (!(typeof CATALOG !== "undefined" && Array.isArray(CATALOG)))
       return { greenSet, rects };
@@ -1773,13 +1775,14 @@ this.startPasteWithText = function(text)
               const c = c0 + cc;
               if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
               greenSet.add(keyRC(r, c));
+              if (pc !== "§") solidSet.add(keyRC(r, c)); // NEW
             }
           }
         }
       }
     }
 
-    return { greenSet, rects };
+    return { greenSet, rects, solidSet };
   }
 
 
