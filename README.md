@@ -87,6 +87,7 @@ This emulates a necessary 'tension' between 'operations' and 'projects' that (si
 - [x] Automatically deploy a one-file .html app in /dist (v1.0)
 - [x] CLI (terminal and script parser, enabler for script automation)
 - [ ] Script automation and AI agent interaction
+- [ ] Generative catalog items (CADScript-based)
 - [ ] Junction resolution is buggy, for the simple reason it is complex (single lines, double lines, double thickness lines, etc...)
 - [ ] Not all UTF8 characters are monospace-friendly, leading to less perfect character selection (still buggy)
 - [ ] Embed a component editor + Import/Export Ascii component catalog
