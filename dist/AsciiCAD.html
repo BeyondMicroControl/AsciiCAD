@@ -2780,20 +2780,10 @@ this.startPasteWithText = function(text)
     hl.redSet?.forEach(k => banned.add(k));
     hl.insideSet?.forEach(k => banned.add(k));
 
-    // 2) Exclude matched catalog components (full rectangles)
-    const mo = this.computeMatchOverlay?.();
-    const rects = mo?.rects ?? [];
-
-    for (let i = 0; i < rects.length; i++)
-    {
-      const rc = rects[i];
-      const r0 = Math.max(0, rc.r0|0), c0 = Math.max(0, rc.c0|0);
-      const r1 = Math.min(ROWS - 1, rc.r1|0), c1 = Math.min(COLS - 1, rc.c1|0);
-
-      for (let r = r0; r <= r1; r++)
-        for (let c = c0; c <= c1; c++)
-          banned.add(r + "," + c);
-    }
+    // 2) Exclude matched catalog components — NON-SPACE GLYPH CELLS ONLY
+    // computeMatchOverlay already builds greenSet by skipping spaces in the pattern.
+    const mo = this.computeMatchOverlay?.() ?? { greenSet: new Set(), rects: [] };
+    mo.greenSet?.forEach(k => banned.add(k));
 
     return banned;
   }
