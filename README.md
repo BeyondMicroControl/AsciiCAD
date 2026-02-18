@@ -7,11 +7,11 @@
 
 This is a browser-based app based on building blocks once raised to the level of art: ASCII. It was designed as a "digital essay" on fasttracking complexity by strategising bare-bones simplicity at its conception.  As a matter of fact, v1.0 was put together in a few weeks time.
 
-Apart from demostrating it's higher purpose, the product of this concept covers a real need: **embedding digital and electronic schematics directly inside source code**. Whereas microcontroller projects traditionally require different CAD files revolving around ones source code, AsciiCAD schematics made of **readable text** can live, evolve and remain closest to its codebase, as **it enables uniting codebase and schematic as one**.  **Caution**: It does not replace CAD apps for driving an entire PCB design workflow end-to-end; but it can definitely speed up circuit prototyping.
+Apart from demostrating it's higher purpose, the product of this concept covers a real need: **embedding digital and electronic schematics directly inside source code**. Whereas microcontroller projects traditionally require different CAD files revolving around ones source code, AsciiCAD schematics made of **readable text** can live, evolve and remain closest tied to its codebase.  **Caution**: It does not replace CAD apps for driving an entire PCB design workflow end-to-end; but it can definitely speed up circuit prototyping.
 
-Moreover, not only does AsciiCAD depict the entire schema visually; its 2D arrangement can retain most of the essential metadata & syntactics of a wiring diagram inside the ASCII composition itself.  In other words, it may even allow logical and even electric behavior simulation (e.g. SPICE), literally by pasting "just text" into a grid.
+Moreover, not only does AsciiCAD depict the entire schema visually; its 2D arrangement can retain most of the essential metadata & syntactics of a wiring diagram inside the ASCII composition itself.  In other words, it may even allow logical and even electric behavior simulation (e.g. SPICE), literally by pasting "just text" into a grid.  
 
-Try online:  
+Read more about the [design goals](#design-goals), or witout further due: 
 - <a href=https://beyondmicrocontrol.github.io/AsciiCAD/index.html>Try AsciiCAD</a>
 - <a href="https://beyondmicrocontrol.github.io/AsciiCAD/index.html?raw=R05EIOKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUr+KUgeKUgeKUgeKUgeKUgeKUgeKUr+KUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg4pSCICAgICAg4pSCCis1ViDilIDilKzilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilILilIDilIDilIDilIDilIDilIDilILilIDilIDilIDilKzilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICDilIIgICAgICAgICAgICAgICAgICAgICAgICAg4pSCICAgICAg4pSCICAg4pSCCiAgICAg4pSCICAgICAgICAgICAgICAgICAgICAgICAgIOKUgiAgICAgIOKUgiAgIOKUggogICAgIOKUgiAg4pWU4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWXICDilIIgICAgICDilIIgICDilIIKICAgICDilIIgIOKVkSDil48gIFtVMSBBVFRpbnlYMjRdIOKVkSAg4pSCICAgICAg4pSCICAg4pSCCiAgICAg4pSCICDilZEgICAgICAgICAgICAgICAgICAg4pWRICDilIIgICAgICDilIIgICDilIIgICDilIzilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilJAKICAgICDilJTilIDilIDilaIgVkNDICAgICAgICAgICBHTkQg4pWf4pSA4pSA4pSYICAgICAg4pSCICAg4pSCICAg4pSCICAg4pSM4pSA4pSA4pSA4pSA4pSA4pSQIOKUggogICAgICAgIOKVkSAgICAgICAgICAgICAgICAgICDilZEgICAgIOKVlOKVkOKVkOKVkOKVp+KVkOKVkOKVkOKVp+KVkOKVkOKVkOKVp+KVkOKVkOKVkOKVp+KVkOKVkOKVkOKVlyDilIIg4pSCCiAgICAgICAg4pWiIFBBNCAgICAgICBTQ0sgUEEzIOKVnyAgICAg4pWRICBHTkQgVkNDIFNDTCBTREEgIOKVkSDilIIg4pSCCiAgICAgICAg4pWRICAgICAgICAgICAgICAgICAgIOKVkSAgICAg4pWR4pSM4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSQ4pWRIOKUgiDilIIKICAgICAgICDilaIgUEE1ICBSWDEgTUlTTyBQQTIg4pWfICAgICDilZHilIIgICAgICAgICAgICAgICAgIOKUguKVkSDilIIg4pSCCiAgICAgICAg4pWRICAgICAgICAgICAgICAgICAgIOKVkSAgICAg4pWR4pSCICAgIFtTU0QxMzA2XSAgICDilILilZEg4pSCIOKUggogICAgICAgIOKVoiBQQTYgIFRYMSBNT1NJIFBBMSDilZ8gICAgIOKVkeKUgiAgNjQgeCAzMiBPTEVEICAg4pSC4pWRIOKUgiDilIIKICAgICAgICDilZEgICAgICAgICAgICAgICAgICAg4pWRICAgICDilZHilIIgICAgICAgICAgICAgICAgIOKUguKVkSDilIIg4pSCCiAgICAgICAg4pWiIFBBNyAgICAgIFVQREkgUEEwIOKVnyAgICAg4pWR4pSU4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSY4pWRIOKUgiDilIIKICAgICAgICDilZEgICAgICAgICAgICAgICAgICAg4pWRICAgICDilZrilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZ0g4pSCIOKUggogICAgICAgIOKVoiBQQjMgUlgwICAgU0NMIFBCMCDilZ/ilIDilIDilIDilJAgICAgICAgICAgICAgICAgICAgICAgIOKUgiDilIIKICAgICAgICDilZEgICAgICAgICAgICAgICAgICAg4pWRICAg4pSCICAgICAgICAgICAgICAgICAgICAgICDilIIg4pSCCiAgICAgICAg4pWiIFBCMiBUWDAgICBTREEgUEIxIOKVn+KUgOKUgOKUgOKUguKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUmCDilIIKICAgICAgICDilZrilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZ0gICDilJTilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilJg=">Try AsciiCAD + example schema</a>
 - Download the portable all-in-one-file: <a href="https://beyondmicrocontrol.github.io/AsciiCAD/dist/AsciiCAD.html?download=self">AsciiCAD.html</a>
@@ -43,6 +43,7 @@ Try online:
 - Schema Highlighting & Analysis
   - Schema Highlight
   - Schema Match (semantic extraction)
+  - Netlist highlighting & reporting
 - Selection & Editing
   - Area selection
   - Move, Copy, Paste, Blank (rectangle)
@@ -65,9 +66,19 @@ Try online:
 <a href=https://beyondmicrocontrol.github.io/AsciiCAD/tools/TOOLS_CATALOG.html>LAB TOOLS</a>
 
 - **Test harness** <a href="https://beyondmicrocontrol.github.io/AsciiCAD/tools/AsciiCAD_debug.html">AsciiCAD debug</a>
-- **Image to Base64**: Helps extending your component catalog. Since catalog items are represented by icons sized at 64x64 pixels and hard-coded as base64 strings.   
+- **Image to Base64**: Helps extending ones component catalog. Since catalog items are represented by icons sized at 64x64 pixels and hard-coded as base64 strings.   
 - **FileJS**: Helps create URI data for AsciiCAD (index.html?d=...[URI content]...), which provides an all-containing URL loading AsciiCAD with schema included. (<a href="https://beyondmicrocontrol.github.io/AsciiCAD/index.html?raw=R05EIOKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUr+KUgeKUgeKUgeKUgeKUgeKUgeKUr+KUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg4pSCICAgICAg4pSCCis1ViDilIDilKzilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilILilIDilIDilIDilIDilIDilIDilILilIDilIDilIDilKzilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICDilIIgICAgICAgICAgICAgICAgICAgICAgICAg4pSCICAgICAg4pSCICAg4pSCCiAgICAg4pSCICAgICAgICAgICAgICAgICAgICAgICAgIOKUgiAgICAgIOKUgiAgIOKUggogICAgIOKUgiAg4pWU4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWXICDilIIgICAgICDilIIgICDilIIKICAgICDilIIgIOKVkSDil48gIFtVMSBBVFRpbnlYMjRdIOKVkSAg4pSCICAgICAg4pSCICAg4pSCCiAgICAg4pSCICDilZEgICAgICAgICAgICAgICAgICAg4pWRICDilIIgICAgICDilIIgICDilIIgICDilIzilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilJAKICAgICDilJTilIDilIDilaIgVkNDICAgICAgICAgICBHTkQg4pWf4pSA4pSA4pSYICAgICAg4pSCICAg4pSCICAg4pSCICAg4pSM4pSA4pSA4pSA4pSA4pSA4pSQIOKUggogICAgICAgIOKVkSAgICAgICAgICAgICAgICAgICDilZEgICAgIOKVlOKVkOKVkOKVkOKVp+KVkOKVkOKVkOKVp+KVkOKVkOKVkOKVp+KVkOKVkOKVkOKVp+KVkOKVkOKVkOKVlyDilIIg4pSCCiAgICAgICAg4pWiIFBBNCAgICAgICBTQ0sgUEEzIOKVnyAgICAg4pWRICBHTkQgVkNDIFNDTCBTREEgIOKVkSDilIIg4pSCCiAgICAgICAg4pWRICAgICAgICAgICAgICAgICAgIOKVkSAgICAg4pWR4pSM4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSQ4pWRIOKUgiDilIIKICAgICAgICDilaIgUEE1ICBSWDEgTUlTTyBQQTIg4pWfICAgICDilZHilIIgICAgICAgICAgICAgICAgIOKUguKVkSDilIIg4pSCCiAgICAgICAg4pWRICAgICAgICAgICAgICAgICAgIOKVkSAgICAg4pWR4pSCICAgIFtTU0QxMzA2XSAgICDilILilZEg4pSCIOKUggogICAgICAgIOKVoiBQQTYgIFRYMSBNT1NJIFBBMSDilZ8gICAgIOKVkeKUgiAgNjQgeCAzMiBPTEVEICAg4pSC4pWRIOKUgiDilIIKICAgICAgICDilZEgICAgICAgICAgICAgICAgICAg4pWRICAgICDilZHilIIgICAgICAgICAgICAgICAgIOKUguKVkSDilIIg4pSCCiAgICAgICAg4pWiIFBBNyAgICAgIFVQREkgUEEwIOKVnyAgICAg4pWR4pSU4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSY4pWRIOKUgiDilIIKICAgICAgICDilZEgICAgICAgICAgICAgICAgICAg4pWRICAgICDilZrilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZ0g4pSCIOKUggogICAgICAgIOKVoiBQQjMgUlgwICAgU0NMIFBCMCDilZ/ilIDilIDilIDilJAgICAgICAgICAgICAgICAgICAgICAgIOKUgiDilIIKICAgICAgICDilZEgICAgICAgICAgICAgICAgICAg4pWRICAg4pSCICAgICAgICAgICAgICAgICAgICAgICDilIIg4pSCCiAgICAgICAg4pWiIFBCMiBUWDAgICBTREEgUEIxIOKVn+KUgOKUgOKUgOKUguKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUmCDilIIKICAgICAgICDilZrilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZ0gICDilJTilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilJg=">EXAMPLE SCHEMA</a>).  We made sure most schematics fit a URI since AsciiCAD unpacks (inflates) the URI data using ZLIB.   FileJS uses the same library to compress schema text files into a small-size URI string, usually below 1024 characters.
 - **VanillaTerminal**: A vanilla-JavaScript terminal framework test
+
+---
+
+## Design goals
+
+Last but not least (we haven't yet reached that point), the Terminal CLI will be used to expand the tools capability from a UI-driven tool to an AI-driven tool.  Wouldn't it be satisfying to see a schematic built in real-time by interacting with an LLM trained in electronic design?  Likely, but here's the thing: the end goal would be to demonstrate one can design an app that conceptially embraces 2 types of agents.  
+- One agent in charge of electronic design, which makes the agent a Senior User (PRINCE2) having the ability to do business with the tool (electronic design) and understand business needs that can help to express new requirements.
+- A second agent specialised in software design, a Product Delivery Manager as it were, with the ability to create and extend the tool itself and explain to the Senior User how to use the new features implemented as required.
+
+This emulates a necessary 'tension' between 'operations' and 'projects' that (since sliced bread) has been the succes formula of the <a href="https://www.youtube.com/watch?v=6v8e7dUwq_Q">modern enterprise or corporation</a>.
 
 ---
 
@@ -76,12 +87,13 @@ Try online:
 - [x] Automatically deploy a one-file .html app in /dist (v1.0)
 - [x] CLI (terminal and script parser, enabler for script automation)
 - [ ] Script automation and AI agent interaction
+- [ ] Generative catalog items (CADScript-based)
 - [ ] Junction resolution is buggy, for the simple reason it is complex (single lines, double lines, double thickness lines, etc...)
 - [ ] Not all UTF8 characters are monospace-friendly, leading to less perfect character selection (still buggy)
 - [ ] Embed a component editor + Import/Export Ascii component catalog
 - [ ] SPICE circuit simulation
 - [ ] Tabbed multi-page grid with waypoints
-- [ ] Netlist report
+- [x] Netlist report & Net highlighting
 - [ ] MCP service to generate AsciiCAD schema within IDE (VSCode, Arduino,..)
 
 ## Status
