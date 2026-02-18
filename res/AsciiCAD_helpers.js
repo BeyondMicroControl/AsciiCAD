@@ -1368,8 +1368,11 @@ this.startPasteWithText = function(text)
   {
     const overlay = this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
     
+    const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() };
+    const compSet = mo.solidSet ?? mo.greenSet ?? new Set();
+
     //const banned = new Set();
-    const banned = this.computeNetlistBannedSet?.() ?? new Set();
+    const banned = this.computeNetlistBannedSet?.(mo, overlay) ?? new Set();
     //overlay.redSet?.forEach(k => banned.add(k));
     //overlay.insideSet?.forEach(k => banned.add(k));
 
@@ -1498,6 +1501,27 @@ this.startPasteWithText = function(text)
         // classify endpoints/junctions
         const LE = [];
         const LJ = [];
+        const CE = []; // component endings adjacent to LE (catalog pins/protrusions)
+        function pushUniqueCR(out, c, r)
+        {
+          for (let i=0;i<out.length;i++) if (out[i].c===c && out[i].r===r) return;
+          out.push({ c, r });
+        }
+        function tryAddCE(compR, compC, needBit)
+        {
+          if (compR < 0 || compR >= ROWS || compC < 0 || compC >= COLS) return;
+          const kk = krc(compR, compC);
+          if (!compSet.has(kk)) return;
+          const chC = ascii?.[compR]?.[compC];
+          if (chC === undefined || chC === " " || chC === "§") return;
+          // Only treat wire-ish protrusions as component endings
+          if (!oASC.isWireGlyph(chC)) return;
+          const mC = (glyphToMask.get(chC) ?? (N|S|E|W));
+          if (!(mC & needBit)) return;
+          pushUniqueCR(CE, compC, compR);
+        }
+
+
         for (let i=0;i<nodes.length;i++)
         {
           const n = nodes[i];
@@ -1506,10 +1530,21 @@ this.startPasteWithText = function(text)
           else if (d >= 3) LJ.push({ c: n.c, r: n.r });
         }
 
+        // detect component endings (catalog pins) adjacent to LE
+        for (let i=0;i<LE.length;i++)
+        {
+          const le = LE[i];
+          tryAddCE(le.r, le.c-1, E);
+          tryAddCE(le.r, le.c+1, W);
+          tryAddCE(le.r-1, le.c, S);
+          tryAddCE(le.r+1, le.c, N);
+        }
+
+
         // Only consider components that look like a "line" (>= 2 cells).
         // Still include loops: LE will be empty, but they are valid nets.
         if (nodes.length >= 2)
-          lines.push({ LE, LJ });
+          lines.push({ LE, LJ, CE, CO: CE });
       }
     }
 
@@ -1536,12 +1571,13 @@ this.startPasteWithText = function(text)
   this.computeNetlistNets = function()
   {
     const overlay = this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
-    
-    const banned = this.computeNetlistBannedSet?.() ?? new Set();
+
+    const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() };
+    const compSet = mo.solidSet ?? mo.greenSet ?? new Set();
+
+    const banned = this.computeNetlistBannedSet?.(mo, overlay) ?? new Set();
 
     //const banned = new Set();
-    overlay.redSet?.forEach(k => banned.add(k));
-    overlay.insideSet?.forEach(k => banned.add(k));
 
     function krc(r,c){ return r + "," + c; }
 
@@ -1677,6 +1713,25 @@ this.startPasteWithText = function(text)
 
         const LE = [];
         const LJ = [];
+        const CE = []; // component endings adjacent to LE (catalog pins/protrusions)
+        function pushUniqueCR(out, c, r)
+        {
+          for (let i=0;i<out.length;i++) if (out[i].c===c && out[i].r===r) return;
+          out.push({ c, r });
+        }
+        function tryAddCE(compR, compC, needBit)
+        {
+          if (compR < 0 || compR >= ROWS || compC < 0 || compC >= COLS) return;
+          const kk = krc(compR, compC);
+          if (!compSet.has(kk)) return;
+          const chC = ascii?.[compR]?.[compC];
+          if (chC === undefined || chC === " " || chC === "§") return;
+          if (!oASC.isWireGlyph(chC)) return;
+          const mC = (glyphToMask.get(chC) ?? (N|S|E|W));
+          if (!(mC & needBit)) return;
+          pushUniqueCR(CE, compC, compR);
+        }
+
         for (let i=0;i<nodes.length;i++)
         {
           const n = nodes[i];
@@ -1685,8 +1740,19 @@ this.startPasteWithText = function(text)
           else if (d >= 3) LJ.push({ c: n.c, r: n.r });
         }
 
+
+        // detect component endings (catalog pins) adjacent to LE
+        for (let i=0;i<LE.length;i++)
+        {
+          const le = LE[i];
+          tryAddCE(le.r, le.c-1, E);
+          tryAddCE(le.r, le.c+1, W);
+          tryAddCE(le.r-1, le.c, S);
+          tryAddCE(le.r+1, le.c, N);
+        }
+
         if (nodes.length >= 2) {
-          nets.push({ cells: nodes, LE, LJ });
+          nets.push({ cells: nodes, LE, LJ, CE, CO: CE });
         }
       }
     }
@@ -1695,17 +1761,17 @@ this.startPasteWithText = function(text)
   };
 
 
-  this.computeNetlistBannedSet = function()
+  this.computeNetlistBannedSet = function(moIn, hlIn)
   {
     const banned = new Set();
 
     // 1) Exclude double-line boxes (frame + interior)
-    const hl = this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
+    const hl = hlIn ?? (this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() });
     hl.redSet?.forEach(k => banned.add(k));
     hl.insideSet?.forEach(k => banned.add(k));
 
     // 2) Exclude matched catalog components (pattern cells only; skip spaces + '§')
-    const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() };
+    const mo = moIn ?? (this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() });
     const banSet = mo.solidSet ?? mo.greenSet ?? new Set();
     banSet.forEach(k => banned.add(k));
 
