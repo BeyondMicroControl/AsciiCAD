@@ -8267,7 +8267,7 @@ function updateUI()
 {
   cellsLine.textContent = "Cells: " + COLS + " x " + ROWS;
   zoomLine.textContent = "Zoom: " + Math.round(scale * 100) + "%";
-  coordLine.textContent = hoverCell ? ("Cell: Ln " + (hoverCell.r+1) + ", Col " + (hoverCell.c+1)) : "Cell: —";
+  coordLine.textContent = hoverCell ? ("Cell: Ln " + (hoverCell.r) + ", Col " + (hoverCell.c)) : "Cell: —";
 
   // Pan offset in "cell units": +x = grid moved right, +y = grid moved up
   // Note: zoom is centered on the screen, so even without "active panning" the grid origin shifts when scale changes.
