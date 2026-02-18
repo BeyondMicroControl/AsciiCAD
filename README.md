@@ -13,7 +13,7 @@ Moreover, not only does AsciiCAD depict the entire schema visually; its 2D arran
 - One agent in charge of electronic design, which makes the agent a Senior User (PRINCE2) having the ability to do business with the tool (electronic design) and understand business needs that can help to expresw new requirements.
 - A second agent specialised in software design, which makes the agent a Product Delivery Manager having the ability to create and extend the tool itself and explain to the Senior User how to use the new features implemented as required by the Senior User.
 
-This emulates a 'tension' between 'operations' and 'project' that's been the succesful manner humans have interacted in corporate projects...since sliced bread?
+This emulates a 'tension' between 'operations' and 'project' that's been the succes formula of the <a href=https://www.youtube.com/watch?v=6v8e7dUwq_Q>modern business corporation</a>...since sliced bread?
 
 Try online:  
 - <a href=https://beyondmicrocontrol.github.io/AsciiCAD/index.html>Try AsciiCAD</a>
