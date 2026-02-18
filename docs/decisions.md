@@ -1008,7 +1008,7 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [ ] 6. Integrate new CADScript functions: line(override) and line (resolve), move/copy
 - [x] 7. Extend self-help documentation: display syntax and usage in an Ascii table - AsciiTable() became factually a generic function 
 - [x] 8. One single zone-sensitive pasteSink (instead of 3 confusing event handlers), pasteSink anchor placed in the center and clipped when navigating over the grid edges
-- [ ] 9. Netlist builder
+- [x] 9. Netlist builder: report netlist in JSON format in Terminal, color nets onmouseover and identify real-time the net number in button sidebar (canvas card).
 
 ---
 
