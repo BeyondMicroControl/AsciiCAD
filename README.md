@@ -81,7 +81,7 @@ Try online:
 - [ ] Embed a component editor + Import/Export Ascii component catalog
 - [ ] SPICE circuit simulation
 - [ ] Tabbed multi-page grid with waypoints
-- [ ] Netlist report
+- [x] Netlist report & Net highlighting
 - [ ] MCP service to generate AsciiCAD schema within IDE (VSCode, Arduino,..)
 
 ## Status
