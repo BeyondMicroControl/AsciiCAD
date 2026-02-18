@@ -2797,7 +2797,7 @@ this.startPasteWithText = function(text)
     const solidSet = new Set(); // NEW: for netlist masking (skip ' ' and '§')
 
     if (!(typeof CATALOG !== "undefined" && Array.isArray(CATALOG)))
-      return { greenSet, rects };
+      return { greenSet, rects, solidSet };
 
     if (!catalogVariantsCache) catalogVariantsCache = this.buildCatalogVariants();
 
@@ -2847,12 +2847,12 @@ this.startPasteWithText = function(text)
             for (let cc = 0; cc < pl.length; cc++)
             {
               const pc = pl[cc];
-              if (pc === " ") continue;
+              if (pc === " " || pc === "§") continue;
               const r = r0 + rr;
               const c = c0 + cc;
               if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
               greenSet.add(keyRC(r, c));
-              if (pc !== "§") solidSet.add(keyRC(r, c)); // NEW
+              solidSet.add(keyRC(r, c));
             }
           }
         }
