@@ -1366,7 +1366,9 @@ this.startPasteWithText = function(text)
   this.computeNetlistLines = function()
   {
     const overlay = this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
-    const banned = new Set();
+    
+    //const banned = new Set();
+    const banned = this.computeNetlistBannedSet?.() ?? new Set();
     overlay.redSet?.forEach(k => banned.add(k));
     overlay.insideSet?.forEach(k => banned.add(k));
 
@@ -1530,12 +1532,13 @@ this.startPasteWithText = function(text)
   }
 
 
-
-
   this.computeNetlistNets = function()
   {
     const overlay = this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
-    const banned = new Set();
+    
+    const banned = this.computeNetlistBannedSet?.() ?? new Set();
+
+    //const banned = new Set();
     overlay.redSet?.forEach(k => banned.add(k));
     overlay.insideSet?.forEach(k => banned.add(k));
 
@@ -1691,11 +1694,41 @@ this.startPasteWithText = function(text)
   };
 
 
+  this.computeNetlistBannedSet = function()
+  {
+    const banned = new Set();
 
-  this.computeMatchOverlay = function() 
+    // 1) Exclude double-line boxes (frame + interior)
+    const hl = this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
+    hl.redSet?.forEach(k => banned.add(k));
+    hl.insideSet?.forEach(k => banned.add(k));
+
+    // 2) Exclude matched catalog components (full rectangles)
+    const mo = this.computeMatchOverlay?.();
+    const rects = mo?.rects ?? [];
+
+    for (let i = 0; i < rects.length; i++)
+    {
+      const rc = rects[i];
+      const r0 = Math.max(0, rc.r0|0), c0 = Math.max(0, rc.c0|0);
+      const r1 = Math.min(ROWS - 1, rc.r1|0), c1 = Math.min(COLS - 1, rc.c1|0);
+
+      for (let r = r0; r <= r1; r++)
+        for (let c = c0; c <= c1; c++)
+          banned.add(r + "," + c);
+    }
+
+    return banned;
+  }
+
+
+  this.computeMatchOverlay = function()
   {
     const greenSet = new Set();
-    if (!(typeof CATALOG !== "undefined" && Array.isArray(CATALOG))) return { greenSet };
+    const rects = [];
+
+    if (!(typeof CATALOG !== "undefined" && Array.isArray(CATALOG)))
+      return { greenSet, rects };
 
     if (!catalogVariantsCache) catalogVariantsCache = this.buildCatalogVariants();
 
@@ -1703,38 +1736,47 @@ this.startPasteWithText = function(text)
     const gridLines = new Array(ROWS);
     for (let r = 0; r < ROWS; r++) gridLines[r] = ascii[r].join("");
 
-    for (let v = 0; v < catalogVariantsCache.length; v++) 
+    for (let v = 0; v < catalogVariantsCache.length; v++)
     {
       const pat = catalogVariantsCache[v];
       const first = pat.first;
       const patLines = pat.lines;
 
-      // Stage 1: find first-line candidates across all rows
-      for (let r0 = 0; r0 < ROWS; r0++) 
+      // compute a stable rectangle width (max line length)
+      let w = 0;
+      for (let i = 0; i < patLines.length; i++)
+        w = Math.max(w, (patLines[i] ?? "").length);
+      const h = patLines.length;
+
+      for (let r0 = 0; r0 < ROWS; r0++)
       {
         const gl0 = gridLines[r0];
         const maxC = COLS - first.length;
         if (maxC < 0) continue;
 
-        for (let c0 = 0; c0 <= maxC; c0++) {
+        for (let c0 = 0; c0 <= maxC; c0++)
+        {
           if (!this.lineMatchesAt(gl0, c0, first)) continue;
-
-          // Stage 2: verify full multi-line match (including spaces)
-          if (r0 + patLines.length > ROWS) continue;
+          if (r0 + h > ROWS) continue;
 
           let ok = true;
-          for (let rr = 0; rr < patLines.length; rr++) {
+          for (let rr = 0; rr < h; rr++)
+          {
             const pl = patLines[rr] ?? "";
             const gl = gridLines[r0 + rr];
-
             if (!this.lineMatchesAt(gl, c0, pl)) { ok = false; break; }
           }
           if (!ok) continue;
 
-          // Mark matched glyph cells in green (skip spaces to reduce noise)
-          for (let rr = 0; rr < patLines.length; rr++) {
+          // NEW: record full bounding rectangle (includes spaces)
+          rects.push({ r0, c0, r1: r0 + h - 1, c1: c0 + w - 1 });
+
+          // existing: mark matched glyph cells in green (skip spaces)
+          for (let rr = 0; rr < h; rr++)
+          {
             const pl = patLines[rr] ?? "";
-            for (let cc = 0; cc < pl.length; cc++) {
+            for (let cc = 0; cc < pl.length; cc++)
+            {
               const pc = pl[cc];
               if (pc === " ") continue;
               const r = r0 + rr;
@@ -1746,8 +1788,10 @@ this.startPasteWithText = function(text)
         }
       }
     }
-    return { greenSet };
+
+    return { greenSet, rects };
   }
+
 
   this.lineMatchesAt = function(gridLine, c0, patLine) // helper for computeMatchOverlay (TODO: useful to privatise or not?)
   {
