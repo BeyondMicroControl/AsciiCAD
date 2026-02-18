@@ -12,7 +12,8 @@ Apart from demostrating it's higher purpose, the product of this concept covers 
 Moreover, not only does AsciiCAD depict the entire schema visually; its 2D arrangement can retain most of the essential metadata & syntactics of a wiring diagram inside the ASCII composition itself.  In other words, it may even allow logical and even electric behavior simulation (e.g. SPICE), literally by pasting "just text" into a grid.  Last but not least (we haven't yet reached that point), the Terminal CLI will be used to expand the tools capability from a UI-driven tool to an AI-driven tool.  Wouldn't it be satisfying to see a schematic built in real-time by interacting with an LLM trained in electronic design?  Likely, but here's the thing: my end goal would be to demonstrate we can conceptually design an app that conceptially embraces 2 types of AI agents.  
 - One agent in charge of electronic design, which makes the agent a Senior User (PRINCE2) having the ability to do business with the tool (electronic design) and understand business needs that can help to expresw new requirements.
 - A second agent specialised in software design, which makes the agent a Product Delivery Manager having the ability to create and extend the tool itself and explain to the Senior User how to use the new features implemented as required by the Senior User.
-==> This emulates a 'tension' between 'operations' and 'project' that's been the succesful manner humans have interacted in corporate projects...since sliced bread?
+
+This emulates a 'tension' between 'operations' and 'project' that's been the succesful manner humans have interacted in corporate projects...since sliced bread?
 
 Try online:  
 - <a href=https://beyondmicrocontrol.github.io/AsciiCAD/index.html>Try AsciiCAD</a>
