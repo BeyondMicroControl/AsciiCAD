@@ -1368,8 +1368,11 @@ this.startPasteWithText = function(text)
   {
     const overlay = this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
     
-    const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() };
-    const compSet = mo.solidSet ?? mo.greenSet ?? new Set();
+    const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set(), footprintSet: new Set() };
+
+    // For CE detection we want the footprint (includes wildcard cells)
+    const compSet = mo.footprintSet ?? mo.solidSet ?? mo.greenSet ?? new Set();
+
 
     //const banned = new Set();
     const banned = this.computeNetlistBannedSet?.(mo, overlay) ?? new Set();
@@ -1572,8 +1575,10 @@ this.startPasteWithText = function(text)
   {
     const overlay = this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
 
-    const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() };
-    const compSet = mo.solidSet ?? mo.greenSet ?? new Set();
+    const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set(), footprintSet: new Set() };
+
+    // For CE detection we want the footprint (includes wildcard cells)
+    const compSet = mo.footprintSet ?? mo.solidSet ?? mo.greenSet ?? new Set();
 
     const banned = this.computeNetlistBannedSet?.(mo, overlay) ?? new Set();
 
@@ -1784,6 +1789,7 @@ this.startPasteWithText = function(text)
     const greenSet = new Set();
     const rects = [];
     const solidSet = new Set(); // NEW: for netlist masking (skip ' ' and '§')
+    const footprintSet = new Set();  // component footprint (skip ' ' only)
 
     if (!(typeof CATALOG !== "undefined" && Array.isArray(CATALOG)))
       return { greenSet, rects, solidSet };
@@ -1836,19 +1842,29 @@ this.startPasteWithText = function(text)
             for (let cc = 0; cc < pl.length; cc++)
             {
               const pc = pl[cc];
-              if (pc === " " || pc === "§") continue;
+              if (pc === " ") continue;
+
               const r = r0 + rr;
               const c = c0 + cc;
               if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
-              greenSet.add(keyRC(r, c));
-              solidSet.add(keyRC(r, c));
+
+              const k = keyRC(r, c);
+
+              // Footprint includes wildcard cells too (so CE can “see” pins/protrusions)
+              footprintSet.add(k);
+
+              // Visual highlight + ban mask exclude wildcard cells
+              if (pc !== "§") {
+                greenSet.add(k);
+                solidSet.add(k);
+              }
             }
           }
         }
       }
     }
 
-    return { greenSet, rects, solidSet };
+    return { greenSet, rects, solidSet, footprintSet };
   }
 
 
