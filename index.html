@@ -1683,7 +1683,13 @@ netlistBtn.addEventListener("click", () =>
       // For “print JSON”, we can output the classic LE/LJ shape:
       const pretty = JSON.stringify(
         netlistCache.nets.map(x => ({ LE: x.LE, LJ: x.LJ })), null, 2
-      );
+      ).replace(/\n[ ]+"r": /g      ,"\"r\":")
+      .replace(/\n[ ]+"c": /g       ,"\"c\":")
+      .replace(/\[\n\s+\{/g         ,"[{")
+      .replace(/\n\s+\}\n\s+\]/g    ,"}]")
+      .replace(/\n[ ]+\},/g         ,"},{");
+      
+      ;
       oTERM.output(
         "<b>NETLIST</b> (" + n + " net(s))<br><pre style=\"white-space:pre; margin:6px 0;\">"
         + oCOM.escapeHTML(pretty) +
