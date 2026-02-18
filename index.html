@@ -33,7 +33,7 @@
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.13</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.14</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
         <div class="card">
@@ -42,6 +42,7 @@
           <div id="zoomLine">Zoom: 100%</div>
           <div class="tiny muted" id="coordLine">Cell: —</div>
         <div class="tiny muted" id="panLine">Pan: x 0.00, y 0.00</div>
+        <div class="tiny muted" id="netLine">Net: —</div>
         </div>
 
         <div class="card">
@@ -78,7 +79,8 @@
           <div class="row" style="margin-top:10px;">
             <button id="toolSchemaHighlight" class="btn" data-hint="Highlight: Mark signle lines in blue, enclosed double line boxes in red.">Highlight</button>   
             <button id="toolSchemaMatch" class="btn" data-hint="Match: Marks matching catalog items in green. Mind replacing wildcards inside these items, '#' with numbers, '$' with alphanumeric.">Match</button>
-            <span ><button class="btn" id="toolDebug" data-hint="Debug AsciiCAD" onclick="document.location='tools/AsciiCAD_debug.html'"  style="filter:grayscale(100%)">D&#x1F41E;</button></span>
+                        <button id="toolNetlist" class="btn" data-hint="Netlist: Extract wire lines (endpoints + junctions) and print as JSON.">Netlist</button>
+<span ><button class="btn" id="toolDebug" data-hint="Debug AsciiCAD" onclick="document.location='tools/AsciiCAD_debug.html'"  style="filter:grayscale(100%)">D&#x1F41E;</button></span>
 
           </div>
           <div id="toolHint" class="tiny muted" style="margin-top:8px;"></div>
@@ -201,6 +203,7 @@ const zoomLine = document.getElementById("zoomLine");
 const coordLine = document.getElementById("coordLine");
 
 const panLine = document.getElementById("panLine");
+const netLine = document.getElementById("netLine");
 
 const resizeHandle = document.getElementById("resizeHandle");
 
@@ -227,6 +230,7 @@ const toolHint = document.getElementById("toolHint");
 
 const schemaHighlightBtn =  document.getElementById("toolSchemaHighlight");
 const schemaMatchBtn =  document.getElementById("toolSchemaMatch");
+const netlistBtn =      document.getElementById("toolNetlist");
 
 const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
@@ -271,6 +275,16 @@ let highlightCache = null; // { redSet:Set, insideSet:Set } cached for current a
 
 let schemaMatchOn = false;
 let matchCache = null; // { greenSet:Set } cached matches for current ascii state
+
+let netlistOn = false;
+
+// Cache for interactive net highlighting:
+// - nets: array of { cells:Set<string>, LE:[{c,r}], LJ:[{c,r}] }
+// - cellToNet: Map<"r,c", netIndex>
+let netlistCache = null;
+
+// Current hovered net index (or -1 if none)
+let hoverNetIndex = -1;
 
 
 let isDrawing = false;
@@ -690,6 +704,7 @@ function draw( str )
   const redSet = highlightCache ? highlightCache.redSet : null;
   const insideSet = highlightCache ? highlightCache.insideSet : null;
 
+  const BLACK = "rgba(0,0,0,1)";
   const BLUE = "rgba(59,130,246,0.9)";
   const RED  = "rgba(239,68,68,0.9)";
   const GREEN = "rgba(34,197,94,0.95)";
@@ -710,7 +725,7 @@ function draw( str )
       }
 
       // Default color
-      let color = "#000";
+      let color = BLACK;
 
       // Match overlay has priority (green)
       if (schemaMatchOn && greenSet) 
@@ -719,7 +734,17 @@ function draw( str )
         if (greenSet.has(k)) color = GREEN;
       }
 
-      if (schemaHighlightOn && color === "#000") 
+      // Netlist hover highlight (BLUE) — overrides other colors for wire cells in the hovered net
+      if (netlistOn && hoverNetIndex >= 0) {
+        __ensureNetlistCache();
+        const k = keyRC(r, c);
+        const net = netlistCache?.nets?.[hoverNetIndex];
+        if (net && net.cells && net.cells.has(k)) {
+          color = BLUE;
+        }
+      }
+
+      if (schemaHighlightOn && color === BLACK) 
       {
         const k = keyRC(r, c);
         const inside = insideSet && insideSet.has(k);
@@ -984,6 +1009,13 @@ function updateUI()
   const __fy = (Math.abs(__py) < 1e-9 ? 0 : __py).toFixed(0);
   panLine.textContent = "Pan: x " + __fx + ", y " + __fy;
 
+  if (!netlistOn) {
+    netLine.textContent = "Net: —";
+  } else {
+    netLine.textContent = (hoverNetIndex >= 0) ? ("Net: " + hoverNetIndex) : "Net: —";
+  }
+
+
   pasteLine.style.display = pasteDrag ? "block" : "none";
 
   undoBtn.disabled = undoStack.length === 0;
@@ -1011,9 +1043,71 @@ function setPasteAnchorFromPointerCell(pointerCell) {
 function setHoverFromEvent(e)
 {
   hoverCell = oASC.canvasPointToCell(e.clientX, e.clientY);
+
+  const prevNet = hoverNetIndex;
+
+  if (netlistOn) {
+    hoverNetIndex = __netIndexAtHoverCell(hoverCell);
+  } else {
+    hoverNetIndex = -1;
+  }
+
   if (pasteDrag && hoverCell) setPasteAnchorFromPointerCell({ r: hoverCell.r, c: hoverCell.c });
+
   updateUI();
+
+  // IMPORTANT: Netlist hover is purely visual; force repaint when it changes
+  if (netlistOn && hoverNetIndex !== prevNet) {
+    draw("netlistHover");
+  }
 }
+
+
+function __ensureNetlistCache() {
+  if (netlistCache) return;
+
+  // Ask helper for “nets including cells”
+  // (we add this function in AsciiCAD_helpers.js below)
+  const nets = (typeof oASC.computeNetlistNets === "function") ? oASC.computeNetlistNets() : [];
+
+  // Build fast lookup maps for hover + rendering
+  const cellToNet = new Map();
+  const normNets = [];
+
+  for (let i = 0; i < nets.length; i++) {
+    const net = nets[i];
+    const cellSet = new Set();
+
+    // Expect net.cells = [{r,c}, ...]
+    const cells = net.cells || [];
+    for (let j = 0; j < cells.length; j++) {
+      const k = cells[j].r + "," + cells[j].c;
+      cellSet.add(k);
+      // A cell should belong to exactly one net under these rules
+      if (!cellToNet.has(k)) cellToNet.set(k, i);
+    }
+
+    normNets.push({
+      cells: cellSet,
+      LE: net.LE || [],
+      LJ: net.LJ || []
+    });
+  }
+
+  netlistCache = { nets: normNets, cellToNet };
+}
+
+function __netIndexAtHoverCell(cell) {
+  if (!cell) return -1;
+
+  // Must be a wire glyph cell, and must obey “not inside/bounding double boxes”
+  // That logic is already in computeNetlistNets(), so here we just lookup.
+  __ensureNetlistCache();
+  const k = cell.r + "," + cell.c;
+  const idx = netlistCache.cellToNet.get(k);
+  return (typeof idx === "number") ? idx : -1;
+}
+
 
 
 function __clampPanToKeepCenterInGrid()
@@ -1564,6 +1658,52 @@ schemaMatchBtn.addEventListener("click", () =>
   draw("schemaMatchToggle");
 });
 
+
+netlistBtn.addEventListener("click", () =>
+{
+  netlistOn = updateToogleButtonUI(netlistOn, netlistBtn, toolHint);
+
+  if (!netlistOn) {
+    hoverNetIndex = -1;
+    netlistCache = null; // optional: keep or drop cache; dropping is safer for consistency
+    updateUI();
+    draw("netlistOff");
+    return;
+  }
+
+  // Turning ON: compute + print once (still useful)
+  try {
+    netlistCache = null;     // force rebuild
+    __ensureNetlistCache();
+
+    const n = netlistCache?.nets?.length ?? 0;
+    toolHint.textContent = "Netlist: " + n + " net(s) found. Hover a wire to highlight.";
+
+    if (window.oTERM && typeof oTERM.output === "function") {
+      // For “print JSON”, we can output the classic LE/LJ shape:
+      const pretty = JSON.stringify(
+        netlistCache.nets.map(x => ({ LE: x.LE, LJ: x.LJ })), null, 2
+      );
+      oTERM.output(
+        "<b>NETLIST</b> (" + n + " net(s))<br><pre style=\"white-space:pre; margin:6px 0;\">"
+        + oCOM.escapeHTML(pretty) +
+        "</pre>"
+      );
+    }
+
+    updateUI();
+    draw("netlistOn");
+  }
+  catch (err) {
+    toolHint.textContent = "Netlist: error (see console).";
+    console.error(err);
+    if (window.oTERM && typeof oTERM.output === "function")
+      oTERM.output("[ERROR] Netlist: " + oCOM.escapeHTML(err && err.message ? err.message : String(err)));
+  }
+});
+
+
+
 // Invalidate overlay caches after any committed stroke (undo/redo uses same path).
 if (typeof oASC.pushStrokeIfNonEmpty === "function") 
 {
@@ -1914,19 +2054,13 @@ window.addEventListener("mouseup", () =>
 
 canvas.addEventListener("mouseleave", () => 
 {
-  //if(bDebug) console.log("EVENT: mouseleave()");
   if (panDrag) { panDrag = null; canvas.style.cursor = ''; }
   hoverCell = null;
+  hoverNetIndex = -1;   // (optional but correct when netlist is on)
   updateUI();
   if (pasteDrag) return;
 
-  // TODO SERIALISE (CANCEL functions)??
-  //if (tool === "modeSLine" && lineDrag) { oASC.cancelLine(); return; }
-  //if (tool === "modeTLine" && lineDrag) { oASC.cancelLine(); return; }
-  //if (tool === "modeDLine" && lineDrag) { oASC.cancelLine(); return; }
-  //if (tool === "modeSBox" && boxDrag)  { oASC.cancelBox(); return; }
-  //if (tool === "modeTBox" && boxDrag)  { oASC.cancelBox(); return; }
-  //if (tool === "modeDBox" && boxDrag)  { oASC.cancelBox(); return; }
+  draw("mouseleave");
 });
 
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
