@@ -7,9 +7,9 @@
 
 This is a browser-based app based on building blocks once raised to the level of art: ASCII. It was designed as a "digital essay" on fasttracking complexity by strategising bare-bones simplicity at its conception.  As a matter of fact, v1.0 was put together in a few weeks time.
 
-Apart from demostrating it's higher purpose, the product of this concept covers a real need: **embedding digital and electronic schematics directly inside source code**. Whereas microcontroller projects traditionally require different CAD files revolving around ones source code, AsciiCAD schematics made of **readable text** can live, evolve and remain closest to its codebase, **it enables uniting codebase and schematic as one**.  **Caution**: It does not replace CAD apps for driving an entire PCB design workflow end-to-end; but it can definitely speed up circuit prototyping.
+Apart from demostrating it's higher purpose, the product of this concept covers a real need: **embedding digital and electronic schematics directly inside source code**. Whereas microcontroller projects traditionally require different CAD files revolving around ones source code, AsciiCAD schematics made of **readable text** can live, evolve and remain closest to its codebase, as **it enables uniting codebase and schematic as one**.  **Caution**: It does not replace CAD apps for driving an entire PCB design workflow end-to-end; but it can definitely speed up circuit prototyping.
 
-Moreover, not only does AsciiCAD depict the entire schema visually; its 2D arrangement can retain most of the essential metadata & syntactics of a wiring diagram inside the ASCII composition itself.  In other words, it may even allow logical and even electric behavior simulation (e.g. SPICE), literally by pasting "just text" into the grid.
+Moreover, not only does AsciiCAD depict the entire schema visually; its 2D arrangement can retain most of the essential metadata & syntactics of a wiring diagram inside the ASCII composition itself.  In other words, it may even allow logical and even electric behavior simulation (e.g. SPICE), literally by pasting "just text" into a grid.
 
 Try online:  
 - <a href=https://beyondmicrocontrol.github.io/AsciiCAD/index.html>Try AsciiCAD</a>
@@ -22,6 +22,7 @@ Try online:
 
 ## Why AsciiCAD?
 
+### Real-world use
 - Hardware and Software become 'one': **sourcecode**
 - It's text-based schematics allow semantic extraction (beyond 'just a drawing')
 - Ideal for MCU, CPU, and digital designs
