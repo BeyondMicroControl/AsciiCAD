@@ -1683,7 +1683,7 @@ netlistBtn.addEventListener("click", () =>
     if (window.oTERM && typeof oTERM.output === "function") {
       // For “print JSON”, we can output the classic LE/LJ shape:
       const pretty = JSON.stringify(
-        netlistCache.nets.map(x => ({ LE: x.LE, LJ: x.LJ })), null, 2
+        netlistCache.nets.map(x => ({ LE: x.LE, LJ: x.LJ ,CE: x.CE})), null, 2
       ).replace(/\n[ ]+"r": /g      ,"\"r\":")
       .replace(/\n[ ]+"c": /g       ,"\"c\":")
       .replace(/\[\n\s+\{/g         ,"[{")
