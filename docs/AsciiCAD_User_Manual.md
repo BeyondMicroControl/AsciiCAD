@@ -91,6 +91,13 @@ AsciiCAD supports working on large diagrams:
 
 **Tip:** When working on dense schematics, use zoom for detail edits and pan to move between modules.
 
+**Canvas telemetry (top-left “Canvas” card):**
+- **Cells**: grid size (e.g. 256 × 128)
+- **Zoom**: current zoom percentage
+- **Cell**: hovered cell coordinate (Ln/Col)
+- **Pan**: pan offset in *cell units* (right = +x, up = +y)
+- **Net**: (when Netlist mode is enabled) the currently hovered net index
+
 ### Drawing tools
 
 #### Freeform
@@ -141,6 +148,15 @@ AsciiCAD includes a component catalog for common schematic symbols:
 Two analysis features are commonly used:
 - **Highlight**: helps visually separate structural frames and wiring.
 - **Match**: highlights catalog component matches in the current diagram (useful for validation and semantic extraction).
+- **Netlist**: identifies wire networks (“nets”) and lets you inspect connectivity interactively.
+
+#### Netlist (interactive connectivity)
+- Toggle **Netlist** in the Tools section to enter net inspection mode.
+- **Hover a wire/line cell** on the grid to highlight the entire connected net in **blue**.
+- The Canvas card shows **Net: _N_** (real-time index of the currently highlighted net). If you hover something that isn’t a wire, it returns to **Net: —** and the drawing stays black.
+- Net detection follows the same rules as highlighting:
+  - Wires **inside** or **bounding** valid **double-line boxes** are excluded from net discovery.
+  - Crossings of the form `─│─` are treated as two independent nets that visually cross without a junction; the horizontal segment remains continuous across the `│` without connecting to it.
 
 ### History and persistence
 
@@ -296,6 +312,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 | **Catalog item paste (preview + rotate)**     | Mouse + keyboard      | pick catalog item → preview in grid → optional rotate (r) → click place | catalog item click calls `startPasteWithText(...)`; during paste preview `keydown` “r” rotates by swapping `text_data[...]` and restarting paste; click commits same as normal paste                        | `r` rotates                                  | Rotation keeps anchor stable across rotations                                                                                |
 | **Undo / Redo**                               | Keyboard              | Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z                                           | `window.keydown` always allows undo/redo (even when typing)                                                                                                                                                 | Cmd/Ctrl                                     | `Z` undo, `Shift+Z` redo                                                                                                     |
 | **Context menu suppression on canvas**        | Mouse                 | right click                                                             | `canvas.contextmenu` → `preventDefault()`                                                                                                                                                                   | —                                            | Prevents native context menu on canvas                                                                                       |
+| **Netlist hover (inspect connectivity)** | Mouse | move pointer over a wire cell | `canvas.mousemove` → `setHoverFromEvent()` → net lookup → `draw()` | — | When Netlist is ON, hovering a wire highlights the whole net in **blue** and shows **Net: N** in Canvas card; hovering non-wire clears it. |
 
 <br><br><br>
 
@@ -310,6 +327,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 | **Clear grid**                       | Mouse        | click               | `clearBtn.click` → `oASC.wipeSelection(' ')`                                             | Clears grid (and cancels selection/paste)                                           |
 | **PermaLink / Save**                 | Mouse        | click               | generates compressed URI and injects link                                                | Produces link to open saved state; debug variant routes to debug wrapper            |
 | **Schema Highlight / Match toggles** | Mouse        | click (toggle)      | `schemaHighlightBtn.click` / `schemaMatchBtn.click` → toggle + clear caches + redraw     | Toggle-style buttons (primary class indicates active)                               |
+| **Netlist (toggle)** | Mouse | click (toggle) | `netlistBtn.click` → toggle + compute cache + redraw | When ON, enables hover-to-highlight nets; prints net count once and shows `Net:` in Canvas card. |
 
 <br><br><br>
 
