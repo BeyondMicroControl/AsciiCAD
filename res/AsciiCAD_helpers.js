@@ -1507,43 +1507,59 @@ this.startPasteWithText = function(text)
         // classify endpoints/junctions
         const LE = [];
         const LJ = [];
-        const CE = []; // component endings adjacent to LE (catalog pins/protrusions)
-        function pushUniqueCR(out, c, r){
-          for (let i=0;i<out.length;i++) if (out[i].c===c && out[i].r===r) return;
+        // --- Component-end detection (CE) ---
+        // A node can be both a junction and a termination into a component.
+        // So we detect CE adjacency for *all* nodes, not only LE.
+        const CE = [];
+
+        function pushUniqueCR(out, c, r) {
+          for (let i = 0; i < out.length; i++) if (out[i].c === c && out[i].r === r) return;
           out.push({ c, r });
         }
 
-        function tryAddCE(compR, compC, needBit){
+        function hasCR(out, c, r) {
+          for (let i = 0; i < out.length; i++) if (out[i].c === c && out[i].r === r) return true;
+          return false;
+        }
+
+        function tryAddCE(fromR, fromC, compR, compC, needBitOnComp) {
           if (compR < 0 || compR >= ROWS || compC < 0 || compC >= COLS) return;
+
           const kk = krc(compR, compC);
-          if (!compSet.has(kk)) return;
+          if (!compSet.has(kk)) return;                 // must belong to matched component footprint
 
           const chC = ascii?.[compR]?.[compC];
           if (!chC || chC === " " || chC === "§") return;
 
-          // allow protrusions like ─ │ ╪ ╫ ╢ ╟ ╧ ╤ etc:
+          // Only accept “pin/protrusion-like” cells that have directional connectivity.
           const mC = glyphToMask.get(chC) ?? 0;
-          if (!(mC & needBit)) return;
+          if (!(mC & needBitOnComp)) return;
 
+          // record component cell as CE
           pushUniqueCR(CE, compC, compR);
+
+          // ALSO: the wire cell is a termination into a component
+          // => include it in LE even if its degree isn't 1.
+          if (!hasCR(LE, fromC, fromR)) pushUniqueCR(LE, fromC, fromR);
         }
 
-        for (let i=0;i<nodes.length;i++)
-        {
+        // scan all nodes in this net
+        for (let i = 0; i < nodes.length; i++) {
           const n = nodes[i];
-          const d = deg.get(krc(n.r,n.c)) ?? 0;
-          if (d === 1) LE.push({ c: n.c, r: n.r });
-          else if (d >= 3) LJ.push({ c: n.c, r: n.r });
+          const ch = ascii[n.r][n.c];
+          const m  = glyphToMask.get(ch) ?? 0;
+
+          // If this wire node points into a component footprint cell, register CE.
+          // Left neighbor is component -> component must connect right (E)
+          if (m & W) tryAddCE(n.r, n.c, n.r, n.c - 1, E);
+          // Right neighbor is component -> component must connect left (W)
+          if (m & E) tryAddCE(n.r, n.c, n.r, n.c + 1, W);
+          // Up neighbor is component -> component must connect down (S)
+          if (m & N) tryAddCE(n.r, n.c, n.r - 1, n.c, S);
+          // Down neighbor is component -> component must connect up (N)
+          if (m & S) tryAddCE(n.r, n.c, n.r + 1, n.c, N);
         }
 
-        // for each LE, look at adjacent component cells
-        for (let i=0;i<LE.length;i++){
-          const le = LE[i];
-          tryAddCE(le.r, le.c-1, E);
-          tryAddCE(le.r, le.c+1, W);
-          tryAddCE(le.r-1, le.c, S);
-          tryAddCE(le.r+1, le.c, N);
-        }
 
         // Only consider components that look like a "line" (>= 2 cells).
         // Still include loops: LE will be empty, but they are valid nets.
@@ -1741,43 +1757,59 @@ this.startPasteWithText = function(text)
 
         const LE = [];
         const LJ = [];
-        const CE = []; // component endings adjacent to LE (catalog pins/protrusions)
-        function pushUniqueCR(out, c, r)
-        {
-          for (let i=0;i<out.length;i++) if (out[i].c===c && out[i].r===r) return;
+        // --- Component-end detection (CE) ---
+        // A node can be both a junction and a termination into a component.
+        // So we detect CE adjacency for *all* nodes, not only LE.
+        const CE = [];
+
+        function pushUniqueCR(out, c, r) {
+          for (let i = 0; i < out.length; i++) if (out[i].c === c && out[i].r === r) return;
           out.push({ c, r });
         }
-        function tryAddCE(compR, compC, needBit)
-        {
+
+        function hasCR(out, c, r) {
+          for (let i = 0; i < out.length; i++) if (out[i].c === c && out[i].r === r) return true;
+          return false;
+        }
+
+        function tryAddCE(fromR, fromC, compR, compC, needBitOnComp) {
           if (compR < 0 || compR >= ROWS || compC < 0 || compC >= COLS) return;
+
           const kk = krc(compR, compC);
-          if (!compSet.has(kk)) return;
+          if (!compSet.has(kk)) return;                 // must belong to matched component footprint
+
           const chC = ascii?.[compR]?.[compC];
-          if (chC === undefined || chC === " " || chC === "§") return;
-          if (!oASC.isWireGlyph(chC)) return;
-          const mC = (glyphToMask.get(chC) ?? (N|S|E|W));
-          if (!(mC & needBit)) return;
+          if (!chC || chC === " " || chC === "§") return;
+
+          // Only accept “pin/protrusion-like” cells that have directional connectivity.
+          const mC = glyphToMask.get(chC) ?? 0;
+          if (!(mC & needBitOnComp)) return;
+
+          // record component cell as CE
           pushUniqueCR(CE, compC, compR);
+
+          // ALSO: the wire cell is a termination into a component
+          // => include it in LE even if its degree isn't 1.
+          if (!hasCR(LE, fromC, fromR)) pushUniqueCR(LE, fromC, fromR);
         }
 
-        for (let i=0;i<nodes.length;i++)
-        {
+        // scan all nodes in this net
+        for (let i = 0; i < nodes.length; i++) {
           const n = nodes[i];
-          const d = deg.get(krc(n.r,n.c)) ?? 0;
-          if (d === 1) LE.push({ c: n.c, r: n.r });
-          else if (d >= 3) LJ.push({ c: n.c, r: n.r });
+          const ch = ascii[n.r][n.c];
+          const m  = glyphToMask.get(ch) ?? 0;
+
+          // If this wire node points into a component footprint cell, register CE.
+          // Left neighbor is component -> component must connect right (E)
+          if (m & W) tryAddCE(n.r, n.c, n.r, n.c - 1, E);
+          // Right neighbor is component -> component must connect left (W)
+          if (m & E) tryAddCE(n.r, n.c, n.r, n.c + 1, W);
+          // Up neighbor is component -> component must connect down (S)
+          if (m & N) tryAddCE(n.r, n.c, n.r - 1, n.c, S);
+          // Down neighbor is component -> component must connect up (N)
+          if (m & S) tryAddCE(n.r, n.c, n.r + 1, n.c, N);
         }
 
-
-        // detect component endings (catalog pins) adjacent to LE
-        for (let i=0;i<LE.length;i++)
-        {
-          const le = LE[i];
-          tryAddCE(le.r, le.c-1, E);
-          tryAddCE(le.r, le.c+1, W);
-          tryAddCE(le.r-1, le.c, S);
-          tryAddCE(le.r+1, le.c, N);
-        }
 
         if (nodes.length >= 2) {
           nets.push({ cells: nodes, LE, LJ, CE, CO: CE });
