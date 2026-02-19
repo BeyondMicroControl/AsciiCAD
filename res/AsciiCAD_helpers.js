@@ -2029,7 +2029,7 @@ this.startPasteWithText = function(text)
   };
 
 
-  this.draw = function( str ) 
+  this.draw = function( str_reason ) 
   {
     function renderCharAtCell(ctx, r, c, ch) 
     {
@@ -2285,7 +2285,7 @@ this.startPasteWithText = function(text)
       ctx.fillStyle = old;
     }
 
-  
+    if(bDebug) console.log("draw(\""+str_reason+"\")")
   }
 }
 var oASC = new ASC();
