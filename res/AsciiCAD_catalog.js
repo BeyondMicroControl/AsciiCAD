@@ -1232,6 +1232,19 @@ image_data:
 }
 ,
 {
+name: 'Waypoint',
+type: 'Via',
+description: '',
+MFR: 'gen',
+pin_data: null,
+text_data:
+CharRotation(oCOM.rangeChars(0x2460, 0x246B))
+,
+image_data:
+'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAB5QTFRF6unpwsHBwLKp28vBp2VCpJuVoH5qwINcjEwt151ws47AjAAAAoZJREFUeJyFkz9v2zAQxQX4C+SY2lkrOkqQzTGHomvBSPYYAdRew6I7F0Jt70LlrIVQQd+2xz+WRUp2b7J0Pz6+ezoHTFUQBBPGKKVsEfg1YaZoqDmv2LJjxo4S1Bwess1XbNJ7FD17cLpLbM6tqLXQMdpr6N3IlnNtwxwdM6sYyrSue5dj0ptkom2Gt4cYzm6U+kMMuyNDXISvD2EPX9M9nx900Wtf4N7rqgsvAE7WEzB29Mfq3rC7Xn+YAmOvvSc87vmZODmjwNzrujvhCCyw3xzbnz0FVwCAfT181OuehOsAgS+rjzq5mPQcAMxZs27+sPm4AAJRjgsXZRtYjI4AQB75seYyBQDMZvny4maArx9X6yYRCsCidUPvPGC2WtexoAYQbRt9HgBVnaQWiHZ/5XvvIwUhwIMCqAXIthahsWMqEumzAkKwQFFbN2D2A4jYqqA6gNdWSxVTQKaBtFNoQuiVAnYcx8xzfTWQxAcg2u7bdi9zKlQWhBc+oJMsdZKREJTH4AEqSQzKmJhmsfQV4BOa5DZJsju2eRq6gJNkdiykRDdnJsBfbpICK8uzOKaaCdD7cx8AKlIaiWx7aqUa3ARV1XHYRanQSO55G0uRiw6gjneSyV97KWVK0GS2U1dIm6StiCcNj/NUTTHdJm2zlxsizlul8uBly99EaoLix8IkiY6tDOFlU77hk0myOnB7+iwz1QANbZLVodtJ/UHCESDtrYkKSwHfrgFYTwrYULgAbg4wXSGQw/8AdGMBjBqGwHcgkQHWA2BmAHvFaRSoe0BV/4bbwOEmMDuVI0BlAYz14SZA8M87BqCv8h3Myv0Y8+AD3BsTjRcW0CtXJMLZOD2ZBv4Bve8VMOQWYwoAAAAASUVORK5CYII='
+}
+,
+{
 name: 'Capacitor',
 type: 'Discrete',
 description: 'Polarised Capacitor',
@@ -1735,6 +1748,19 @@ Motor:     ─Ⓜ─
 ⎜
 ⎝
 */
+
+function CharRotation(char_arr)
+{
+  var arr = [];
+  for(var i=0;i<char_arr.length;i++)
+  {
+    arr.push("│\n"+char_arr[i]);
+    arr.push(char_arr[i]+"─");
+    arr.push(char_arr[i]+"\n│");
+    arr.push("─"+char_arr[i]);
+  }
+  return arr;
+}
 
 // https://www.charset.org/utf-8/10
 const PICKER_TABS = 
