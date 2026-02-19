@@ -459,7 +459,7 @@ function runWorkerThreadSmokeTests()
 
   // Run worker sandbox tests after the synchronous sanity checks.
   runWorkerThreadSmokeTests()
-    .then(function(){ updateUI(); draw(); })
+    .then(function(){ updateUI(); oASC.draw(); })
     .catch(function(err){ console.error('Worker smoke tests failed:', err); updateUI(); draw(); });
   })();
 

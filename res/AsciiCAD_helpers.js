@@ -72,7 +72,7 @@ function ASC()
       stage.style.width = stageSize.w + "px";
       stage.style.height = stageSize.h + "px";
       this.syncCanvasBufferToStage();
-      draw("scheduleResize");
+      this.draw("scheduleResize");
     });
   }
 
@@ -128,7 +128,7 @@ function ASC()
     if (!cell) return;
     lastCellKey = cell.r + ',' + cell.c;
     this.applyOpAtCell(cell,op);
-    draw("beginFreeform");
+    this.draw("beginFreeform");
   }
 
   this.moveFreeform = function(cell) 
@@ -138,7 +138,7 @@ function ASC()
     if (key === lastCellKey) return;
     lastCellKey = key;
     this.applyOpAtCell(cell,op);
-    draw("moveFreeform");
+    this.draw("moveFreeform");
   }
 
   this.endFreeform = function() 
@@ -272,7 +272,7 @@ function ASC()
       cur:   { r: cell.r, c: cell.c }
     };
 
-    draw("beginLine");
+    this.draw("beginLine");
   }
 
   this.moveLine = function(cell)
@@ -285,7 +285,7 @@ function ASC()
     // live modifiers during preview
     lineDrag.flip  = !shiftDown;
     lineDrag.merge = !oDown;
-    draw("moveLine");
+    this.draw("moveLine");
   }
 
   // TODO: why is endLine() unused ? 
@@ -312,14 +312,14 @@ function ASC()
     if(bDebug) console.log("endLine()");
     lineDrag = null;
     this.pushStrokeIfNonEmpty(stroke);
-    draw("endLine");
+    this.draw("endLine");
   }
 
   // TODO: why is cancelLine() unused ? 
   this.cancelLine = function() 
   {
     lineDrag = null;
-    draw("cancelLine");
+    this.draw("cancelLine");
   }
 
   this.getCharAtCell  = function(r, c) {  return ascii[r][c] }
@@ -437,7 +437,7 @@ function ASC()
 
     lineDrag = null;
     this.pushStrokeIfNonEmpty(stroke);
-    draw("commitLine");
+    this.draw("commitLine");
   }
 
 
@@ -521,7 +521,7 @@ function ASC()
 
     lineDrag = null;
     this.pushStrokeIfNonEmpty(stroke);
-    draw("commitLineWithOptionalMerge");
+    this.draw("commitLineWithOptionalMerge");
   }
 
   // subsection: boxes
@@ -531,7 +531,7 @@ function ASC()
     if (!cell) return;
     selection = null; selectDrag = null; moveDrag = null;
     boxDrag = { kind, start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
-    draw("beginBox");
+    this.draw("beginBox");
   }
 
   this.moveBox = function(cell) 
@@ -539,7 +539,7 @@ function ASC()
     if (!boxDrag || !cell) return;
     if (cell.r === boxDrag.cur.r && cell.c === boxDrag.cur.c) return;
     boxDrag.cur = { r: cell.r, c: cell.c };
-    draw("moveBox");
+    this.draw("moveBox");
   }
 
   this.commitBox = function() 
@@ -548,7 +548,7 @@ function ASC()
     const style = boxDrag.kind === "double" ? BOX_DOUBLE : boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE;
     this.box( boxDrag.start.c,boxDrag.start.r , boxDrag.cur.c,boxDrag.cur.r , style );
     boxDrag = null;
-    draw("commitBox");
+    this.draw("commitBox");
   }
 
   this.BOX_SINGLE = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
@@ -902,7 +902,7 @@ function ASC()
     if (!cell) return;
     textDrag = { anchor: { r: cell.r, c: cell.c }, text: "" };        // Start a new preview at this anchor.
     canvas.focus?.();                                                 // Ensure canvas can receive key events
-    draw("beginFreetext");
+    this.draw("beginFreetext");
   }
 
   this.commitFreetext = function()
@@ -931,13 +931,13 @@ function ASC()
 
     textDrag = null;
     this.pushStrokeIfNonEmpty(stroke);  // TODO: check out what it fixes
-    draw("commitFreetext");
+    this.draw("commitFreetext");
   }
 
   this.cancelFreetext = function()
   {
     textDrag = null;
-    draw("cancelFreetext");
+    this.draw("cancelFreetext");
   }
 
   // subsection: select
@@ -963,13 +963,13 @@ function ASC()
           action: (tool === "modeCopy") ? "copy" : "move",
         };
 
-        draw("beginSelect (begin moveDrag)");
+        this.draw("beginSelect (begin moveDrag)");
         return;
     }
     selection  = null;
     moveDrag   = null;
     selectDrag = { start: cell, current: cell };
-    draw("beginSelect");
+    this.draw("beginSelect");
   }
 
   this.moveSelect = function(cell)
@@ -980,12 +980,12 @@ function ASC()
         const dc = cell.c - moveDrag.startCell.c;
         if (dr === moveDrag.offset.dr && dc === moveDrag.offset.dc) return;
         moveDrag.offset = { dr, dc };
-        draw("moveSelect");
+        this.draw("moveSelect");
         return;
     }
     if (selectDrag) {
         selectDrag.current = cell;
-        draw("moveSelect");
+        this.draw("moveSelect");
     }
   }
 
@@ -1003,7 +1003,7 @@ function ASC()
       moveDrag = null;
       selectDrag = null;
       selection = null; // disappear after mouseup (same behavior)
-      draw("endSelect");
+      this.draw("endSelect");
       return;
     }
 
@@ -1017,7 +1017,7 @@ function ASC()
           selection = null; // clear overlay after blanking
         }
 
-        draw("endSelect");
+        this.draw("endSelect");
     }
   }
 
@@ -1035,7 +1035,7 @@ function ASC()
     }
     selection = null; selectDrag = null; moveDrag = null; this.cancelPaste();
     this.pushStrokeIfNonEmpty(stroke);
-    draw();
+    this.draw();
   }
 
   this.applyMove = function(baseRect, dr, dc, snapMap) 
@@ -1134,7 +1134,7 @@ function ASC()
     pasteDrag = null;
     this.pushStrokeIfNonEmpty(stroke);
     updateUI();
-    draw("commitPasteAt(anchor)");
+    this.draw("commitPasteAt(anchor)");
   };
 
 
@@ -1143,7 +1143,7 @@ function ASC()
     if (!pasteDrag) return;
     pasteDrag = null;
     updateUI();
-    draw("cancelPaste");
+    this.draw("cancelPaste");
   }
 
   // subsection: generic draw helpers
@@ -1175,7 +1175,7 @@ this.startPasteWithText = function(text)
 {
   const raw = oCOM.normalizeNewlines(text).split('\n');
   while (raw.length > 0 && raw[raw.length - 1] === '') raw.pop();
-  if (raw.length === 0) { pasteDrag = null; updateUI(); draw("startPasteWithText"); return; }
+  if (raw.length === 0) { pasteDrag = null; updateUI(); this.draw("startPasteWithText"); return; }
 
   let w = 0;
   for (const ln of raw) w = Math.max(w, ln.length);
@@ -1219,7 +1219,7 @@ this.startPasteWithText = function(text)
   moveDrag = null;
 
   updateUI();
-  draw("startPasteWithText");
+  this.draw("startPasteWithText");
 }
 
 
@@ -1994,7 +1994,7 @@ this.startPasteWithText = function(text)
     hoverNetIndex = -1;
 
     updateUI();
-    draw("doUndo");
+    this.draw("doUndo");
   }
   this.doUndo.help = 
   {
@@ -2018,7 +2018,7 @@ this.startPasteWithText = function(text)
     hoverNetIndex = -1;
 
     updateUI();
-    draw("doRedo");
+    this.draw("doRedo");
   }
   this.doRedo.help = 
   {
@@ -2031,9 +2031,6 @@ this.startPasteWithText = function(text)
 
   this.draw = function( str ) 
   {
-
-    // TODO: should this remain a private function?
-    // INFO: currently only used in draw()
     function renderCharAtCell(ctx, r, c, ch) 
     {
       const x = c * baseCellW + baseCellW / 2;
@@ -2137,6 +2134,7 @@ this.startPasteWithText = function(text)
     const redSet = highlightCache ? highlightCache.redSet : null;
     const insideSet = highlightCache ? highlightCache.insideSet : null;
 
+    const BLACK = "rgba(0,0,0,1)";
     const BLUE = "rgba(59,130,246,0.9)";
     const RED  = "rgba(239,68,68,0.9)";
     const GREEN = "rgba(34,197,94,0.95)";
@@ -2157,13 +2155,23 @@ this.startPasteWithText = function(text)
         }
 
         // Default color
-        let color = "#000";
+        let color = BLACK;
 
         // Match overlay has priority (green)
         if (schemaMatchOn && greenSet) 
         {
           const k = keyRC(r, c);
           if (greenSet.has(k)) color = GREEN;
+        }
+
+        // Netlist hover highlight (BLUE) — overrides other colors for wire cells in the hovered net
+        if (netlistOn && hoverNetIndex >= 0) {
+          __ensureNetlistCache();
+          const k = keyRC(r, c);
+          const net = netlistCache?.nets?.[hoverNetIndex];
+          if (net && net.cells && net.cells.has(k)) {
+            color = BLUE;
+          }
         }
 
         if (schemaHighlightOn && color === BLACK) 
@@ -2276,9 +2284,10 @@ this.startPasteWithText = function(text)
 
       ctx.fillStyle = old;
     }
+
+  
   }
 }
-
 var oASC = new ASC();
 
 
