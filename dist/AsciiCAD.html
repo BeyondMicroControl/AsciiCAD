@@ -3106,7 +3106,7 @@ this.startPasteWithText = function(text)
   };
 
 
-  this.draw = function( str ) 
+  this.draw = function( str_reason ) 
   {
     function renderCharAtCell(ctx, r, c, ch) 
     {
@@ -3362,7 +3362,7 @@ this.startPasteWithText = function(text)
       ctx.fillStyle = old;
     }
 
-  
+    if(bDebug) console.log("draw(\""+str_reason+"\")")
   }
 }
 var oASC = new ASC();
@@ -7986,7 +7986,7 @@ for(var i in mode_el)
       setMode(e.currentTarget.id);
       selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;  textDrag = null;
       oASC.cancelPaste?.();
-      updateUI(); oASC.draw();
+      updateUI(); oASC.draw("init");
   });
 }
 
@@ -8476,7 +8476,7 @@ function __cliHandleTerminal(line)
     }
     // SEND A JOB TO THE CMD WORKER
     oCMD.runExternalScript(code)
-      .then(() => { oASC.draw(); })
+      .then(() => { oASC.draw("runExternalScript"); })
       .catch((err) => { oTERM.output("[ERROR] worker thread failed:<br><small>"+JSON.stringify(err)+"</small>");
       })
 
@@ -8648,7 +8648,7 @@ function update_data_to_grid()
             if (bDebug && netlistOn) __refreshNetlistDebugCE();
             
 
-            oASC.draw();
+            oASC.draw("update_data_to_grid");
 
             fileInput.value = "";
         } catch (err)
@@ -8874,7 +8874,7 @@ fileInput.addEventListener("change", async (e) =>
 
     oASC.pushStrokeIfNonEmpty(stroke);
     if (bDebug && netlistOn) __refreshNetlistDebugCE();
-    oASC.draw();
+    oASC.draw("onchange");
 
     fileInput.value = "";
   } catch (err) {
@@ -8990,7 +8990,7 @@ canvas.addEventListener("wheel",(e) =>
     __zoomAtCanvasPoint(mx, my, zoomFactor);
 
     updateUI();
-    oASC.draw();
+    oASC.draw("onwheel - ctrlKey");
     return;
   }
 
@@ -9007,7 +9007,7 @@ canvas.addEventListener("wheel",(e) =>
     panY += (e.deltaY || 0) / scale;
     __clampPanToKeepCenterInGrid();
     updateUI();
-    oASC.draw();
+    oASC.draw("onwheel - looksLikeTrackpad");
     return;
   }
 
@@ -9020,7 +9020,7 @@ canvas.addEventListener("wheel",(e) =>
   __zoomAtCanvasPoint(mx, my, zoomFactor);
 
   updateUI();
-  oASC.draw();
+  oASC.draw("onwheel - zoom");
 },
 { passive: false }
 );
@@ -9037,7 +9037,7 @@ canvas.addEventListener("mousemove", (e) =>
       panY = panDrag.panY0 + dy / scale;
       __clampPanToKeepCenterInGrid();
       setHoverFromEvent(e);
-      oASC.draw();
+      oASC.draw("onmousemove - panDrag");
       return;
   }
 
@@ -9047,7 +9047,7 @@ canvas.addEventListener("mousemove", (e) =>
   if (pasteDrag)
   {
       if (cell) setPasteAnchorFromPointerCell({ r: cell.r, c: cell.c });
-      oASC.draw();
+      oASC.draw("onmousemove - pasteDrag");
       return;
   }
 
@@ -9157,7 +9157,7 @@ window.addEventListener("keydown", (e) =>
   {
     lineDrag.flip  = !shiftDown;
     lineDrag.merge = !oDown;
-    oASC.draw();
+    oASC.draw("onkeydown - lineDrag");
   }
 
   //  Always allow Undo/Redo (even while typing)
@@ -9182,7 +9182,7 @@ window.addEventListener("keydown", (e) =>
     {
       e.preventDefault();
       textDrag.text = textDrag.text.slice(0, -1);
-      oASC.draw();
+      oASC.draw("onkeydown - Backspace");
       return;
     }
     if (e.ctrlKey || e.metaKey) return;     // Ignore only OS/app command chords while typing. IMPORTANT: On macOS (e.g. Belgian layout), Option+Shift is used to type chars like '[' '{' etc.
@@ -9190,7 +9190,7 @@ window.addEventListener("keydown", (e) =>
     {
       e.preventDefault();
       textDrag.text += e.key;   //  includes 'o'
-      oASC.draw();
+      oASC.draw("onkeydown - append printable character");
     }
     return; // IMPORTANT: don't fall through to line/box shortcuts
   }
@@ -9212,7 +9212,7 @@ window.addEventListener("keydown", (e) =>
       const text_data = it.text_data[pasteDrag.item_data.rotation] || "";
       oASC.startPasteWithText(oASC.expandWideCharsForGrid(text_data));
       if (oldAnchor && pasteDrag) pasteDrag.anchor = oldAnchor; // keep anchor stable while rotating
-      oASC.draw();
+      oASC.draw("onkeydown - 'r'");
       return;
     }
   }
@@ -9229,7 +9229,7 @@ window.addEventListener("keyup", (e) =>
     lineDrag.flip  = !shiftDown;
     lineDrag.merge = !oDown;
     if (bDebug) console.log("KEYUP: lineFlip=" + lineDrag.flip + " lineMerge=" + lineDrag.merge);
-    oASC.draw();
+    oASC.draw("onkeyup");
   }
 });
 
