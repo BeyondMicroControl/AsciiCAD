@@ -1376,20 +1376,10 @@ this.startPasteWithText = function(text)
 
     //const banned = new Set();
     const banned = this.computeNetlistBannedSet?.(mo, overlay) ?? new Set();
-    //overlay.redSet?.forEach(k => banned.add(k));
-    //overlay.insideSet?.forEach(k => banned.add(k));
 
-    const krc = (typeof keyRC === "function")
-    ? keyRC
-    : (r,c) => r + "," + c;
-
-
-    // Wire cell predicate for netlist purposes:
-    // - must be a wire glyph
-    // - must not be within/bounding a valid double box
     function isNetWireCell(r,c)
     {
-      const k = krc(r,c);
+      const k = KeyRC(r,c);
       if (banned.has(k)) return false;
       const ch = ascii?.[r]?.[c];
       if (ch === undefined) return false;
@@ -1398,6 +1388,9 @@ this.startPasteWithText = function(text)
       // IMPORTANT: Use glyphToMask as the source of truth for net-wire cells
       return (glyphToMask.get(ch) ?? 0) !== 0;
     }
+
+    //overlay.redSet?.forEach(k => banned.add(k));
+    //overlay.insideSet?.forEach(k => banned.add(k));
 
     // Compute 4-neighborhood connectivity using glyphToMask, which naturally
     // treats "crossings without junction" as *not connected* (e.g. ─│─).
@@ -1478,7 +1471,7 @@ this.startPasteWithText = function(text)
       {
         if (!isNetWireCell(r,c)) continue;
 
-        const rootK = krc(r,c);
+        const rootK = KeyRC(r,c);
         if (visited.has(rootK)) continue;
 
         // BFS to get one connected component
@@ -1490,7 +1483,7 @@ this.startPasteWithText = function(text)
         while (q.length)
         {
           const cur = q.shift();
-          const ck = krc(cur.r,cur.c);
+          const ck = KeyRC(cur.r,cur.c);
           nodes.push(cur);
 
           const nbs = connectedNeighbors(cur.r,cur.c);
@@ -1499,7 +1492,7 @@ this.startPasteWithText = function(text)
           for (let i=0;i<nbs.length;i++)
           {
             const nb = nbs[i];
-            const nk = krc(nb.r,nb.c);
+            const nk = KeyRC(nb.r,nb.c);
             if (visited.has(nk)) continue;
             visited.add(nk);
             q.push(nb);
@@ -1527,7 +1520,7 @@ this.startPasteWithText = function(text)
         function tryAddCE(fromR, fromC, compR, compC, needBitOnComp) {
           if (compR < 0 || compR >= ROWS || compC < 0 || compC >= COLS) return;
 
-          const kk = krc(compR, compC);
+          const kk = KeyRC(compR, compC);
           if (!compSet.has(kk)) return;                 // must belong to matched component footprint
 
           const chC = ascii?.[compR]?.[compC];
@@ -1545,6 +1538,14 @@ this.startPasteWithText = function(text)
           if (!hasCR(LE, fromC, fromR)) pushUniqueCR(LE, fromC, fromR);
         }
 
+        // Populate LE/LJ from BFS degrees
+        for (let i = 0; i < nodes.length; i++) {
+          const n = nodes[i];
+          const d = deg.get(KeyRC(n.r, n.c)) ?? 0;
+          if (d === 1) pushUniqueCR(LE, n.c, n.r);
+          else if (d >= 3) pushUniqueCR(LJ, n.c, n.r);
+        }
+        
         // scan all nodes in this net
         for (let i = 0; i < nodes.length; i++) {
           const n = nodes[i];
@@ -1611,6 +1612,9 @@ this.startPasteWithText = function(text)
     out.push({r,c});
   }
 
+  function KeyRC(r,c){ return r + "," + c; }
+
+
 
   this.computeNetlistNets = function()
   {
@@ -1623,13 +1627,10 @@ this.startPasteWithText = function(text)
 
     const banned = this.computeNetlistBannedSet?.(mo, overlay) ?? new Set();
 
-    //const banned = new Set();
-
-    function krc(r,c){ return r + "," + c; }
 
     function isNetWireCell(r,c)
     {
-      const k = krc(r,c);
+      const k = KeyRC(r,c);
       if (banned.has(k)) return false;
       const ch = ascii?.[r]?.[c];
       if (ch === undefined) return false;
@@ -1638,7 +1639,6 @@ this.startPasteWithText = function(text)
       // IMPORTANT: Use glyphToMask as the source of truth for net-wire cells
       return (glyphToMask.get(ch) ?? 0) !== 0;
     }
-
 
     // Horizontal-only “crossing bypass” for pattern ─│─:
     // If a horizontal segment would “hit” a pure vertical │ cell, it may bridge to the cell beyond.
@@ -1731,7 +1731,7 @@ this.startPasteWithText = function(text)
       {
         if (!isNetWireCell(r,c)) continue;
 
-        const rootK = krc(r,c);
+        const rootK = KeyRC(r,c);
         if (visited.has(rootK)) continue;
 
         const q = [{r,c}];
@@ -1743,7 +1743,7 @@ this.startPasteWithText = function(text)
         while (q.length)
         {
           const cur = q.shift();
-          const ck = krc(cur.r,cur.c);
+          const ck = KeyRC(cur.r,cur.c);
           nodes.push(cur);
 
           const nbs = connectedNeighbors(cur.r,cur.c);
@@ -1752,7 +1752,7 @@ this.startPasteWithText = function(text)
           for (let i=0;i<nbs.length;i++)
           {
             const nb = nbs[i];
-            const nk = krc(nb.r,nb.c);
+            const nk = KeyRC(nb.r,nb.c);
             if (visited.has(nk)) continue;
             visited.add(nk);
             q.push(nb);
@@ -1779,7 +1779,7 @@ this.startPasteWithText = function(text)
         function tryAddCE(fromR, fromC, compR, compC, needBitOnComp) {
           if (compR < 0 || compR >= ROWS || compC < 0 || compC >= COLS) return;
 
-          const kk = krc(compR, compC);
+          const kk = KeyRC(compR, compC);
           if (!compSet.has(kk)) return;                 // must belong to matched component footprint
 
           const chC = ascii?.[compR]?.[compC];
@@ -1795,6 +1795,14 @@ this.startPasteWithText = function(text)
           // ALSO: the wire cell is a termination into a component
           // => include it in LE even if its degree isn't 1.
           if (!hasCR(LE, fromC, fromR)) pushUniqueCR(LE, fromC, fromR);
+        }
+
+        // Populate LE/LJ from BFS degrees
+        for (let i = 0; i < nodes.length; i++) {
+          const n = nodes[i];
+          const d = deg.get(KeyRC(n.r, n.c)) ?? 0;
+          if (d === 1) pushUniqueCR(LE, n.c, n.r);
+          else if (d >= 3) pushUniqueCR(LJ, n.c, n.r);
         }
 
         // scan all nodes in this net
