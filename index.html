@@ -829,15 +829,12 @@ function __refreshNetlistDebugCE()
 }
 
 
-
-function __ensureNetlistCache() {
+function __ensureNetlistCache() 
+{
   if (netlistCache) return;
 
-  // Ask helper for “nets including cells”
-  // (we add this function in AsciiCAD_helpers.js below)
   const nets = (typeof oASC.computeNetlistNets === "function") ? oASC.computeNetlistNets() : [];
 
-  // Build fast lookup maps for hover + rendering
   const cellToNet = new Map();
   const normNets = [];
 
@@ -845,24 +842,39 @@ function __ensureNetlistCache() {
     const net = nets[i];
     const cellSet = new Set();
 
-    // Expect net.cells = [{r,c}, ...]
-    const cells = net.cells || [];
-    for (let j = 0; j < cells.length; j++) {
-      const k = cells[j].r + "," + cells[j].c;
-      cellSet.add(k);
-      // A cell should belong to exactly one net under these rules
-      if (!cellToNet.has(k)) cellToNet.set(k, i);
+    const cells = (net.cells instanceof Set) ? net.cells : new Set();
+
+    if (cells instanceof Set) {
+      // NEW format: Set of "r,c" keys
+      for (const k of cells) {
+        cellSet.add(k);
+        if (!cellToNet.has(k)) cellToNet.set(k, i);
+      }
+    } else if (Array.isArray(cells)) {
+      // OLD format: [{r,c}, ...]
+      for (let j = 0; j < cells.length; j++) {
+        const p = cells[j];
+        if (!p) continue;
+        const k = p.r + "," + p.c;
+        cellSet.add(k);
+        if (!cellToNet.has(k)) cellToNet.set(k, i);
+      }
+    } else {
+      // Defensive: unknown shape
+      // leave empty
     }
 
     normNets.push({
       cells: cellSet,
       LE: net.LE || [],
-      LJ: net.LJ || []
+      LJ: net.LJ || [],
+      CE: net.CE || []  // (optional, but useful)
     });
   }
 
   netlistCache = { nets: normNets, cellToNet };
 }
+
 
 function __netIndexAtHoverCell(cell) {
   if (!cell) return -1;

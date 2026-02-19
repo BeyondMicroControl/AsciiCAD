@@ -1381,7 +1381,7 @@ this.startPasteWithText = function(text)
 
     function isNetWireCell(r,c)
     {
-      const k = KeyRC(r,c);
+      const k = keyRC(r,c);
       if (banned.has(k)) return false;
       const ch = ascii?.[r]?.[c];
       if (ch === undefined) return false;
