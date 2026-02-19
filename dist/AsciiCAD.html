@@ -2471,7 +2471,9 @@ this.startPasteWithText = function(text)
       const ch = ascii?.[r]?.[c];
       if (ch === undefined) return false;
       if (ch === " ") return false;
-      return oASC.isWireGlyph(ch);
+
+      // IMPORTANT: Use glyphToMask as the source of truth for net-wire cells
+      return (glyphToMask.get(ch) ?? 0) !== 0;
     }
 
     // Compute 4-neighborhood connectivity using glyphToMask, which naturally
@@ -2706,12 +2708,14 @@ this.startPasteWithText = function(text)
     {
       const k = krc(r,c);
       if (banned.has(k)) return false;
-
       const ch = ascii?.[r]?.[c];
       if (ch === undefined) return false;
       if (ch === " ") return false;
-      return oASC.isWireGlyph(ch);
+
+      // IMPORTANT: Use glyphToMask as the source of truth for net-wire cells
+      return (glyphToMask.get(ch) ?? 0) !== 0;
     }
+
 
     // Horizontal-only “crossing bypass” for pattern ─│─:
     // If a horizontal segment would “hit” a pure vertical │ cell, it may bridge to the cell beyond.
@@ -2924,7 +2928,7 @@ this.startPasteWithText = function(text)
     const footprintSet = new Set();  // component footprint (skip ' ' only)
 
     if (!(typeof CATALOG !== "undefined" && Array.isArray(CATALOG)))
-      return { greenSet, rects, solidSet };
+      return { greenSet, rects, solidSet, footprintSet };
 
     if (!catalogVariantsCache) catalogVariantsCache = this.buildCatalogVariants();
 
