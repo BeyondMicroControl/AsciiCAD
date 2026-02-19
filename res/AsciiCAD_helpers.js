@@ -2143,8 +2143,10 @@ this.startPasteWithText = function(text)
 
     const greenSet = matchCache ? matchCache.greenSet : null;
     // Draw all chars (skip base rect while moving)
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
+    for (let r = 0; r < ROWS; r++)
+    {
+      for (let c = 0; c < COLS; c++)
+      {
         const chx = ascii[r][c];
         if (chx === " ") continue;
 
@@ -2187,6 +2189,14 @@ this.startPasteWithText = function(text)
           {
             if (oASC.isWireGlyph(chx) && !isDoubleWire(chx) && !isThickWire(chx) && chx !== " ")
               color = BLUE;
+          }
+        }
+
+        if (bDebug && netlistOn && netlistDebugCESet)
+        {
+          const kk = r + "," + c;           // MUST match __refreshNetlistDebugCE() keying
+          if (netlistDebugCESet.has(kk)) {
+            color = RED;                    // LAST override wins
           }
         }
 
