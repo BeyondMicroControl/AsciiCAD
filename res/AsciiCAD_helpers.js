@@ -1569,9 +1569,8 @@ this.startPasteWithText = function(text)
         .replace(/\[\n\s+\{/g        ,"[{")
         .replace(/\n\s+\}\n\s+\]/g   ,"}]")
         .replace(/\n(\s+)\},\n(\s)+\{"/g ,"},\n$1{\"")
-        //.replace(/\},\n\s+\{/g        ,"},{");
+        .replace(/\]\n(\s+)\},\n\s+\{/g        ,"]\n$1},{");
 
-      //const n = netlistCache?.nets?.length ?? 0;       // for hover nets
       const l = lines.length;                          // for JSON line report
       oTERM.output("<b>NETLIST</b> (" +l + " " +(l==1?"net":"nets")+" \n"
             +"<pre>"
