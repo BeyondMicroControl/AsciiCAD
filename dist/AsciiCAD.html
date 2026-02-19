@@ -2625,7 +2625,7 @@ this.startPasteWithText = function(text)
         // Only consider components that look like a "line" (>= 2 cells).
         // Still include loops: LE will be empty, but they are valid nets.
         if (nodes.length >= 2)
-          nets.push({ cells: nodes, LE, LJ, CE });
+          lines.push({ LE, LJ, CE });
       }
     }
 
@@ -8966,21 +8966,24 @@ netlistBtn.addEventListener("click", () =>
     toolHint.textContent = "Netlist: " + n + " net(s) found. Hover a wire to highlight.";
 
     if (window.oTERM && typeof oTERM.output === "function") {
-      // For “print JSON”, we can output the classic LE/LJ shape:
-      const pretty = JSON.stringify(
-        netlistCache.nets.map(x => ({ LE: x.LE, LJ: x.LJ ,CE: x.CE})), null, 2
-      ).replace(/\n[ ]+"r": /g      ,"\"r\":")
-      .replace(/\n[ ]+"c": /g       ,"\"c\":")
-      .replace(/\[\n\s+\{/g         ,"[{")
-      .replace(/\n\s+\}\n\s+\]/g    ,"}]")
-      .replace(/\n[ ]+\},/g         ,"},");
-      
-      ;
-      oTERM.output(
-        "<b>NETLIST</b> (" + n + " net(s))<br><pre style=\"white-space:pre; margin:6px 0;\">"
+ 
+    const lines = (typeof oASC.computeNetlistLines === "function")
+      ? oASC.computeNetlistLines()
+      : [];
+
+    const pretty = JSON.stringify(lines, null, 2)
+      .replace(/\n[ ]+"r": /g      ,"\"r\":")
+      .replace(/\n[ ]+"c": /g      ,"\"c\":")
+      .replace(/\[\n\s+\{/g        ,"[{")
+      .replace(/\n\s+\}\n\s+\]/g   ,"}]")
+      .replace(/\n[ ]+\},/g        ,"},");
+
+  const n = netlistCache?.nets?.length ?? 0;       // for hover nets
+  const l = lines.length;                          // for JSON line report
+  oTERM.output("<b>NETLIST</b> (" + n + " net(s), " + l + " line(s) \n"
+        +"<pre>"
         + oCOM.escapeHTML(pretty) +
-        "</pre>"
-      );
+        "</pre>")
     }
 
     updateUI();
