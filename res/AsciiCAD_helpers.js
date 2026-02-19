@@ -1035,7 +1035,7 @@ function ASC()
     }
     selection = null; selectDrag = null; moveDrag = null; this.cancelPaste();
     this.pushStrokeIfNonEmpty(stroke);
-    this.draw();
+    this.draw("wipeSelection");
   }
 
   this.applyMove = function(baseRect, dr, dc, snapMap) 
