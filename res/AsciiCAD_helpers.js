@@ -1554,15 +1554,38 @@ this.startPasteWithText = function(text)
 
     return lines;
   }
-  /*
-  this.computeNetlistLines.help =
+
+  this.printNetlist = function()
+  {
+    if (window.oTERM && typeof oTERM.output === "function") 
+    {
+      const lines = (typeof this.computeNetlistLines === "function")
+        ? this.computeNetlistLines()
+        : [];
+
+      const pretty = JSON.stringify(lines, null, 2)
+        .replace(/\n\s+"r": /g      ,"\"r\":")
+        .replace(/\n\s+"c": /g      ,"\"c\":")
+        .replace(/\[\n\s+\{/g        ,"[{")
+        .replace(/\n\s+\}\n\s+\]/g   ,"}]")
+        .replace(/\n(\s+)\},\n(\s)+\{"/g ,"},\n$1{\"")
+        //.replace(/\},\n\s+\{/g        ,"},{");
+
+      //const n = netlistCache?.nets?.length ?? 0;       // for hover nets
+      const l = lines.length;                          // for JSON line report
+      oTERM.output("<b>NETLIST</b> (" +l + " " +(l==1?"net":"nets")+" \n"
+            +"<pre>"
+            + oCOM.escapeHTML(pretty) +
+            "</pre>");
+    }
+  }
+  this.printNetlist.help =
   {
     type: "Tool",
-    usage: "computeNetlistLines()",
+    usage: "PrintNetlist()",
     desc: "Extract connected wire lines (endpoints + junctions), excluding valid double-box boundaries/interiors.",
-    examples: ["oASC.computeNetlistLines()"]
+    examples: ["oASC.PrintNetlist()"]
   };
-  */
 
 
   function pushUnique(out, r, c)
