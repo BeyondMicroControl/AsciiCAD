@@ -1219,7 +1219,7 @@ image_data:
 ,
 {
 name: 'GND',
-type: 'Discrete',
+type: 'Via',
 description: 'Ground',
 MFR: 'gen',
 pin_data: null,
