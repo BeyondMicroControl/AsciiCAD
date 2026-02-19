@@ -7589,6 +7589,8 @@ let netlistOn = false;
 // - nets: array of { cells:Set<string>, LE:[{c,r}], LJ:[{c,r}] }
 // - cellToNet: Map<"r,c", netIndex>
 let netlistCache = null;
+let netlistDebugLines = null;   // array from computeNetlistLines()
+let netlistDebugCESet = null;   // Set of "r,c" keys for CE cells
 
 // Current hovered net index (or -1 if none)
 let hoverNetIndex = -1;
@@ -8370,6 +8372,32 @@ function setHoverFromEvent(e)
   }
 }
 
+function __refreshNetlistDebugCE()
+{
+  netlistDebugLines = null;
+  netlistDebugCESet = null;
+
+  if (!bDebug || !netlistOn) return;
+  if (typeof oASC.computeNetlistLines !== "function") return;
+
+  const lines = oASC.computeNetlistLines();
+  const s = new Set();
+
+  for (const ln of (lines || []))
+  {
+    const ce = ln?.CE || ln?.CO || [];   // CO if you ever kept alias
+    for (const p of ce)
+    {
+      if (!p) continue;
+      s.add(p.r + "," + p.c); // IMPORTANT: same "r,c" key style used in helpers
+    }
+  }
+
+  netlistDebugLines = lines;
+  netlistDebugCESet = s;
+}
+
+
 
 function __ensureNetlistCache() {
   if (netlistCache) return;
@@ -8870,6 +8898,8 @@ function update_data_to_grid()
             boxDrag = null;
             oASC.cancelPaste();
             oASC.pushStrokeIfNonEmpty(stroke);
+            if (bDebug && netlistOn) __refreshNetlistDebugCE();
+            
 
             oASC.draw();
 
@@ -8971,9 +9001,14 @@ netlistBtn.addEventListener("click", () =>
 {
   netlistOn = updateToogleButtonUI(netlistOn, netlistBtn, toolHint);
 
+  // Turning OFF
   if (!netlistOn) {
     hoverNetIndex = -1;
     netlistCache = null; // optional: keep or drop cache; dropping is safer for consistency
+
+    netlistDebugLines = null;
+    netlistDebugCESet = null;
+
     updateUI();
     draw("netlistOff");
     return;
@@ -8983,6 +9018,7 @@ netlistBtn.addEventListener("click", () =>
   try {
     netlistCache = null;     // force rebuild
     __ensureNetlistCache();
+    __refreshNetlistDebugCE();
     toolHint.style.color = "black";
     toolHint.textContent = "Netlist: " + (netlistCache?.nets?.length ?? 0) + " net(s) found. Hover a wire to highlight.";
 
@@ -8997,7 +9033,7 @@ netlistBtn.addEventListener("click", () =>
 });
 
 
-
+/*
 // Invalidate overlay caches after any committed stroke (undo/redo uses same path).
 if (typeof oASC.pushStrokeIfNonEmpty === "function") 
 {
@@ -9007,13 +9043,15 @@ if (typeof oASC.pushStrokeIfNonEmpty === "function")
   {
     highlightCache = null;
     matchCache = null;
+
     return _pushStrokeIfNonEmpty(stroke);
   };
 }
+*/
 
 // Undo/redo
-undoBtn.addEventListener("click", oASC.doUndo);
-redoBtn.addEventListener("click", oASC.doRedo);
+undoBtn.addEventListener("click", () =>  {oASC.doUndo(); if (bDebug && netlistOn) __refreshNetlistDebugCE(); });
+redoBtn.addEventListener("click", () =>  {oASC.doRedo(); if (bDebug && netlistOn) __refreshNetlistDebugCE(); });
 
 // Save/load
 saveBtn.addEventListener("click", () => 
@@ -9088,6 +9126,7 @@ fileInput.addEventListener("change", async (e) =>
     oASC.cancelPaste();
 
     oASC.pushStrokeIfNonEmpty(stroke);
+    if (bDebug && netlistOn) __refreshNetlistDebugCE();
     draw();
 
     fileInput.value = "";
@@ -9377,8 +9416,8 @@ window.addEventListener("keydown", (e) =>
   //  Always allow Undo/Redo (even while typing)
   if (mod) {
     const k = String(e.key || "").toLowerCase();
-    if (k === "z" && !e.shiftKey) { e.preventDefault(); oASC.doUndo(); return; }
-    if (k === "z" &&  e.shiftKey) { e.preventDefault(); oASC.doRedo(); return; }
+    if (k === "z" && !e.shiftKey) { e.preventDefault(); oASC.doUndo(); if (bDebug && netlistOn) __refreshNetlistDebugCE(); return; }
+    if (k === "z" &&  e.shiftKey) { e.preventDefault(); oASC.doRedo(); if (bDebug && netlistOn) __refreshNetlistDebugCE(); return; }
   }
 
   // If the user is typing in the sidebar (terminal / inputs), do not run canvas shortcuts.
