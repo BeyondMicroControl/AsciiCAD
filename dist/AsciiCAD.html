@@ -2439,45 +2439,33 @@ this.startPasteWithText = function(text)
     return { redSet, insideSet };
   }
   
-  // Netlist extraction: follow connected wire glyphs outside double-box boundaries.
-  // Returns [{ LE:[{c,r},...], LJ:[{c,r},...]} ...]
-  this.computeNetlistLines = function()
+
+
+
+  function __computeNetlistCore(opts)
   {
-    const overlay = this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
-    
-    const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set(), footprintSet: new Set() };
+    opts = opts || {};
+    const includeCellSet = !!opts.includeCellSet;
+
+    const overlay = oASC.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
+    const mo = oASC.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set(), footprintSet: new Set() };
 
     // For CE detection we want the footprint (includes wildcard cells)
     const compSet = mo.footprintSet ?? mo.solidSet ?? mo.greenSet ?? new Set();
 
+    // One source of truth for banned
+    const banned = oASC.computeNetlistBannedSet?.(mo, overlay) ?? new Set();
 
-    //const banned = new Set();
-    const banned = this.computeNetlistBannedSet?.(mo, overlay) ?? new Set();
-    //overlay.redSet?.forEach(k => banned.add(k));
-    //overlay.insideSet?.forEach(k => banned.add(k));
-
-    const krc = (typeof keyRC === "function")
-    ? keyRC
-    : (r,c) => r + "," + c;
-
-
-    // Wire cell predicate for netlist purposes:
-    // - must be a wire glyph
-    // - must not be within/bounding a valid double box
     function isNetWireCell(r,c)
     {
-      const k = krc(r,c);
+      const k = KeyRC(r,c);
       if (banned.has(k)) return false;
       const ch = ascii?.[r]?.[c];
       if (ch === undefined) return false;
       if (ch === " ") return false;
-
-      // IMPORTANT: Use glyphToMask as the source of truth for net-wire cells
       return (glyphToMask.get(ch) ?? 0) !== 0;
     }
 
-    // Compute 4-neighborhood connectivity using glyphToMask, which naturally
-    // treats "crossings without junction" as *not connected* (e.g. ─│─).
     function connectedNeighbors(r,c)
     {
       const out = [];
@@ -2485,170 +2473,159 @@ this.startPasteWithText = function(text)
       const m  = glyphToMask.get(ch) ?? 0;
 
       // up
-      if ((m & N) && r > 0 && isNetWireCell(r-1,c))
-      {
-        const ch2 = ascii[r-1][c];
-        const m2  = glyphToMask.get(ch2) ?? 0;
-        if (m2 & S) pushUnique(out,r-1,c);
+      if ((m & N) && r > 0 && isNetWireCell(r-1,c)) {
+        const m2 = glyphToMask.get(ascii[r-1][c]) ?? 0;
+        if (m2 & S) pushUnique(out, r-1, c);
       }
       // down
-      if ((m & S) && r < ROWS-1 && isNetWireCell(r+1,c))
-      {
-        const ch2 = ascii[r+1][c];
-        const m2  = glyphToMask.get(ch2) ?? 0;
-        if (m2 & N) pushUnique(out,r+1,c);
+      if ((m & S) && r < ROWS-1 && isNetWireCell(r+1,c)) {
+        const m2 = glyphToMask.get(ascii[r+1][c]) ?? 0;
+        if (m2 & N) pushUnique(out, r+1, c);
       }
-      // left
-      if ((m & W) && c > 0 && isNetWireCell(r, c-1))
-      {
+
+      // left (with horizontal-only crossing bypass ─│─)
+      if ((m & W) && c > 0 && isNetWireCell(r, c-1)) {
         const ch2 = ascii[r][c-1];
         const m2  = glyphToMask.get(ch2) ?? 0;
 
-        // normal reciprocal connection
-        if (m2 & E) pushUnique(out,r, c-1 );
-
-        // HORIZONTAL-ONLY CROSS BYPASS: ─│─
-        // If immediate left is vertical-only (│), allow horizontal to continue to c-2,
-        // without connecting to the │ cell (so no junction is formed).
-        const isVerticalOnly = (m2 & N) && (m2 & S) && !(m2 & E) && !(m2 & W);
-        if (isVerticalOnly && c-2 >= 0 && isNetWireCell(r, c-2))
-        {
-          const ch3 = ascii[r][c-2];
-          const m3  = glyphToMask.get(ch3) ?? 0;
-
-          // ensure the cell beyond can connect back to the right
-          if (m3 & E) pushUnique(out, r, c-2);
+        if (m2 & E) {
+          pushUnique(out, r, c-1);
+        } else {
+          const isVerticalOnly = (m2 & N) && (m2 & S) && !(m2 & E) && !(m2 & W);
+          if (isVerticalOnly && c-2 >= 0 && isNetWireCell(r, c-2)) {
+            const m3 = glyphToMask.get(ascii[r][c-2]) ?? 0;
+            if (m3 & E) pushUnique(out, r, c-2);
+          }
         }
       }
 
-      // right
-      if ((m & E) && c < COLS-1 && isNetWireCell(r, c+1))
-      {
+      // right (with horizontal-only crossing bypass ─│─)
+      if ((m & E) && c < COLS-1 && isNetWireCell(r, c+1)) {
         const ch2 = ascii[r][c+1];
         const m2  = glyphToMask.get(ch2) ?? 0;
 
-        // normal reciprocal connection
-        if (m2 & W) pushUnique(out, r, c+1 );
-
-        // HORIZONTAL-ONLY CROSS BYPASS: ─│─
-        const isVerticalOnly = (m2 & N) && (m2 & S) && !(m2 & E) && !(m2 & W);
-        if (isVerticalOnly && c+2 < COLS && isNetWireCell(r, c+2))
-        {
-          const ch3 = ascii[r][c+2];
-          const m3  = glyphToMask.get(ch3) ?? 0;
-
-          // ensure the cell beyond can connect back to the left
-          if (m3 & W) pushUnique(out, r, c+2 );
+        if (m2 & W) {
+          pushUnique(out, r, c+1);
+        } else {
+          const isVerticalOnly = (m2 & N) && (m2 & S) && !(m2 & E) && !(m2 & W);
+          if (isVerticalOnly && c+2 < COLS && isNetWireCell(r, c+2)) {
+            const m3 = glyphToMask.get(ascii[r][c+2]) ?? 0;
+            if (m3 & W) pushUnique(out, r, c+2);
+          }
         }
       }
-
 
       return out;
     }
 
-    const visited = new Set();
-    const lines = [];
+    function pushUniqueCR(out, c, r) {
+      for (let i = 0; i < out.length; i++) if (out[i].c === c && out[i].r === r) return;
+      out.push({ c, r });
+    }
+    function hasCR(out, c, r) {
+      for (let i = 0; i < out.length; i++) if (out[i].c === c && out[i].r === r) return true;
+      return false;
+    }
 
-    for (let r = 0; r < ROWS; r++)
+    function tryAddCE(LE, CE, fromR, fromC, compR, compC, needBitOnComp)
     {
-      for (let c = 0; c < COLS; c++)
-      {
-        if (!isNetWireCell(r,c)) continue;
+      if (compR < 0 || compR >= ROWS || compC < 0 || compC >= COLS) return;
+      const kk = KeyRC(compR, compC);
+      if (!compSet.has(kk)) return;
 
-        const rootK = krc(r,c);
+      const chC = ascii?.[compR]?.[compC];
+      if (!chC || chC === " " || chC === "§") return;
+
+      const mC = glyphToMask.get(chC) ?? 0;
+      if (!(mC & needBitOnComp)) return;
+
+      pushUniqueCR(CE, compC, compR);
+      if (!hasCR(LE, fromC, fromR)) pushUniqueCR(LE, fromC, fromR);
+    }
+
+    const visited = new Set();
+    const nets = [];
+
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (!isNetWireCell(r,c)) continue;
+        const rootK = KeyRC(r,c);
         if (visited.has(rootK)) continue;
 
-        // BFS to get one connected component
+        // BFS
         const q = [{r,c}];
         visited.add(rootK);
 
-        const nodes = [];                 // [{r,c}]
-        const deg = new Map();            // key -> degree
-        while (q.length)
-        {
+        const nodes = [];
+        const deg = new Map();
+
+        while (q.length) {
           const cur = q.shift();
-          const ck = krc(cur.r,cur.c);
+          const ck = KeyRC(cur.r, cur.c);
           nodes.push(cur);
 
-          const nbs = connectedNeighbors(cur.r,cur.c);
+          const nbs = connectedNeighbors(cur.r, cur.c);
           deg.set(ck, nbs.length);
 
-          for (let i=0;i<nbs.length;i++)
-          {
-            const nb = nbs[i];
-            const nk = krc(nb.r,nb.c);
+          for (const nb of nbs) {
+            const nk = KeyRC(nb.r, nb.c);
             if (visited.has(nk)) continue;
             visited.add(nk);
             q.push(nb);
           }
         }
 
-        // classify endpoints/junctions
+        if (nodes.length < 2) continue;
+
         const LE = [];
         const LJ = [];
-        // --- Component-end detection (CE) ---
-        // A node can be both a junction and a termination into a component.
-        // So we detect CE adjacency for *all* nodes, not only LE.
         const CE = [];
 
-        function pushUniqueCR(out, c, r) {
-          for (let i = 0; i < out.length; i++) if (out[i].c === c && out[i].r === r) return;
-          out.push({ c, r });
+        // degrees => LE/LJ
+        for (const n of nodes) {
+          const d = deg.get(KeyRC(n.r, n.c)) ?? 0;
+          if (d === 1) pushUniqueCR(LE, n.c, n.r);
+          else if (d >= 3) pushUniqueCR(LJ, n.c, n.r);
         }
 
-        function hasCR(out, c, r) {
-          for (let i = 0; i < out.length; i++) if (out[i].c === c && out[i].r === r) return true;
-          return false;
+        // CE scan on all nodes
+        for (const n of nodes) {
+          const m = glyphToMask.get(ascii[n.r][n.c]) ?? 0;
+          if (m & W) tryAddCE(LE, CE, n.r, n.c, n.r, n.c - 1, E);
+          if (m & E) tryAddCE(LE, CE, n.r, n.c, n.r, n.c + 1, W);
+          if (m & N) tryAddCE(LE, CE, n.r, n.c, n.r - 1, n.c, S);
+          if (m & S) tryAddCE(LE, CE, n.r, n.c, n.r + 1, n.c, N);
         }
 
-        function tryAddCE(fromR, fromC, compR, compC, needBitOnComp) {
-          if (compR < 0 || compR >= ROWS || compC < 0 || compC >= COLS) return;
-
-          const kk = krc(compR, compC);
-          if (!compSet.has(kk)) return;                 // must belong to matched component footprint
-
-          const chC = ascii?.[compR]?.[compC];
-          if (!chC || chC === " " || chC === "§") return;
-
-          // Only accept “pin/protrusion-like” cells that have directional connectivity.
-          const mC = glyphToMask.get(chC) ?? 0;
-          if (!(mC & needBitOnComp)) return;
-
-          // record component cell as CE
-          pushUniqueCR(CE, compC, compR);
-
-          // ALSO: the wire cell is a termination into a component
-          // => include it in LE even if its degree isn't 1.
-          if (!hasCR(LE, fromC, fromR)) pushUniqueCR(LE, fromC, fromR);
+        const out = { LE, LJ, CE, nodes };
+        if (includeCellSet) {
+          const s = new Set();
+          for (const n of nodes) s.add(KeyRC(n.r, n.c));
+          out.cellSet = s;
         }
-
-        // scan all nodes in this net
-        for (let i = 0; i < nodes.length; i++) {
-          const n = nodes[i];
-          const ch = ascii[n.r][n.c];
-          const m  = glyphToMask.get(ch) ?? 0;
-
-          // If this wire node points into a component footprint cell, register CE.
-          // Left neighbor is component -> component must connect right (E)
-          if (m & W) tryAddCE(n.r, n.c, n.r, n.c - 1, E);
-          // Right neighbor is component -> component must connect left (W)
-          if (m & E) tryAddCE(n.r, n.c, n.r, n.c + 1, W);
-          // Up neighbor is component -> component must connect down (S)
-          if (m & N) tryAddCE(n.r, n.c, n.r - 1, n.c, S);
-          // Down neighbor is component -> component must connect up (N)
-          if (m & S) tryAddCE(n.r, n.c, n.r + 1, n.c, N);
-        }
-
-
-        // Only consider components that look like a "line" (>= 2 cells).
-        // Still include loops: LE will be empty, but they are valid nets.
-        if (nodes.length >= 2)
-          lines.push({ LE, LJ, CE });
+        nets.push(out);
       }
     }
 
-    return lines;
+    return nets;
   }
+
+
+
+
+  // Netlist extraction: follow connected wire glyphs outside double-box boundaries.
+  // Returns [{ LE:[{c,r},...], LJ:[{c,r},...]} ...]
+  this.computeNetlistLines = function() {
+    const nets = __computeNetlistCore({ includeCellSet: false });
+    return nets.map(n => ({ LE: n.LE, LJ: n.LJ, CE: n.CE }));
+  };
+
+
+  this.computeNetlistNets = function() {
+    const nets = __computeNetlistCore({ includeCellSet: true });
+    return nets.map(n => ({ cells: n.cellSet, LE: n.LE, LJ: n.LJ, CE: n.CE, CO: n.CE }));
+  };
+  
 
   this.printNetlist = function()
   {
@@ -2688,218 +2665,7 @@ this.startPasteWithText = function(text)
     out.push({r,c});
   }
 
-
-  this.computeNetlistNets = function()
-  {
-    const overlay = this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
-
-    const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set(), footprintSet: new Set() };
-
-    // For CE detection we want the footprint (includes wildcard cells)
-    const compSet = mo.footprintSet ?? mo.solidSet ?? mo.greenSet ?? new Set();
-
-    const banned = this.computeNetlistBannedSet?.(mo, overlay) ?? new Set();
-
-    //const banned = new Set();
-
-    function krc(r,c){ return r + "," + c; }
-
-    function isNetWireCell(r,c)
-    {
-      const k = krc(r,c);
-      if (banned.has(k)) return false;
-      const ch = ascii?.[r]?.[c];
-      if (ch === undefined) return false;
-      if (ch === " ") return false;
-
-      // IMPORTANT: Use glyphToMask as the source of truth for net-wire cells
-      return (glyphToMask.get(ch) ?? 0) !== 0;
-    }
-
-
-    // Horizontal-only “crossing bypass” for pattern ─│─:
-    // If a horizontal segment would “hit” a pure vertical │ cell, it may bridge to the cell beyond.
-    function addHorizontalCrossBridge(r, c, out, dir) {
-      // dir = +1 (right) or -1 (left)
-      const c1 = c + dir;
-      const c2 = c + 2*dir;
-      if (c2 < 0 || c2 >= COLS) return;
-
-      const mid = ascii[r][c1];
-      if (mid !== "│") return; // per your spec: only ─│─
-
-      const mMid = glyphToMask.get(mid) ?? 0;
-      if (mMid !== (N|S)) return; // must be pure vertical
-
-      if (!isNetWireCell(r, c2)) return;
-      const ch2 = ascii[r][c2];
-      const m2  = glyphToMask.get(ch2) ?? 0;
-
-      // Must connect back toward us (so it’s a horizontal on the far side)
-      if (dir === 1 && !(m2 & W)) return;
-      if (dir === -1 && !(m2 & E)) return;
-
-      out.push({ r, c: c2 });
-    }
-
-    function connectedNeighbors(r,c)
-    {
-      const out = [];
-      const ch = ascii[r][c];
-      const m  = glyphToMask.get(ch) ?? 0;
-
-      // up
-      if ((m & N) && r > 0 && isNetWireCell(r-1,c))
-      {
-        const ch2 = ascii[r-1][c];
-        const m2  = glyphToMask.get(ch2) ?? 0;
-        if (m2 & S) out.push({r:r-1,c});
-      }
-      // down
-      if ((m & S) && r < ROWS-1 && isNetWireCell(r+1,c))
-      {
-        const ch2 = ascii[r+1][c];
-        const m2  = glyphToMask.get(ch2) ?? 0;
-        if (m2 & N) out.push({r:r+1,c});
-      }
-      // left
-      if ((m & W))
-      {
-        if (c > 0 && isNetWireCell(r,c-1))
-        {
-          const ch2 = ascii[r][c-1];
-          const m2  = glyphToMask.get(ch2) ?? 0;
-          if (m2 & E) out.push({r,c:c-1});
-          else {
-            // horizontal-only bypass: ─│─ bridges across the │
-            addHorizontalCrossBridge(r, c, out, -1);
-          }
-        }
-        else {
-          addHorizontalCrossBridge(r, c, out, -1);
-        }
-      }
-      // right
-      if ((m & E))
-      {
-        if (c < COLS-1 && isNetWireCell(r,c+1))
-        {
-          const ch2 = ascii[r][c+1];
-          const m2  = glyphToMask.get(ch2) ?? 0;
-          if (m2 & W) out.push({r,c:c+1});
-          else {
-            addHorizontalCrossBridge(r, c, out, +1);
-          }
-        }
-        else {
-          addHorizontalCrossBridge(r, c, out, +1);
-        }
-      }
-
-      return out;
-    }
-
-    const visited = new Set();
-    const nets = [];
-
-    for (let r = 0; r < ROWS; r++)
-    {
-      for (let c = 0; c < COLS; c++)
-      {
-        if (!isNetWireCell(r,c)) continue;
-
-        const rootK = krc(r,c);
-        if (visited.has(rootK)) continue;
-
-        const q = [{r,c}];
-        visited.add(rootK);
-
-        const nodes = [];                 // [{r,c}]
-        const deg = new Map();            // key -> degree
-
-        while (q.length)
-        {
-          const cur = q.shift();
-          const ck = krc(cur.r,cur.c);
-          nodes.push(cur);
-
-          const nbs = connectedNeighbors(cur.r,cur.c);
-          deg.set(ck, nbs.length);
-
-          for (let i=0;i<nbs.length;i++)
-          {
-            const nb = nbs[i];
-            const nk = krc(nb.r,nb.c);
-            if (visited.has(nk)) continue;
-            visited.add(nk);
-            q.push(nb);
-          }
-        }
-
-        const LE = [];
-        const LJ = [];
-        // --- Component-end detection (CE) ---
-        // A node can be both a junction and a termination into a component.
-        // So we detect CE adjacency for *all* nodes, not only LE.
-        const CE = [];
-
-        function pushUniqueCR(out, c, r) {
-          for (let i = 0; i < out.length; i++) if (out[i].c === c && out[i].r === r) return;
-          out.push({ c, r });
-        }
-
-        function hasCR(out, c, r) {
-          for (let i = 0; i < out.length; i++) if (out[i].c === c && out[i].r === r) return true;
-          return false;
-        }
-
-        function tryAddCE(fromR, fromC, compR, compC, needBitOnComp) {
-          if (compR < 0 || compR >= ROWS || compC < 0 || compC >= COLS) return;
-
-          const kk = krc(compR, compC);
-          if (!compSet.has(kk)) return;                 // must belong to matched component footprint
-
-          const chC = ascii?.[compR]?.[compC];
-          if (!chC || chC === " " || chC === "§") return;
-
-          // Only accept “pin/protrusion-like” cells that have directional connectivity.
-          const mC = glyphToMask.get(chC) ?? 0;
-          if (!(mC & needBitOnComp)) return;
-
-          // record component cell as CE
-          pushUniqueCR(CE, compC, compR);
-
-          // ALSO: the wire cell is a termination into a component
-          // => include it in LE even if its degree isn't 1.
-          if (!hasCR(LE, fromC, fromR)) pushUniqueCR(LE, fromC, fromR);
-        }
-
-        // scan all nodes in this net
-        for (let i = 0; i < nodes.length; i++) {
-          const n = nodes[i];
-          const ch = ascii[n.r][n.c];
-          const m  = glyphToMask.get(ch) ?? 0;
-
-          // If this wire node points into a component footprint cell, register CE.
-          // Left neighbor is component -> component must connect right (E)
-          if (m & W) tryAddCE(n.r, n.c, n.r, n.c - 1, E);
-          // Right neighbor is component -> component must connect left (W)
-          if (m & E) tryAddCE(n.r, n.c, n.r, n.c + 1, W);
-          // Up neighbor is component -> component must connect down (S)
-          if (m & N) tryAddCE(n.r, n.c, n.r - 1, n.c, S);
-          // Down neighbor is component -> component must connect up (N)
-          if (m & S) tryAddCE(n.r, n.c, n.r + 1, n.c, N);
-        }
-
-
-        if (nodes.length >= 2) {
-          nets.push({ cells: nodes, LE, LJ, CE, CO: CE });
-        }
-      }
-    }
-
-    return nets;
-  };
+  function KeyRC(r,c){ return r + "," + c; }
 
 
   this.computeNetlistBannedSet = function(moIn, hlIn)
