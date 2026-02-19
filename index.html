@@ -1676,19 +1676,16 @@ netlistBtn.addEventListener("click", () =>
   try {
     netlistCache = null;     // force rebuild
     __ensureNetlistCache();
-
+    toolHint.style.color = "black";
     toolHint.textContent = "Netlist: " + (netlistCache?.nets?.length ?? 0) + " net(s) found. Hover a wire to highlight.";
-
-    //oASC.printNetlist();
 
     updateUI();
     draw("netlistOn");
   }
   catch (err) {
+    toolHint.style.color = "red";
     toolHint.textContent = "Netlist: error (see console).";
     console.error(err);
-    if (window.oTERM && typeof oTERM.output === "function")
-      oTERM.output("[ERROR] Netlist: " + oCOM.escapeHTML(err && err.message ? err.message : String(err)));
   }
 });
 
