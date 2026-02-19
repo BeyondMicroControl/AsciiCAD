@@ -1379,7 +1379,10 @@ this.startPasteWithText = function(text)
     //overlay.redSet?.forEach(k => banned.add(k));
     //overlay.insideSet?.forEach(k => banned.add(k));
 
-    function krc(r,c){ return r + "," + c; }
+    const krc = (typeof keyRC === "function")
+    ? keyRC
+    : (r,c) => r + "," + c;
+
 
     // Wire cell predicate for netlist purposes:
     // - must be a wire glyph
@@ -1505,25 +1508,25 @@ this.startPasteWithText = function(text)
         const LE = [];
         const LJ = [];
         const CE = []; // component endings adjacent to LE (catalog pins/protrusions)
-        function pushUniqueCR(out, c, r)
-        {
+        function pushUniqueCR(out, c, r){
           for (let i=0;i<out.length;i++) if (out[i].c===c && out[i].r===r) return;
           out.push({ c, r });
         }
-        function tryAddCE(compR, compC, needBit)
-        {
+
+        function tryAddCE(compR, compC, needBit){
           if (compR < 0 || compR >= ROWS || compC < 0 || compC >= COLS) return;
           const kk = krc(compR, compC);
           if (!compSet.has(kk)) return;
+
           const chC = ascii?.[compR]?.[compC];
-          if (chC === undefined || chC === " " || chC === "§") return;
-          // Only treat wire-ish protrusions as component endings
-          if (!oASC.isWireGlyph(chC)) return;
-          const mC = (glyphToMask.get(chC) ?? (N|S|E|W));
+          if (!chC || chC === " " || chC === "§") return;
+
+          // allow protrusions like ─ │ ╪ ╫ ╢ ╟ ╧ ╤ etc:
+          const mC = glyphToMask.get(chC) ?? 0;
           if (!(mC & needBit)) return;
+
           pushUniqueCR(CE, compC, compR);
         }
-
 
         for (let i=0;i<nodes.length;i++)
         {
@@ -1533,9 +1536,8 @@ this.startPasteWithText = function(text)
           else if (d >= 3) LJ.push({ c: n.c, r: n.r });
         }
 
-        // detect component endings (catalog pins) adjacent to LE
-        for (let i=0;i<LE.length;i++)
-        {
+        // for each LE, look at adjacent component cells
+        for (let i=0;i<LE.length;i++){
           const le = LE[i];
           tryAddCE(le.r, le.c-1, E);
           tryAddCE(le.r, le.c+1, W);
@@ -1543,11 +1545,10 @@ this.startPasteWithText = function(text)
           tryAddCE(le.r+1, le.c, N);
         }
 
-
         // Only consider components that look like a "line" (>= 2 cells).
         // Still include loops: LE will be empty, but they are valid nets.
         if (nodes.length >= 2)
-          lines.push({ LE, LJ, CE, CO: CE });
+          nets.push({ cells: nodes, LE, LJ, CE });
       }
     }
 
