@@ -1548,7 +1548,7 @@ this.startPasteWithText = function(text)
         // Only consider components that look like a "line" (>= 2 cells).
         // Still include loops: LE will be empty, but they are valid nets.
         if (nodes.length >= 2)
-          nets.push({ cells: nodes, LE, LJ, CE });
+          lines.push({ LE, LJ, CE });
       }
     }
 
