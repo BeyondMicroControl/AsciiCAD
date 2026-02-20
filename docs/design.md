@@ -24,7 +24,7 @@ This matters because AsciiCAD’s strategy for reaching higher complexity is not
 - then add features that compose on top of those rules (netlist, matching, labels, tooling)
 
 
-# Design policy
+# Policy design
 
 In concrete terms, this chapter answers the core question:
 “Given a 2D grid of characters, what do they mean — and what must the software do consistently as a result?”
