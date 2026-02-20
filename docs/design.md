@@ -54,7 +54,7 @@ A construct allowing intelligent entities to **Transform thought into data, and 
 - **Natural interchange format:**
   Plain text files are one of the most universal interchange formats available. Any editor, terminal, diff tool, or viewer can display and transmit AsciiCAD output. This makes schematics inherently portable and human-readable, without a special exporter.
 
-
+<br>
 
 # AsciiCAD policy
 ## Terminology
