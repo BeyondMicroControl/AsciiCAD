@@ -13,7 +13,7 @@
 
 **Read these when the topic comes up during the session:**
 
-- [design.md](design.md) - Design strategy
+- [design.md](design.md) - Design strategy & Policy
 <!-- - [testing.md](testing.md) - Test-driven development (TDD) -->
 <!-- - [refactoring.md](refactoring.md) - When and how to refactor code -->
 <!-- - [design-patterns.md](design-patterns.md) - Preferred design patterns -->
