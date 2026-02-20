@@ -61,7 +61,7 @@ A construct allowing intelligent entities to **Transform thought into data, and 
 ### Grid Cell
 We represent a cell location as a stable string key "r,c".
 
-Because:
+**Rationale:** 
 - Native JavaScript Map/Set use reference identity for objects, so {r:1,c:2} can’t be used reliably as a key unless you keep the same object instance around.
 - A string key gives:
   - value identity ("1,2" equals "1,2" anywhere)
@@ -91,7 +91,7 @@ A glyph’s “line function” is then just a bitwise OR of the directions it c
 
 - `E | S | W = 0b0010 | 0b0100 | 0b1000 = 0b1110`
 
-Why this is better than character checks:
+**Rationale:** Why this is better than character checks:
 - It generalizes across many Unicode box-drawing variants.
 - It makes junction tests trivial: e.g. a junction-like cell often has 3+ bits set.
 - It keeps code readable and stable: `if (m & E)` says exactly what it means.
@@ -150,7 +150,6 @@ For net tracing, cells belonging to matched catalog items are filtered out using
 The wildcard character is used in CATALOG patterns to match variable content.
 
 Policy:
-
 - `§` participates in matching (pattern recognition).
 - `§` does not participate in:
   - match highlighting
@@ -175,12 +174,12 @@ We intentionally support **one canonical crossing pattern**:
 
 `─│─`
 
-Meaning:
-- horizontal and vertical lines cross without connection (no junction)
-  - horizontal connectivity may “bridge over” a vertical-only glyph to continue
-  - - vertical connectivity does not bridge through horizontal-only glyphs
+Horizontal and vertical lines cross without connection (no junction)
+**Rationale:**
+- horizontal connectivity may “bridge over” a vertical-only glyph to continue
+- vertical connectivity does not bridge through horizontal-only glyphs
 
-**Clarifying note / design tradeoff:**
+Notes:
 - We could add an equally valid rotated/alternative crossing convention (e.g. a different arrangement or spacing), but every additional alias increases:
   - detection ambiguity
   - risk of false junctions
@@ -190,12 +189,9 @@ Meaning:
 ### F. Junction glyphs
 
 Junctions are characters with branching masks, e.g.:
-
 - `├ ┤ ┬ ┴ ┼` and similar box-drawing junctions
 
 A cell is considered a junction (`LJ`) when its graph degree is ≥ 3.
-
-
 
 ## Endpoint policy
 
