@@ -78,27 +78,27 @@ Note: other encodings are possible (e.g. r<<16|c), but "r,c" is explicit, safe, 
 
 #### Wire glyph
 
-Why glyphToMask exists (and why it’s used for net logic)
+Why `glyphToMask` exists (and why it’s used for net logic)
 
 AsciiCAD treats “wire symbols” as functions (“connectivity directions”) rather than as literal characters.
 
 We encode each glyph’s connectivity using a 4-bit mask:
-- N = 0b0001
-- E = 0b0010
-- S = 0b0100
-- W = 0b1000
+- N = `0b0001`
+- E = `0b0010`
+- S = `0b0100`
+- W = `0b1000`
 
 A glyph’s “line function” is then just a bitwise OR of the directions it connects.
 
 **Example:**
-╤ connects E + S + W, which becomes:
+`╤` connects E + S + W, which becomes:
 
-- E | S | W = 0b0010 | 0b0100 | 0b1000 = 0b1110
+- `E | S | W = 0b0010 | 0b0100 | 0b1000 = 0b1110`
 
 Why this is better than character checks:
 - It generalizes across many Unicode box-drawing variants.
 - It makes junction tests trivial: e.g. a junction-like cell often has 3+ bits set.
-- It keeps code readable and stable: if (m & E) says exactly what it means.
+- It keeps code readable and stable: `if (m & E)` says exactly what it means.
 
 This approach scales better than large “if char in …” lists and reduces bugs when new glyphs are introduced.
 
@@ -106,12 +106,12 @@ This approach scales better than large “if char in …” lists and reduces bu
 #### Netline
 
 A netline entry contains:
-- <pre>LE</pre>: wire ends and wire→component terminations
-- LJ: branching junctions (graph degree ≥ 3)
-- CE: component-edge glyph cells (pins/protrusions) adjacent to wire
-- CJ: component-internal junctions / pin-to-pin connections (*)
+- `LE`: wire ends and wire→component terminations
+- `LJ`: branching junctions (graph degree ≥ 3, meaning 3 legs)
+- `CE`: component-edge glyph cells (pins/protrusions) adjacent to wire
+- `CJ`: component-internal junctions / pin-to-pin connections (*)
 
-CJ **— component internal connectivity (*)**
+`CJ` **— component internal connectivity (*)**
 
 Some components create **permanent** connectivity between pins without external wires:
 - connectors (pin ↔ pin)
@@ -123,5 +123,5 @@ Policy intent:
 
 Notes:
 - Switches are special: their connectivity can depend on state, so they may be excluded from netlist policy or represented as conditional connectivity (*).
-- CJ would allow the net engine to optionally “collapse” nets through components that behave like fixed links. (*)
+- `CJ` would allow the net engine to optionally “collapse” nets through components that behave like fixed links. (*)
 
