@@ -414,6 +414,40 @@ function ASC()
     return out;
   }
 
+  // Extract a stable LabelID from a CATALOG item (used for CATALOG items of type "Net").
+  // - Removes whitespace/newlines and the wildcard character ("§").
+  // - Removes wire glyphs (box-drawing) so rotation does not affect the ID.
+  // - Falls back to the catalog item name (e.g. GND).
+  this.NetLabelID = function(catalog_idx, rotation)
+  {
+    const items = (typeof CATALOG !== "undefined" && Array.isArray(CATALOG)) ? CATALOG : [];
+    const it = items[catalog_idx];
+    if (!it) return "";
+
+    const td = it.text_data;
+    const variants = Array.isArray(td) ? td : [td];
+    const raw = String(variants[rotation] ?? "");
+
+    const expanded = this.expandWideCharsForGrid(raw);
+    let out = "";
+
+    for (let i = 0; i < expanded.length; i++)
+    {
+      const ch = expanded[i];
+      if (ch === " " || ch === "\n" || ch === "\r" || ch === "\t") continue;
+      if (typeof WILDCHAR_U !== "undefined" && ch === WILDCHAR_U) continue;
+
+      // Drop wire glyphs (box drawing chars) so rotation/protrusions don't affect LabelID.
+      if ((glyphToMask.get(ch) ?? 0) !== 0) continue;
+
+      out += ch;
+    }
+
+    out = out.trim();
+    if (!out) out = String(it.name ?? "");
+    return out;
+  }
+
   // TODO: unused, check why
   // INFO: likely replaced by commitLineWithOptionalMerge()
   this.commitLine = function()
@@ -1279,7 +1313,8 @@ this.startPasteWithText = function(text)
         let w = 0;
         for (let j = 0; j < lines.length; j++) w = Math.max(w, (lines[j] ?? "").length);
 
-        out.push({ lines, first, w, h: lines.length });
+        const uid = (String(it.name ?? "") + "_" + String(it.type ?? "Other") + "_" + String(it.MFR ?? ""));
+        out.push({ lines, first, w, h: lines.length, catalog_idx: i, rotation: k, uid, name: it.name, type: it.type, MFR: it.MFR });
       }
     }
     return out;
@@ -1374,14 +1409,14 @@ this.startPasteWithText = function(text)
     const mo = oASC.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set(), footprintSet: new Set() };
 
     // For CE detection we want the footprint (includes wildcard cells)
-    const compSet = mo.footprintSet ?? mo.solidSet ?? mo.greenSet ?? new Set();
+    const compSet = mo.solidSet ?? mo.greenSet ?? mo.footprintSet ?? new Set();
 
     // One source of truth for banned
     const banned = oASC.computeNetlistBannedSet?.(mo, overlay) ?? new Set();
 
     function isNetWireCell(r,c)
     {
-      const k = keyRC(r,c);
+      const k = KeyRC(r,c);
       if (banned.has(k)) return false;
       const ch = ascii?.[r]?.[c];
       if (ch === undefined) return false;
@@ -1467,7 +1502,7 @@ this.startPasteWithText = function(text)
     }
 
     const visited = new Set();
-    const nets = [];
+    let nets = [];
 
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
@@ -1530,9 +1565,111 @@ this.startPasteWithText = function(text)
       }
     }
 
+    // Merge nets that are logically tied together by catalog items of type "Net" (e.g. GND, NetLabel).
+    // A net is considered connected to a Net-label item if one of its CE coordinates lies on that catalog item.
+    if (mo && mo.matches && mo.matchByCell && typeof CATALOG !== "undefined" && Array.isArray(CATALOG))
+    {
+      const parent = new Array(nets.length);
+      for (let i = 0; i < parent.length; i++) parent[i] = i;
+
+      const find = (x) => {
+        while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; }
+        return x;
+      };
+      const union = (a, b) => {
+        a = find(a); b = find(b);
+        if (a !== b) parent[b] = a;
+      };
+
+      // labelID -> [netIdx,...]
+      const labelToNets = new Map();
+
+      for (let ni = 0; ni < nets.length; ni++)
+      {
+        const net = nets[ni];
+        const touched = new Set();
+
+        for (let i = 0; i < (net.CE?.length ?? 0); i++)
+        {
+          const ce = net.CE[i];
+          const k = KeyRC(ce.r, ce.c);
+          const mid = mo.matchByCell.get(k);
+          if (mid === undefined || mid === null) continue;
+
+          const m = mo.matches[mid];
+          if (!m) continue;
+
+          const ty = String(m.type ?? CATALOG?.[m.catalog_idx]?.type ?? "");
+          if (ty !== "Net") continue;
+
+          const labelID = oASC.NetLabelID?.(m.catalog_idx, m.rotation) ?? "";
+          if (!labelID) continue;
+          touched.add(labelID);
+        }
+
+        for (const labelID of touched)
+        {
+          if (!labelToNets.has(labelID)) labelToNets.set(labelID, []);
+          labelToNets.get(labelID).push(ni);
+        }
+      }
+
+      // Union nets that share the same labelID
+      for (const arr of labelToNets.values())
+      {
+        if (!arr || arr.length < 2) continue;
+        const base = arr[0];
+        for (let i = 1; i < arr.length; i++) union(base, arr[i]);
+      }
+
+      // If nothing merged, keep as-is
+      let anyMerge = false;
+      for (let i = 0; i < parent.length; i++) { if (parent[i] !== i) { anyMerge = true; break; } }
+
+      if (anyMerge)
+      {
+        const groups = new Map();
+
+        for (let i = 0; i < nets.length; i++)
+        {
+          const root = find(i);
+          let g = groups.get(root);
+          if (!g)
+          {
+            g = { LE: [], LJ: [], CE: [], nodes: [] };
+            if (includeCellSet) g.cellSet = new Set();
+            groups.set(root, g);
+          }
+
+          const n = nets[i];
+          for (let j = 0; j < (n.LE?.length ?? 0); j++) pushUniqueCR(g.LE, n.LE[j].c, n.LE[j].r);
+          for (let j = 0; j < (n.LJ?.length ?? 0); j++) pushUniqueCR(g.LJ, n.LJ[j].c, n.LJ[j].r);
+          for (let j = 0; j < (n.CE?.length ?? 0); j++) pushUniqueCR(g.CE, n.CE[j].c, n.CE[j].r);
+
+          if (Array.isArray(n.nodes)) g.nodes = g.nodes.concat(n.nodes);
+
+          if (includeCellSet)
+          {
+            if (n.cellSet && typeof n.cellSet.forEach === "function")
+            {
+              n.cellSet.forEach(k => g.cellSet.add(k));
+            }
+            else if (Array.isArray(n.nodes))
+            {
+              for (let j = 0; j < n.nodes.length; j++) g.cellSet.add(KeyRC(n.nodes[j].r, n.nodes[j].c));
+            }
+          }
+        }
+
+        const roots = Array.from(groups.keys()).sort((a,b) => a-b);
+        const merged = [];
+        for (let i = 0; i < roots.length; i++) merged.push(groups.get(roots[i]));
+        nets = merged;
+      }
+    }
+
     return nets;
   }
-
 
 
 
@@ -1613,11 +1750,13 @@ this.startPasteWithText = function(text)
   {
     const greenSet = new Set();
     const rects = [];
+    const matches = [];            // [{matchId,r0,c0,r1,c1,catalog_idx,rotation,uid,name,type}]
+    const matchByCell = new Map(); // keyRC(r,c) -> matchId (solid cells only)
     const solidSet = new Set(); // NEW: for netlist masking (skip ' ' and '§')
     const footprintSet = new Set();  // component footprint (skip ' ' only)
 
     if (!(typeof CATALOG !== "undefined" && Array.isArray(CATALOG)))
-      return { greenSet, rects, solidSet, footprintSet };
+      return { greenSet, rects, solidSet, footprintSet, matches, matchByCell };
 
     if (!catalogVariantsCache) catalogVariantsCache = this.buildCatalogVariants();
 
@@ -1656,9 +1795,14 @@ this.startPasteWithText = function(text)
             if (!this.lineMatchesAt(gl, c0, pl)) { ok = false; break; }
           }
           if (!ok) continue;
+          // NEW: record match meta (catalog item + rotation)
+          const matchId = matches.length;
+          const r1 = r0 + h - 1;
+          const c1 = c0 + w - 1;
+          matches.push({ matchId, r0, c0, r1, c1, catalog_idx: pat.catalog_idx, rotation: pat.rotation, uid: pat.uid, name: pat.name, type: pat.type });
 
           // NEW: record full bounding rectangle (includes spaces)
-          rects.push({ r0, c0, r1: r0 + h - 1, c1: c0 + w - 1 });
+          rects.push({ r0, c0, r1, c1 });
 
           // existing: mark matched glyph cells in green (skip spaces)
           for (let rr = 0; rr < h; rr++)
@@ -1682,6 +1826,7 @@ this.startPasteWithText = function(text)
               if (pc !== "§") {
                 greenSet.add(k);
                 solidSet.add(k);
+                matchByCell.set(k, matchId);
               }
             }
           }
@@ -1689,7 +1834,7 @@ this.startPasteWithText = function(text)
       }
     }
 
-    return { greenSet, rects, solidSet, footprintSet };
+    return { greenSet, rects, solidSet, footprintSet, matches, matchByCell };
   }
 
 

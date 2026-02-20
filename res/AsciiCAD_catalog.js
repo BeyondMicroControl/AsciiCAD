@@ -1762,9 +1762,9 @@ function CharRotation(char_arr)
   return arr;
 }
 
-function NetLabelID(catalog_item,rotation)
+function NetLabelID(catalog_idx,rotation)
 {
-  const LabelID = catalog_item.text_data[rotation].replace(new RegExp("[\s\n"+WILDCHAR_U+"]","g"),"");
+  const LabelID = CATALOG[catalog_idx].text_data[rotation].replace(new RegExp("[\s\n"+WILDCHAR_U+"]","g"),"");
   return LabelID; 
 }
 
