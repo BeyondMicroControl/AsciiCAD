@@ -1492,7 +1492,7 @@ this.startPasteWithText = function(text)
       if (!compSet.has(kk)) return;
 
       const chC = ascii?.[compR]?.[compC];
-      if (!chC || chC === " " || chC === "§") return;
+      if (!chC || chC === " " || chC === WILDCHAR_U) return;
 
       const mC = glyphToMask.get(chC) ?? 0;
       if (!(mC & needBitOnComp)) return;
@@ -1823,7 +1823,7 @@ this.startPasteWithText = function(text)
               footprintSet.add(k);
 
               // Visual highlight + ban mask exclude wildcard cells
-              if (pc !== "§") {
+              if (pc !== WILDCHAR_U) {
                 greenSet.add(k);
                 solidSet.add(k);
                 matchByCell.set(k, matchId);

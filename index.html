@@ -321,7 +321,7 @@ let catalogTab = "All";
 
 
 // Bit flags for connections
-const N = 1, E = 2, S = 4, W = 8;
+const N = 0b0001, E = 2, S = 4, W = 8;
 
 // Only "light" box drawing for now (keeps it simple & readable)
 const glyphToMask = new Map([
@@ -574,7 +574,7 @@ function renderCatalogGrid()
         updateOpLine("catalog",it);
 
         const expanded = oASC.expandWideCharsForGrid(text_data || "");
-        const forPaste = expanded.replace(/§/g, " ");   // WILDCARD_U becomes a real space for placement
+        const forPaste = expanded.replace(new Regexp(WILDCHAR_U,"g"), " ");   // WILDCARD_U becomes a real space for placement
         oASC.startPasteWithText(forPaste);
 
         canvas.focus();
