@@ -1,14 +1,14 @@
 # Design strategy
 
 In Januray 2026, the idea to develop AsciiCAD was born.
-As deceiving it may sound; AsciiCAD was never aiming at becoming a serious application, but it was built with serious intent nonetheless. 
+As deceiving it may sound; AsciiCAD was never aiming at becoming a serious application, but was built with serious intent nonetheless. 
 
-While mainstream applications, and certainly Computer Aided Design tools are made of vertical layers -the complexity makeup, ruled by functions- and horizontal pillars -the multimodal makeup or data-, our experiment collapses the horizontals and simplifies the foundation, hoping this way (that's our hypothesis) achieving maturity more quickly.
+While mainstream applications, and certainly Computer Aided Design tools are made of **vertical layers** -the complexity makeup, ruled by functions- and **horizontal pillars** -the multimodal makeup or data-, our experiment collapses the horizontals and simplifies the foundation, hoping this way (that's our hypothesis) achieving maturity more quickly.
 
 That collapse is not an accident, but a deliberate strategy - quoting the opening statement for this project “designed as a ‘digital essay’ on fast-tracking complexity by strategising bare-bones simplicity at its conception.”  
 
 This deserves more elaboration:
-With collapsing the horizontals, we refer to 'business data' usually living in applications, over three separate datasets:
+With collapsing the horizontals, we refer to 'business data' usually living in applications, over three different datasets:
 - a dataset tailored for graphical representation and human-machine interfacing
 - an internal dataset allowing application functions to make internal process decisions, or perform algorithmic operations.
 - plus one or more datasets tailored for interoperability with other compatible applications or systems   
@@ -16,10 +16,9 @@ With collapsing the horizontals, we refer to 'business data' usually living in a
 In AsciiCAD, we collapse these three layers into just one, allowing just one definition and one policy to do all the heavy lifting.
 ed as a ‘digital essay’ on fast-tracking complexity by strategising bare-bones simplicity at its conception.”
 
-Having only one representation layer to worry about brings a practical advantage: it concentrates effort where it matters most — on precise, high-quality policy writing and on forging detailed, shared agreements about interpretation and formatting. Those agreements become the “protocols” that makes the system scale.
+Having only **one representation layer** to worry about brings a practical advantage: it concentrates effort where it matters most — on precise, high-quality policy writing and on forging detailed, shared agreements about interpretation and formatting. Those agreements become the “protocols” that makes the system scale.
 
 This matters because AsciiCAD’s strategy for reaching higher complexity is not to multiply parallel abstractions, but to build understandable layers on top of each other:
-
 - start with a stable, minimal base (grid of glyphs)
 - define strict interpretation rules (policy document)
 - then add features that compose on top of those rules (netlist, matching, labels, tooling)
@@ -58,11 +57,8 @@ A construct allowing intelligent entities to **Transform thought into data, and 
 
 
 ## The AsciiCAD policy makeup
-
 ### Terminology
-
 #### Grid Cell
-
 We represent a cell location as a stable string key "r,c".
 
 Because:
