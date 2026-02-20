@@ -56,9 +56,9 @@ A construct allowing intelligent entities to **Transform thought into data, and 
 
 
 
-## The AsciiCAD policy makeup
-### Terminology
-#### Grid Cell
+# AsciiCAD policy
+## Terminology
+### Grid Cell
 We represent a cell location as a stable string key "r,c".
 
 Because:
@@ -72,7 +72,7 @@ Because:
 
 Note: other encodings are possible (e.g. r<<16|c), but "r,c" is explicit, safe, and readable. (A packed numeric key could be a later micro-optimization, if needed.) (*)
 
-#### Wire glyph
+### Wire glyph
 
 Why `glyphToMask` exists (and why it’s used for net logic)
 
@@ -99,7 +99,7 @@ Why this is better than character checks:
 This approach scales better than large “if char in …” lists and reduces bugs when new glyphs are introduced.
 
 
-#### Netline
+### Netline
 
 A netline entry contains:
 - `LE`: wire ends and wire→component terminations
@@ -122,8 +122,8 @@ Notes:
 - `CJ` would allow the net engine to optionally “collapse” nets through components that behave like fixed links. (*)
 
 
-### Input filtering policy
-#### A. Exclude double-line boxes
+## Input filtering policy
+### A. Exclude double-line boxes
 
 Wires that lie **inside** or **on the boundary** of valid double-line boxes must be ignored for netlist purposes.
 - Uses the same box-detection logic as computeHighlightOverlay().
@@ -133,7 +133,7 @@ Wires that lie **inside** or **on the boundary** of valid double-line boxes must
 
 **Rationale:** double-line boxes represent grouped blocks; internal wiring should not leak into external nets.
 
-#### B. Exclude matched catalog component interior glyphs (net tracing)
+### B. Exclude matched catalog component interior glyphs (net tracing)
 
 Catalog components can include wire-like characters (e.g., `─│═║`) that must not be interpreted as wiring.
 
@@ -145,7 +145,7 @@ For net tracing, cells belonging to matched catalog items are filtered out using
 
 **Rationale:** a component symbol can visually contain lines that are not part of the external wiring network.
 
-#### C. Wildcard meaning
+### C. Wildcard meaning
 
 The wildcard character is used in CATALOG patterns to match variable content.
 
@@ -159,7 +159,7 @@ Policy:
 
 Connectivity policy (wire-to-wire)
 
-#### D. Local connectivity model
+### D. Local connectivity model
 
 Connectivity between cells is determined using:
 - `glyphToMask` for a cell’s directional exits
@@ -169,7 +169,7 @@ Example: a connection from A → right requires:
 - `A` has `E`
 - neighbor has `W`
 
-#### E. Crossings without junction `─│─`
+### E. Crossings without junction `─│─`
 
 We intentionally support **one canonical crossing pattern**:
 
@@ -187,7 +187,7 @@ Meaning:
   - maintenance burden
 - Since users can already draw crossings reliably using a single convention, we prefer “one pattern, well-tested” over multiple patterns that are hard to validate.
 
-#### F. Junction glyphs
+### F. Junction glyphs
 
 Junctions are characters with branching masks, e.g.:
 
@@ -197,9 +197,9 @@ A cell is considered a junction (`LJ`) when its graph degree is ≥ 3.
 
 
 
-### Endpoint policy
+## Endpoint policy
 
-#### G. Line ends `LE`
+### G. Line ends `LE`
 
 A wire cell is considered a line end if:
 
@@ -212,8 +212,8 @@ This allows a node to be both:
 
 **Rationale:** a tee/junction glyph can still represent a “terminal” into a component even while conducting elsewhere.
 
-### Component interaction policy
-#### H. Component footprint sets
+## Component interaction policy
+### H. Component footprint sets
 
 We derive multiple sets from catalog matching. The goal is to separate **three different concerns:**
 1. What we highlight visually
@@ -247,7 +247,7 @@ If we agree, we can rename in the document (and optionally in code later):
 
 This would reduce cognitive load for new contributors. (*)
 
-#### I. Component ends `CE`
+### I. Component ends `CE`
 
 A component end is recorded when a wire cell has a directional exit into an adjacent cell that:
 - belongs to a matched catalog item’s footprintSet, and
@@ -260,7 +260,7 @@ Additionally, the wire cell is forced into `LE` (“termination into component�
 
 **Rationale:** CE represents the component’s “pin/protrusion glyph”, not the wire cell itself.
 
-#### J. “Protrusions” and pin glyphs
+### J. “Protrusions” and pin glyphs
 
 Pins/protrusions can be:
 - straight wire glyphs on the component edge: ─ │
@@ -268,8 +268,8 @@ Pins/protrusions can be:
 
 Policy: CE detection relies on `glyphToMask`, not a narrow `isWireGlyph()`, so these protrusions are supported.
 
-### Net-label (“type: Net”) policy
-#### K. Net-label components
+## Net-label (“type: Net”) policy
+### K. Net-label components
 
 Catalog items with:
 - type === "Net"
@@ -280,7 +280,7 @@ Examples:
 - `GND`
 - `NetLabel` (circled digits)
 
-#### L. LabelID extraction
+### L. LabelID extraction
 
 Each Net-label match has:
 - `catalog_idx`
@@ -294,7 +294,7 @@ LabelID is derived from the catalog pattern text_data\[rotation\] by stripping:
 If the result is empty, fallback to:
 - `CATALOG\[catalog_idx\].name`
 
-#### M. Net merge rule
+### M. Net merge rule
 
 If two (or more) nets each touch a Net-label component with the same LabelID, they are considered **the same net**.
 
@@ -307,14 +307,14 @@ Merge behavior:
 
 **Rationale:** labels create logical connectivity without a drawn wire.
 
-### Output policy
-#### N. Netlist interactive mode
+## Output policy
+### N. Netlist interactive mode
 
 When Netlist mode is ON:
 - hovering a wire cell highlights the entire net in BLUE
 - in debug mode, CE cells can be overlaid in RED for inspection
 
-#### O. JSON netlist report
+### O. JSON netlist report
 
 The JSON report uses netline objects:
 - `{ LE, LJ, CE }`
