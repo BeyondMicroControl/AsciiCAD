@@ -121,3 +121,202 @@ Notes:
 - Switches are special: their connectivity can depend on state, so they may be excluded from netlist policy or represented as conditional connectivity (*).
 - `CJ` would allow the net engine to optionally “collapse” nets through components that behave like fixed links. (*)
 
+
+### Input filtering policy
+#### A. Exclude double-line boxes
+
+Wires that lie **inside** or **on the boundary** of valid double-line boxes must be ignored for netlist purposes.
+- Uses the same box-detection logic as computeHighlightOverlay().
+- Banned cells include:
+  - box boundary (“redSet”)
+  - box interior (“insideSet”)
+
+**Rationale:** double-line boxes represent grouped blocks; internal wiring should not leak into external nets.
+
+#### B. Exclude matched catalog component interior glyphs (net tracing)
+
+Catalog components can include wire-like characters (e.g., `─│═║`) that must not be interpreted as wiring.
+
+For net tracing, cells belonging to matched catalog items are filtered out using a catalog-derived set:
+
+- **solidSet** = all matched pattern cells that are:
+  - not a space
+  - not the wildcard character §
+
+**Rationale:** a component symbol can visually contain lines that are not part of the external wiring network.
+
+#### C. Wildcard meaning
+
+The wildcard character is used in CATALOG patterns to match variable content.
+
+Policy:
+
+- `§` participates in matching (pattern recognition).
+- `§` does not participate in:
+  - match highlighting
+  - netlist banned masking (`solidSet`)
+  - `CE` detection (it should not create a phantom protrusion)
+
+Connectivity policy (wire-to-wire)
+
+#### D. Local connectivity model
+
+Connectivity between cells is determined using:
+- `glyphToMask` for a cell’s directional exits
+- reciprocal direction requirement in the neighbor
+
+Example: a connection from A → right requires:
+- `A` has `E`
+- neighbor has `W`
+
+#### E. Crossings without junction `─│─`
+
+We intentionally support **one canonical crossing pattern**:
+
+`─│─`
+
+Meaning:
+- horizontal and vertical lines cross without connection (no junction)
+  - horizontal connectivity may “bridge over” a vertical-only glyph to continue
+  - - vertical connectivity does not bridge through horizontal-only glyphs
+
+**Clarifying note / design tradeoff:**
+- We could add an equally valid rotated/alternative crossing convention (e.g. a different arrangement or spacing), but every additional alias increases:
+  - detection ambiguity
+  - risk of false junctions
+  - maintenance burden
+- Since users can already draw crossings reliably using a single convention, we prefer “one pattern, well-tested” over multiple patterns that are hard to validate.
+
+#### F. Junction glyphs
+
+Junctions are characters with branching masks, e.g.:
+
+- `├ ┤ ┬ ┴ ┼` and similar box-drawing junctions
+
+A cell is considered a junction (`LJ`) when its graph degree is ≥ 3.
+
+
+
+### Endpoint policy
+
+#### G. Line ends `LE`
+
+A wire cell is considered a line end if:
+
+1. It has graph degree == 1 (classic endpoint), OR
+2. It terminates into a component footprint (see CE rules) even if its graph degree != 1
+
+This allows a node to be both:
+- a junction (`LJ`, degree ≥ 3, meaning min. 3 legs)
+- and a termination into a component (LE via component adjacency)
+
+**Rationale:** a tee/junction glyph can still represent a “terminal” into a component even while conducting elsewhere.
+
+### Component interaction policy
+#### H. Component footprint sets
+
+We derive multiple sets from catalog matching. The goal is to separate **three different concerns:**
+1. What we highlight visually
+2. What we remove from net tracing
+3. What we consider part of the component presence for CE/pin adjacency
+
+Current naming:
+- `greenSet`: used for match highlight (green overlay)
+- `solidSet`: used as “ban mask” for net tracing
+- `footprintSet`: used for component presence / CE detection
+
+**Clarifying explanations**
+- `greenSet` (“highlight set”)
+  Cells that should be visually highlighted as part of a match.
+  Skips spaces and wildcard § so we don’t highlight “variable/unknown” placeholders.
+
+- `solidSet` (“ban mask”)
+  Cells that are treated as “occupied by a component” for net tracing.
+  Also skips § because wildcard regions should not erase wiring by default.
+
+`footprintSet` (“presence/shape set”)
+Cells that define where the component exists for adjacency tests (CE).
+Includes wildcard § positions because those positions still belong to the component’s “shape,” even if we don’t highlight or ban them.
+
+**Possible naming improvement (*)**
+
+If we agree, we can rename in the document (and optionally in code later):
+- `greenSet` → `matchHighlightSet`
+- `solidSet` → `netTraceBanSet` (or componentOccupancySet)
+- `footprintSet` → `componentFootprintSet`
+
+This would reduce cognitive load for new contributors. (*)
+
+#### I. Component ends `CE`
+
+A component end is recorded when a wire cell has a directional exit into an adjacent cell that:
+- belongs to a matched catalog item’s footprintSet, and
+- contains a glyph that expresses directional connectivity toward the wire (via glyphToMask)
+
+The component-side cell coordinate is recorded as:
+- `CE += {c, r}`
+
+Additionally, the wire cell is forced into `LE` (“termination into component”).
+
+**Rationale:** CE represents the component’s “pin/protrusion glyph”, not the wire cell itself.
+
+#### J. “Protrusions” and pin glyphs
+
+Pins/protrusions can be:
+- straight wire glyphs on the component edge: ─ │
+- small connector glyphs: `╪ ╫ ╢ ╟ ╧ ╤` (and others supported by `glyphToMask`)
+
+Policy: CE detection relies on `glyphToMask`, not a narrow `isWireGlyph()`, so these protrusions are supported.
+
+### Net-label (“type: Net”) policy
+#### K. Net-label components
+
+Catalog items with:
+- type === "Net"
+
+are interpreted as logical connectivity labels.
+
+Examples:
+- `GND`
+- `NetLabel` (circled digits)
+
+#### L. LabelID extraction
+
+Each Net-label match has:
+- `catalog_idx`
+- `rotation`
+
+LabelID is derived from the catalog pattern text_data\[rotation\] by stripping:
+- whitespace + newlines
+- wildcard `§`
+- wire glyphs (any glyph where `glyphToMask != 0`)
+
+If the result is empty, fallback to:
+- `CATALOG\[catalog_idx\].name`
+
+#### M. Net merge rule
+
+If two (or more) nets each touch a Net-label component with the same LabelID, they are considered **the same net**.
+
+“Touch” means:
+- a net has a CE cell that belongs to that Net-label match footprint
+
+Merge behavior:
+- union of `cells`
+- union of `LE`, `LJ`, `CE`
+
+**Rationale:** labels create logical connectivity without a drawn wire.
+
+### Output policy
+#### N. Netlist interactive mode
+
+When Netlist mode is ON:
+- hovering a wire cell highlights the entire net in BLUE
+- in debug mode, CE cells can be overlaid in RED for inspection
+
+#### O. JSON netlist report
+
+The JSON report uses netline objects:
+- `{ LE, LJ, CE }`
+
+and is derived from the same core net computation to ensure consistency with interactive highlighting.
