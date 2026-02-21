@@ -3,7 +3,7 @@
 <img src="res/AsciiCAD_frontpage.png">
 </a>
 
-# Intro
+# Presentation
 
 This is a browser-based app based on building blocks once raised to the level of art: ASCII. It was designed as a "digital essay" on fasttracking complexity by strategising bare-bones simplicity at its conception.  As a matter of fact, v1.0 was put together in a few weeks time.
 
