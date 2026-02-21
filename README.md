@@ -64,7 +64,7 @@ Read more about the [design goals](#design-goals), or without further due:
 - **Terminal Lab**
    - A minimal [vanilla-JavaScript terminal](https://beyondmicrocontrol.github.io/AsciiCAD/tools/VanillaTerminal.html)
    - CMD instruction [parser and compiler](https://beyondmicrocontrol.github.io/AsciiCAD/tools/CMD_tool.html)
-   - [Worker thread tester](https://beyondmicrocontrol.github.io/AsciiCAD/tools/WorkerTest.html)
+   - A test bench for secure script execution [Worker-thread](https://beyondmicrocontrol.github.io/AsciiCAD/tools/WorkerTest.html)
 
 ---
 
