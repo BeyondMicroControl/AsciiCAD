@@ -63,7 +63,7 @@ Read more about the [design goals](#design-goals), or without further due:
 
 # Future development
 
-<img src="/res/gazing.jpg?raw=true" width=100% />
+<a href="docs/design.md"><img src="/res/gazing.jpg?raw=true" width=100% /></a>
 
 ## Design goals
 
