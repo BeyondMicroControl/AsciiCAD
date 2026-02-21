@@ -25,7 +25,7 @@ Read more about the [design goals](#design-goals), or without further due:
 | [User manual](docs/AsciiCAD_User_Manual.md#quick-start) | Getting started and learning how to use the App. |
 | [Change Log](docs/decisions.md) | Learning how the App evolved, and will continue so. |
 | [Design Specs](docs/design.md ) | Discussing approach, writing policy or making design decisions.<br>Understanding why something was built a certain way. |
-| [Contribute - ideation & coding](docs/style-guide.md) | Bringing up new ideas or learn to add new features. |
+| [How to contribute](docs/style-guide.md) | Bringing up new ideas or learn to add new features. |
 
 <!--| [Contrinute - testing] | Writing tests or discuss a test strategy |-->
 <!--| working-agreement.md | Starting any session |-->
