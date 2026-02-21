@@ -61,7 +61,7 @@ Read more about the [design goals](#design-goals), or without further due:
 
 ---
 
-# Future developments
+# Works in progress & future development
 
 <img src="/res/gazing.jpg?raw=true" width=100% />
 
