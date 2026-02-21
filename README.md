@@ -7,9 +7,9 @@
 
 This is a browser-based app based on building blocks once raised to the level of art: ASCII. It was designed as a "digital essay" on fasttracking complexity by strategising bare-bones simplicity at its conception.  As a matter of fact, v1.0 was put together in a few weeks time.
 
-Apart from demostrating it's higher purpose, the product of this concept covers a real need: **embedding digital and electronic schematics directly inside source code**. Whereas microcontroller projects traditionally require different CAD files revolving around ones source code, AsciiCAD schematics made of **readable text** can live, evolve and remain closest tied to its codebase.  **Caution**: It does not replace CAD apps for driving an entire PCB design workflow end-to-end; but it can definitely speed up circuit prototyping.
+Apart from demostrating it's higher purpose, the product of this concept covers a real usecase: **embedding digital and electronic schematics directly inside source code**. Whereas microcontroller projects traditionally require different CAD files revolving around ones source code, AsciiCAD schematics made of **readable text** can live, evolve and remain closest tied to its codebase.  **Caution**: It does not replace CAD apps for driving an entire PCB design workflow end-to-end; but it can definitely speed up circuit prototyping.
 
-Moreover, not only does AsciiCAD depict the entire schema visually; its 2D arrangement can retain most of the essential metadata & syntactics of a wiring diagram inside the ASCII composition itself.  In other words, it may even allow logical and even electric behavior simulation (e.g. SPICE), literally by pasting "just text" into a grid.  
+Moreover, not only does AsciiCAD depict the entire schema visually; its very same 2D arrangement holds enough data density to retain sufficient metadata & syntactics of a wiring diagram allowing logical and even electric behavior simulation (e.g. SPICE), literally by pasting "just text" into a grid.  
 
 Read more about the [design goals](#design-goals), or witout further due: 
 - <a href=https://beyondmicrocontrol.github.io/AsciiCAD/index.html>Try AsciiCAD</a>
