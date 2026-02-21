@@ -2569,7 +2569,7 @@ this.startPasteWithText = function(text)
       if (!compSet.has(kk)) return;
 
       const chC = ascii?.[compR]?.[compC];
-      if (!chC || chC === " " || chC === "§") return;
+      if (!chC || chC === " " || chC === WILDCHAR_U) return;
 
       const mC = glyphToMask.get(chC) ?? 0;
       if (!(mC & needBitOnComp)) return;
@@ -2900,7 +2900,7 @@ this.startPasteWithText = function(text)
               footprintSet.add(k);
 
               // Visual highlight + ban mask exclude wildcard cells
-              if (pc !== "§") {
+              if (pc !== WILDCHAR_U) {
                 greenSet.add(k);
                 solidSet.add(k);
                 matchByCell.set(k, matchId);
@@ -6614,7 +6614,7 @@ image_data:
 ,
 {
 name: 'DIPcon',
-type: 'Connector',
+type: 'Bridge',
 description: 'DIP Connector',
 MFR: 'gen',
 pin_data: null,
@@ -6622,6 +6622,23 @@ text_data:[
 '─━ ##)─'
 ,
 '─(## ━─'
+],
+image_data:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAC1QTFRFAAAAb29xX19iRUZJenp94cxuLy8y4tyrCQoK4NKI4tSJZ2dmraugXV1cdnZ1ftRuOAAAAA90Uk5TAP/+/f/7/xP/YrlpCa0psaAYsQAAAqVJREFUeJztlDFvEzEUx72gU9ARyRd/AfsQe89SxZLBrVc2TqhZT7o5DBEqH6DKmAVV7cCGEGtW1AjYqkqVuLJVGQgDQ5p+Bt57ti/Xa1IGVjz4Kff/vb/fe74cY/8XY9HwL/rJ8cNAJx88bB7l+TY9Pv0ERPRhO5DnEwhvNwHRG0a5BxQ2AO8GePypt9gE5B9hP8wpRHek85MhAQMfJvdzj6kwCh20iC5awIHrjQJYLCvlpQ6Z+1wfzvM9pbgHRq6i0BuE2+VcwUo88IgKi0Z57p0+V4p0CRc2cRVhiHxvL/eUJIBzyH3lXKm3EYTLs8ppPJEAPHaKL+ywNud+uXZDb/HtD5UpJaXkNRC75tFi2D270hpL4+uF7QaLFzojd4X5UggPMG8+DTIWYK0QVnDDjTN/v5xrMofkBA2s5bhBcOb7XiZT3CHdWGvABoBu5WXliqfNumXQ4VchuTu6Ub1TjcAaFinMDPMTtdaRwJPwiIXaCUdz4QFjwyIgtTR2UoQlB+FKIOAbXKrgrdV0+Mp5hhU1IMlFA3gNw6HfIdnQINbAEzg5qwEBAEwo6DiHLjxO8QkeIoRxI3a60jjq70Ds4EPQhBux6yGFEeMbC4BRFi8Qr7Cuvwfy7hiBFb5+TwGwpm6PY3YAsAieGZw9+gTzsgwA+wlAbz0bk1DuuCwC0IXBiCzIqVYpAQXsJQFxBf1Rp9agWFJuA2Arif8Sf7aXxkeIeaCLd53yhCp/7oCjsgGwBVg8K1zlAGD9JQC7es6CRcJ73rwGiqJ/E74t8VTx/WYu7Pp69nv99blQSXIH0P3Zl+bnqVtJRcNxgJ7PWGutVFJ4c51d37Rlxi6VKmrzDTpjU4nmGsw3yvDmgUPRLq254qsCsrfKWGb/XuUtiy1n/+v6A60wIVbY3iQaAAAAAElFTkSuQmCC'
+}
+,
+{
+// todo invoke junctions ●○
+name: 'DIPjump',
+type: 'Bridge',
+description: 'DIP Jumper',
+MFR: 'gen',
+pin_data: null,
+text_data:[
+'┬●┬\n' +
+'┴●┴'
+,
+'─○─\n' +
+'─○─'
 ],
 image_data:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAWJQAAFiUBSVIk8AAAAC1QTFRFAAAAb29xX19iRUZJenp94cxuLy8y4tyrCQoK4NKI4tSJZ2dmraugXV1cdnZ1ftRuOAAAAA90Uk5TAP/+/f/7/xP/YrlpCa0psaAYsQAAAqVJREFUeJztlDFvEzEUx72gU9ARyRd/AfsQe89SxZLBrVc2TqhZT7o5DBEqH6DKmAVV7cCGEGtW1AjYqkqVuLJVGQgDQ5p+Bt57ti/Xa1IGVjz4Kff/vb/fe74cY/8XY9HwL/rJ8cNAJx88bB7l+TY9Pv0ERPRhO5DnEwhvNwHRG0a5BxQ2AO8GePypt9gE5B9hP8wpRHek85MhAQMfJvdzj6kwCh20iC5awIHrjQJYLCvlpQ6Z+1wfzvM9pbgHRq6i0BuE2+VcwUo88IgKi0Z57p0+V4p0CRc2cRVhiHxvL/eUJIBzyH3lXKm3EYTLs8ppPJEAPHaKL+ywNud+uXZDb/HtD5UpJaXkNRC75tFi2D270hpL4+uF7QaLFzojd4X5UggPMG8+DTIWYK0QVnDDjTN/v5xrMofkBA2s5bhBcOb7XiZT3CHdWGvABoBu5WXliqfNumXQ4VchuTu6Ub1TjcAaFinMDPMTtdaRwJPwiIXaCUdz4QFjwyIgtTR2UoQlB+FKIOAbXKrgrdV0+Mp5hhU1IMlFA3gNw6HfIdnQINbAEzg5qwEBAEwo6DiHLjxO8QkeIoRxI3a60jjq70Ds4EPQhBux6yGFEeMbC4BRFi8Qr7Cuvwfy7hiBFb5+TwGwpm6PY3YAsAieGZw9+gTzsgwA+wlAbz0bk1DuuCwC0IXBiCzIqVYpAQXsJQFxBf1Rp9agWFJuA2Arif8Sf7aXxkeIeaCLd53yhCp/7oCjsgGwBVg8K1zlAGD9JQC7es6CRcJ73rwGiqJ/E74t8VTx/WYu7Pp69nv99blQSXIH0P3Zl+bnqVtJRcNxgJ7PWGutVFJ4c51d37Rlxi6VKmrzDTpjU4nmGsw3yvDmgUPRLq254qsCsrfKWGb/XuUtiy1n/+v6A60wIVbY3iQaAAAAAElFTkSuQmCC'
 }
@@ -7626,7 +7643,7 @@ let catalogTab = "All";
 
 
 // Bit flags for connections
-const N = 1, E = 2, S = 4, W = 8;
+const N = 0b0001, E = 2, S = 4, W = 8;
 
 // Only "light" box drawing for now (keeps it simple & readable)
 const glyphToMask = new Map([
@@ -7879,7 +7896,7 @@ function renderCatalogGrid()
         updateOpLine("catalog",it);
 
         const expanded = oASC.expandWideCharsForGrid(text_data || "");
-        const forPaste = expanded.replace(/§/g, " ");   // WILDCARD_U becomes a real space for placement
+        const forPaste = expanded.replace(new Regexp(WILDCHAR_U,"g"), " ");   // WILDCARD_U becomes a real space for placement
         oASC.startPasteWithText(forPaste);
 
         canvas.focus();
