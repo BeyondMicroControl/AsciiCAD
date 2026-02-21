@@ -28,7 +28,7 @@
 |------|--------------|
 | style-guide.md | Starting any coding task |
 | working-agreement.md | Starting any session |
-| philosophy.md | Discussing approach or making design decisions |
+| design.md | Discussing approach, writing policy or making design decisions |
 | testing.md | Writing tests or discussing test strategy |
 | refactoring.md | Code needs improvement or restructuring |
 | design-patterns.md | Solving a design problem or choosing an approach |
