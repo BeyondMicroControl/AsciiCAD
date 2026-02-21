@@ -84,16 +84,15 @@ This emulates a necessary **'tension' between operations and projects** that (si
 
 ## Wish-list
 
-- [x] Automatically deploy a one-file .html app in /dist (v1.0)
-- [x] CLI (terminal and script parser, enabler for script automation)
+
+- [ ] Improve the CLI (terminal and script parser, enabler for script automation)
 - [ ] Script automation and AI agent interaction
-- [ ] Generative catalog items (CADScript-based)
-- [ ] Junction resolution is buggy (single lines, double lines, double thickness lines, etc...)
-- [ ] Not all UTF8 characters are monospace-friendly, leading to less perfect character selection (still buggy)
-- [ ] Embed a component editor + Import/Export Ascii component catalog
-- [ ] SPICE circuit simulation
-- [ ] Tabbed multi-page grid with waypoints
-- [x] Netlist report & Net highlighting
+- [ ] Create a built-in catalog item wizard (CADScript-based?)
+- [ ] Forge a better plan for junction resolution (single lines, double lines, double thickness lines, etc...)
+- [ ] Debug Monospace issues.  Not all UTF8 characters are monospace-friendly, requiring meticuloust character selection (still buggy)
+- [ ] Basic analog circuit simulation (simple filters and op-amp circuits)
+- [ ] Tabbed multi-page grid with cross-page waypoints
+- [ ] Improve Netline algorithm
 - [ ] MCP service to generate AsciiCAD schema within IDE (VSCode, Arduino,..)
 
 ## Status
