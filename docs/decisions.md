@@ -999,7 +999,7 @@ Introduce an explicit **Debug vs Production** workflow split:
 
 ---
 
-### Draft Change Notes
+### Work in progress
 - [x] 1. Decommission old CADScript parser
 - [x] 2. Mode 'TERMINAL COMMAND HANDLER' from index.html --> CMD_helpers.js (prep for nr 3)
 - [x] 3. Allow calling terminal commands in CADScript <pre>CADScript {oCMD.run("clear")}</pre>
