@@ -90,7 +90,7 @@ This emulates a necessary **'tension' between operations and projects** that (si
 - [ ] Create a built-in catalog item wizard (CADScript-based?)
 - [ ] Forge a better plan for junction resolution (single lines, double lines, double thickness lines, etc...)
 - [ ] Debug Monospace issues.  Not all UTF8 characters are monospace-friendly, requiring meticuloust character selection (still buggy)
-- [ ] Basic analog circuit simulation (simple filters and op-amp circuits)
+- [ ] Analog circuit simulation (simple filters and op-amp circuits), based on netlist and catalog item parsing
 - [ ] Tabbed multi-page grid with cross-page waypoints
 - [ ] Improve Netline algorithm
 - [ ] MCP service to generate AsciiCAD schema within IDE (VSCode, Arduino,..)
