@@ -1193,7 +1193,7 @@ function ASC()
     if (schemaHighlightOn) highlightCache = null;
     if (schemaMatchOn) matchCache = null;
 
-    if (netlistOn) {
+    if (netTraceOn) {
       netlistCache = null;     // force recompute on next hover/draw
       hoverNetIndex = -1;      // clear current selection until next hover
     }
@@ -2114,7 +2114,7 @@ this.startPasteWithText = function(text)
         }
 
         // Netlist hover highlight (BLUE) — overrides other colors for wire cells in the hovered net
-        if (netlistOn && hoverNetIndex >= 0) {
+        if (netTraceOn && hoverNetIndex >= 0) {
           __ensureNetlistCache();
           const k = keyRC(r, c);
           const net = netlistCache?.nets?.[hoverNetIndex];
@@ -2139,7 +2139,7 @@ this.startPasteWithText = function(text)
           }
         }
 
-        if (bDebug && netlistOn && netlistDebugCESet)
+        if (bDebug && netTraceOn && netlistDebugCESet)
         {
           const kk = r + "," + c;           // MUST match __refreshNetlistDebugCE() keying
           if (netlistDebugCESet.has(kk)) {
