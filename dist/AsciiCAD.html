@@ -2270,7 +2270,7 @@ function ASC()
     if (schemaHighlightOn) highlightCache = null;
     if (schemaMatchOn) matchCache = null;
 
-    if (netlistOn) {
+    if (netTraceOn) {
       netlistCache = null;     // force recompute on next hover/draw
       hoverNetIndex = -1;      // clear current selection until next hover
     }
@@ -3191,7 +3191,7 @@ this.startPasteWithText = function(text)
         }
 
         // Netlist hover highlight (BLUE) — overrides other colors for wire cells in the hovered net
-        if (netlistOn && hoverNetIndex >= 0) {
+        if (netTraceOn && hoverNetIndex >= 0) {
           __ensureNetlistCache();
           const k = keyRC(r, c);
           const net = netlistCache?.nets?.[hoverNetIndex];
@@ -3216,7 +3216,7 @@ this.startPasteWithText = function(text)
           }
         }
 
-        if (bDebug && netlistOn && netlistDebugCESet)
+        if (bDebug && netTraceOn && netlistDebugCESet)
         {
           const kk = r + "," + c;           // MUST match __refreshNetlistDebugCE() keying
           if (netlistDebugCESet.has(kk)) {
@@ -7401,7 +7401,7 @@ const PICKER_TABS =
           <div class="row" style="margin-top:10px;">
             <button id="toolSchemaHighlight" class="btn" data-hint="Highlight: Mark signle lines in blue, enclosed double line boxes in red.">Highlight</button>   
             <button id="toolSchemaMatch" class="btn" data-hint="Match: Marks matching catalog items in green. Mind replacing wildcards inside these items, '#' with numbers, '$' with alphanumeric.">Match</button>
-                        <button id="toolNetlist" class="btn" data-hint="Netlist: Extract wire lines (endpoints + junctions) and print as JSON.">Netlist</button>
+                        <button id="toolNetTrace" class="btn" data-hint="Netlist: Extract wire lines (endpoints + junctions) and print as JSON.">NetTrace</button>
 <span ><button class="btn" id="toolDebug" data-hint="Debug AsciiCAD" onclick="document.location='tools/AsciiCAD_debug.html'"  style="filter:grayscale(100%)">D&#x1F41E;</button></span>
 
           </div>
@@ -7552,7 +7552,7 @@ const toolHint = document.getElementById("toolHint");
 
 const schemaHighlightBtn =  document.getElementById("toolSchemaHighlight");
 const schemaMatchBtn =  document.getElementById("toolSchemaMatch");
-const netlistBtn =      document.getElementById("toolNetlist");
+const netTraceBtn =      document.getElementById("toolNetTrace");
 
 const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
@@ -7598,7 +7598,7 @@ let highlightCache = null; // { redSet:Set, insideSet:Set } cached for current a
 let schemaMatchOn = false;
 let matchCache = null; // { greenSet:Set } cached matches for current ascii state
 
-let netlistOn = false;
+let netTraceOn = false;
 
 // Cache for interactive net highlighting:
 // - nets: array of { cells:Set<string>, LE:[{c,r}], LJ:[{c,r}] }
@@ -8072,7 +8072,7 @@ function updateUI()
   const __fy = (Math.abs(__py) < 1e-9 ? 0 : __py).toFixed(0);
   panLine.textContent = "Pan: x " + __fx + ", y " + __fy;
 
-  if (!netlistOn) {
+  if (!netTraceOn) {
     netLine.textContent = "Net: —";
   } else {
     netLine.textContent = (hoverNetIndex >= 0) ? ("Net: " + hoverNetIndex) : "Net: —";
@@ -8109,7 +8109,7 @@ function setHoverFromEvent(e)
 
   const prevNet = hoverNetIndex;
 
-  if (netlistOn) {
+  if (netTraceOn) {
     hoverNetIndex = __netIndexAtHoverCell(hoverCell);
   } else {
     hoverNetIndex = -1;
@@ -8120,7 +8120,7 @@ function setHoverFromEvent(e)
   updateUI();
 
   // IMPORTANT: Netlist hover is purely visual; force repaint when it changes
-  if (netlistOn && hoverNetIndex !== prevNet) {
+  if (netTraceOn && hoverNetIndex !== prevNet) {
     oASC.draw("netlistHover");
   }
 }
@@ -8130,7 +8130,7 @@ function __refreshNetlistDebugCE()
   netlistDebugLines = null;
   netlistDebugCESet = null;
 
-  if (!bDebug || !netlistOn) return;
+  if (!bDebug || !netTraceOn) return;
   if (typeof oASC.computeNetlistLines !== "function") return;
 
   const lines = oASC.computeNetlistLines();
@@ -8663,7 +8663,7 @@ function update_data_to_grid()
             boxDrag = null;
             oASC.cancelPaste();
             oASC.pushStrokeIfNonEmpty(stroke);
-            if (bDebug && netlistOn) __refreshNetlistDebugCE();
+            if (bDebug && netTraceOn) __refreshNetlistDebugCE();
             
 
             oASC.draw("update_data_to_grid");
@@ -8762,12 +8762,12 @@ schemaMatchBtn.addEventListener("click", () =>
 });
 
 
-netlistBtn.addEventListener("click", () =>
+netTraceBtn.addEventListener("click", () =>
 {
-  netlistOn = updateToogleButtonUI(netlistOn, netlistBtn, toolHint);
+  netTraceOn = updateToogleButtonUI(netTraceOn, netTraceBtn, toolHint);
 
   // Turning OFF
-  if (!netlistOn) {
+  if (!netTraceOn) {
     hoverNetIndex = -1;
     netlistCache = null; // optional: keep or drop cache; dropping is safer for consistency
 
@@ -8775,7 +8775,7 @@ netlistBtn.addEventListener("click", () =>
     netlistDebugCESet = null;
 
     updateUI();
-    oASC.draw("netlistOff");
+    oASC.draw("netTraceOff");
     return;
   }
 
@@ -8785,14 +8785,14 @@ netlistBtn.addEventListener("click", () =>
     __ensureNetlistCache();
     __refreshNetlistDebugCE();
     toolHint.style.color = "black";
-    toolHint.textContent = "Netlist: " + (netlistCache?.nets?.length ?? 0) + " net(s) found. Hover a wire to highlight.";
+    toolHint.textContent = "NetTrace: " + (netlistCache?.nets?.length ?? 0) + " net(s) found. Hover a wire to highlight.";
 
     updateUI();
-    oASC.draw("netlistOn");
+    oASC.draw("netTraceOn");
   }
   catch (err) {
     toolHint.style.color = "red";
-    toolHint.textContent = "Netlist: error (see console).";
+    toolHint.textContent = "NetTrace: error (see console).";
     console.error(err);
   }
 });
@@ -8815,8 +8815,8 @@ if (typeof oASC.pushStrokeIfNonEmpty === "function")
 */
 
 // Undo/redo
-undoBtn.addEventListener("click", () =>  {oASC.doUndo(); if (bDebug && netlistOn) __refreshNetlistDebugCE(); });
-redoBtn.addEventListener("click", () =>  {oASC.doRedo(); if (bDebug && netlistOn) __refreshNetlistDebugCE(); });
+undoBtn.addEventListener("click", () =>  {oASC.doUndo(); if (bDebug && netTraceOn) __refreshNetlistDebugCE(); });
+redoBtn.addEventListener("click", () =>  {oASC.doRedo(); if (bDebug && netTraceOn) __refreshNetlistDebugCE(); });
 
 // Save/load
 saveBtn.addEventListener("click", () => 
@@ -8891,7 +8891,7 @@ fileInput.addEventListener("change", async (e) =>
     oASC.cancelPaste();
 
     oASC.pushStrokeIfNonEmpty(stroke);
-    if (bDebug && netlistOn) __refreshNetlistDebugCE();
+    if (bDebug && netTraceOn) __refreshNetlistDebugCE();
     oASC.draw("onchange");
 
     fileInput.value = "";
@@ -9181,8 +9181,8 @@ window.addEventListener("keydown", (e) =>
   //  Always allow Undo/Redo (even while typing)
   if (mod) {
     const k = String(e.key || "").toLowerCase();
-    if (k === "z" && !e.shiftKey) { e.preventDefault(); oASC.doUndo(); if (bDebug && netlistOn) __refreshNetlistDebugCE(); return; }
-    if (k === "z" &&  e.shiftKey) { e.preventDefault(); oASC.doRedo(); if (bDebug && netlistOn) __refreshNetlistDebugCE(); return; }
+    if (k === "z" && !e.shiftKey) { e.preventDefault(); oASC.doUndo(); if (bDebug && netTraceOn) __refreshNetlistDebugCE(); return; }
+    if (k === "z" &&  e.shiftKey) { e.preventDefault(); oASC.doRedo(); if (bDebug && netTraceOn) __refreshNetlistDebugCE(); return; }
   }
 
   // If the user is typing in the sidebar (terminal / inputs), do not run canvas shortcuts.
