@@ -55,7 +55,7 @@ Read more about the [design goals](#design-goals), or without further due:
 <a href=https://beyondmicrocontrol.github.io/AsciiCAD/tools/TOOLS_CATALOG.html>LAB TOOLS</a>
 
 - **Main App Debugger**: <a href="https://beyondmicrocontrol.github.io/AsciiCAD/tools/AsciiCAD_debug.html">AsciiCAD debug</a>
-- **Inline Image Lab**: [Image2Base64](tools/Image_to_Base64.html) helps extending the component catalog. Since catalog items are represented by icons sized at 64x64 pixels and hard-coded as base64 strings.
+- **Inline Image Lab**: [Image2Base64](tools/Image_to_Base64.html) helps extending the component catalog. Since catalog items are represented by icons sized at 64x64 pixels and hard-coded in as base64 strings, this is the tool we need.
 - **Picking the perfect glyph**: Requires a toolchain for
    -  [generate training data](tools/AsciiCAD_helper_tools/README.md) for the most common UTF-8 glyphs (offline python script)
    -  [Font to BMP](tools/UTF8_to_bmp.html): to rasterise one glyph, and model the bitmap to what we approximately want to achieve
