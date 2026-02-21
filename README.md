@@ -91,7 +91,7 @@ This emulates a necessary 'tension' between 'operations' and 'projects' that (si
 
 ## Status
 
-Actively evolving.  
+Actively evolving ==> check [work in progress](docs/decisions.md#work-in-progress)  
 Focused on correctness, editor compatibility, and expressive schematic text.
 
 
