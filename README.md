@@ -40,7 +40,7 @@ Read more about the [design goals](#design-goals), or without further due:
 
 | Draw Modes | Component Catalog | Tools | Select & Edit | Navigate | History & Persistence | Terminal |
 |---------------|-------------------|-------|---------------|----------|-----------------------|----------|
-| Freeform drawing<br>& Free text | Catalog picker | Schema Highlight | Area selection | Large grid support | Undo / Redo<br>Clear | CLI
+| Freeform drawing<br>& Free text | Catalog picker | Schema highlight | Area selection | Large grid support | Undo / Redo<br>Clear | CLI
 | Orthogonal<br>line routing | Parameterised<br>catalog items | Schema match<br>(extraction) | Move, Copy,<br>Paste, Blank<br>(rectangle) | Pan, Zoom | Load / Save<br>Permalink | Scripting<br>(basics)
 | Box drawing | | Netlist highlight<br> & report | | |
 
