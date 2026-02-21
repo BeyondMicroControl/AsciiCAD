@@ -3,7 +3,7 @@
 <img src="res/AsciiCAD_frontpage.png">
 </a>
 
-## Intro
+# Intro
 
 This is a browser-based app based on building blocks once raised to the level of art: ASCII. It was designed as a "digital essay" on fasttracking complexity by strategising bare-bones simplicity at its conception.  As a matter of fact, v1.0 was put together in a few weeks time.
 
@@ -11,57 +11,46 @@ Apart from demostrating it's higher purpose, the product of this concept covers 
 
 Moreover, not only does AsciiCAD depict the entire schema visually; its very same 2D arrangement holds enough data density to retain sufficient metadata & syntactics of a wiring diagram allowing logical and even electric behavior simulation (e.g. SPICE), literally by pasting "just text" into a grid.  
 
-Read more about the [design goals](#design-goals), or witout further due: 
+Read more about the [design goals](#design-goals), or without further due: 
 - <a href=https://beyondmicrocontrol.github.io/AsciiCAD/index.html>Try AsciiCAD</a>
 - <a href="https://beyondmicrocontrol.github.io/AsciiCAD/index.html?raw=R05EIOKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUr+KUgeKUgeKUgeKUgeKUgeKUgeKUr+KUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgeKUgQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg4pSCICAgICAg4pSCCis1ViDilIDilKzilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilILilIDilIDilIDilIDilIDilIDilILilIDilIDilIDilKzilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICDilIIgICAgICAgICAgICAgICAgICAgICAgICAg4pSCICAgICAg4pSCICAg4pSCCiAgICAg4pSCICAgICAgICAgICAgICAgICAgICAgICAgIOKUgiAgICAgIOKUgiAgIOKUggogICAgIOKUgiAg4pWU4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWXICDilIIgICAgICDilIIgICDilIIKICAgICDilIIgIOKVkSDil48gIFtVMSBBVFRpbnlYMjRdIOKVkSAg4pSCICAgICAg4pSCICAg4pSCCiAgICAg4pSCICDilZEgICAgICAgICAgICAgICAgICAg4pWRICDilIIgICAgICDilIIgICDilIIgICDilIzilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilJAKICAgICDilJTilIDilIDilaIgVkNDICAgICAgICAgICBHTkQg4pWf4pSA4pSA4pSYICAgICAg4pSCICAg4pSCICAg4pSCICAg4pSM4pSA4pSA4pSA4pSA4pSA4pSQIOKUggogICAgICAgIOKVkSAgICAgICAgICAgICAgICAgICDilZEgICAgIOKVlOKVkOKVkOKVkOKVp+KVkOKVkOKVkOKVp+KVkOKVkOKVkOKVp+KVkOKVkOKVkOKVp+KVkOKVkOKVkOKVlyDilIIg4pSCCiAgICAgICAg4pWiIFBBNCAgICAgICBTQ0sgUEEzIOKVnyAgICAg4pWRICBHTkQgVkNDIFNDTCBTREEgIOKVkSDilIIg4pSCCiAgICAgICAg4pWRICAgICAgICAgICAgICAgICAgIOKVkSAgICAg4pWR4pSM4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSQ4pWRIOKUgiDilIIKICAgICAgICDilaIgUEE1ICBSWDEgTUlTTyBQQTIg4pWfICAgICDilZHilIIgICAgICAgICAgICAgICAgIOKUguKVkSDilIIg4pSCCiAgICAgICAg4pWRICAgICAgICAgICAgICAgICAgIOKVkSAgICAg4pWR4pSCICAgIFtTU0QxMzA2XSAgICDilILilZEg4pSCIOKUggogICAgICAgIOKVoiBQQTYgIFRYMSBNT1NJIFBBMSDilZ8gICAgIOKVkeKUgiAgNjQgeCAzMiBPTEVEICAg4pSC4pWRIOKUgiDilIIKICAgICAgICDilZEgICAgICAgICAgICAgICAgICAg4pWRICAgICDilZHilIIgICAgICAgICAgICAgICAgIOKUguKVkSDilIIg4pSCCiAgICAgICAg4pWiIFBBNyAgICAgIFVQREkgUEEwIOKVnyAgICAg4pWR4pSU4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSY4pWRIOKUgiDilIIKICAgICAgICDilZEgICAgICAgICAgICAgICAgICAg4pWRICAgICDilZrilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZ0g4pSCIOKUggogICAgICAgIOKVoiBQQjMgUlgwICAgU0NMIFBCMCDilZ/ilIDilIDilIDilJAgICAgICAgICAgICAgICAgICAgICAgIOKUgiDilIIKICAgICAgICDilZEgICAgICAgICAgICAgICAgICAg4pWRICAg4pSCICAgICAgICAgICAgICAgICAgICAgICDilIIg4pSCCiAgICAgICAg4pWiIFBCMiBUWDAgICBTREEgUEIxIOKVn+KUgOKUgOKUgOKUguKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUmCDilIIKICAgICAgICDilZrilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZ0gICDilJTilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilJg=">Try AsciiCAD + example schema</a>
-- Download the portable all-in-one-file: <a href="https://beyondmicrocontrol.github.io/AsciiCAD/dist/AsciiCAD.html?download=self">AsciiCAD.html</a>
-
-<a href=https://github.com/BeyondMicroControl/AsciiCAD/blob/main/docs/AsciiCAD_User_Manual.md#quick-start>Get started - user manual</a>
+- <a href="https://beyondmicrocontrol.github.io/AsciiCAD/dist/AsciiCAD.html?download=self">AsciiCAD.html</a> - download the all-in-one portable file.
 
 ---
 
-## Why AsciiCAD?
+# Documentation
 
-### Real-world use
-- Hardware and Software become 'one': **sourcecode**
-- It's text-based schematics allow semantic extraction (beyond 'just a drawing')
-- Ideal for MCU, CPU, and digital designs
-- One portable file, no binaries, no lock-in
+| File | Read When... |
+|------|--------------|
+| [User manual](docs/AsciiCAD_User_Manual.md#quick-start) | Getting started and learning how to use the App. |
+| [Change Log](docs/decisions.md) | Learning how the App evolved, and will continue so. |
+| [Design Specs](docs/design.md ) | Discussing approach, writing policy or making design decisions.<br>Understanding why something was built a certain way. |
+| [Contribute - ideation & coding](style-guide.md) | Bringing up new ideas or learn to add new features. |
 
----
-
-## Features at a glance
-
-- Drawing & Layout
-  - Freeform drawing
-  - Orthogonal line routing
-  - Box drawing modes
-  - Free text
-- Component Catalog
-  - Integrated component catalog
-  - Parameterised catalog items
-- Schema Highlighting & Analysis
-  - Schema Highlight
-  - Schema Match (semantic extraction)
-  - Netlist highlighting & reporting
-- Selection & Editing
-  - Area selection
-  - Move, Copy, Paste, Blank (rectangle)
-- Navigation & View
-  - Large grid support
-  - Pan, Zoom
-- History & Persistence
-  - Undo / Redo / Clear
-  - Load / Save /Permalink support
-- Terminal
-  - Command-line interface
-  - Scripting (basics) 
+<!--| [Contrinute - testing] | Writing tests or discuss a test strategy |-->
+<!--| working-agreement.md | Starting any session |-->
+<!--| refactoring.md | Code needs improvement or restructuring |-->
+<!--| design-patterns.md | Solving a design problem or choosing an approach |-->
+<!--| domain-language.md | Discussing domain concepts or naming on electronic design |-->
+<!--| decisions.md | Understanding why something was built a certain way |-->
 
 ---
 
-## AsciiCAD Lab
+# Features at a glance
+
+| Draw Modes | Component Catalog | Tools | Select & Edit | Navigate | History & Persistence | Terminal |
+|---------------|-------------------|-------|---------------|----------|-----------------------|----------|
+| Freeform drawing<br>& Free text | Catalog picker | Schema Highlight | Area selection | Large grid support | Undo / Redo<br>Clear | CLI
+| Orthogonal<br>line routing | Parameterised<br>catalog items | Schema match<br>(extraction) | Move, Copy,<br>Paste, Blank<br>(rectangle) | Pan, Zoom | Load / Save<br>Permalink | Scripting<br>(basics)
+| Box drawing | | Netlist highlight<br> & report | | |
+
+---
+
+# Experimentation
 
 <a href="https://beyondmicrocontrol.github.io/AsciiCAD/tools/TOOLS_CATALOG.html"><img src="/res/VintageLab256.png?raw=true" width=100% /></a>
+
+## AsciiCAD Lab
 
 <a href=https://beyondmicrocontrol.github.io/AsciiCAD/tools/TOOLS_CATALOG.html>LAB TOOLS</a>
 
