@@ -36,7 +36,7 @@ Read more about the [design goals](#design-goals), or without further due:
 
 ---
 
-# Features at a glance
+# Specification
 
 | Draw Modes | Component Catalog | Tools | Select & Edit | Navigate | History & Persistence | Terminal |
 |---------------|-------------------|-------|---------------|----------|-----------------------|----------|
