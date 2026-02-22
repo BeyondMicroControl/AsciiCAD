@@ -92,8 +92,8 @@ A glyph’s “line function” is then just a bitwise OR of all the directions 
 
 A netline is collection of wires considered as part of one or more continuous/uninterrupted lines.\
 When lines split in, or join form multiple directions (also called 'degrees') using glyphs, all these lines are considered part of the same net.
-Densely wired schemas however also need **cross-overs** and **labeled nodes** to route wires efficiently across; which need to be _conceptualised by policy_
-since no specific glyph exists for these use cases.  
+
+In dense schematics, efficient routing also needs **crossovers** and **labeled nodes**, which must be _specified by policy_ because no glyph represents them.
 
 A netline entry contains:
 - `LE`: wire ends and wire→component terminations
