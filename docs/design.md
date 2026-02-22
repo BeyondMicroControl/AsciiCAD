@@ -74,36 +74,17 @@ Note: other encodings are possible (e.g. r<<16|c), but "r,c" is explicit, safe, 
 
 ### Wire glyph
 
-Some glyphs like: `┐` are considered part of the wiring system because of their directional connectivity (N/S/E/W).
+Originating from 'not serious' characters emerging around 1975 (complementing the ASCII character set with continuous lines, corners and crosses), UTF-8 inherited its special wire glyphs between code 0x2500 and 0x2570, all serving as lines, corners and crosses combined reaching out to 4 distinct directions: **N**orth, **S**outh, **E**ast and **W**est, and which we conveniently encode into a 4-bit mask.
+In our codebase, the `glyphToMask` function encodes these glyphs into 4 bits, the only meaningful data we retain about wire glyphs found on the grid.
+`N = 0b0001`
+`E = 0b0010`
+`S = 0b0100`
+`W = 0b1000`
 
-
-In code, this is modeled by `glyphToMask` which takes in any glyph considered as 
-
-
-between glyphs and how  
-
-AsciiCAD treats “wire symbols” as functions (“connectivity directions”) rather than as literal characters.
-
-We encode each glyph’s connectivity using a 4-bit mask:
-- N = `0b0001`
-- E = `0b0010`
-- S = `0b0100`
-- W = `0b1000`
-
-A glyph’s “line function” is then just a bitwise OR of the directions it connects.
+A glyph’s “line function” is then just a bitwise OR of all the directions it connects.
 
 **Example:**
-`╤` connects E + S + W, which becomes:
-
-- `E | S | W = 0b0010 | 0b0100 | 0b1000 = 0b1110`
-
-**Rationale:** Why this is better than character checks:
-- It generalizes across many Unicode box-drawing variants.
-- It makes junction tests trivial: e.g. a junction-like cell often has 3+ bits set.
-- It keeps code readable and stable: `if (m & E)` says exactly what it means.
-
-This approach scales better than large “if char in …” lists and reduces bugs when new glyphs are introduced.
-
+`╤` connects E + S + W, becoming `E | S | W = 0b0010 | 0b0100 | 0b1000 = 0b1110`
 
 ### Netline
 
