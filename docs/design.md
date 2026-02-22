@@ -74,27 +74,27 @@ Note: other encodings are possible (e.g. r<<16|c), but "r,c" is explicit, safe, 
 
 (*) future implementation
 
-### Wire glyph
+### Wire
 
-Originating from the 'not serious' characters as they emerged around 1975 (complementing the ASCII character set with continuous lines, corners and crosses e.g. Code Page 437 from IBM), UTF-8 inherited these special wire glyphs between code 0x2500 and 0x2570, all serving as lines, corners and crosses combined, reaching out to 4 distinct directions (**N**orth, **S**outh, **E**ast and **W**est), which we conveniently encode into a 4-bit mask.\
+Originating from the 'not serious' characters as they emerged around 1975 (supplementing the ASCII character set with continuous lines, corners and crosses e.g. Code Page 437 from IBM), UTF-8 inherited these special wire glyphs between code 0x2500 and 0x2570, all serving as lines, corners and crosses combined, reaching out to 4 distinct directions (**N**orth, **S**outh, **E**ast and **W**est), conveniently encodable into a 4-bit mask.\
 In codebase, `glyphToMask` encodes these glyphs into 4 bits, which is the meaningful data we retain about wire glyphs we find on the grid: `N = 0b0001, E = 0b0010, S = 0b0100, W = 0b1000`.  A glyph’s “line function” is then just a bitwise OR of all the directions it connects.\
 example: ` ╤ ` connects E + S + W, becoming `E | S | W = 0b0010 | 0b0100 | 0b1000 = 0b1110`
 
 ### Netline
 
 A netline is collection of wires considered as part of one or more continuous/uninterrupted lines.\
-When lines split in, or join form multiple directions (also called 'degrees') using glyphs, all these lines are considered part of the same net.
+When lines split in, or join form multiple directions (also called 'graph degrees') using glyphs, all these lines are considered part of the same net.
 
 In dense schematics, efficient routing may also need [**crossovers**](#crossings-without-junction) and **[labeled nodes](#netlabel-components)**, which must be _specified by policy_ as no glyph represents them.
 
 A netline entry contains:
-- `LE`: wire ends and wire→component terminations
-- `LJ`: [branching junctions](#junction-glyphs) (graph degree ≥ 3, meaning 3 legs)
-- `CE`: component-edge glyph cells (pins/protrusions) adjacent to wire
+- `LE`: wire-to-component terminations, and unconnected wire ends
+- `LJ`: [branching junctions](#junction-glyphs) (graph degree ≥ 3, meaning ≥ 3 legs)
+- `CE`: component-edge glyph cells (pins/protrusions) adjacent to wire or flanked-component 
 - `CJ`: component-internal junctions / pin-to-pin connections (*)
 
 Some components create **permanent** connectivity between pins without external wires:
-- connectors (pin ↔ pin)
+- connectors (pin to pin)
 - jumpers / shunts (bridging nets)
 - some fixed “wired” adapters
 
@@ -250,7 +250,7 @@ Pins/protrusions can be:
 Policy: CE detection relies on `glyphToMask`, not a narrow `isWireGlyph()`, so these protrusions are supported.
 
 ## netLabel policy
-### K. netLabel components
+### netLabel components
 
 Catalog items with:
 - type === "Net"
