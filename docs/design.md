@@ -85,7 +85,7 @@ example: ` ╤ ` connects E + S + W, becoming `E | S | W = 0b0010 | 0b0100 | 0b1
 A netline is collection of wires considered as part of one or more continuous/uninterrupted lines.\
 When lines split in, or join form multiple directions (also called 'degrees') using glyphs, all these lines are considered part of the same net.
 
-In dense schematics, efficient routing may also need [**crossovers**](#crossings-without-junction) and **[labeled nodes](#net-label-components)**, which must be _specified by policy_ as no glyph represents them.
+In dense schematics, efficient routing may also need [**crossovers**](#crossings-without-junction) and **[labeled nodes](#netlabel-components)**, which must be _specified by policy_ as no glyph represents them.
 
 A netline entry contains:
 - `LE`: wire ends and wire→component terminations
@@ -249,8 +249,8 @@ Pins/protrusions can be:
 
 Policy: CE detection relies on `glyphToMask`, not a narrow `isWireGlyph()`, so these protrusions are supported.
 
-## Net-label policy
-### K. Net-label components
+## netLabel policy
+### K. netLabel components
 
 Catalog items with:
 - type === "Net"
