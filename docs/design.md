@@ -57,6 +57,30 @@ A construct allowing intelligent entities to **Transform thought into data, and 
 <br>
 
 # AsciiCAD policy
+
+
+                     ┌─────────┐
+                     │grid cell│
+                     └─┬───┬───┘
+                   ┌───┴┐ ┌┴────────┐
+                   │wire│ │component│
+                   └─┬──┘ └──┬──────┘
+     ┌────────┬──────┤       ├───────┬───────┐
+  ┌──┴──┐┌────┴───┐┌─┴─┐  ┌──┴──┐┌───┴────┐┌─┴─┐
+  │route││junction││end│  │route││junction││end│
+  └──┬──┘│ x-over │└─┬─┘  └──┬──┘│ x-over │└─┬─┘
+     │   │netLabel│  │       │   │netLabel│  │
+     │   └────┬───┘  │       │   └────┬───┘  │
+  ┌──┴────────┴──────┴─┐  ┌──┴────────┴──────┴─┐
+  │      Netline       │  │      Netline       │
+  └───────────┬────────┘  └───────────┬────────┘
+┌─────────────┴───────────────────────┴──────────┐
+│                                                │
+│                     DOMAIN                     │
+│  e.g. electronic/electric/architecture schema  │
+└────────────────────────────────────────────────┘
+
+
 ## Terminology
 ### Grid Cell
 We represent a cell location as a stable string key "r,c".
@@ -88,9 +112,9 @@ When lines split in, or join form multiple directions (also called 'graph degree
 In dense schematics, efficient routing may also need [**crossovers**](#crossings-without-junction) and **[labeled nodes](#netlabel-components)**, which must be _specified by policy_ as no glyph represents them.
 
 A netline entry contains:
-- `LE`: wire-to-component terminations, and unconnected wire ends
+- `LE`: wire-to-component terminations, unconnected wire ends (or flanked-components) (*)
 - `LJ`: [branching junctions](#junction-glyphs) (graph degree ≥ 3, meaning ≥ 3 legs)
-- `CE`: component-edge glyph cells (pins/protrusions) adjacent to wire or flanked-component 
+- `CE`: component-edge glyph cells (pins/protrusions) adjacent to wire 
 - `CJ`: component-internal junctions / pin-to-pin connections (*)
 
 Some components create **permanent** connectivity between pins without external wires:
