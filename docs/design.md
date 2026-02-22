@@ -107,7 +107,7 @@ A netline entry contains:
 - `CE`: component-edge glyph cells (pins/protrusions) adjacent to wire
 - `CJ`: component-internal junctions / pin-to-pin connections (*)
 
-`CJ` **— component internal connectivity (*)**
+(*) future implementation
 
 Some components create **permanent** connectivity between pins without external wires:
 - connectors (pin ↔ pin)
