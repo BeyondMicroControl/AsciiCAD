@@ -74,7 +74,13 @@ Note: other encodings are possible (e.g. r<<16|c), but "r,c" is explicit, safe, 
 
 ### Wire glyph
 
-Why `glyphToMask` exists (and why it’s used for net logic)
+Some glyphs like: `┐` are considered part of the wiring system because of their directional connectivity (N/S/E/W).
+
+
+In code, this is modeled by `glyphToMask` which takes in any glyph considered as 
+
+
+between glyphs and how  
 
 AsciiCAD treats “wire symbols” as functions (“connectivity directions”) rather than as literal characters.
 
