@@ -64,20 +64,16 @@ A construct allowing intelligent entities to **Transform thought into data, and 
                        ┌───┴┐ ┌┴────────┐                    │  │
                        │wire│ │component│                    │  │
                        └─┬──┘ └──┬──────┘                    │  │
-         ┌────────┬──────┤       ├───────┬───────┐           │  │
-      ┌──┴──┐┌────┴───┐┌─┴─┐  ┌──┴──┐┌───┴────┐┌─┴─┐         │  │
-      │route││junction││end│  │route││junction││end│         │  │
-      └──┬──┘│ x-over │└─┬─┘  └──┬──┘│ x-over │└─┬─┘         │  │
-         │   │netLabel│  │       │   │netLabel│  │           │  │
-         │   └────┬───┘  │       │   └────┬───┘  │           │  │
-      ┌──┴────────┴──────┴─┐  ┌──┴────────┴──────┴─┐         │  │
-      │      Netline       │  │      Netline       │        ─┘  └─
-      └───────────┬────────┘  └───────────┬────────┘        \    /
-    ┌─────────────┴───────────────────────┴──────────┐       \  /
-    │                                                │        \/
-    │                     DOMAIN                     │
-    │  e.g. electronic/electric/architecture schema  │
-    └────────────────────────────────────────────────┘
+     ┌───────────────────┴──┐ ┌──┴───────────────────┐       │  │
+     │                      │ │                      │       │  │
+     │        netline       │ │        netline       │       │  │
+     │lineEnd/Junction/Label│ │lineEnd/Junction/Label│       │  │
+     └────────────┬─────────┘ └───────────┬──────────┘       │  │
+    ┌─────────────┴───────────────────────┴──────────┐       │  │
+    │                                                │      ─┘  └─
+    │                     DOMAIN                     │      \    /
+    │  e.g. electronic/electric/architecture schema  │       \  /
+    └────────────────────────────────────────────────┘        \/
 
 ## Terminology
 ### Grid Cell
