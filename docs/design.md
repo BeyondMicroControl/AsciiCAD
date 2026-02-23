@@ -61,13 +61,13 @@ A construct allowing intelligent entities to **Transform thought into data, and 
                          ┌─────────┐          specialisation │  │
                          │grid cell│                         │  │
                          └─┬───┬───┘                         │  │
-                       ┌───┴┐ ┌┴────────┐                    │  │
-                       │wire│ │component│                    │  │
-                       └─┬──┘ └──┬──────┘                    │  │
-     ┌───────────────────┴──┐ ┌──┴───────────────────┐       │  │
+                   ┌───────┴┐ ┌┴────────┐                    │  │
+                   │  wire  │ │component│                    │  │
+                   └────┬───┘ └────┬────┘                    │  │
+     ┌──────────────────┴───┐ ┌────┴─────────────────┐       │  │
      │                      │ │                      │       │  │
-     │        netline       │ │        netline       │       │  │
-     │lineEnd/Junction/Label│ │lineEnd/Junction/Label│       │  │
+     │   exterior netline   │ │   interior netline   │       │  │
+     │lineEnd/Junction/Label│ │compEnd/Junction/Label│       │  │
      └────────────┬─────────┘ └───────────┬──────────┘       │  │
     ┌─────────────┴───────────────────────┴──────────┐       │  │
     │                                                │      ─┘  └─
