@@ -57,6 +57,24 @@ A construct allowing intelligent entities to **Transform thought into data, and 
 <br>
 
 # AsciiCAD policy
+
+                         ┌─────────┐          specialisation │  │
+                         │grid cell│                         │  │
+                         └─┬───┬───┘                         │  │
+                   ┌───────┴┐ ┌┴────────┐                    │  │
+                   │  wire  │ │component│                    │  │
+                   └────┬───┘ └────┬────┘                    │  │
+     ┌──────────────────┴───┐ ┌────┴─────────────────┐       │  │
+     │                      │ │                      │       │  │
+     │   exterior netline   │ │   interior netline   │       │  │
+     │lineEnd/Junction/Label│ │compEnd/Junction/Label│       │  │
+     └────────────┬─────────┘ └───────────┬──────────┘       │  │
+    ┌─────────────┴───────────────────────┴──────────┐       │  │
+    │                                                │      ─┘  └─
+    │                     DOMAIN                     │      \    /
+    │  e.g. electronic/electric/architecture schema  │       \  /
+    └────────────────────────────────────────────────┘        \/
+
 ## Terminology
 ### Grid Cell
 We represent a cell location as a stable string key "r,c".
@@ -72,45 +90,33 @@ We represent a cell location as a stable string key "r,c".
 
 Note: other encodings are possible (e.g. r<<16|c), but "r,c" is explicit, safe, and readable. (A packed numeric key could be a later micro-optimization, if needed.) (*)
 
-### Wire glyph
+(*) future implementation
 
-Why `glyphToMask` exists (and why it’s used for net logic)
+### Wire
 
-AsciiCAD treats “wire symbols” as functions (“connectivity directions”) rather than as literal characters.
+Long considered 'not serious' ASCII-table supplements emerging around 1975 (featuring continuous lines, corners and crosses e.g. Code Page 437 from IBM), the typical wire glyps were transposed and recompiled into UTF-8 (charcode range 0x2500-0x2570, representing lines, corners and crosses); all essentially pointing to a combination of 4 directions (**N**orth, **S**outh, **E**ast and **W**est).\
+Therefore, in codebase, `glyphToMask` encodes the only meaningful data about these wire glyphs: a 4-bit mask `N = 0b0001, E = 0b0010, S = 0b0100, W = 0b1000`.  A glyph’s “line function” is then just a bitwise OR of all the directions it connects.\
+example: ` ╤ ` connects E + S + W, becoming `E | S | W = 0b0010 | 0b0100 | 0b1000 = 0b1110`
 
-We encode each glyph’s connectivity using a 4-bit mask:
-- N = `0b0001`
-- E = `0b0010`
-- S = `0b0100`
-- W = `0b1000`
-
-A glyph’s “line function” is then just a bitwise OR of the directions it connects.
-
-**Example:**
-`╤` connects E + S + W, which becomes:
-
-- `E | S | W = 0b0010 | 0b0100 | 0b1000 = 0b1110`
-
-**Rationale:** Why this is better than character checks:
-- It generalizes across many Unicode box-drawing variants.
-- It makes junction tests trivial: e.g. a junction-like cell often has 3+ bits set.
-- It keeps code readable and stable: `if (m & E)` says exactly what it means.
-
-This approach scales better than large “if char in …” lists and reduces bugs when new glyphs are introduced.
-
+__Properties of the wire glyph__
+- stable (inherited from pioneering computer systems)
+- essentially a combo of 4 directions => encodable into a 4-bit mask
 
 ### Netline
 
+A netline is collection of wire glyphs considered as part of one or more continuous/uninterrupted lines.\
+Whenever lines split or join form multiple directions (also called 'graph degrees'), all these lines are considered part of the same net.
+
+In dense schematics, efficient routing may also need [**crossings**](#crossings-without-junction) and **[labeled nodes](#netlabel-components)**, which must be _specified by policy_ as no specific glyph represents them.
+
 A netline entry contains:
-- `LE`: wire ends and wire→component terminations
-- `LJ`: branching junctions (graph degree ≥ 3, meaning 3 legs)
-- `CE`: component-edge glyph cells (pins/protrusions) adjacent to wire
+- `LE`: wire-to-component terminations, unconnected wire ends (or flanked-components) (*)
+- `LJ`: [branching junctions](#junction-glyphs) (graph degree ≥ 3, meaning ≥ 3 legs)
+- `CE`: component-edge glyph cells (pins/protrusions) adjacent to wire 
 - `CJ`: component-internal junctions / pin-to-pin connections (*)
 
-`CJ` **— component internal connectivity (*)**
-
 Some components create **permanent** connectivity between pins without external wires:
-- connectors (pin ↔ pin)
+- connectors (pin to pin)
 - jumpers / shunts (bridging nets)
 - some fixed “wired” adapters
 
@@ -121,6 +127,7 @@ Notes:
 - Switches are special: their connectivity can depend on state, so they may be excluded from netlist policy or represented as conditional connectivity (*).
 - `CJ` would allow the net engine to optionally “collapse” nets through components that behave like fixed links. (*)
 
+(*) future implementation
 
 ## Input filtering policy
 ### A. Exclude double-line boxes
@@ -168,7 +175,7 @@ Example: a connection from A → right requires:
 - `A` has `E`
 - neighbor has `W`
 
-### E. Crossings without junction `─│─`
+### Crossings without junction
 
 We intentionally support **one canonical crossing pattern**:
 
@@ -186,7 +193,7 @@ Notes:
   - maintenance burden
 - Since users can already draw crossings reliably using a single convention, we prefer “one pattern, well-tested” over multiple patterns that are hard to validate.
 
-### F. Junction glyphs
+### Junction glyphs
 
 Junctions are characters with branching masks, e.g.:
 - `├ ┤ ┬ ┴ ┼` and similar box-drawing junctions
@@ -264,8 +271,8 @@ Pins/protrusions can be:
 
 Policy: CE detection relies on `glyphToMask`, not a narrow `isWireGlyph()`, so these protrusions are supported.
 
-## Net-label (“type: Net”) policy
-### K. Net-label components
+## netLabel policy
+### netLabel components
 
 Catalog items with:
 - type === "Net"

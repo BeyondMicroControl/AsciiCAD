@@ -5,7 +5,7 @@
 
 # Presentation
 
-This is a browser-based app based on building blocks once raised to the level of art: ASCII. It was designed as a "digital essay" on fasttracking complexity by strategising bare-bones simplicity at its conception.  As a matter of fact, v1.0 was put together in a few weeks time.
+This is a browser-based app using building blocks once raised to the level of art: ASCII.  The project was maintly designed as an essay on fasttracking complexity by strategising bare-bones simplicity at its conception.  As a matter of fact, v1.0 was put together in a few weeks time.
 
 Apart from demostrating it's higher purpose, the product of this concept covers a real usecase: **embedding digital and electronic schematics directly inside source code**. Whereas microcontroller projects traditionally require different CAD files revolving around ones source code, AsciiCAD schematics made of **readable text** can live, evolve and remain closest tied to its codebase.  **Caution**: It does not replace CAD apps for driving an entire PCB design workflow end-to-end; but it can definitely speed up circuit prototyping.
 
