@@ -2,20 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Series RC (5V, 10k, 10uF) - Simple Simulator</title>
+  <title>Stamp-Based RC Simulator (Old-school JS objects)</title>
   <style>
     body { font-family: system-ui, sans-serif; padding: 16px; }
     label { margin-right: 12px; }
-    input { width: 110px; }
+    input { width: 120px; }
     table { border-collapse: collapse; margin-top: 12px; }
     th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: right; }
     th { background: #f6f6f6; }
     .row { margin: 10px 0; }
     .note { color: #555; font-size: 0.95em; }
+    code { background: #f3f3f3; padding: 1px 4px; border-radius: 4px; }
   </style>
 </head>
 <body>
-  <h2>Series RC Transient (Backward Euler)</h2>
+  <h2>Series RC (Stamp-Based, Old-school JS Objects)</h2>
 
   <div class="row">
     <label>Vs (V): <input id="vs" type="number" value="5" step="0.1"></label>
@@ -31,72 +32,374 @@
   </div>
 
   <div class="note">
-    Output columns: time (s), V across resistor (V1−V2), I through resistor (A, from source → capacitor).
+    Unknown node: <code>V2(t)</code>. Fixed nodes: <code>V1=Vs</code>, <code>GND=0</code>. Output: time, <code>V_res=V1−V2</code>, <code>I_res=(V1−V2)/R</code>.
   </div>
 
   <div id="out"></div>
 
 <script>
-(function () {
-  function fmt(x, digits=6) {
-    // Avoid -0.000000
-    const v = Math.abs(x) < 0.5e-12 ? 0 : x;
-    return v.toFixed(digits);
+/* ========================== Utilities ========================== */
+
+function fmt(x, digits) {
+  digits = (digits === undefined) ? 6 : digits;
+  var v = (Math.abs(x) < 0.5e-12) ? 0 : x;
+  return v.toFixed(digits);
+}
+
+// Gaussian elimination with partial pivoting: solves A x = b
+function solveLinearSystem(A, b) {
+  var n = b.length;
+  var i, j, k;
+
+  for (k = 0; k < n; k++) {
+    // pivot
+    var pivotRow = k;
+    var pivotVal = Math.abs(A[k][k]);
+    for (i = k + 1; i < n; i++) {
+      var av = Math.abs(A[i][k]);
+      if (av > pivotVal) { pivotVal = av; pivotRow = i; }
+    }
+    if (pivotVal === 0) throw new Error("Singular matrix (pivot=0).");
+
+    if (pivotRow !== k) {
+      var tmpRow = A[k]; A[k] = A[pivotRow]; A[pivotRow] = tmpRow;
+      var tmpB = b[k]; b[k] = b[pivotRow]; b[pivotRow] = tmpB;
+    }
+
+    // eliminate
+    for (i = k + 1; i < n; i++) {
+      var factor = A[i][k] / A[k][k];
+      if (factor === 0) continue;
+      for (j = k; j < n; j++) A[i][j] -= factor * A[k][j];
+      b[i] -= factor * b[k];
+    }
   }
 
-  function simulateAndRender() {
-    const Vs = Number(document.getElementById('vs').value);
-    const R  = Number(document.getElementById('r').value);
-    const C  = Number(document.getElementById('c').value);
-    const dt = Number(document.getElementById('dt').value);
-    const T  = Number(document.getElementById('tend').value);
-    let V2_prev = Number(document.getElementById('v0').value); // capacitor node voltage
+  // back-substitution
+  var x = new Array(n);
+  for (i = 0; i < n; i++) x[i] = 0;
 
-    if (!(R > 0) || !(C > 0) || !(dt > 0) || !(T >= 0)) {
-      document.getElementById('out').innerHTML = "<p style='color:red'>Invalid parameters.</p>";
-      return;
+  for (i = n - 1; i >= 0; i--) {
+    var sum = b[i];
+    for (j = i + 1; j < n; j++) sum -= A[i][j] * x[j];
+    x[i] = sum / A[i][i];
+  }
+  return x;
+}
+
+/* ========================== NodeTable ========================== */
+
+function NODETABLE() {
+  this.nameToIndex = {};   // string -> int
+  this.fixed = {};         // nodeIndex (as string) -> voltage
+  this.nextIndex = 0;
+
+  this.node = function(name) {
+    if (this.nameToIndex[name] === undefined) {
+      this.nameToIndex[name] = this.nextIndex++;
+    }
+    return this.nameToIndex[name];
+  };
+
+  this.fix = function(nodeIndex, voltage) {
+    this.fixed[String(nodeIndex)] = voltage;
+  };
+
+  this.isFixed = function(nodeIndex) {
+    return this.fixed[String(nodeIndex)] !== undefined;
+  };
+
+  this.fixedValue = function(nodeIndex) {
+    return this.fixed[String(nodeIndex)];
+  };
+
+  // Returns { unknownIndexOfNode: {}, nUnknown: int }
+  this.buildUnknownMap = function() {
+    var unknownIndexOfNode = {}; // nodeIndex (as string) -> unknownIndex
+    var u = 0;
+    var n;
+    for (n = 0; n < this.nextIndex; n++) {
+      if (!this.isFixed(n)) {
+        unknownIndexOfNode[String(n)] = u++;
+      }
+    }
+    return { unknownIndexOfNode: unknownIndexOfNode, nUnknown: u };
+  };
+
+  // Combine unknown vector x into full node-voltage vector V
+  this.buildFullVoltages = function(x, unknownIndexOfNode) {
+    var V = new Array(this.nextIndex);
+    var n;
+    for (n = 0; n < this.nextIndex; n++) {
+      if (this.isFixed(n)) V[n] = this.fixedValue(n);
+      else V[n] = x[ unknownIndexOfNode[String(n)] ];
+    }
+    return V;
+  };
+}
+
+/* ========================== Circuit ========================== */
+
+function CIRCUIT(nodeTable) {
+  this.nt = nodeTable;
+  this.devices = [];
+
+  this.addDevice = function(device) {
+    this.devices.push(device);
+  };
+}
+
+/* ========================== StampContext ========================== */
+
+function STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, dt, r, J) {
+  this.nt = nt;
+  this.unknownIndexOfNode = unknownIndexOfNode;
+  this.V = V;
+  this.Vprev = Vprev;
+  this.dt = dt;
+  this.r = r;
+  this.J = J;
+
+  this._u = function(nodeIndex) {
+    return this.unknownIndexOfNode[String(nodeIndex)];
+  };
+
+  this.addR = function(nodeIndex, value) {
+    var ui = this._u(nodeIndex);
+    if (ui !== undefined) this.r[ui] += value;
+  };
+
+  this.addJ = function(eqNode, varNode, value) {
+    var ei = this._u(eqNode);
+    var vi = this._u(varNode);
+    if (ei !== undefined && vi !== undefined) this.J[ei][vi] += value;
+  };
+}
+
+/* ========================== Device Containers ========================== */
+
+// Common 2-pin helpers as a mixin-like function
+function TWOPIN_INIT(dev, a, b) {
+  dev.a = a;
+  dev.b = b;
+  dev.vab = function(ctx) { return ctx.V[this.a] - ctx.V[this.b]; };
+  dev.vabPrev = function(ctx) { return ctx.Vprev[this.a] - ctx.Vprev[this.b]; };
+}
+
+/*
+  Resistor port model:
+    i = (Va - Vb)/R,   di/dv = 1/R
+*/
+function RESISTOR(a, b, R) {
+  TWOPIN_INIT(this, a, b);
+  this.R = R;
+
+  this.stamp = function(ctx) {
+    var G = 1 / this.R;
+    var v = this.vab(ctx);
+    var i = G * v;
+
+    // Residual (KCL) contributions
+    ctx.addR(this.a, +i);
+    ctx.addR(this.b, -i);
+
+    // Jacobian
+    ctx.addJ(this.a, this.a, +G);
+    ctx.addJ(this.a, this.b, -G);
+    ctx.addJ(this.b, this.a, -G);
+    ctx.addJ(this.b, this.b, +G);
+  };
+}
+
+/*
+  Capacitor (Backward Euler companion) port model:
+    i = C * d/dt (Va - Vb)
+  BE discretization:
+    i ≈ (C/dt) * ((Va - Vb) - (Va_prev - Vb_prev))
+*/
+function CAPACITOR_BE(a, b, C) 
+{
+  TWOPIN_INIT(this, a, b);
+  this.C = C;
+
+  this.stamp = function(ctx) {
+    var Gc = this.C / ctx.dt;
+    var v = this.vab(ctx);
+    var vprev = this.vabPrev(ctx);
+    var i = Gc * (v - vprev);
+
+    ctx.addR(this.a, +i);
+    ctx.addR(this.b, -i);
+
+    ctx.addJ(this.a, this.a, +Gc);
+    ctx.addJ(this.a, this.b, -Gc);
+    ctx.addJ(this.b, this.a, -Gc);
+    ctx.addJ(this.b, this.b, +Gc);
+  };
+}
+
+/* ========================== Newton Solve ========================== */
+
+function newtonSolveKCL(ckt, unknownIndexOfNode, x0, Vprev, dt, opts) {
+  var nt = ckt.nt;
+  var nUnknown = x0.length;
+
+  var maxIter = (opts && opts.maxIter !== undefined) ? opts.maxIter : 20;
+  var tol = (opts && opts.tol !== undefined) ? opts.tol : 1e-12;
+
+  var x = x0.slice();
+  var iter;
+
+  for (iter = 0; iter < maxIter; iter++) {
+    var V = nt.buildFullVoltages(x, unknownIndexOfNode);
+
+    // residual + jacobian
+    var r = new Array(nUnknown);
+    var J = new Array(nUnknown);
+    var i, j;
+
+    for (i = 0; i < nUnknown; i++) {
+      r[i] = 0;
+      J[i] = new Array(nUnknown);
+      for (j = 0; j < nUnknown; j++) J[i][j] = 0;
     }
 
-    const V1 = Vs;        // source enforces node V1 relative to ground
-    const steps = Math.floor(T / dt);
-    const G = 1 / R;      // conductance
-    const alpha = C / dt; // BE factor
+    var ctx = new STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, dt, r, J);
 
-    let html = "";
-    html += "<table>";
-    html += "<thead><tr><th>time (s)</th><th>V_res (V)</th><th>I_res (A)</th></tr></thead>";
-    html += "<tbody>";
-
-    // Include t=0 row
-    {
-      const V2 = V2_prev;
-      const Vres = V1 - V2;
-      const Ires = Vres / R;
-      html += `<tr><td>${fmt(0, 6)}</td><td>${fmt(Vres, 6)}</td><td>${fmt(Ires, 9)}</td></tr>`;
+    for (i = 0; i < ckt.devices.length; i++) {
+      ckt.devices[i].stamp(ctx);
     }
 
-    for (let n = 1; n <= steps; n++) {
-      const t = n * dt;
+    // convergence check
+    var maxAbsR = 0;
+    for (i = 0; i < nUnknown; i++) {
+      var ar = Math.abs(r[i]);
+      if (ar > maxAbsR) maxAbsR = ar;
+    }
+    if (maxAbsR < tol) return { x: x, V: V, iters: iter, converged: true };
 
-      // Backward Euler solve for V2^n:
-      // V2 = (alpha*V2_prev + G*V1) / (alpha + G)
-      const V2 = (alpha * V2_prev + G * V1) / (alpha + G);
-
-      const Vres = V1 - V2;     // voltage across resistor (V1 - V2)
-      const Ires = Vres / R;    // current through resistor (from V1 -> V2)
-
-      html += `<tr><td>${fmt(t, 6)}</td><td>${fmt(Vres, 6)}</td><td>${fmt(Ires, 9)}</td></tr>`;
-
-      V2_prev = V2;
+    // solve J * dx = -r
+    var A = new Array(nUnknown);
+    var b = new Array(nUnknown);
+    for (i = 0; i < nUnknown; i++) {
+      A[i] = J[i].slice();
+      b[i] = -r[i];
     }
 
-    html += "</tbody></table>";
-    document.getElementById('out').innerHTML = html;
+    var dx = solveLinearSystem(A, b);
+    for (i = 0; i < nUnknown; i++) x[i] += dx[i];
   }
 
-  document.getElementById('run').addEventListener('click', simulateAndRender);
-  simulateAndRender(); // run once on load
-})();
+  var Vlast = nt.buildFullVoltages(x, unknownIndexOfNode);
+  return { x: x, V: Vlast, iters: maxIter, converged: false };
+}
+
+/* ========================== Build Circuit ========================== */
+
+function buildSeriesRCCircuit(Vs, R, C, Vcap0) {
+  var nt = new NODETABLE();
+
+  var nGND = nt.node("0");
+  var nPlus = nt.node("V1");
+  var nMid = nt.node("V2");
+
+  nt.fix(nGND, 0);
+  nt.fix(nPlus, Vs);
+
+  var ckt = new CIRCUIT(nt);
+
+  // "old-school object containers"
+  var oRESISTOR = new RESISTOR(nPlus, nMid, R);
+  var oCAP = new CAPACITOR_BE(nMid, nGND, C);
+
+  ckt.addDevice(oRESISTOR);
+  ckt.addDevice(oCAP);
+
+  var map = nt.buildUnknownMap();
+  var unknownIndexOfNode = map.unknownIndexOfNode;
+  var nUnknown = map.nUnknown;
+
+  var x0 = new Array(nUnknown);
+  for (var i = 0; i < nUnknown; i++) x0[i] = 0;
+
+  // initial condition for V2
+  var uV2 = unknownIndexOfNode[String(nMid)];
+  if (uV2 !== undefined) x0[uV2] = Vcap0;
+
+  return {
+    ckt: ckt,
+    nt: nt,
+    unknownIndexOfNode: unknownIndexOfNode,
+    nPlus: nPlus,
+    nMid: nMid,
+    nGND: nGND,
+    x0: x0
+  };
+}
+
+/* ========================== Run + Render ========================== */
+
+function simulateAndRender() {
+  var Vs = Number(document.getElementById('vs').value);
+  var R  = Number(document.getElementById('r').value);
+  var C  = Number(document.getElementById('c').value);
+  var dt = Number(document.getElementById('dt').value);
+  var T  = Number(document.getElementById('tend').value);
+  var Vcap0 = Number(document.getElementById('v0').value);
+
+  if (!(R > 0) || !(C > 0) || !(dt > 0) || !(T >= 0)) {
+    document.getElementById('out').innerHTML = "<p style='color:red'>Invalid parameters.</p>";
+    return;
+  }
+
+  var built = buildSeriesRCCircuit(Vs, R, C, Vcap0);
+  var ckt = built.ckt;
+  var nt = built.nt;
+  var unknownIndexOfNode = built.unknownIndexOfNode;
+  var nPlus = built.nPlus;
+  var nMid = built.nMid;
+  var x = built.x0.slice();
+
+  var steps = Math.floor(T / dt);
+
+  // History vector at t=0
+  var Vprev = nt.buildFullVoltages(x, unknownIndexOfNode);
+
+  var html = "<table>";
+  html += "<thead><tr><th>time (s)</th><th>V_res (V)</th><th>I_res (A)</th></tr></thead><tbody>";
+
+  function addRow(t, V) {
+    var V1 = V[nPlus];
+    var V2 = V[nMid];
+    var Vres = V1 - V2;
+    var Ires = Vres / R;
+    html += "<tr><td>" + fmt(t, 6) + "</td><td>" + fmt(Vres, 6) + "</td><td>" + fmt(Ires, 9) + "</td></tr>";
+  }
+
+  // t=0
+  addRow(0, Vprev);
+
+  for (var n = 1; n <= steps; n++) {
+    var t = n * dt;
+
+    // Newton solve for this step (linear here, but framework supports nonlinear)
+    var sol = newtonSolveKCL(ckt, unknownIndexOfNode, x, Vprev, dt, { maxIter: 10, tol: 1e-13 });
+
+    x = sol.x;
+    var V = sol.V;
+
+    addRow(t, V);
+
+    // advance history
+    Vprev = V;
+  }
+
+  html += "</tbody></table>";
+  document.getElementById('out').innerHTML = html;
+}
+
+document.getElementById('run').addEventListener('click', simulateAndRender);
+simulateAndRender();
 </script>
 </body>
 </html>
