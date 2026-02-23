@@ -98,6 +98,10 @@ Originating from the 'not serious' characters as they emerged around 1975 (ASCII
 Therefore, in codebase, `glyphToMask` encodes the only meaningful data about these wire glyphs: a 4-bit mask `N = 0b0001, E = 0b0010, S = 0b0100, W = 0b1000`.  A glyph’s “line function” is then just a bitwise OR of all the directions it connects.\
 example: ` ╤ ` connects E + S + W, becoming `E | S | W = 0b0010 | 0b0100 | 0b1000 = 0b1110`
 
+__Properties of the wire glyph__
+- stable (inherited from pioneering computer systems)
+- essentially come down to a combo of 4 directions => encodable into a 4-bit mask
+
 ### Netline
 
 A netline is collection of wires considered as part of one or more continuous/uninterrupted lines.\
