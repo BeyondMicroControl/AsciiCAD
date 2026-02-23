@@ -94,7 +94,7 @@ Note: other encodings are possible (e.g. r<<16|c), but "r,c" is explicit, safe, 
 
 ### Wire
 
-Long considered 'not serious' ASCII-table supplements emerging around 1975 (featuring continuous lines, corners and crosses e.g. Code Page 437 from IBM), the typical wire glyps were transposed and recompiled into UTF-8 (charcodes between code 0x2500-0x2570 representing lines, corners and crosses); all essentially pointing to a combination of 4 directions (**N**orth, **S**outh, **E**ast and **W**est).\
+Long considered 'not serious' ASCII-table supplements emerging around 1975 (featuring continuous lines, corners and crosses e.g. Code Page 437 from IBM), the typical wire glyps were transposed and recompiled into UTF-8 (charcode range 0x2500-0x2570, representing lines, corners and crosses); all essentially pointing to a combination of 4 directions (**N**orth, **S**outh, **E**ast and **W**est).\
 Therefore, in codebase, `glyphToMask` encodes the only meaningful data about these wire glyphs: a 4-bit mask `N = 0b0001, E = 0b0010, S = 0b0100, W = 0b1000`.  A glyph’s “line function” is then just a bitwise OR of all the directions it connects.\
 example: ` ╤ ` connects E + S + W, becoming `E | S | W = 0b0010 | 0b0100 | 0b1000 = 0b1110`
 
