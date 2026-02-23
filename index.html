@@ -327,6 +327,10 @@ const N = 0b0001, E = 2, S = 4, W = 8;
 const glyphToMask = new Map([
 [" ", 0],
 
+// half
+["╵",N],["╷",S],
+['╴',E],['╶',W],
+
 // single
 ["─", E|W], ["│", N|S],
 ["┌", E|S], ["┐", W|S], ["└", E|N], ["┘", W|N],
@@ -373,6 +377,9 @@ const glyphToMask = new Map([
 const maskToGlyph = new Map([
 [0, ' '],
 
+[N,'╵'],[S,'╷'],
+[E,'╴'],[W,'╶'],
+
 [E | W, '─'],
 [N | S, '│'],
 
@@ -391,6 +398,8 @@ const maskToGlyph = new Map([
 
 const maskToSingle = new Map([
 [0," "],
+[N,'╵'],[S,'╷'],
+[E,'╴'],[W,'╶'],
 [E|W,"─"], [N|S,"│"],
 [E|S,"┌"], [W|S,"┐"], [E|N,"└"], [W|N,"┘"],
 [N|E|S,"├"], [N|W|S,"┤"],
