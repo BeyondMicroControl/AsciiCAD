@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Stamp-Based RLC Simulator (Old-school JS objects, documented)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 16px; }
+    label { margin-right: 12px; display:inline-block; margin-bottom:6px; }
+    input { width: 120px; }
+    table { border-collapse: collapse; margin-top: 12px; }
+    th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: right; }
+    th { background: #f6f6f6; }
+    .row { margin: 10px 0; }
+    .note { color: #555; font-size: 0.95em; max-width: 980px; line-height: 1.35; }
+    code { background: #f3f3f3; padding: 1px 4px; border-radius: 4px; }
+    details { margin: 10px 0; }
+    summary { cursor: pointer; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  </style>
+</head>
+<body>
+  <h2>Series RLC Transient Simulator (stamp-based, old-school JS objects)</h2>
+
+  <div class="note">
+    <p>
+      This is a minimal “SPICE-like” core: each component is a <b>port model</b> that defines a branch current/voltage law
+      and then <b>stamps</b> its contribution into a global system built from:
+      <b>KCL at nodes</b> + <b>extra equations for extra unknowns</b> (MNA-style).
+    </p>
+    <p>
+      Circuit (series RLC to ground): <code>Vs</code> → <code>R</code> → <code>L</code> → <code>C</code> → GND.<br/>
+      Nodes: <code>0</code> = ground (fixed 0V), <code>V1</code> = source plus (fixed Vs),
+      <code>V2</code> = between R and L, <code>V3</code> = between L and C.
+    </p>
+    <p>
+      Output table columns: time, voltage across the resistor <code>V_res = V1 − V2</code>,
+      current through the resistor <code>I_res = (V1 − V2)/R</code>.
+      (In this series circuit, that is also the inductor/capacitor series current.)
+    </p>
+  </div>
+
+  <details>
+    <summary><b>Math recap (what the stamp engine is solving)</b></summary>
+    <div class="note">
+      <p><b>Port conventions:</b> Each 2-pin device has pins (a,b) with node voltages (Va,Vb). Define:</p>
+      <ul>
+        <li>Branch voltage: <span class="mono">v = Va − Vb</span></li>
+        <li>Branch current: <span class="mono">i</span> is positive from a → b</li>
+        <li>KCL uses “currents leaving node”: leaving at node a is <span class="mono">+i</span>, leaving at node b is <span class="mono">−i</span></li>
+      </ul>
+
+      <p><b>Resistor</b>: <span class="mono">i = (Va − Vb)/R</span></p>
+      <p><b>Capacitor</b>: <span class="mono">i = C * d/dt (Va − Vb)</span></p>
+      <p><b>Inductor</b>: <span class="mono">v = L * d/dt (i)</span></p>
+
+      <p>
+        For capacitors, we discretize <span class="mono">dv/dt</span>; for inductors, we discretize <span class="mono">di/dt</span>.
+        The chosen integration method (BE/TR/BDF2) is an <b>analysis-level object</b> <span class="mono">oINTEGRATOR</span>.
+        Devices remain method-agnostic by asking the integrator for the algebraic form to stamp.
+      </p>
+
+      <p><b>Unknown vector x:</b></p>
+      <ul>
+        <li>Unknown node voltages (here <span class="mono">V2</span>, <span class="mono">V3</span>)</li>
+        <li>Extra unknowns introduced by devices (here: inductor branch current <span class="mono">iL</span>)</li>
+      </ul>
+
+      <p>
+        The residual vector r is arranged so that:
+        <ul>
+          <li>r[node-unknown] is KCL at that node (sum currents leaving = 0)</li>
+          <li>r[extra-unknown] is the constitutive equation for that extra unknown (e.g., inductor v=L di/dt)</li>
+        </ul>
+      </p>
+    </div>
+  </details>
+
+  <div class="note">
+    <p><b>CIRCUIT DRAWING</b></p>
+    <pre>
+                ⎽⎽⎽⎽        + [   L   ]        + [  C  ]
+      ┌─(A)──┬─[  R ]─┬─────( iL )──────────┨┠─┐
+      │      │  ⎺⎺⎺⎺  │                        │
+      │      └───(V)──┘                        │
+    ╭─╵─╮                                      │
+    ( ± )                                      │
+    ╰─╷─╯[ Vs ]                                │
+      └────────────────────────────────────────┘
+    </pre>
+  </div>
+
+  <div class="row">
+    <label>Vs (V): <input id="vs" type="number" value="5" step="0.1"></label>
+    <label>R (Ω): <input id="r" type="number" value="10000" step="100"></label>
+    <label>L (H): <input id="l" type="number" value="0.5" step="0.1"></label>
+    <label>C (F): <input id="c" type="number" value="0.00001" step="0.000001"></label>
+    <label>Integrator:
+      <select id="integrator">
+        <option value="BE" selected>Backward Euler (BE)</option>
+        <option value="TR">Trapezoidal (TR)</option>
+        <option value="BDF2">Gear / BDF2</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="row">
+    <label>dt (s): <input id="dt" type="number" value="0.0005" step="0.0001"></label>
+    <label>T end (s): <input id="tend" type="number" value="0.05" step="0.01"></label>
+    <label>Vcap(0) (V): <input id="v0" type="number" value="0" step="0.1"></label>
+    <label>IL(0) (A): <input id="i0" type="number" value="0" step="0.001"></label>
+    <button id="run">Run</button>
+  </div>
+
+  <div id="out"></div>
+
+<script>
+  // Keep user's debugging toggle and style
+  var bDebug = true;
+
+/* ============================================================================
+   1) GLOBAL NUMERICS / LINEAR SOLVE
+   ============================================================================ */
+
+function fmt(x, digits) {
+  digits = (digits === undefined) ? 6 : digits;
+  var v = (Math.abs(x) < 0.5e-12) ? 0 : x;
+  return v.toFixed(digits);
+}
+
+// Gaussian elimination with partial pivoting: solves A x = b
+function solveLinearSystem(A, b) {
+  var n = b.length;
+  var i, j, k;
+
+  for (k = 0; k < n; k++) {
+    // Pivot selection
+    var pivotRow = k;
+    var pivotVal = Math.abs(A[k][k]);
+    for (i = k + 1; i < n; i++) {
+      var av = Math.abs(A[i][k]);
+      if (av > pivotVal) { pivotVal = av; pivotRow = i; }
+    }
+    if (pivotVal === 0) throw new Error("Singular matrix (pivot=0).");
+
+    // Row swap
+    if (pivotRow !== k) {
+      var tmpRow = A[k]; A[k] = A[pivotRow]; A[pivotRow] = tmpRow;
+      var tmpB = b[k]; b[k] = b[pivotRow]; b[pivotRow] = tmpB;
+    }
+
+    // Eliminate below pivot
+    for (i = k + 1; i < n; i++) {
+      var factor = A[i][k] / A[k][k];
+      if (factor === 0) continue;
+      for (j = k; j < n; j++) A[i][j] -= factor * A[k][j];
+      b[i] -= factor * b[k];
+    }
+  }
+
+  // Back substitution
+  var x = new Array(n);
+  for (i = 0; i < n; i++) x[i] = 0;
+
+  for (i = n - 1; i >= 0; i--) {
+    var sum = b[i];
+    for (j = i + 1; j < n; j++) sum -= A[i][j] * x[j];
+    x[i] = sum / A[i][i];
+  }
+  return x;
+}
+
+/* ============================================================================
+   2) NODE TABLE + UNKNOWN MAPPING
+   ============================================================================ */
+
+function NODETABLE() {
+  this.nameToIndex = {};   // string -> int
+  this.fixed = {};         // nodeIndex (as string) -> voltage
+  this.nextIndex = 0;
+
+  this.node = function(name) {
+    if (this.nameToIndex[name] === undefined) {
+      this.nameToIndex[name] = this.nextIndex++;
+    }
+    return this.nameToIndex[name];
+  };
+
+  this.get = function(name) {
+    return this.nameToIndex[name];
+  };
+
+  this.fix = function(nodeIndex, voltage) {
+    this.fixed[String(nodeIndex)] = voltage;
+    if(bDebug) console.log("nodeIndex "+nodeIndex+" was fixed to voltage "+voltage);
+  };
+
+  this.isFixed = function(nodeIndex) {
+    return this.fixed[String(nodeIndex)] !== undefined;
+  };
+
+  this.fixedValue = function(nodeIndex) {
+    return this.fixed[String(nodeIndex)];
+  };
+
+  // Map each non-fixed node to a compact unknown index 0..(nNodeUnknown-1)
+  this.buildUnknownMap = function() {
+    var unknownIndexOfNode = {}; // nodeIndex (as string) -> unknownIndex
+    var u = 0;
+    var n;
+    for (n = 0; n < this.nextIndex; n++) {
+      if (!this.isFixed(n)) unknownIndexOfNode[String(n)] = u++;
+    }
+    return { unknownIndexOfNode: unknownIndexOfNode, nUnknown: u };
+  };
+
+  // Build full voltage vector V[nodeIndex] from unknown vector x[unknownIndex]
+  // Note: x may contain extra unknowns (e.g., inductor currents). Those are ignored here.
+  this.buildFullVoltages = function(x, unknownIndexOfNode) {
+    var V = new Array(this.nextIndex);
+    var n;
+    for (n = 0; n < this.nextIndex; n++) {
+      if (this.isFixed(n)) V[n] = this.fixedValue(n);
+      else V[n] = x[ unknownIndexOfNode[String(n)] ];
+    }
+    return V;
+  };
+}
+
+/* ============================================================================
+   3) CIRCUIT CONTAINER + EXTRA UNKNOWN ALLOCATION
+   ----------------------------------------------------------------------------
+   In MNA, some devices add extra unknowns (e.g., inductor current iL).
+   We allocate those AFTER we know how many node-voltage unknowns we have.
+   ============================================================================ */
+
+function CIRCUIT(nodeTable) {
+  this.nt = nodeTable;
+  this.devices = [];
+
+  // Filled during preparation:
+  this.unknownIndexOfNode = null;
+  this.nUnknownTotal = 0;
+  this._nextUnknown = 0;
+
+  this.addDevice = function(device) { this.devices.push(device); };
+
+  this.prepareUnknowns = function() {
+    // 1) map node-voltage unknowns
+    var map = this.nt.buildUnknownMap();
+    this.unknownIndexOfNode = map.unknownIndexOfNode;
+    this._nextUnknown = map.nUnknown;
+
+    // 2) allocate extra unknowns requested by devices
+    for (var i=0; i<this.devices.length; i++) {
+      var dev = this.devices[i];
+      if (dev && dev.nExtraUnknowns && dev.nExtraUnknowns > 0) {
+        if (dev.nExtraUnknowns !== 1) throw new Error("Only 1 extra unknown supported per device in this demo.");
+        dev.u = this._nextUnknown++;
+        if(bDebug) console.log("allocated extra unknown index "+dev.u+" for device type "+dev.type);
+      }
+    }
+
+    this.nUnknownTotal = this._nextUnknown;
+    if(bDebug) console.log("nUnknownTotal = "+this.nUnknownTotal);
+  };
+}
+
+/* ============================================================================
+   4) STAMP CONTEXT
+   ----------------------------------------------------------------------------
+   Extends prior version with:
+     - ctx.x : the current unknown vector (so devices can read extra unknowns)
+     - ctx.addRIdx / addJIdx : stamp directly by unknown indices (node or extra)
+
+   Node helper:
+     - ctx.uNode(nodeIndex) -> unknown index for that node (or undefined if fixed)
+   ============================================================================ */
+
+function STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, Vprev2, oINTEGRATOR, dt, x, r, J) {
+  this.nt = nt;
+  this.unknownIndexOfNode = unknownIndexOfNode;
+  this.V = V;
+  this.Vprev = Vprev;
+  this.Vprev2 = Vprev2; // solution from two steps back V^(n-2) (may be null at start)
+  this.oINTEGRATOR = oINTEGRATOR; // analysis-level integrator (BE/TR/BDF2)
+  this.dt = dt;
+  this.x = x;
+  this.r = r;
+  this.J = J;
+
+  this.uNode = function(nodeIndex) {
+    return this.unknownIndexOfNode[String(nodeIndex)];
+  };
+
+  this.addR = function(nodeIndex, value) {
+    var ui = this.uNode(nodeIndex);
+    if (ui !== undefined) this.r[ui] += value;
+  };
+
+  this.addJ = function(eqNode, varNode, value) {
+    var ei = this.uNode(eqNode);
+    var vi = this.uNode(varNode);
+    if (ei !== undefined && vi !== undefined) this.J[ei][vi] += value;
+  };
+
+  // Direct stamping by unknown indices (works for both node-equations and extra equations)
+  this.addRIdx = function(eqIdx, value) {
+    this.r[eqIdx] += value;
+  };
+
+  this.addJIdx = function(eqIdx, varIdx, value) {
+    this.J[eqIdx][varIdx] += value;
+  };
+
+  // Helper: Jacobian contribution where the equation is a NODE KCL, but the variable is an EXTRA unknown index
+  this.addJNodeVarIdx = function(eqNode, varIdx, value) {
+    var ei = this.uNode(eqNode);
+    if (ei !== undefined) this.J[ei][varIdx] += value;
+  };
+
+  // Helper: Jacobian contribution where the equation is an EXTRA equation index, but the variable is a NODE voltage
+  this.addJIdxNodeVar = function(eqIdx, varNode, value) {
+    var vi = this.uNode(varNode);
+    if (vi !== undefined) this.J[eqIdx][vi] += value;
+  };
+}
+
+/* ============================================================================
+   5) 2-PIN HELPERS
+   ============================================================================ */
+
+function TWOPIN_INIT(dev, a, b) {
+  dev.a = a;
+  dev.b = b;
+
+  // Present branch voltage v = Va - Vb
+  dev.vab = function(ctx) { return ctx.V[this.a] - ctx.V[this.b]; };
+
+  // Previous-timestep branch voltage v_prev = Va_prev - Vb_prev
+  dev.vabPrev = function(ctx) { return ctx.Vprev[this.a] - ctx.Vprev[this.b]; };
+
+  // Two-steps-back branch voltage v_prev2 = Va(n-2) - Vb(n-2)
+  dev.vabPrev2 = function(ctx) {
+    if (!ctx.Vprev2) return 0;
+    return ctx.Vprev2[this.a] - ctx.Vprev2[this.b];
+  };
+}
+
+/* ============================================================================
+   6) DEVICES (method-agnostic)
+   ============================================================================ */
+
+function RESISTOR(a, b, R)
+{
+  TWOPIN_INIT(this, a, b);
+  this.type = "RESISTOR";
+  this.R = R;
+
+  this.stamp = function(ctx)
+  {
+    var G = 1 / this.R;
+    var v = this.vab(ctx);
+    var i = G * v;
+
+    ctx.addR(this.a, +i);
+    ctx.addR(this.b, -i);
+
+    ctx.addJ(this.a, this.a, +G);
+    ctx.addJ(this.a, this.b, -G);
+    ctx.addJ(this.b, this.a, -G);
+    ctx.addJ(this.b, this.b, +G);
+  };
+}
+
+function CAPACITOR(a, b, C)
+{
+  TWOPIN_INIT(this, a, b);
+  this.type = "CAPACITOR";
+  this.C = C;
+
+  // Per-device history for methods that need it (TR uses iPrev).
+  this.iPrev = 0;
+
+  this.stamp = function(ctx)
+  {
+    // i = C * dv/dt  --> integrator provides discretized i(v, history) and slope G=∂i/∂v
+    var ig = ctx.oINTEGRATOR.capIG(this, ctx);
+    var i = ig.i;
+    var G = ig.G;
+
+    ctx.addR(this.a, +i);
+    ctx.addR(this.b, -i);
+
+    ctx.addJ(this.a, this.a, +G);
+    ctx.addJ(this.a, this.b, -G);
+    ctx.addJ(this.b, this.a, -G);
+    ctx.addJ(this.b, this.b, +G);
+  };
+}
+
+/*
+  INDUCTOR (method-agnostic) in MNA form.
+
+  Continuous-time port equation:
+    v = L * di/dt
+
+  Unlike a resistor/capacitor, an inductor is most convenient to model with an extra unknown: its branch current iL.
+  So the inductor contributes:
+
+    1) KCL at its two nodes using the extra unknown iL:
+       at node a: current leaving += +iL
+       at node b: current leaving += -iL
+
+    2) One extra equation (at row "u") enforcing v = L di/dt (discretized by oINTEGRATOR)
+
+  This device therefore requests one extra unknown:
+    this.nExtraUnknowns = 1
+
+  The allocated index is stored in this.u by CIRCUIT.prepareUnknowns().
+*/
+function INDUCTOR(a, b, L)
+{
+  TWOPIN_INIT(this, a, b);
+  this.type = "INDUCTOR";
+  this.L = L;
+
+  // Requests a single extra unknown iL
+  this.nExtraUnknowns = 1;
+  this.u = -1; // filled later
+
+  // Per-device current history (needed for TR and BDF2)
+  this.iPrev = 0;
+  this.iPrev2 = 0;
+
+  this.stamp = function(ctx)
+  {
+    var iL = ctx.x[this.u]; // extra unknown variable: inductor branch current (a -> b)
+
+    // ---- 1) KCL stamps (node equations) ----
+    // r[a] += +iL ; r[b] += -iL
+    ctx.addR(this.a, +iL);
+    ctx.addR(this.b, -iL);
+
+    // Jacobian of node KCL wrt iL:
+    ctx.addJNodeVarIdx(this.a, this.u, +1);
+    ctx.addJNodeVarIdx(this.b, this.u, -1);
+
+    // ---- 2) Constitutive equation stamp (extra equation at row u) ----
+    // We enforce: (Va - Vb) + iCoef*iL + const = 0
+    // where iCoef and const come from chosen integration method.
+    var eq = ctx.oINTEGRATOR.indEq(this, ctx);
+    var v = this.vab(ctx);
+
+    var res = v + (eq.iCoef * iL) + eq.const;
+    ctx.addRIdx(this.u, res);
+
+    // Jacobian of this constitutive equation:
+    // d(res)/dVa = +1, d(res)/dVb = -1, d(res)/diL = iCoef
+    ctx.addJIdxNodeVar(this.u, this.a, +1);
+    ctx.addJIdxNodeVar(this.u, this.b, -1);
+    ctx.addJIdx(this.u, this.u, eq.iCoef);
+  };
+}
+
+/* ============================================================================
+   7) INTEGRATORS (analysis-level)
+   ----------------------------------------------------------------------------
+   Each integrator provides BOTH:
+     capIG(oCAP, ctx) -> { i, G } for i = C dv/dt
+     indEq(oL, ctx)   -> { iCoef, const } for v + iCoef*i + const = 0  (v = L di/dt)
+
+   Additionally, it MAY provide commitCap/commitInd to update per-device histories
+   after a timestep converges.
+   ============================================================================ */
+
+function INTEGRATOR_BE()
+{
+  this.name = "BE";
+
+  // Capacitor:
+  // i = (C/dt) * (v - vprev),  G = C/dt
+  this.capIG = function(oCAP, ctx)
+  {
+    var C = oCAP.C;
+    var v = oCAP.vab(ctx);
+    var vprev = oCAP.vabPrev(ctx);
+    var G = C / ctx.dt;
+    var i = G * (v - vprev);
+    return { i:i, G:G };
+  };
+
+  // Inductor:
+  // v = L * (i - iPrev)/dt
+  // => v - (L/dt)*i + (L/dt)*iPrev = 0
+  // residual form: v + iCoef*i + const = 0
+  this.indEq = function(oL, ctx)
+  {
+    var K = oL.L / ctx.dt;        // L/dt
+    return { iCoef: -K, const: +K * oL.iPrev };
+  };
+
+  this.commitCap = function(oCAP, V, Vprev, Vprev2, dt) { /* no-op */ };
+  this.commitInd = function(oL, V, Vprev, Vprev2, dt)
+  {
+    // For BE, we only need iPrev := i(n)
+    oL.iPrev = oL.iNow;
+  };
+}
+
+function INTEGRATOR_TR()
+{
+  this.name = "TR";
+
+  // Capacitor TR:
+  // i = (2C/dt)*(v - vprev) - iPrev
+  this.capIG = function(oCAP, ctx)
+  {
+    var C = oCAP.C;
+    var v = oCAP.vab(ctx);
+    var vprev = oCAP.vabPrev(ctx);
+    var G = (2*C) / ctx.dt;
+    var i = G*(v - vprev) - oCAP.iPrev;
+    return { i:i, G:G };
+  };
+
+  // Inductor TR (trapezoidal on di/dt):
+  // i = iPrev + (dt/(2L))*(v + vPrev)
+  // Rearranged for MNA extra equation:
+  // v = (2L/dt)*(i - iPrev) - vPrev
+  // => v - (2L/dt)*i + (2L/dt)*iPrev + vPrev = 0
+  this.indEq = function(oL, ctx)
+  {
+    var K = (2*oL.L) / ctx.dt;   // 2L/dt
+    var vPrev = oL.vabPrev(ctx); // from previous timestep voltages
+    return { iCoef: -K, const: +K * oL.iPrev + vPrev };
+  };
+
+  this.commitCap = function(oCAP, V, Vprev, Vprev2, dt)
+  {
+    var C = oCAP.C;
+    var v = (V[oCAP.a] - V[oCAP.b]);
+    var vprev = (Vprev[oCAP.a] - Vprev[oCAP.b]);
+    var G = (2*C) / dt;
+    var i = G*(v - vprev) - oCAP.iPrev;
+    oCAP.iPrev = i;
+  };
+
+  this.commitInd = function(oL, V, Vprev, Vprev2, dt)
+  {
+    // Update iPrev := iNow
+    oL.iPrev = oL.iNow;
+  };
+}
+
+function INTEGRATOR_BDF2()
+{
+  this.name = "BDF2";
+
+  // Capacitor BDF2:
+  // i = C * (3v - 4v1 + v2)/(2dt),  G = 3C/(2dt)
+  // Startup fallback to BE if no Vprev2.
+  this.capIG = function(oCAP, ctx)
+  {
+    var C = oCAP.C;
+    var v  = oCAP.vab(ctx);
+    var v1 = oCAP.vabPrev(ctx);
+
+    if (!ctx.Vprev2) {
+      var Gbe = C / ctx.dt;
+      return { i: Gbe*(v - v1), G: Gbe };
+    }
+
+    var v2 = oCAP.vabPrev2(ctx);
+    var i = (C * (3*v - 4*v1 + v2)) / (2*ctx.dt);
+    var G = (3*C) / (2*ctx.dt);
+    return { i:i, G:G };
+  };
+
+  // Inductor BDF2:
+  // v = L * (3i - 4i1 + i2)/(2dt)
+  // => v - (3L/(2dt))*i + (L/(2dt))*(4i1 - i2) = 0
+  // Startup: if we don't have iPrev2 yet, fall back to BE.
+  this.indEq = function(oL, ctx)
+  {
+    if (!ctx.Vprev2 || oL._hasPrev2 !== true) {
+      var Kbe = oL.L / ctx.dt;
+      return { iCoef: -Kbe, const: +Kbe * oL.iPrev };
+    }
+    var K = (3*oL.L) / (2*ctx.dt);                  // 3L/(2dt)
+    var constTerm = (oL.L * (4*oL.iPrev - oL.iPrev2)) / (2*ctx.dt);
+    return { iCoef: -K, const: +constTerm };
+  };
+
+  this.commitCap = function(oCAP, V, Vprev, Vprev2, dt) { /* no-op */ };
+
+  this.commitInd = function(oL, V, Vprev, Vprev2, dt)
+  {
+    // Shift i history: iPrev2 <- iPrev, iPrev <- iNow
+    oL.iPrev2 = oL.iPrev;
+    oL.iPrev = oL.iNow;
+    oL._hasPrev2 = true;
+  };
+}
+
+/* ============================================================================
+   8) NEWTON SOLVER
+   ============================================================================ */
+
+function newtonSolveKCL(oCIRCUIT, x0, Vprev, Vprev2, oINTEGRATOR, dt, opts) {
+  var nt = oCIRCUIT.nt;
+  var unknownIndexOfNode = oCIRCUIT.unknownIndexOfNode;
+  var nUnknown = oCIRCUIT.nUnknownTotal;
+
+  var maxIter = (opts && opts.maxIter !== undefined) ? opts.maxIter : 20;
+  var tol = (opts && opts.tol !== undefined) ? opts.tol : 1e-12;
+
+  var x = x0.slice();
+  var iter, i, j;
+
+  for (iter = 0; iter < maxIter; iter++) {
+    var V = nt.buildFullVoltages(x, unknownIndexOfNode);
+
+    // Allocate and zero residual/Jacobian
+    var r = new Array(nUnknown);
+    var J = new Array(nUnknown);
+    for (i = 0; i < nUnknown; i++) {
+      r[i] = 0;
+      J[i] = new Array(nUnknown);
+      for (j = 0; j < nUnknown; j++) J[i][j] = 0;
+    }
+
+    // Stamp all devices
+    var ctx = new STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, Vprev2, oINTEGRATOR, dt, x, r, J);
+
+    // Make current values visible for commitInd (so integrator can store iNow after convergence)
+    for (i = 0; i < oCIRCUIT.devices.length; i++) {
+      var dev = oCIRCUIT.devices[i];
+      if (dev && dev.type === "INDUCTOR") dev.iNow = x[dev.u];
+    }
+
+    for (i = 0; i < oCIRCUIT.devices.length; i++) oCIRCUIT.devices[i].stamp(ctx);
+
+    // Convergence check
+    var maxAbsR = 0;
+    for (i = 0; i < nUnknown; i++) {
+      var ar = Math.abs(r[i]);
+      if (ar > maxAbsR) maxAbsR = ar;
+    }
+    if (maxAbsR < tol) return { x: x, V: V, iters: iter, converged: true };
+
+    // Solve for Newton update: J * dx = -r
+    var A = new Array(nUnknown);
+    var b = new Array(nUnknown);
+    for (i = 0; i < nUnknown; i++) {
+      A[i] = J[i].slice();
+      b[i] = -r[i];
+    }
+
+    var dx = solveLinearSystem(A, b);
+    for (i = 0; i < nUnknown; i++) x[i] += dx[i];
+  }
+
+  var Vlast = nt.buildFullVoltages(x, unknownIndexOfNode);
+  return { x: x, V: Vlast, iters: maxIter, converged: false };
+}
+
+/* ============================================================================
+   9) BUILD THIS SPECIFIC RLC CIRCUIT
+   ============================================================================ */
+
+function buildSeriesRLCCircuit(Vs, R, L, C, Vcap0, IL0)
+{
+  var nt = new NODETABLE();
+
+  nt.fix(nt.node("0"), 0);
+  nt.fix(nt.node("V1"), Vs);
+
+  // Ensure intermediate nodes exist
+  nt.node("V2");
+  nt.node("V3");
+
+  var oCIRCUIT = new CIRCUIT(nt);
+
+  var oRES = new RESISTOR(nt.get("V1"), nt.get("V2"), R);
+  var oIND = new INDUCTOR(nt.get("V2"), nt.get("V3"), L);
+  var oCAP = new CAPACITOR(nt.get("V3"), nt.get("0"), C);
+
+  oCIRCUIT.addDevice(oRES);
+  oCIRCUIT.addDevice(oIND);
+  oCIRCUIT.addDevice(oCAP);
+
+  // Allocate unknowns (node voltages first, then inductor current)
+  oCIRCUIT.prepareUnknowns();
+
+  var nUnknown = oCIRCUIT.nUnknownTotal;
+  var x0 = new Array(nUnknown);
+  for (var i=0; i<nUnknown; i++) x0[i]=0;
+
+  // Initial conditions:
+  // - V3(0) = Vcap0 (capacitor voltage to ground)
+  // - iL(0) = IL0 (inductor current)
+  var uV3 = oCIRCUIT.unknownIndexOfNode[String(nt.get("V3"))];
+  if (uV3 !== undefined) x0[uV3] = Vcap0;
+
+  // V2 initial guess: match V3 to avoid huge initial inductor voltage spike from bad guess
+  var uV2 = oCIRCUIT.unknownIndexOfNode[String(nt.get("V2"))];
+  if (uV2 !== undefined) x0[uV2] = Vcap0;
+
+  // Find inductor extra unknown index and set IL0
+  for (var di=0; di<oCIRCUIT.devices.length; di++) {
+    var dev = oCIRCUIT.devices[di];
+    if (dev && dev.type === "INDUCTOR") {
+      x0[dev.u] = IL0;
+      dev.iPrev = IL0;
+      dev.iPrev2 = IL0;
+      dev._hasPrev2 = false;
+      if(bDebug) console.log("set IL0="+IL0+" at unknown index "+dev.u);
+    }
+  }
+
+  if(bDebug) console.log("initial guess x0 = "+JSON.stringify(x0));
+
+  return { oCIRCUIT:oCIRCUIT, x0:x0 };
+}
+
+/* ============================================================================
+   10) TRANSIENT LOOP + OUTPUT TABLE
+   ============================================================================ */
+
+function simulateAndRender()
+{
+  var Vs = Number(document.getElementById('vs').value);
+  var R  = Number(document.getElementById('r').value);
+  var L  = Number(document.getElementById('l').value);
+  var C  = Number(document.getElementById('c').value);
+  var sIntegrator = (document.getElementById('integrator') ? document.getElementById('integrator').value : "BE");
+  var dt = Number(document.getElementById('dt').value);
+  var T  = Number(document.getElementById('tend').value);
+  var Vcap0 = Number(document.getElementById('v0').value);
+  var IL0   = Number(document.getElementById('i0').value);
+
+  if (!(R > 0) || !(L > 0) || !(C > 0) || !(dt > 0) || !(T >= 0)) {
+    document.getElementById('out').innerHTML = "<p style='color:red'>Invalid parameters.</p>";
+    return;
+  }
+
+  var built = buildSeriesRLCCircuit(Vs, R, L, C, Vcap0, IL0);
+  var oCIRCUIT = built.oCIRCUIT;
+  var nt = oCIRCUIT.nt;
+  var x = built.x0.slice();
+
+  // Analysis-level integrator choice
+  var oINTEGRATOR;
+  if (sIntegrator === "TR") oINTEGRATOR = new INTEGRATOR_TR();
+  else if (sIntegrator === "BDF2") oINTEGRATOR = new INTEGRATOR_BDF2();
+  else oINTEGRATOR = new INTEGRATOR_BE();
+
+  var steps = Math.floor(T / dt);
+
+  // History vectors
+  var Vprev = nt.buildFullVoltages(x, oCIRCUIT.unknownIndexOfNode);
+  var Vprev2 = null;
+
+  var html = "<table>";
+  html += "<thead><tr><th>time (s)</th><th>V_res (V)</th><th>I_res (A)</th></tr></thead><tbody>";
+
+  function addRow(t, V, xNow)
+  {
+    var V1 = V[ nt.get("V1") ];
+    var V2 = V[ nt.get("V2") ];
+    var Vres = V1 - V2;
+    var Ires = Vres / R;
+    html += "<tr><td>" + fmt(t, 6) + "</td><td>" + fmt(Vres, 6) + "</td><td>" + fmt(Ires, 9) + "</td></tr>";
+  }
+
+  addRow(0, Vprev, x);
+
+  for (var n = 1; n <= steps; n++)
+  {
+    var t = n * dt;
+
+    var sol = newtonSolveKCL(oCIRCUIT, x, Vprev, Vprev2, oINTEGRATOR, dt, { maxIter: 15, tol: 1e-12 });
+    x = sol.x;
+    var V = sol.V;
+
+    addRow(t, V, x);
+
+    // Commit per-device history after convergence (TR needs cap iPrev; all methods update inductor i history)
+    for (var di = 0; di < oCIRCUIT.devices.length; di++)
+    {
+      var dev = oCIRCUIT.devices[di];
+
+      if (dev && dev.type === "CAPACITOR" && oINTEGRATOR.commitCap) {
+        oINTEGRATOR.commitCap(dev, V, Vprev, Vprev2, dt);
+      }
+
+      if (dev && dev.type === "INDUCTOR") {
+        // Make current available as iNow for commitInd
+        dev.iNow = x[dev.u];
+        if (oINTEGRATOR.commitInd) oINTEGRATOR.commitInd(dev, V, Vprev, Vprev2, dt);
+      }
+    }
+
+    Vprev2 = Vprev;
+    Vprev = V;
+  }
+
+  html += "</tbody></table>";
+  document.getElementById('out').innerHTML = html;
+}
+
+document.getElementById('run').addEventListener('click', simulateAndRender);
+simulateAndRender();
+</script>
+</body>
+</html>
