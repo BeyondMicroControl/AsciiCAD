@@ -52,16 +52,8 @@
       <p><b>Capacitor model</b>: <span class="mono">i = C * d/dt (Va − Vb)</span></p>
       <p><b>Backward Euler discretization</b> for the capacitor:</p>
       <p class="mono">
-        Backward Euler (BE): d/dt (v) ≈ (v(n) − v(n−1)) / dt
+        d/dt (v) ≈ (v(n) − v(n−1)) / dt
         ⇒ i(n) ≈ (C/dt) * (v(n) − v(n−1))
-      </p>
-      <p class="mono">
-        Trapezoidal (TR): v(n) = v(n−1) + (dt/2C) * ( i(n) + i(n−1) )
-        ⇒ i(n) ≈ (2C/dt) * (v(n) − v(n−1)) − i(n−1)
-      </p>
-      <p class="mono">
-        Gear / BDF2: d/dt (v) ≈ (3v(n) − 4v(n−1) + v(n−2)) / (2dt)
-        ⇒ i(n) ≈ C * (3v(n) − 4v(n−1) + v(n−2)) / (2dt)
       </p>
 
       <p><b>Network law:</b> KCL at every unknown node: sum of currents leaving node = 0.</p>
@@ -77,7 +69,7 @@
     <p><b>CIRCUIT DRAWING</b></p>
     <pre>
                 ⎽⎽⎽⎽        + [10uF]
-      ┌─(A)──┬─[10KΩ]─┬─ ───┨┠─┐
+      ┌─(A)──┬─[10KΩ]─┬─────┨┠─┐
       │      │  ⎺⎺⎺⎺  │        │
       │      └───(V)──┘        │
     ╭─╵─╮                      │
@@ -91,8 +83,8 @@
     <label>Vs (V): <input id="vs" type="number" value="5" step="0.1"></label>
     <label>R (Ω): <input id="r" type="number" value="10000" step="100"></label>
     <label>C (F): <input id="c" type="number" value="0.00001" step="0.000001"></label>
-    <label>Cap integration:
-      <select id="cap_method">
+    <label>Integrator:
+      <select id="integrator">
         <option value="BE" selected>Backward Euler (BE)</option>
         <option value="TR">Trapezoidal (TR)</option>
         <option value="BDF2">Gear / BDF2</option>
@@ -110,8 +102,7 @@
   <div id="out"></div>
 
 <script>
-  var bDebug = true 
-
+  var bDebug = true
 /* ============================================================================
    1) GLOBAL NUMERICS / LINEAR SOLVE
    ----------------------------------------------------------------------------
@@ -121,16 +112,14 @@
      - J is the Jacobian matrix: J[i][j] = ∂r_i / ∂x_j
    ============================================================================ */
 
-function fmt(x, digits) 
-{
+function fmt(x, digits) {
   digits = (digits === undefined) ? 6 : digits;
   var v = (Math.abs(x) < 0.5e-12) ? 0 : x;
   return v.toFixed(digits);
 }
 
 // Gaussian elimination with partial pivoting: solves A x = b
-function solveLinearSystem(A, b) 
-{
+function solveLinearSystem(A, b) {
   var n = b.length;
   var i, j, k;
 
@@ -180,8 +169,7 @@ function solveLinearSystem(A, b)
      - unknown nodes are solved (their voltages are in vector x)
    ============================================================================ */
 
-function NODETABLE() 
-{
+function NODETABLE() {
   this.nameToIndex = {};   // string -> int
   this.fixed = {};         // nodeIndex (as string) -> voltage
   this.nextIndex = 0;
@@ -195,10 +183,9 @@ function NODETABLE()
 
   this.get = function(name) {
   return this.nameToIndex[name];
-  };
+};
 
-  this.fix = function(nodeIndex, voltage)
-  {
+  this.fix = function(nodeIndex, voltage) {
     this.fixed[String(nodeIndex)] = voltage;
     if(bDebug) console.log("nodeIndex "+nodeIndex+" was fixed to voltage "+voltage)
   };
@@ -212,22 +199,18 @@ function NODETABLE()
   };
 
   // Map each non-fixed node to a compact unknown index 0..(nUnknown-1)
-  this.buildUnknownMap = function() 
-  {
+  this.buildUnknownMap = function() {
     var unknownIndexOfNode = {}; // nodeIndex (as string) -> unknownIndex
     var u = 0;
-    for (var n = 0; n < this.nextIndex; n++)
-      if (!this.isFixed(n)) 
-      {
-        unknownIndexOfNode[String(n)] = u++;     // identify the index of the unknown variables in the circuit
-        if(bDebug) console.log("nodeIndex "+n+"/"+this.nextIndex+" was identified as unknown ("+u+")")
-      }
+    var n;
+    for (n = 0; n < this.nextIndex; n++) {
+      if (!this.isFixed(n)) unknownIndexOfNode[String(n)] = u++;
+    }
     return { unknownIndexOfNode: unknownIndexOfNode, nUnknown: u };
   };
 
   // Build full voltage vector V[nodeIndex] from unknown vector x[unknownIndex]
-  this.buildFullVoltages = function(x, unknownIndexOfNode) 
-  {
+  this.buildFullVoltages = function(x, unknownIndexOfNode) {
     var V = new Array(this.nextIndex);
     var n;
     for (n = 0; n < this.nextIndex; n++) {
@@ -245,8 +228,7 @@ function NODETABLE()
    The solver only asks each device to "stamp" its contribution.
    ============================================================================ */
 
-function CIRCUIT(nodeTable) 
-{
+function CIRCUIT(nodeTable) {
   this.nt = nodeTable;
   this.devices = [];
   this.addDevice = function(device) { this.devices.push(device); };
@@ -260,7 +242,6 @@ function CIRCUIT(nodeTable)
    Voltages:
      - ctx.V[node]      : present iteration guess V^n (Newton iterate)
      - ctx.Vprev[node]  : previous timestep converged solution V^(n-1)
-     - ctx.Vprev2[node] : solution from two steps back V^(n-2) (may be null on start-up)
      - ctx.dt           : timestep size
 
    Global system being built (ONLY for unknown nodes):
@@ -280,13 +261,13 @@ function CIRCUIT(nodeTable)
          leaving a is +i, leaving b is -i
    ============================================================================ */
 
-function STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, Vprev2, dt, r, J) 
-{
+function STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, Vprev2, oINTEGRATOR, dt, r, J) {
   this.nt = nt;
   this.unknownIndexOfNode = unknownIndexOfNode;
   this.V = V;
   this.Vprev = Vprev;
-  this.Vprev2 = Vprev2; // may be null during start-up steps (e.g., before BDF2 has v(n-2))
+  this.Vprev2 = Vprev2; // solution from two steps back V^(n-2) (may be null at start)
+  this.oINTEGRATOR = oINTEGRATOR; // analysis-level integrator (BE/TR/BDF2)
   this.dt = dt;
   this.r = r;
   this.J = J;
@@ -319,14 +300,11 @@ function STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, Vprev2, dt, r, J)
 
    We'll implement:
      - RESISTOR: i = (Va - Vb)/R
-     - CAPACITOR_BE: i = (C/dt) * (v(n) - v(n-1))
-     - CAPACITOR_TR: i = (2C/dt) * (v(n) - v(n-1)) - i(n-1)
-     - CAPACITOR_BDF2: i = C*(3v(n) - 4v(n-1) + v(n-2)) / (2dt)
+     - CAPACITOR: i = C * dv/dt  (device model)
    ============================================================================ */
 
 // Common 2-pin helpers added to each 2-pin device
-function TWOPIN_INIT(dev, a, b) 
-{
+function TWOPIN_INIT(dev, a, b) {
   dev.a = a;
   dev.b = b;
 
@@ -336,9 +314,10 @@ function TWOPIN_INIT(dev, a, b)
   // Previous-timestep branch voltage v_prev = Va_prev - Vb_prev
   dev.vabPrev = function(ctx) { return ctx.Vprev[this.a] - ctx.Vprev[this.b]; };
 
-  // Two-steps-back branch voltage v_prev2 = Va_prev2 - Vb_prev2 (used by BDF2); may be null
+  // Two-steps-back branch voltage v_prev2 = Va(n-2) - Vb(n-2)
+  // (Only valid if the analysis provides ctx.Vprev2; BDF2 uses this.)
   dev.vabPrev2 = function(ctx) {
-    if (!ctx.Vprev2) return null;
+    if (!ctx.Vprev2) return 0;
     return ctx.Vprev2[this.a] - ctx.Vprev2[this.b];
   };
 }
@@ -387,183 +366,171 @@ function RESISTOR(a, b, R)
   };
 }
 
-/*
-  CAPACITOR_BE port equation (continuous time):
-    i = C * d/dt (Va - Vb)
-
-  Backward Euler approximation:
-    d/dt (v) ≈ (v(n) - v(n-1)) / dt
-    => i(n) ≈ (C/dt) * ( v(n) - v(n-1) )
-
-  Define:
-    Gc = C/dt
-    v    = Va - Vb        (present)
-    vprev= Va_prev - Vb_prev (previous timestep)
-
-  Then:
-    i = Gc * (v - vprev) = Gc*(Va - Vb) + CONST(history)
-
-  Stamping into residual:
-    r[a] += +i
-    r[b] += -i
-
-  Stamping into Jacobian:
-    Only present voltages contribute to derivatives; vprev is constant during Newton:
-      ∂i/∂Va = +Gc
-      ∂i/∂Vb = -Gc
-    and same sign pattern as resistor for r[a] and r[b].
-*/
-function CAPACITOR_BE(a, b, C) 
+function CAPACITOR(a, b, C)
 {
   TWOPIN_INIT(this, a, b);
+  this.type = "CAPACITOR";
   this.C = C;
 
-  this.stamp = function(ctx) {
-    var Gc = this.C / ctx.dt; // C/dt
-    var v = this.vab(ctx);    // Va - Vb (present)
-    var vprev = this.vabPrev(ctx); // Va_prev - Vb_prev
+  // Generic per-device history slot(s). Some integrators use them, others don't.
+  // TR uses iPrev = i(n-1).
+  this.iPrev = 0;
 
-    var i = Gc * (v - vprev); // i = (C/dt)*(v - vprev)
+  this.stamp = function(ctx)
+  {
+    // Ask the analysis' integrator how to discretize i = C * dv/dt for this step.
+    // Returns { i, G } where:
+    //   i : branch current from a -> b
+    //   G : ∂i/∂v (effective conductance seen by Newton)
+    var ig = ctx.oINTEGRATOR.capIG(this, ctx);
 
-    // Residual (KCL)
+    var i = ig.i;
+    var G = ig.G;
+
+    // KCL residual: sum of currents leaving node = 0
+    // For branch current i defined from a->b:
+    //   leaving a: +i
+    //   leaving b: -i
     ctx.addR(this.a, +i);
     ctx.addR(this.b, -i);
 
-    // Jacobian wrt present voltages only
-    ctx.addJ(this.a, this.a, +Gc);
-    ctx.addJ(this.a, this.b, -Gc);
-    ctx.addJ(this.b, this.a, -Gc);
-    ctx.addJ(this.b, this.b, +Gc);
+    // Jacobian: r[a] contains +i, r[b] contains -i, and i depends on v = Va - Vb:
+    //   ∂i/∂Va = +G
+    //   ∂i/∂Vb = -G
+    ctx.addJ(this.a, this.a, +G);
+    ctx.addJ(this.a, this.b, -G);
+    ctx.addJ(this.b, this.a, -G);
+    ctx.addJ(this.b, this.b, +G);
+  };
+}
+
+/* ============================================================================
+   5b) INTEGRATORS (analysis-level objects)
+   ----------------------------------------------------------------------------
+   Each integrator object implements:
+     capIG(oCAP, ctx) -> { i, G }
+
+   where:
+     - oCAP.C is the capacitance
+     - ctx.dt is the timestep
+     - ctx.V, ctx.Vprev, ctx.Vprev2 give access to v(n), v(n-1), v(n-2)
+     - oCAP.iPrev is per-device history used by TR
+
+   In addition, an integrator MAY implement:
+     commitCap(oCAP, V, Vprev, Vprev2, dt)
+
+   which is called once per timestep AFTER convergence to update history.
+   ============================================================================ */
+
+/*
+  INTEGRATOR_BE (Backward Euler)
+
+  d/dt(v) ≈ (v(n) - v(n-1)) / dt
+  i(n) ≈ (C/dt) * (v(n) - v(n-1))
+
+  This has the form:
+    i = G * v + const(history)
+  with:
+    G = C/dt
+*/
+function INTEGRATOR_BE()
+{
+  this.name = "BE";
+
+  this.capIG = function(oCAP, ctx)
+  {
+    var C = oCAP.C;
+    var v    = oCAP.vab(ctx);      // v(n)   = Va - Vb
+    var vprev= oCAP.vabPrev(ctx);  // v(n-1)
+    var G = C / ctx.dt;
+    var i = G * (v - vprev);
+    return { i:i, G:G };
+  };
+
+  // No per-device history needed beyond Vprev (which lives in the analysis loop).
+  this.commitCap = function(oCAP, V, Vprev, Vprev2, dt) { /* no-op */ };
+}
+
+/*
+  INTEGRATOR_TR (Trapezoidal / Crank–Nicolson)
+
+  v(n) = v(n-1) + (dt/2C) * ( i(n) + i(n-1) )
+  => i(n) = (2C/dt)*(v(n) - v(n-1)) - i(n-1)
+
+  So:
+    G = 2C/dt
+    i = G*(v - vprev) - iPrev
+
+  Needs per-device history: iPrev = i(n-1)
+*/
+function INTEGRATOR_TR()
+{
+  this.name = "TR";
+
+  this.capIG = function(oCAP, ctx)
+  {
+    var C = oCAP.C;
+    var v    = oCAP.vab(ctx);
+    var vprev= oCAP.vabPrev(ctx);
+    var G = (2*C) / ctx.dt;
+    var i = G * (v - vprev) - oCAP.iPrev;
+    return { i:i, G:G };
+  };
+
+  this.commitCap = function(oCAP, V, Vprev, Vprev2, dt)
+  {
+    var C = oCAP.C;
+    var v    = V[oCAP.a] - V[oCAP.b];
+    var vprev= Vprev[oCAP.a] - Vprev[oCAP.b];
+    var G = (2*C) / dt;
+
+    // Update iPrev := i(n) (computed from converged voltages)
+    var i = G * (v - vprev) - oCAP.iPrev;
+    oCAP.iPrev = i;
   };
 }
 
 /*
-  CAPACITOR_TR (Trapezoidal / Crank–Nicolson) port equation:
-    i = C * d/dt (Va - Vb)
+  INTEGRATOR_BDF2 (Gear / 2nd-order Backward Differentiation)
 
-  Trapezoidal integration applied to v(t):
-    v(n) = v(n-1) + (dt/2C) * ( i(n) + i(n-1) )
+  d/dt(v) ≈ (3v(n) - 4v(n-1) + v(n-2)) / (2dt)
+  i(n) ≈ C * (3v(n) - 4v(n-1) + v(n-2)) / (2dt)
 
-  Solve for i(n):
-    i(n) = (2C/dt) * (v(n) - v(n-1)) - i(n-1)
+  This yields:
+    G = ∂i/∂v(n) = 3C/(2dt)
 
-  Define:
-    Gt = 2C/dt
-    v    = Va - Vb        (present)
-    vprev= Va_prev - Vb_prev
-    iPrev = i(n-1) stored in the device (history)
-
-  Then the branch current used inside the Newton step is:
-    i = Gt*(v - vprev) - iPrev
-
-  Jacobian wrt present voltages:
-    ∂i/∂Va = +Gt,  ∂i/∂Vb = -Gt
-
-  History update AFTER a timestep converges:
-    iPrev := i(n)
+  Start-up:
+    Needs v(n-2). If ctx.Vprev2 is null, we fall back to BE for that first step.
 */
-function CAPACITOR_TR(a, b, C)
+function INTEGRATOR_BDF2()
 {
-  TWOPIN_INIT(this, a, b);
-  this.C = C;
-  this.iPrev = 0; // i(n-1) history term; initialized to 0A at t=0 by default
+  this.name = "BDF2";
 
-  this.stamp = function(ctx)
+  this.capIG = function(oCAP, ctx)
   {
-    var Gt = (2 * this.C) / ctx.dt; // 2C/dt
-    var v = this.vab(ctx);
-    var vprev = this.vabPrev(ctx);
-
-    var i = Gt * (v - vprev) - this.iPrev;
-
-    ctx.addR(this.a, +i);
-    ctx.addR(this.b, -i);
-
-    ctx.addJ(this.a, this.a, +Gt);
-    ctx.addJ(this.a, this.b, -Gt);
-    ctx.addJ(this.b, this.a, -Gt);
-    ctx.addJ(this.b, this.b, +Gt);
-  };
-
-  // Called by the transient loop after the step has converged
-  this.commit = function(V, Vprev, dt)
-  {
-    var Gt = (2 * this.C) / dt;
-    var v = V[this.a] - V[this.b];
-    var vprev = Vprev[this.a] - Vprev[this.b];
-
-    // same formula as in stamp(), but now using the converged V
-    var i = Gt * (v - vprev) - this.iPrev;
-    this.iPrev = i;
-  };
-}
-
-/*
-  CAPACITOR_BDF2 (Gear / 2nd-order Backward Differentiation) port equation:
-    i = C * d/dt (Va - Vb)
-
-  BDF2 derivative:
-    d/dt(v) ≈ (3v(n) - 4v(n-1) + v(n-2)) / (2dt)
-
-  Therefore:
-    i(n) ≈ C * (3v(n) - 4v(n-1) + v(n-2)) / (2dt)
-
-  Define:
-    Gb = 3C/(2dt)
-    v    = Va - Vb        (present)
-    v1   = v(n-1)         (previous)
-    v2   = v(n-2)         (two steps back)
-
-  Then:
-    i = Gb * v + I_hist
-    where I_hist = C * (-4v1 + v2) / (2dt)   (constant during Newton)
-
-  Start-up note:
-    BDF2 needs v(n-2). On the first step we do not have it, so if ctx.Vprev2 is null
-    we fall back to Backward Euler for that step (stable start-up).
-*/
-function CAPACITOR_BDF2(a, b, C)
-{
-  TWOPIN_INIT(this, a, b);
-  this.C = C;
-
-  this.stamp = function(ctx)
-  {
-    // Start-up: if no v(n-2), fall back to BE
+    // Start-up fallback
     if (!ctx.Vprev2)
     {
-      var Gc = this.C / ctx.dt;
-      var v_be = this.vab(ctx);
-      var vprev_be = this.vabPrev(ctx);
-      var i_be = Gc * (v_be - vprev_be);
-
-      ctx.addR(this.a, +i_be);
-      ctx.addR(this.b, -i_be);
-
-      ctx.addJ(this.a, this.a, +Gc);
-      ctx.addJ(this.a, this.b, -Gc);
-      ctx.addJ(this.b, this.a, -Gc);
-      ctx.addJ(this.b, this.b, +Gc);
-      return;
+      // Same as BE
+      var C = oCAP.C;
+      var v    = oCAP.vab(ctx);
+      var vprev= oCAP.vabPrev(ctx);
+      var Gbe = C / ctx.dt;
+      var ibe = Gbe * (v - vprev);
+      return { i:ibe, G:Gbe };
     }
 
-    var Gb = (3 * this.C) / (2 * ctx.dt); // 3C/(2dt)
-    var v = this.vab(ctx);
-    var v1 = this.vabPrev(ctx);
-    var v2 = this.vabPrev2(ctx);
-
-    var i = (this.C * (3*v - 4*v1 + v2)) / (2 * ctx.dt);
-
-    ctx.addR(this.a, +i);
-    ctx.addR(this.b, -i);
-
-    ctx.addJ(this.a, this.a, +Gb);
-    ctx.addJ(this.a, this.b, -Gb);
-    ctx.addJ(this.b, this.a, -Gb);
-    ctx.addJ(this.b, this.b, +Gb);
+    var C = oCAP.C;
+    var v  = oCAP.vab(ctx);       // v(n)
+    var v1 = oCAP.vabPrev(ctx);   // v(n-1)
+    var v2 = oCAP.vabPrev2(ctx);  // v(n-2)
+    var i = (C * (3*v - 4*v1 + v2)) / (2 * ctx.dt);
+    var G = (3*C) / (2 * ctx.dt);
+    return { i:i, G:G };
   };
-}
 
+  this.commitCap = function(oCAP, V, Vprev, Vprev2, dt) { /* no-op */ };
+}
 /* ============================================================================
    6) NEWTON SOLVER (GENERAL, EVEN IF THIS CIRCUIT IS LINEAR)
    ----------------------------------------------------------------------------
@@ -574,8 +541,7 @@ function CAPACITOR_BDF2(a, b, C)
    For linear devices, r and J are linear, so convergence is typically 1 iteration.
    ============================================================================ */
 
-function newtonSolveKCL(oCIRCUIT, unknownIndexOfNode, x0, Vprev, Vprev2, dt, opts) 
-{
+function newtonSolveKCL(oCIRCUIT, unknownIndexOfNode, x0, Vprev, Vprev2, oINTEGRATOR, dt, opts) {
   var nt = oCIRCUIT.nt;
   var nUnknown = x0.length;
 
@@ -598,7 +564,7 @@ function newtonSolveKCL(oCIRCUIT, unknownIndexOfNode, x0, Vprev, Vprev2, dt, opt
     }
 
     // Stamp all devices
-    var ctx = new STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, Vprev2, dt, r, J);
+    var ctx = new STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, Vprev2, oINTEGRATOR, dt, r, J);
     for (i = 0; i < oCIRCUIT.devices.length; i++) oCIRCUIT.devices[i].stamp(ctx);
 
     // Convergence check
@@ -634,28 +600,25 @@ function newtonSolveKCL(oCIRCUIT, unknownIndexOfNode, x0, Vprev, Vprev2, dt, opt
    - Unknown node is V2 (between R and C)
    ============================================================================ */
 
-function buildSeriesRCCircuit(Vs, R, C, Vcap0, capMethod) 
+function buildSeriesRCCircuit(Vs, R, C, Vcap0) 
 {
   var nt = new NODETABLE();
 
-  nt.fix(nt.node("0") , 0);
+  nt.fix(nt.node("0"), 0);
   nt.fix(nt.node("V1"), Vs);
 
   var oCIRCUIT = new CIRCUIT(nt);
 
   // object containers (instances)
   var oRES  = new RESISTOR(nt.node("V1"), nt.node("V2"), R);     // R between V1 and V2
-  var oCAP;                                                      // C between V2 and GND
-  if      (capMethod === "TR")   oCAP = new CAPACITOR_TR(  nt.node("V2"), nt.node("0"), C);   // Trapezoidal / Crank–Nicolson port equation
-  else if (capMethod === "BDF2") oCAP = new CAPACITOR_BDF2(nt.node("V2"), nt.node("0"), C);   // Gear / 2nd-order Backward Differentiation
-  else                           oCAP = new CAPACITOR_BE(  nt.node("V2"), nt.node("0"), C);   // Backward Euler approximation (default)
+  var oCAP  = new CAPACITOR(nt.node("V2"), nt.node("0"), C);     // generic capacitor; integration chosen by analysis
 
   oCIRCUIT.addDevice(oRES);
   oCIRCUIT.addDevice(oCAP);
 
-  var map                = nt.buildUnknownMap();
+  var map = nt.buildUnknownMap();
   var unknownIndexOfNode = map.unknownIndexOfNode;
-  var nUnknown           = map.nUnknown;
+  var nUnknown = map.nUnknown;
   if(bDebug) console.log("number of unknowns = "+nUnknown);
 
   var x0 = new Array(nUnknown);
@@ -665,6 +628,7 @@ function buildSeriesRCCircuit(Vs, R, C, Vcap0, capMethod)
   var uV2 = unknownIndexOfNode[String(oCIRCUIT.nt.get("V2"))];
   if (uV2 !== undefined) x0[uV2] = Vcap0;
   if(bDebug) console.log("set value "+Vcap0+" at 'unknown' index "+uV2+" = "+nUnknown);
+
 
   return {
     oCIRCUIT: oCIRCUIT,
@@ -687,27 +651,34 @@ function simulateAndRender()
   var Vs = Number(document.getElementById('vs').value);
   var R  = Number(document.getElementById('r').value);
   var C  = Number(document.getElementById('c').value);
+  var sIntegrator = (document.getElementById('integrator') ? document.getElementById('integrator').value : "BE");
   var dt = Number(document.getElementById('dt').value);
   var T  = Number(document.getElementById('tend').value);
   var Vcap0 = Number(document.getElementById('v0').value);
-  var capMethod = document.getElementById('cap_method').value;
 
   if (!(R > 0) || !(C > 0) || !(dt > 0) || !(T >= 0)) {
     document.getElementById('out').innerHTML = "<p style='color:red'>Invalid parameters.</p>";
     return;
   }
 
-  var built = buildSeriesRCCircuit(Vs, R, C, Vcap0, capMethod);
+  var built = buildSeriesRCCircuit(Vs, R, C, Vcap0);
   var oCIRCUIT = built.oCIRCUIT;
   var nt = built.oCIRCUIT.nt;
   var unknownIndexOfNode = built.unknownIndexOfNode;
   var x = built.x0.slice();
 
+  // Analysis-level integrator choice (method is NOT part of the capacitor device).
+  // This object defines how i = C*dv/dt becomes an algebraic stamp for each timestep.
+  var oINTEGRATOR;
+  if (sIntegrator === "TR") oINTEGRATOR = new INTEGRATOR_TR();
+  else if (sIntegrator === "BDF2") oINTEGRATOR = new INTEGRATOR_BDF2();
+  else oINTEGRATOR = new INTEGRATOR_BE();
+
   var steps = Math.floor(T / dt);
 
   // History vector at t=0
   var Vprev = nt.buildFullVoltages(x, unknownIndexOfNode);
-  var Vprev2 = null; // becomes defined after the first converged step (needed by BDF2)
+  var Vprev2 = null; // becomes defined after first converged step (needed for BDF2)
 
   var html = "<table>";
   html += "<thead><tr><th>time (s)</th><th>V_res (V)</th><th>I_res (A)</th></tr></thead><tbody>";
@@ -724,25 +695,32 @@ function simulateAndRender()
   // t=0
   addRow(0, Vprev);
 
-  for (var n = 1; n <= steps; n++) 
-  {
+  for (var n = 1; n <= steps; n++) {
     var t = n * dt;
 
-    var sol = newtonSolveKCL(oCIRCUIT, unknownIndexOfNode, x, Vprev, Vprev2, dt, { maxIter: 10, tol: 1e-13 });
+    var sol = newtonSolveKCL(oCIRCUIT, unknownIndexOfNode, x, Vprev, Vprev2, oINTEGRATOR, dt, { maxIter: 10, tol: 1e-13 });
     x = sol.x;
 
     var V = sol.V;
     addRow(t, V);
 
-    // Device history update (only devices that need it implement .commit()).
-    // Example: CAPACITOR_TR stores i(n-1) for the next step.
-    for (var di = 0; di < oCIRCUIT.devices.length; di++)
-      if (typeof oCIRCUIT.devices[di].commit === "function")
-        oCIRCUIT.devices[di].commit(V, Vprev, dt);
+    // Allow the chosen integrator to update any per-device history (e.g., TR needs iPrev).
+    // We keep this separate from device stamping so devices remain method-agnostic.
+    if (oINTEGRATOR && oINTEGRATOR.commitCap)
+    {
+      for (var di = 0; di < oCIRCUIT.devices.length; di++)
+      {
+        var dev = oCIRCUIT.devices[di];
+        if (dev && dev.type === "CAPACITOR")
+        {
+          oINTEGRATOR.commitCap(dev, V, Vprev, Vprev2, dt);
+        }
+      }
+    }
 
-    // Advance voltage histories:
+    // Advance timestep histories:
+    //   Vprev2 := V(n-1)
     //   Vprev  := V(n)
-    //   Vprev2 := V(n-1)  (needed for BDF2 at the next step)
     Vprev2 = Vprev;
     Vprev = V;
   }
