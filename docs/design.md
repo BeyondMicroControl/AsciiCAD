@@ -94,8 +94,8 @@ Note: other encodings are possible (e.g. r<<16|c), but "r,c" is explicit, safe, 
 
 ### Wire
 
-Originating from the 'not serious' characters as they emerged around 1975 (supplementing the ASCII character set with continuous lines, corners and crosses e.g. Code Page 437 from IBM), UTF-8 inherited these special wire glyphs between code 0x2500 and 0x2570, all serving as lines, corners and crosses combined, reaching out to 4 distinct directions (**N**orth, **S**outh, **E**ast and **W**est), conveniently encodable into a 4-bit mask.\
-In codebase, `glyphToMask` encodes these glyphs into 4 bits, which is the meaningful data we retain about wire glyphs we find on the grid: `N = 0b0001, E = 0b0010, S = 0b0100, W = 0b1000`.  A glyph’s “line function” is then just a bitwise OR of all the directions it connects.\
+Originating from the 'not serious' characters as they emerged around 1975 (ASCII supplements featuring continuous lines, corners and crosses e.g. Code Page 437 from IBM), UTF-8 inherited the wire glyphs (charcode between code 0x2500-0x2570 representing lines, corners and crosses), all essentially reaching out to a combination of 4 possible directions (**N**orth, **S**outh, **E**ast and **W**est).\
+Therefore, in codebase, `glyphToMask` encodes the only meaningful data about these wire glyphs: a 4-bit mask `N = 0b0001, E = 0b0010, S = 0b0100, W = 0b1000`.  A glyph’s “line function” is then just a bitwise OR of all the directions it connects.\
 example: ` ╤ ` connects E + S + W, becoming `E | S | W = 0b0010 | 0b0100 | 0b1000 = 0b1110`
 
 ### Netline
