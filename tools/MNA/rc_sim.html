@@ -2,21 +2,68 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Stamp-Based RC Simulator (Old-school JS objects)</title>
+  <title>Stamp-Based RC Simulator (Old-school JS objects, documented)</title>
   <style>
     body { font-family: system-ui, sans-serif; padding: 16px; }
-    label { margin-right: 12px; }
+    label { margin-right: 12px; display:inline-block; margin-bottom:6px; }
     input { width: 120px; }
     table { border-collapse: collapse; margin-top: 12px; }
     th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: right; }
     th { background: #f6f6f6; }
     .row { margin: 10px 0; }
-    .note { color: #555; font-size: 0.95em; }
+    .note { color: #555; font-size: 0.95em; max-width: 980px; line-height: 1.35; }
     code { background: #f3f3f3; padding: 1px 4px; border-radius: 4px; }
+    details { margin: 10px 0; }
+    summary { cursor: pointer; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   </style>
 </head>
 <body>
-  <h2>Series RC (Stamp-Based, Old-school JS Objects)</h2>
+  <h2>Series RC Transient Simulator (Stamp-based, Old-school JS objects)</h2>
+
+  <div class="note">
+    <p>
+      This is a minimal “SPICE-like” core: every component is a <b>port model</b> that defines a branch current
+      <code>i = f(v, v_prev, dt, ...)</code> and then contributes (stamps) its effect into the global
+      <b>KCL residual</b> and <b>Jacobian</b>.
+    </p>
+    <p>
+      Circuit: <code>Vs=5V</code> → <code>R=10kΩ</code> → <code>C=10µF</code> → back to source (-, GND).<br/>
+      Nodes: <code>0</code> = ground (fixed 0V), <code>V1</code> = source plus (fixed Vs),
+      <code>V2</code> = unknown node between R and C.
+    </p>
+    <p>
+      Output table columns: time, voltage across the resistor <code>V_res = V1 − V2</code>,
+      current through the resistor <code>I_res = (V1 − V2)/R</code>.
+    </p>
+  </div>
+
+  <details>
+    <summary><b>Math recap (what the stamp engine is solving)</b></summary>
+    <div class="note">
+      <p><b>Port conventions:</b> Each 2-pin device has pins (a,b) with node voltages (Va,Vb). Define:</p>
+      <ul>
+        <li>Branch voltage: <span class="mono">v = Va − Vb</span></li>
+        <li>Branch current: <span class="mono">i</span> is positive from a → b</li>
+        <li>KCL “currents leaving node”: leaving at node a is <span class="mono">+i</span>, leaving at node b is <span class="mono">−i</span></li>
+      </ul>
+
+      <p><b>Resistor model</b> (Ohm): <span class="mono">i = (Va − Vb)/R</span></p>
+      <p><b>Capacitor model</b>: <span class="mono">i = C * d/dt (Va − Vb)</span></p>
+      <p><b>Backward Euler discretization</b> for the capacitor:</p>
+      <p class="mono">
+        d/dt (v) ≈ (v(n) − v(n−1)) / dt
+        ⇒ i(n) ≈ (C/dt) * (v(n) − v(n−1))
+      </p>
+
+      <p><b>Network law:</b> KCL at every unknown node: sum of currents leaving node = 0.</p>
+      <p>
+        This becomes a system of equations <span class="mono">F(x)=0</span> in the unknown node voltages x.
+        We solve by Newton: <span class="mono">J(x) * dx = -F(x)</span>.
+        For our linear RC, Newton converges in one iteration; the framework still supports nonlinear devices later.
+      </p>
+    </div>
+  </details>
 
   <div class="row">
     <label>Vs (V): <input id="vs" type="number" value="5" step="0.1"></label>
@@ -31,14 +78,17 @@
     <button id="run">Run</button>
   </div>
 
-  <div class="note">
-    Unknown node: <code>V2(t)</code>. Fixed nodes: <code>V1=Vs</code>, <code>GND=0</code>. Output: time, <code>V_res=V1−V2</code>, <code>I_res=(V1−V2)/R</code>.
-  </div>
-
   <div id="out"></div>
 
 <script>
-/* ========================== Utilities ========================== */
+/* ============================================================================
+   1) GLOBAL NUMERICS / LINEAR SOLVE
+   ----------------------------------------------------------------------------
+   We solve Newton steps: J * dx = -r
+   where:
+     - r is the KCL residual vector at unknown nodes (sum of currents leaving)
+     - J is the Jacobian matrix: J[i][j] = ∂r_i / ∂x_j
+   ============================================================================ */
 
 function fmt(x, digits) {
   digits = (digits === undefined) ? 6 : digits;
@@ -52,7 +102,7 @@ function solveLinearSystem(A, b) {
   var i, j, k;
 
   for (k = 0; k < n; k++) {
-    // pivot
+    // Pivot selection
     var pivotRow = k;
     var pivotVal = Math.abs(A[k][k]);
     for (i = k + 1; i < n; i++) {
@@ -61,12 +111,13 @@ function solveLinearSystem(A, b) {
     }
     if (pivotVal === 0) throw new Error("Singular matrix (pivot=0).");
 
+    // Row swap
     if (pivotRow !== k) {
       var tmpRow = A[k]; A[k] = A[pivotRow]; A[pivotRow] = tmpRow;
       var tmpB = b[k]; b[k] = b[pivotRow]; b[pivotRow] = tmpB;
     }
 
-    // eliminate
+    // Eliminate below pivot
     for (i = k + 1; i < n; i++) {
       var factor = A[i][k] / A[k][k];
       if (factor === 0) continue;
@@ -75,7 +126,7 @@ function solveLinearSystem(A, b) {
     }
   }
 
-  // back-substitution
+  // Back substitution
   var x = new Array(n);
   for (i = 0; i < n; i++) x[i] = 0;
 
@@ -87,7 +138,14 @@ function solveLinearSystem(A, b) {
   return x;
 }
 
-/* ========================== NodeTable ========================== */
+/* ============================================================================
+   2) NODE TABLE + UNKNOWN MAPPING
+   ----------------------------------------------------------------------------
+   We keep:
+     - node indices: 0..N-1
+     - some nodes are FIXED (e.g., ground=0V, source node=Vs)
+     - unknown nodes are solved (their voltages are in vector x)
+   ============================================================================ */
 
 function NODETABLE() {
   this.nameToIndex = {};   // string -> int
@@ -113,20 +171,18 @@ function NODETABLE() {
     return this.fixed[String(nodeIndex)];
   };
 
-  // Returns { unknownIndexOfNode: {}, nUnknown: int }
+  // Map each non-fixed node to a compact unknown index 0..(nUnknown-1)
   this.buildUnknownMap = function() {
     var unknownIndexOfNode = {}; // nodeIndex (as string) -> unknownIndex
     var u = 0;
     var n;
     for (n = 0; n < this.nextIndex; n++) {
-      if (!this.isFixed(n)) {
-        unknownIndexOfNode[String(n)] = u++;
-      }
+      if (!this.isFixed(n)) unknownIndexOfNode[String(n)] = u++;
     }
     return { unknownIndexOfNode: unknownIndexOfNode, nUnknown: u };
   };
 
-  // Combine unknown vector x into full node-voltage vector V
+  // Build full voltage vector V[nodeIndex] from unknown vector x[unknownIndex]
   this.buildFullVoltages = function(x, unknownIndexOfNode) {
     var V = new Array(this.nextIndex);
     var n;
@@ -138,18 +194,45 @@ function NODETABLE() {
   };
 }
 
-/* ========================== Circuit ========================== */
+/* ============================================================================
+   3) CIRCUIT CONTAINER
+   ----------------------------------------------------------------------------
+   Holds devices. Devices are the only things that know physics.
+   The solver only asks each device to "stamp" its contribution.
+   ============================================================================ */
 
 function CIRCUIT(nodeTable) {
   this.nt = nodeTable;
   this.devices = [];
-
-  this.addDevice = function(device) {
-    this.devices.push(device);
-  };
+  this.addDevice = function(device) { this.devices.push(device); };
 }
 
-/* ========================== StampContext ========================== */
+/* ============================================================================
+   4) STAMP CONTEXT (WHAT DEVICES SEE)
+   ----------------------------------------------------------------------------
+   ctx holds everything a device needs to stamp:
+
+   Voltages:
+     - ctx.V[node]      : present iteration guess V^n (Newton iterate)
+     - ctx.Vprev[node]  : previous timestep converged solution V^(n-1)
+     - ctx.dt           : timestep size
+
+   Global system being built (ONLY for unknown nodes):
+     - ctx.r[eq]        : residual F(x) at unknown node equation eq
+                          (KCL: sum of currents leaving the node)
+     - ctx.J[eq][var]   : Jacobian ∂F_eq / ∂x_var
+
+   Stamping helpers:
+     - ctx.addR(node, value)
+       adds to residual equation for that node IF it's an unknown.
+     - ctx.addJ(eqNode, varNode, value)
+       adds derivative into Jacobian IF both nodes are unknown.
+
+   IMPORTANT SIGN CONVENTION:
+     - Residual is KCL written as: SUM(currents leaving node) = 0
+     - For a 2-pin device current i defined from a->b:
+         leaving a is +i, leaving b is -i
+   ============================================================================ */
 
 function STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, dt, r, J) {
   this.nt = nt;
@@ -176,34 +259,68 @@ function STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, dt, r, J) {
   };
 }
 
-/* ========================== Device Containers ========================== */
+/* ============================================================================
+   5) DEVICE PORT MODELS + STAMPS
+   ----------------------------------------------------------------------------
+   Each device provides a .stamp(ctx) method.
 
-// Common 2-pin helpers as a mixin-like function
+   The "stamp" is NOT arbitrary: it is the systematic translation of the device's
+   port equation i = f(v, ...) into:
+     - contributions to KCL residuals at its nodes
+     - contributions to Jacobian entries (partials wrt node voltages)
+
+   We'll implement:
+     - RESISTOR: i = (Va - Vb)/R
+     - CAPACITOR_BE: i = (C/dt) * ((Va - Vb) - (Va_prev - Vb_prev))
+   ============================================================================ */
+
+// Common 2-pin helpers added to each 2-pin device
 function TWOPIN_INIT(dev, a, b) {
   dev.a = a;
   dev.b = b;
+
+  // Present branch voltage v = Va - Vb
   dev.vab = function(ctx) { return ctx.V[this.a] - ctx.V[this.b]; };
+
+  // Previous-timestep branch voltage v_prev = Va_prev - Vb_prev
   dev.vabPrev = function(ctx) { return ctx.Vprev[this.a] - ctx.Vprev[this.b]; };
 }
 
 /*
-  Resistor port model:
-    i = (Va - Vb)/R,   di/dv = 1/R
+  RESISTOR port equation:
+    i = (Va - Vb) / R
+  Let G = 1/R, then i = G*(Va - Vb)
+
+  KCL residual stamping (sum currents leaving node):
+    r[a] += +i        (current leaving node a into the resistor)
+    r[b] += -i        (current leaving node b into the resistor)
+
+  Jacobian stamping:
+    ∂i/∂Va = +G
+    ∂i/∂Vb = -G
+
+    r[a] contains +i, so:
+      ∂r[a]/∂Va += +G
+      ∂r[a]/∂Vb += -G
+
+    r[b] contains -i, so:
+      ∂r[b]/∂Va += -G
+      ∂r[b]/∂Vb += +G
 */
 function RESISTOR(a, b, R) {
   TWOPIN_INIT(this, a, b);
   this.R = R;
 
   this.stamp = function(ctx) {
-    var G = 1 / this.R;
-    var v = this.vab(ctx);
-    var i = G * v;
+    var G = 1 / this.R;       // conductance
+    var v = this.vab(ctx);    // Va - Vb
+    var i = G * v;            // i = (Va - Vb)/R
 
-    // Residual (KCL) contributions
+    // Residual (KCL): sum of currents leaving
     ctx.addR(this.a, +i);
     ctx.addR(this.b, -i);
 
-    // Jacobian
+    // Jacobian: derivatives wrt present voltages
     ctx.addJ(this.a, this.a, +G);
     ctx.addJ(this.a, this.b, -G);
     ctx.addJ(this.b, this.a, -G);
@@ -212,25 +329,47 @@ function RESISTOR(a, b, R) {
 }
 
 /*
-  Capacitor (Backward Euler companion) port model:
+  CAPACITOR_BE port equation (continuous time):
     i = C * d/dt (Va - Vb)
-  BE discretization:
-    i ≈ (C/dt) * ((Va - Vb) - (Va_prev - Vb_prev))
+
+  Backward Euler approximation:
+    d/dt (v) ≈ (v(n) - v(n-1)) / dt
+    => i(n) ≈ (C/dt) * ( v(n) - v(n-1) )
+
+  Define:
+    Gc = C/dt
+    v    = Va - Vb        (present)
+    vprev= Va_prev - Vb_prev (previous timestep)
+
+  Then:
+    i = Gc * (v - vprev) = Gc*(Va - Vb) + CONST(history)
+
+  Stamping into residual:
+    r[a] += +i
+    r[b] += -i
+
+  Stamping into Jacobian:
+    Only present voltages contribute to derivatives; vprev is constant during Newton:
+      ∂i/∂Va = +Gc
+      ∂i/∂Vb = -Gc
+    and same sign pattern as resistor for r[a] and r[b].
 */
-function CAPACITOR_BE(a, b, C) 
-{
+function CAPACITOR_BE(a, b, C) {
   TWOPIN_INIT(this, a, b);
   this.C = C;
 
   this.stamp = function(ctx) {
-    var Gc = this.C / ctx.dt;
-    var v = this.vab(ctx);
-    var vprev = this.vabPrev(ctx);
-    var i = Gc * (v - vprev);
+    var Gc = this.C / ctx.dt; // C/dt
+    var v = this.vab(ctx);    // Va - Vb (present)
+    var vprev = this.vabPrev(ctx); // Va_prev - Vb_prev
 
+    var i = Gc * (v - vprev); // i = (C/dt)*(v - vprev)
+
+    // Residual (KCL)
     ctx.addR(this.a, +i);
     ctx.addR(this.b, -i);
 
+    // Jacobian wrt present voltages only
     ctx.addJ(this.a, this.a, +Gc);
     ctx.addJ(this.a, this.b, -Gc);
     ctx.addJ(this.b, this.a, -Gc);
@@ -238,7 +377,15 @@ function CAPACITOR_BE(a, b, C)
   };
 }
 
-/* ========================== Newton Solve ========================== */
+/* ============================================================================
+   6) NEWTON SOLVER (GENERAL, EVEN IF THIS CIRCUIT IS LINEAR)
+   ----------------------------------------------------------------------------
+   We build r and J by asking all devices to stamp.
+   Then solve J * dx = -r.
+   Update x := x + dx until residual is small.
+
+   For linear devices, r and J are linear, so convergence is typically 1 iteration.
+   ============================================================================ */
 
 function newtonSolveKCL(ckt, unknownIndexOfNode, x0, Vprev, dt, opts) {
   var nt = ckt.nt;
@@ -248,29 +395,25 @@ function newtonSolveKCL(ckt, unknownIndexOfNode, x0, Vprev, dt, opts) {
   var tol = (opts && opts.tol !== undefined) ? opts.tol : 1e-12;
 
   var x = x0.slice();
-  var iter;
+  var iter, i, j;
 
   for (iter = 0; iter < maxIter; iter++) {
     var V = nt.buildFullVoltages(x, unknownIndexOfNode);
 
-    // residual + jacobian
+    // Allocate and zero residual/Jacobian
     var r = new Array(nUnknown);
     var J = new Array(nUnknown);
-    var i, j;
-
     for (i = 0; i < nUnknown; i++) {
       r[i] = 0;
       J[i] = new Array(nUnknown);
       for (j = 0; j < nUnknown; j++) J[i][j] = 0;
     }
 
+    // Stamp all devices
     var ctx = new STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, dt, r, J);
+    for (i = 0; i < ckt.devices.length; i++) ckt.devices[i].stamp(ctx);
 
-    for (i = 0; i < ckt.devices.length; i++) {
-      ckt.devices[i].stamp(ctx);
-    }
-
-    // convergence check
+    // Convergence check
     var maxAbsR = 0;
     for (i = 0; i < nUnknown; i++) {
       var ar = Math.abs(r[i]);
@@ -278,7 +421,7 @@ function newtonSolveKCL(ckt, unknownIndexOfNode, x0, Vprev, dt, opts) {
     }
     if (maxAbsR < tol) return { x: x, V: V, iters: iter, converged: true };
 
-    // solve J * dx = -r
+    // Solve for Newton update: J * dx = -r
     var A = new Array(nUnknown);
     var b = new Array(nUnknown);
     for (i = 0; i < nUnknown; i++) {
@@ -294,23 +437,30 @@ function newtonSolveKCL(ckt, unknownIndexOfNode, x0, Vprev, dt, opts) {
   return { x: x, V: Vlast, iters: maxIter, converged: false };
 }
 
-/* ========================== Build Circuit ========================== */
+/* ============================================================================
+   7) BUILD THIS SPECIFIC RC CIRCUIT
+   ----------------------------------------------------------------------------
+   - Fix node 0 to 0V
+   - Fix node V1 to Vs (this is equivalent to an ideal source to ground, but
+     without introducing a source current unknown — a later step would add that)
+   - Unknown node is V2 (between R and C)
+   ============================================================================ */
 
 function buildSeriesRCCircuit(Vs, R, C, Vcap0) {
   var nt = new NODETABLE();
 
-  var nGND = nt.node("0");
+  var nGND  = nt.node("0");
   var nPlus = nt.node("V1");
-  var nMid = nt.node("V2");
+  var nMid  = nt.node("V2");
 
   nt.fix(nGND, 0);
   nt.fix(nPlus, Vs);
 
   var ckt = new CIRCUIT(nt);
 
-  // "old-school object containers"
-  var oRESISTOR = new RESISTOR(nPlus, nMid, R);
-  var oCAP = new CAPACITOR_BE(nMid, nGND, C);
+  // Old-school object containers (instances)
+  var oRESISTOR = new RESISTOR(nPlus, nMid, R);     // R between V1 and V2
+  var oCAP      = new CAPACITOR_BE(nMid, nGND, C);  // C between V2 and GND
 
   ckt.addDevice(oRESISTOR);
   ckt.addDevice(oCAP);
@@ -322,7 +472,7 @@ function buildSeriesRCCircuit(Vs, R, C, Vcap0) {
   var x0 = new Array(nUnknown);
   for (var i = 0; i < nUnknown; i++) x0[i] = 0;
 
-  // initial condition for V2
+  // Initial condition: capacitor node voltage V2(0) = Vcap0
   var uV2 = unknownIndexOfNode[String(nMid)];
   if (uV2 !== undefined) x0[uV2] = Vcap0;
 
@@ -337,7 +487,14 @@ function buildSeriesRCCircuit(Vs, R, C, Vcap0) {
   };
 }
 
-/* ========================== Run + Render ========================== */
+/* ============================================================================
+   8) TRANSIENT LOOP + OUTPUT TABLE
+   ----------------------------------------------------------------------------
+   At each timestep n:
+     - Use previous solution as initial guess x0
+     - Newton solve for x(n)
+     - Update history Vprev := V(n)
+   ============================================================================ */
 
 function simulateAndRender() {
   var Vs = Number(document.getElementById('vs').value);
@@ -357,7 +514,7 @@ function simulateAndRender() {
   var nt = built.nt;
   var unknownIndexOfNode = built.unknownIndexOfNode;
   var nPlus = built.nPlus;
-  var nMid = built.nMid;
+  var nMid  = built.nMid;
   var x = built.x0.slice();
 
   var steps = Math.floor(T / dt);
@@ -382,16 +539,13 @@ function simulateAndRender() {
   for (var n = 1; n <= steps; n++) {
     var t = n * dt;
 
-    // Newton solve for this step (linear here, but framework supports nonlinear)
     var sol = newtonSolveKCL(ckt, unknownIndexOfNode, x, Vprev, dt, { maxIter: 10, tol: 1e-13 });
-
     x = sol.x;
-    var V = sol.V;
 
+    var V = sol.V;
     addRow(t, V);
 
-    // advance history
-    Vprev = V;
+    Vprev = V; // advance history
   }
 
   html += "</tbody></table>";
