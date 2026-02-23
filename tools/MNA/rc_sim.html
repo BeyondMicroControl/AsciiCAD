@@ -77,7 +77,7 @@
     <p><b>CIRCUIT DRAWING</b></p>
     <pre>
                 ⎽⎽⎽⎽        + [10uF]
-      ┌─(A)──┬─[10KΩ]─┬─────┨┠─┐
+      ┌─(A)──┬─[10KΩ]─┬─ ───┨┠─┐
       │      │  ⎺⎺⎺⎺  │        │
       │      └───(V)──┘        │
     ╭─╵─╮                      │
@@ -631,9 +631,9 @@ function buildSeriesRCCircuit(Vs, R, C, Vcap0, capMethod)
   // object containers (instances)
   var oRES  = new RESISTOR(nt.node("V1"), nt.node("V2"), R);     // R between V1 and V2
   var oCAP;
-  if (capMethod === "TR")      oCAP = new CAPACITOR_TR(nt.node("V2"), nt.node("0"), C);
-  else if (capMethod === "BDF2") oCAP = new CAPACITOR_BDF2(nt.node("V2"), nt.node("0"), C);
-  else                            oCAP = new CAPACITOR_BE(nt.node("V2"), nt.node("0"), C); // default
+  if      (capMethod === "TR")   oCAP = new CAPACITOR_TR(  nt.node("V2"), nt.node("0"), C);   // Trapezoidal / Crank–Nicolson port equation
+  else if (capMethod === "BDF2") oCAP = new CAPACITOR_BDF2(nt.node("V2"), nt.node("0"), C);   // Gear / 2nd-order Backward Differentiation
+  else                           oCAP = new CAPACITOR_BE(  nt.node("V2"), nt.node("0"), C);   // Backward Euler approximation (default)
   // C between V2 and GND
 
   oCIRCUIT.addDevice(oRES);
