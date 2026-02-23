@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Series RC (5V, 10k, 10uF) - Simple Simulator</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 16px; }
+    label { margin-right: 12px; }
+    input { width: 110px; }
+    table { border-collapse: collapse; margin-top: 12px; }
+    th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: right; }
+    th { background: #f6f6f6; }
+    .row { margin: 10px 0; }
+    .note { color: #555; font-size: 0.95em; }
+  </style>
+</head>
+<body>
+  <h2>Series RC Transient (Backward Euler)</h2>
+
+  <div class="row">
+    <label>Vs (V): <input id="vs" type="number" value="5" step="0.1"></label>
+    <label>R (Ω): <input id="r" type="number" value="10000" step="100"></label>
+    <label>C (F): <input id="c" type="number" value="0.00001" step="0.000001"></label>
+  </div>
+
+  <div class="row">
+    <label>dt (s): <input id="dt" type="number" value="0.01" step="0.001"></label>
+    <label>T end (s): <input id="tend" type="number" value="1.0" step="0.1"></label>
+    <label>Vcap(0) (V): <input id="v0" type="number" value="0" step="0.1"></label>
+    <button id="run">Run</button>
+  </div>
+
+  <div class="note">
+    Output columns: time (s), V across resistor (V1−V2), I through resistor (A, from source → capacitor).
+  </div>
+
+  <div id="out"></div>
+
+<script>
+(function () {
+  function fmt(x, digits=6) {
+    // Avoid -0.000000
+    const v = Math.abs(x) < 0.5e-12 ? 0 : x;
+    return v.toFixed(digits);
+  }
+
+  function simulateAndRender() {
+    const Vs = Number(document.getElementById('vs').value);
+    const R  = Number(document.getElementById('r').value);
+    const C  = Number(document.getElementById('c').value);
+    const dt = Number(document.getElementById('dt').value);
+    const T  = Number(document.getElementById('tend').value);
+    let V2_prev = Number(document.getElementById('v0').value); // capacitor node voltage
+
+    if (!(R > 0) || !(C > 0) || !(dt > 0) || !(T >= 0)) {
+      document.getElementById('out').innerHTML = "<p style='color:red'>Invalid parameters.</p>";
+      return;
+    }
+
+    const V1 = Vs;        // source enforces node V1 relative to ground
+    const steps = Math.floor(T / dt);
+    const G = 1 / R;      // conductance
+    const alpha = C / dt; // BE factor
+
+    let html = "";
+    html += "<table>";
+    html += "<thead><tr><th>time (s)</th><th>V_res (V)</th><th>I_res (A)</th></tr></thead>";
+    html += "<tbody>";
+
+    // Include t=0 row
+    {
+      const V2 = V2_prev;
+      const Vres = V1 - V2;
+      const Ires = Vres / R;
+      html += `<tr><td>${fmt(0, 6)}</td><td>${fmt(Vres, 6)}</td><td>${fmt(Ires, 9)}</td></tr>`;
+    }
+
+    for (let n = 1; n <= steps; n++) {
+      const t = n * dt;
+
+      // Backward Euler solve for V2^n:
+      // V2 = (alpha*V2_prev + G*V1) / (alpha + G)
+      const V2 = (alpha * V2_prev + G * V1) / (alpha + G);
+
+      const Vres = V1 - V2;     // voltage across resistor (V1 - V2)
+      const Ires = Vres / R;    // current through resistor (from V1 -> V2)
+
+      html += `<tr><td>${fmt(t, 6)}</td><td>${fmt(Vres, 6)}</td><td>${fmt(Ires, 9)}</td></tr>`;
+
+      V2_prev = V2;
+    }
+
+    html += "</tbody></table>";
+    document.getElementById('out').innerHTML = html;
+  }
+
+  document.getElementById('run').addEventListener('click', simulateAndRender);
+  simulateAndRender(); // run once on load
+})();
+</script>
+</body>
+</html>
