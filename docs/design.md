@@ -105,7 +105,7 @@ __Properties of the wire glyph__
 ### Netline
 
 A netline is collection of wires considered as part of one or more continuous/uninterrupted lines.\
-When lines split in, or join form multiple directions (also called 'graph degrees') using glyphs, all these lines are considered part of the same net.
+When lines split into, or join form multiple directions (also called 'graph degrees') using glyphs, all these lines are considered part of the same net.
 
 In dense schematics, efficient routing may also need [**crossovers**](#crossings-without-junction) and **[labeled nodes](#netlabel-components)**, which must be _specified by policy_ as no glyph represents them.
 
