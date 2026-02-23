@@ -6425,7 +6425,48 @@ text_data:[
 ],
 image_data:
 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAB5QTFRF///+KsX429/YHWuTIZrMJkZZesbpEyMrX4KOubaqeGVSLAAAAnZJREFUeJzt0ztv2zAQAGCBW8aDVCNjYKBBNAok46wCqSBrcbxYo+MCQtbCUZmxSCqD3oqgSa1/W0qyUj/TDt1absZ9uuPd0UHwTx1WFCdvxl0Kb4ozjviWYDeRwSg5LE4BlBSHqww9gOiwYPVHCBEifUjEL0pEXEHEca9g9Q1PQzNKUlBc610Rv4CIMJXyE4AIRbojPIBRohAN91fVsF2Fxd8FSJxlUhJ0Z1OwukIDWSmlMdCLjSHUqjRpxIkw6QFM10GsJRoFMpNKqCYa8WSwVmT4fqbVjFT67i7jbY5McpierAGLWuNI6JR3ADINg6KvwoY/rBUafX4A3RQgCDlXyWDVSwNQouZKdp9HRqVa8Q/qcrICz5ZbazT4VbVAkJeKi8G0B6WvTxp412GW3Q0KL86L1TTqZSm5zrjRHRBKDIrQwLwHcU2ShEIrOpBwMb0JBRR9H3G9dHws0PZCpnM/q+vqum+09kITH78KSCKMHN2/TqKub7+qBpT9MrLkuKruJ7/2uXSP6IEt2xwpjM5dNf78CgK2dO6xAU0OpfxunaP8em1hcXVRtaARzcrCKi/r9WezpJUYWxNynQ6I7OJpr7A2UZm5ICof2HoO9kyu6sAMQuGI8om//VoKVnnR5cAoqohe/Bjip70C9VVe5adsuCWOvKCmETXOrVtMA+ajw2BDoK9NKMUx0WJxErCNcDuO3E/IIFxROY9bcbIpzigvXI7cjWcPwVkj6p0c5Bxe3Frxxf9oxBZoe3mE+WVRPzVP5dt23N+U/D2KYhI04mixRyxp3j3HVrhdwCqcd/+ZZkpHu8B/5Vbz25jj3vNXxO/A//On5ydsJeXI5TLNqQAAAABJRU5ErkJggg=='
-}  
+}
+,
+{
+name: 'Voltage/Current source',
+type: 'Power-Driver',
+description: 'Voltage/Current source',
+MFR: 'gen',
+SPICE: '',
+pin_data: null,
+text_data:[ 
+'╭─╵─╮\n' +
+'( ± )\n' +
+'╰─╷─╯'
+,
+'╭─╵─╮\n' +
+'( ↑ )\n' +
+'╰─╷─╯'
+,
+'╭─╵─╮\n' +
+'( ~ )\n' +
+'╰─╷─╯'
+,
+'  │\n' +
+' ╱ \╲\n' +
+'( ± )\n' +
+' \╲ ╱\n' +
+'  │'
+,
+'  │\n' +
+' ╱ \╲\n' +
+'( ↑ )\n' +
+' \╲ ╱\n' +
+'  │'
+,
+'  │\n' +
+' ╱ \╲\n' +
+'( ~ )\n' +
+' \╲ ╱\n' +
+'  │'
+ ],
+image_data:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAxQTFRFAAAADAwM+fn5mZmZFJcBpQAAAAR0Uk5TAP//4UkifesAAAGqSURBVHiczVIhcsMwEJTHI+gpMusjSsz9BIOcPePxOKjEJSUlLugrTMsMfJ5A8XxCLekHKh7Ypqc7KU0yfUBFJO2dTne7q9Rf6+4aaGTTj+GegZxsCCgAPhUQAgkA7H0CQMdAsUVLoRSOXyBPHe4olPWItuQ/EJGKFMM8zL5IUn8jTkrlzoxLx5+CQ7NXFudx9YAGaHEu6eWKuBGgR3pcUyl8Z2CpCUhPQFFjjaYSwHpgxAbtGaAHtJ9w9oSAyY/FgJ9SjzgDlNwwf5u1uPhxLfWxeiChoRB864vbdWG4teHf0DBDdsAdpWZ1HL9ojrbyBL0EgrJrCiPJWSSZTqVwub0SqohC/d91K5veRyC2XoZ7KjQoG2dJQHIjHaRuKXh0YS4hvQ2ZkbG8tZe2hMO9FNHPjSm918yDFMndm1dMt2awXCQolw/GsXKsLYUAjZtJMK8++bRMGwJYbO0BcwZ4j1OGAheeJE3wx2jcxJ2Rsxeyg+6Nk95zMlnlM+dFGtP9KxsF3NyFWQ4gmVNgCJ42nNnE8XOoLgkKjP1SmFyTnEYZTrp8yHaj/lo/FwTfFs2YvaAAAAAASUVORK5CYII='
+}
 ,
 {
 name: 'Diode',
@@ -7896,7 +7937,7 @@ function renderCatalogGrid()
         updateOpLine("catalog",it);
 
         const expanded = oASC.expandWideCharsForGrid(text_data || "");
-        const forPaste = expanded.replace(new Regexp(WILDCHAR_U,"g"), " ");   // WILDCARD_U becomes a real space for placement
+        const forPaste = expanded.replace(new RegExp(WILDCHAR_U,"g"), " ");   // WILDCARD_U becomes a real space for placement
         oASC.startPasteWithText(forPaste);
 
         canvas.focus();
