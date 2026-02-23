@@ -1299,19 +1299,21 @@ pin_data: null,
 text_data:[ 
 '╭─╵─╮\n' +
 '( ± )\n' +
-'╰─╷─╯'
+'╰─╷─╯[###V]'
 ,
 '╭─-─╮\n' +
 '┤- +├\n' +
-'╰───╯'
+'╰───╯\n' +
+'[###V]'
 ,
 '╭─╵─╮\n' +
 '( ∓ )\n' +
-'╰─╷─╯'
+'╰─╷─╯[###V]'
 ,
 '╭─-─╮\n' +
 '┤+ -├\n' +
-'╰───╯'
+'╰───╯\n' +
+'[###V]'
 ,
 '  │\n' +
 ' ╱ \╲\n' +
@@ -1408,6 +1410,32 @@ text_data:[
 '  ╱ \╲\n' +
 '─( ~ )─\n' +
 '  \╲ ╱'
+ ],
+image_data:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAxQTFRFAAAADAwM+fn5mZmZFJcBpQAAAAR0Uk5TAP//4UkifesAAAGqSURBVHiczVIhcsMwEJTHI+gpMusjSsz9BIOcPePxOKjEJSUlLugrTMsMfJ5A8XxCLekHKh7Ypqc7KU0yfUBFJO2dTne7q9Rf6+4aaGTTj+GegZxsCCgAPhUQAgkA7H0CQMdAsUVLoRSOXyBPHe4olPWItuQ/EJGKFMM8zL5IUn8jTkrlzoxLx5+CQ7NXFudx9YAGaHEu6eWKuBGgR3pcUyl8Z2CpCUhPQFFjjaYSwHpgxAbtGaAHtJ9w9oSAyY/FgJ9SjzgDlNwwf5u1uPhxLfWxeiChoRB864vbdWG4teHf0DBDdsAdpWZ1HL9ojrbyBL0EgrJrCiPJWSSZTqVwub0SqohC/d91K5veRyC2XoZ7KjQoG2dJQHIjHaRuKXh0YS4hvQ2ZkbG8tZe2hMO9FNHPjSm918yDFMndm1dMt2awXCQolw/GsXKsLYUAjZtJMK8++bRMGwJYbO0BcwZ4j1OGAheeJE3wx2jcxJ2Rsxeyg+6Nk95zMlnlM+dFGtP9KxsF3NyFWQ4gmVNgCJ42nNnE8XOoLgkKjP1SmFyTnEYZTrp8yHaj/lo/FwTfFs2YvaAAAAAASUVORK5CYII='
+}
+,
+{
+name: 'Voltmeter',
+type: 'Multimeter',
+description: 'Voltmeter',
+MFR: 'gen',
+SPICE: '',
+pin_data: null,
+text_data:[ 
+'─(V)-'
+ ],
+image_data:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAxQTFRFAAAADAwM+fn5mZmZFJcBpQAAAAR0Uk5TAP//4UkifesAAAGqSURBVHiczVIhcsMwEJTHI+gpMusjSsz9BIOcPePxOKjEJSUlLugrTMsMfJ5A8XxCLekHKh7Ypqc7KU0yfUBFJO2dTne7q9Rf6+4aaGTTj+GegZxsCCgAPhUQAgkA7H0CQMdAsUVLoRSOXyBPHe4olPWItuQ/EJGKFMM8zL5IUn8jTkrlzoxLx5+CQ7NXFudx9YAGaHEu6eWKuBGgR3pcUyl8Z2CpCUhPQFFjjaYSwHpgxAbtGaAHtJ9w9oSAyY/FgJ9SjzgDlNwwf5u1uPhxLfWxeiChoRB864vbdWG4teHf0DBDdsAdpWZ1HL9ojrbyBL0EgrJrCiPJWSSZTqVwub0SqohC/d91K5veRyC2XoZ7KjQoG2dJQHIjHaRuKXh0YS4hvQ2ZkbG8tZe2hMO9FNHPjSm918yDFMndm1dMt2awXCQolw/GsXKsLYUAjZtJMK8++bRMGwJYbO0BcwZ4j1OGAheeJE3wx2jcxJ2Rsxeyg+6Nk95zMlnlM+dFGtP9KxsF3NyFWQ4gmVNgCJ42nNnE8XOoLgkKjP1SmFyTnEYZTrp8yHaj/lo/FwTfFs2YvaAAAAAASUVORK5CYII='
+}
+,
+{
+name: 'Ammeter',
+type: 'Multimeter',
+description: 'Ammeter',
+MFR: 'gen',
+SPICE: '',
+pin_data: null,
+text_data:[ 
+'─(A)-'
  ],
 image_data:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAxQTFRFAAAADAwM+fn5mZmZFJcBpQAAAAR0Uk5TAP//4UkifesAAAGqSURBVHiczVIhcsMwEJTHI+gpMusjSsz9BIOcPePxOKjEJSUlLugrTMsMfJ5A8XxCLekHKh7Ypqc7KU0yfUBFJO2dTne7q9Rf6+4aaGTTj+GegZxsCCgAPhUQAgkA7H0CQMdAsUVLoRSOXyBPHe4olPWItuQ/EJGKFMM8zL5IUn8jTkrlzoxLx5+CQ7NXFudx9YAGaHEu6eWKuBGgR3pcUyl8Z2CpCUhPQFFjjaYSwHpgxAbtGaAHtJ9w9oSAyY/FgJ9SjzgDlNwwf5u1uPhxLfWxeiChoRB864vbdWG4teHf0DBDdsAdpWZ1HL9ojrbyBL0EgrJrCiPJWSSZTqVwub0SqohC/d91K5veRyC2XoZ7KjQoG2dJQHIjHaRuKXh0YS4hvQ2ZkbG8tZe2hMO9FNHPjSm918yDFMndm1dMt2awXCQolw/GsXKsLYUAjZtJMK8++bRMGwJYbO0BcwZ4j1OGAheeJE3wx2jcxJ2Rsxeyg+6Nk95zMlnlM+dFGtP9KxsF3NyFWQ4gmVNgCJ42nNnE8XOoLgkKjP1SmFyTnEYZTrp8yHaj/lo/FwTfFs2YvaAAAAAASUVORK5CYII='
 }
