@@ -6428,9 +6428,9 @@ image_data:
 }
 ,
 {
-name: 'Voltage/Current source',
+name: 'DC Voltage source',
 type: 'Power-Driver',
-description: 'Voltage/Current source',
+description: 'DC Voltage source',
 MFR: 'gen',
 SPICE: '',
 pin_data: null,
@@ -6439,13 +6439,17 @@ text_data:[
 '( ± )\n' +
 '╰─╷─╯'
 ,
-'╭─╵─╮\n' +
-'( ↑ )\n' +
-'╰─╷─╯'
+'╭─-─╮\n' +
+'┤- +├\n' +
+'╰───╯'
 ,
 '╭─╵─╮\n' +
-'( ~ )\n' +
+'( ∓ )\n' +
 '╰─╷─╯'
+,
+'╭─-─╮\n' +
+'┤+ -├\n' +
+'╰───╯'
 ,
 '  │\n' +
 ' ╱ \╲\n' +
@@ -6453,17 +6457,95 @@ text_data:[
 ' \╲ ╱\n' +
 '  │'
 ,
+'  ╱ \╲\n' +
+'─(- +)─\n' +
+'  \╲ ╱'
+,
+'  │\n' +
+' ╱ \╲\n' +
+'( ∓ )\n' +
+' \╲ ╱\n' +
+'  │'
+,
+'  ╱ \╲\n' +
+'─(+ -)─\n' +
+'  \╲ ╱'
+ ],
+image_data:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAxQTFRFAAAADAwM+fn5mZmZFJcBpQAAAAR0Uk5TAP//4UkifesAAAGqSURBVHiczVIhcsMwEJTHI+gpMusjSsz9BIOcPePxOKjEJSUlLugrTMsMfJ5A8XxCLekHKh7Ypqc7KU0yfUBFJO2dTne7q9Rf6+4aaGTTj+GegZxsCCgAPhUQAgkA7H0CQMdAsUVLoRSOXyBPHe4olPWItuQ/EJGKFMM8zL5IUn8jTkrlzoxLx5+CQ7NXFudx9YAGaHEu6eWKuBGgR3pcUyl8Z2CpCUhPQFFjjaYSwHpgxAbtGaAHtJ9w9oSAyY/FgJ9SjzgDlNwwf5u1uPhxLfWxeiChoRB864vbdWG4teHf0DBDdsAdpWZ1HL9ojrbyBL0EgrJrCiPJWSSZTqVwub0SqohC/d91K5veRyC2XoZ7KjQoG2dJQHIjHaRuKXh0YS4hvQ2ZkbG8tZe2hMO9FNHPjSm918yDFMndm1dMt2awXCQolw/GsXKsLYUAjZtJMK8++bRMGwJYbO0BcwZ4j1OGAheeJE3wx2jcxJ2Rsxeyg+6Nk95zMlnlM+dFGtP9KxsF3NyFWQ4gmVNgCJ42nNnE8XOoLgkKjP1SmFyTnEYZTrp8yHaj/lo/FwTfFs2YvaAAAAAASUVORK5CYII='
+}
+,
+{
+name: 'DC Current source',
+type: 'Power-Driver',
+description: 'Current source',
+MFR: 'gen',
+SPICE: '',
+pin_data: null,
+text_data:[ 
+'╭─╵─╮\n' +
+'( ↑ )\n' +
+'╰─╷─╯'
+,
+'╭─-─╮\n' +
+'┤ → ├\n' +
+'╰───╯'
+,
+'╭─╵─╮\n' +
+'( ↓ )\n' +
+'╰─╷─╯'
+,
+'╭─-─╮\n' +
+'┤ ← ├\n' +
+'╰───╯'
+,
 '  │\n' +
 ' ╱ \╲\n' +
 '( ↑ )\n' +
 ' \╲ ╱\n' +
 '  │'
 ,
+'  ╱ \╲\n' +
+'─( → )─\n' +
+'  \╲ ╱'
+,
+'  │\n' +
+' ╱ \╲\n' +
+'( ↓ )\n' +
+' \╲ ╱\n' +
+'  │'
+,
+'  ╱ \╲\n' +
+'─( ← )─\n' +
+'  \╲ ╱'
+ ],
+image_data:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAxQTFRFAAAADAwM+fn5mZmZFJcBpQAAAAR0Uk5TAP//4UkifesAAAGqSURBVHiczVIhcsMwEJTHI+gpMusjSsz9BIOcPePxOKjEJSUlLugrTMsMfJ5A8XxCLekHKh7Ypqc7KU0yfUBFJO2dTne7q9Rf6+4aaGTTj+GegZxsCCgAPhUQAgkA7H0CQMdAsUVLoRSOXyBPHe4olPWItuQ/EJGKFMM8zL5IUn8jTkrlzoxLx5+CQ7NXFudx9YAGaHEu6eWKuBGgR3pcUyl8Z2CpCUhPQFFjjaYSwHpgxAbtGaAHtJ9w9oSAyY/FgJ9SjzgDlNwwf5u1uPhxLfWxeiChoRB864vbdWG4teHf0DBDdsAdpWZ1HL9ojrbyBL0EgrJrCiPJWSSZTqVwub0SqohC/d91K5veRyC2XoZ7KjQoG2dJQHIjHaRuKXh0YS4hvQ2ZkbG8tZe2hMO9FNHPjSm918yDFMndm1dMt2awXCQolw/GsXKsLYUAjZtJMK8++bRMGwJYbO0BcwZ4j1OGAheeJE3wx2jcxJ2Rsxeyg+6Nk95zMlnlM+dFGtP9KxsF3NyFWQ4gmVNgCJ42nNnE8XOoLgkKjP1SmFyTnEYZTrp8yHaj/lo/FwTfFs2YvaAAAAAASUVORK5CYII='
+}
+,
+{
+name: 'AC Voltage source',
+type: 'Power-Driver',
+description: 'AC Voltage source',
+MFR: 'gen',
+SPICE: '',
+pin_data: null,
+text_data:[ 
+'╭─╵─╮\n' +
+'( ~ )\n' +
+'╰─╷─╯'
+,
+'╭─-─╮\n' +
+'┤ ~ ├\n' +
+'╰───╯'
+,
 '  │\n' +
 ' ╱ \╲\n' +
 '( ~ )\n' +
 ' \╲ ╱\n' +
 '  │'
+,
+'  ╱ \╲\n' +
+'─( ~ )─\n' +
+'  \╲ ╱'
  ],
 image_data:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAxQTFRFAAAADAwM+fn5mZmZFJcBpQAAAAR0Uk5TAP//4UkifesAAAGqSURBVHiczVIhcsMwEJTHI+gpMusjSsz9BIOcPePxOKjEJSUlLugrTMsMfJ5A8XxCLekHKh7Ypqc7KU0yfUBFJO2dTne7q9Rf6+4aaGTTj+GegZxsCCgAPhUQAgkA7H0CQMdAsUVLoRSOXyBPHe4olPWItuQ/EJGKFMM8zL5IUn8jTkrlzoxLx5+CQ7NXFudx9YAGaHEu6eWKuBGgR3pcUyl8Z2CpCUhPQFFjjaYSwHpgxAbtGaAHtJ9w9oSAyY/FgJ9SjzgDlNwwf5u1uPhxLfWxeiChoRB864vbdWG4teHf0DBDdsAdpWZ1HL9ojrbyBL0EgrJrCiPJWSSZTqVwub0SqohC/d91K5veRyC2XoZ7KjQoG2dJQHIjHaRuKXh0YS4hvQ2ZkbG8tZe2hMO9FNHPjSm918yDFMndm1dMt2awXCQolw/GsXKsLYUAjZtJMK8++bRMGwJYbO0BcwZ4j1OGAheeJE3wx2jcxJ2Rsxeyg+6Nk95zMlnlM+dFGtP9KxsF3NyFWQ4gmVNgCJ42nNnE8XOoLgkKjP1SmFyTnEYZTrp8yHaj/lo/FwTfFs2YvaAAAAAASUVORK5CYII='
 }
