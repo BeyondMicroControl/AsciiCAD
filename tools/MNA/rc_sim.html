@@ -110,6 +110,8 @@
   <div id="out"></div>
 
 <script>
+  var bDebug = true 
+
 /* ============================================================================
    1) GLOBAL NUMERICS / LINEAR SOLVE
    ----------------------------------------------------------------------------
@@ -119,14 +121,16 @@
      - J is the Jacobian matrix: J[i][j] = ∂r_i / ∂x_j
    ============================================================================ */
 
-function fmt(x, digits) {
+function fmt(x, digits) 
+{
   digits = (digits === undefined) ? 6 : digits;
   var v = (Math.abs(x) < 0.5e-12) ? 0 : x;
   return v.toFixed(digits);
 }
 
 // Gaussian elimination with partial pivoting: solves A x = b
-function solveLinearSystem(A, b) {
+function solveLinearSystem(A, b) 
+{
   var n = b.length;
   var i, j, k;
 
@@ -176,7 +180,8 @@ function solveLinearSystem(A, b) {
      - unknown nodes are solved (their voltages are in vector x)
    ============================================================================ */
 
-function NODETABLE() {
+function NODETABLE() 
+{
   this.nameToIndex = {};   // string -> int
   this.fixed = {};         // nodeIndex (as string) -> voltage
   this.nextIndex = 0;
@@ -190,10 +195,12 @@ function NODETABLE() {
 
   this.get = function(name) {
   return this.nameToIndex[name];
-};
+  };
 
-  this.fix = function(nodeIndex, voltage) {
+  this.fix = function(nodeIndex, voltage)
+  {
     this.fixed[String(nodeIndex)] = voltage;
+    if(bDebug) console.log("nodeIndex "+nodeIndex+" was fixed to voltage "+voltage)
   };
 
   this.isFixed = function(nodeIndex) {
@@ -205,18 +212,22 @@ function NODETABLE() {
   };
 
   // Map each non-fixed node to a compact unknown index 0..(nUnknown-1)
-  this.buildUnknownMap = function() {
+  this.buildUnknownMap = function() 
+  {
     var unknownIndexOfNode = {}; // nodeIndex (as string) -> unknownIndex
     var u = 0;
-    var n;
-    for (n = 0; n < this.nextIndex; n++) {
-      if (!this.isFixed(n)) unknownIndexOfNode[String(n)] = u++;
-    }
+    for (var n = 0; n < this.nextIndex; n++)
+      if (!this.isFixed(n)) 
+      {
+        unknownIndexOfNode[String(n)] = u++;     // identify the index of the unknown variables in the circuit
+        if(bDebug) console.log("nodeIndex "+n+"/"+this.nextIndex+" was identified as unknown ("+u+")")
+      }
     return { unknownIndexOfNode: unknownIndexOfNode, nUnknown: u };
   };
 
   // Build full voltage vector V[nodeIndex] from unknown vector x[unknownIndex]
-  this.buildFullVoltages = function(x, unknownIndexOfNode) {
+  this.buildFullVoltages = function(x, unknownIndexOfNode) 
+  {
     var V = new Array(this.nextIndex);
     var n;
     for (n = 0; n < this.nextIndex; n++) {
@@ -234,7 +245,8 @@ function NODETABLE() {
    The solver only asks each device to "stamp" its contribution.
    ============================================================================ */
 
-function CIRCUIT(nodeTable) {
+function CIRCUIT(nodeTable) 
+{
   this.nt = nodeTable;
   this.devices = [];
   this.addDevice = function(device) { this.devices.push(device); };
@@ -268,7 +280,8 @@ function CIRCUIT(nodeTable) {
          leaving a is +i, leaving b is -i
    ============================================================================ */
 
-function STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, Vprev2, dt, r, J) {
+function STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, Vprev2, dt, r, J) 
+{
   this.nt = nt;
   this.unknownIndexOfNode = unknownIndexOfNode;
   this.V = V;
@@ -312,7 +325,8 @@ function STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, Vprev2, dt, r, J) {
    ============================================================================ */
 
 // Common 2-pin helpers added to each 2-pin device
-function TWOPIN_INIT(dev, a, b) {
+function TWOPIN_INIT(dev, a, b) 
+{
   dev.a = a;
   dev.b = b;
 
@@ -560,7 +574,8 @@ function CAPACITOR_BDF2(a, b, C)
    For linear devices, r and J are linear, so convergence is typically 1 iteration.
    ============================================================================ */
 
-function newtonSolveKCL(oCIRCUIT, unknownIndexOfNode, x0, Vprev, Vprev2, dt, opts) {
+function newtonSolveKCL(oCIRCUIT, unknownIndexOfNode, x0, Vprev, Vprev2, dt, opts) 
+{
   var nt = oCIRCUIT.nt;
   var nUnknown = x0.length;
 
@@ -623,25 +638,25 @@ function buildSeriesRCCircuit(Vs, R, C, Vcap0, capMethod)
 {
   var nt = new NODETABLE();
 
-  nt.fix(nt.node("0"), 0);
+  nt.fix(nt.node("0") , 0);
   nt.fix(nt.node("V1"), Vs);
 
   var oCIRCUIT = new CIRCUIT(nt);
 
   // object containers (instances)
   var oRES  = new RESISTOR(nt.node("V1"), nt.node("V2"), R);     // R between V1 and V2
-  var oCAP;
+  var oCAP;                                                      // C between V2 and GND
   if      (capMethod === "TR")   oCAP = new CAPACITOR_TR(  nt.node("V2"), nt.node("0"), C);   // Trapezoidal / Crank–Nicolson port equation
   else if (capMethod === "BDF2") oCAP = new CAPACITOR_BDF2(nt.node("V2"), nt.node("0"), C);   // Gear / 2nd-order Backward Differentiation
   else                           oCAP = new CAPACITOR_BE(  nt.node("V2"), nt.node("0"), C);   // Backward Euler approximation (default)
-  // C between V2 and GND
 
   oCIRCUIT.addDevice(oRES);
   oCIRCUIT.addDevice(oCAP);
 
-  var map = nt.buildUnknownMap();
+  var map                = nt.buildUnknownMap();
   var unknownIndexOfNode = map.unknownIndexOfNode;
-  var nUnknown = map.nUnknown;
+  var nUnknown           = map.nUnknown;
+  if(bDebug) console.log("number of unknowns = "+nUnknown);
 
   var x0 = new Array(nUnknown);
   for (var i = 0; i < nUnknown; i++) x0[i] = 0;
@@ -649,6 +664,7 @@ function buildSeriesRCCircuit(Vs, R, C, Vcap0, capMethod)
   // Initial condition: capacitor node voltage V2(0) = Vcap0
   var uV2 = unknownIndexOfNode[String(oCIRCUIT.nt.get("V2"))];
   if (uV2 !== undefined) x0[uV2] = Vcap0;
+  if(bDebug) console.log("set value "+Vcap0+" at 'unknown' index "+uV2+" = "+nUnknown);
 
   return {
     oCIRCUIT: oCIRCUIT,
@@ -708,7 +724,8 @@ function simulateAndRender()
   // t=0
   addRow(0, Vprev);
 
-  for (var n = 1; n <= steps; n++) {
+  for (var n = 1; n <= steps; n++) 
+  {
     var t = n * dt;
 
     var sol = newtonSolveKCL(oCIRCUIT, unknownIndexOfNode, x, Vprev, Vprev2, dt, { maxIter: 10, tol: 1e-13 });
