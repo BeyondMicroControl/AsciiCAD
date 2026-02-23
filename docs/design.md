@@ -100,7 +100,7 @@ example: ` ╤ ` connects E + S + W, becoming `E | S | W = 0b0010 | 0b0100 | 0b1
 
 __Properties of the wire glyph__
 - stable (inherited from pioneering computer systems)
-- essentially come down to a combo of 4 directions => encodable into a 4-bit mask
+- essentially a combo of 4 directions => encodable into a 4-bit mask
 
 ### Netline
 
