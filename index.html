@@ -574,7 +574,7 @@ function renderCatalogGrid()
         updateOpLine("catalog",it);
 
         const expanded = oASC.expandWideCharsForGrid(text_data || "");
-        const forPaste = expanded.replace(new Regexp(WILDCHAR_U,"g"), " ");   // WILDCARD_U becomes a real space for placement
+        const forPaste = expanded.replace(new RegExp(WILDCHAR_U,"g"), " ");   // WILDCARD_U becomes a real space for placement
         oASC.startPasteWithText(forPaste);
 
         canvas.focus();
