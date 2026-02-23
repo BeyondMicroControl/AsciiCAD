@@ -65,6 +65,21 @@
     </div>
   </details>
 
+
+<pre>
+          ⎽⎽⎽⎽        + [10uF]
+  ┌───┬──[10KΩ]──┬────┨┠─┐
+  │   │   ⎺⎺⎺⎺   │       │
+  │   └────(V)───┘       │
+  │                      │
+╭─╵─╮                    │
+( ± )                    │
+╰─╷─╯[5.0V]              │
+  │                      │
+  └──────────────────────┘
+</pre>
+
+
   <div class="row">
     <label>Vs (V): <input id="vs" type="number" value="5" step="0.1"></label>
     <label>R (Ω): <input id="r" type="number" value="10000" step="100"></label>
@@ -158,6 +173,10 @@ function NODETABLE() {
     }
     return this.nameToIndex[name];
   };
+
+  this.get = function(name) {
+  return this.nameToIndex[name];
+};
 
   this.fix = function(nodeIndex, voltage) {
     this.fixed[String(nodeIndex)] = voltage;
@@ -307,11 +326,13 @@ function TWOPIN_INIT(dev, a, b) {
       ∂r[b]/∂Va += -G
       ∂r[b]/∂Vb += +G
 */
-function RESISTOR(a, b, R) {
+function RESISTOR(a, b, R) 
+{
   TWOPIN_INIT(this, a, b);
   this.R = R;
 
-  this.stamp = function(ctx) {
+  this.stamp = function(ctx) 
+  {
     var G = 1 / this.R;       // conductance
     var v = this.vab(ctx);    // Va - Vb
     var i = G * v;            // i = (Va - Vb)/R
@@ -354,7 +375,8 @@ function RESISTOR(a, b, R) {
       ∂i/∂Vb = -Gc
     and same sign pattern as resistor for r[a] and r[b].
 */
-function CAPACITOR_BE(a, b, C) {
+function CAPACITOR_BE(a, b, C) 
+{
   TWOPIN_INIT(this, a, b);
   this.C = C;
 
@@ -387,8 +409,8 @@ function CAPACITOR_BE(a, b, C) {
    For linear devices, r and J are linear, so convergence is typically 1 iteration.
    ============================================================================ */
 
-function newtonSolveKCL(ckt, unknownIndexOfNode, x0, Vprev, dt, opts) {
-  var nt = ckt.nt;
+function newtonSolveKCL(oCIRCUIT, unknownIndexOfNode, x0, Vprev, dt, opts) {
+  var nt = oCIRCUIT.nt;
   var nUnknown = x0.length;
 
   var maxIter = (opts && opts.maxIter !== undefined) ? opts.maxIter : 20;
@@ -411,7 +433,7 @@ function newtonSolveKCL(ckt, unknownIndexOfNode, x0, Vprev, dt, opts) {
 
     // Stamp all devices
     var ctx = new STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, dt, r, J);
-    for (i = 0; i < ckt.devices.length; i++) ckt.devices[i].stamp(ctx);
+    for (i = 0; i < oCIRCUIT.devices.length; i++) oCIRCUIT.devices[i].stamp(ctx);
 
     // Convergence check
     var maxAbsR = 0;
@@ -446,24 +468,21 @@ function newtonSolveKCL(ckt, unknownIndexOfNode, x0, Vprev, dt, opts) {
    - Unknown node is V2 (between R and C)
    ============================================================================ */
 
-function buildSeriesRCCircuit(Vs, R, C, Vcap0) {
+function buildSeriesRCCircuit(Vs, R, C, Vcap0) 
+{
   var nt = new NODETABLE();
 
-  var nGND  = nt.node("0");
-  var nPlus = nt.node("V1");
-  var nMid  = nt.node("V2");
+  nt.fix(nt.node("0"), 0);
+  nt.fix(nt.node("V1"), Vs);
 
-  nt.fix(nGND, 0);
-  nt.fix(nPlus, Vs);
+  var oCIRCUIT = new CIRCUIT(nt);
 
-  var ckt = new CIRCUIT(nt);
+  // object containers (instances)
+  var oRES  = new RESISTOR(nt.node("V1"), nt.node("V2"), R);     // R between V1 and V2
+  var oCAP  = new CAPACITOR_BE(nt.node("V2"), nt.node("0"), C);  // C between V2 and GND
 
-  // Old-school object containers (instances)
-  var oRESISTOR = new RESISTOR(nPlus, nMid, R);     // R between V1 and V2
-  var oCAP      = new CAPACITOR_BE(nMid, nGND, C);  // C between V2 and GND
-
-  ckt.addDevice(oRESISTOR);
-  ckt.addDevice(oCAP);
+  oCIRCUIT.addDevice(oRES);
+  oCIRCUIT.addDevice(oCAP);
 
   var map = nt.buildUnknownMap();
   var unknownIndexOfNode = map.unknownIndexOfNode;
@@ -473,16 +492,12 @@ function buildSeriesRCCircuit(Vs, R, C, Vcap0) {
   for (var i = 0; i < nUnknown; i++) x0[i] = 0;
 
   // Initial condition: capacitor node voltage V2(0) = Vcap0
-  var uV2 = unknownIndexOfNode[String(nMid)];
+  var uV2 = unknownIndexOfNode[String(oCIRCUIT.nt.get("V2"))];
   if (uV2 !== undefined) x0[uV2] = Vcap0;
 
   return {
-    ckt: ckt,
-    nt: nt,
+    oCIRCUIT: oCIRCUIT,
     unknownIndexOfNode: unknownIndexOfNode,
-    nPlus: nPlus,
-    nMid: nMid,
-    nGND: nGND,
     x0: x0
   };
 }
@@ -496,7 +511,8 @@ function buildSeriesRCCircuit(Vs, R, C, Vcap0) {
      - Update history Vprev := V(n)
    ============================================================================ */
 
-function simulateAndRender() {
+function simulateAndRender() 
+{
   var Vs = Number(document.getElementById('vs').value);
   var R  = Number(document.getElementById('r').value);
   var C  = Number(document.getElementById('c').value);
@@ -510,11 +526,9 @@ function simulateAndRender() {
   }
 
   var built = buildSeriesRCCircuit(Vs, R, C, Vcap0);
-  var ckt = built.ckt;
-  var nt = built.nt;
+  var oCIRCUIT = built.oCIRCUIT;
+  var nt = built.oCIRCUIT.nt;
   var unknownIndexOfNode = built.unknownIndexOfNode;
-  var nPlus = built.nPlus;
-  var nMid  = built.nMid;
   var x = built.x0.slice();
 
   var steps = Math.floor(T / dt);
@@ -525,9 +539,10 @@ function simulateAndRender() {
   var html = "<table>";
   html += "<thead><tr><th>time (s)</th><th>V_res (V)</th><th>I_res (A)</th></tr></thead><tbody>";
 
-  function addRow(t, V) {
-    var V1 = V[nPlus];
-    var V2 = V[nMid];
+  function addRow(t, V) 
+  {
+    var V1 = V[ nt.get("V1") ];
+    var V2 = V[ nt.get("V2")  ];
     var Vres = V1 - V2;
     var Ires = Vres / R;
     html += "<tr><td>" + fmt(t, 6) + "</td><td>" + fmt(Vres, 6) + "</td><td>" + fmt(Ires, 9) + "</td></tr>";
@@ -539,7 +554,7 @@ function simulateAndRender() {
   for (var n = 1; n <= steps; n++) {
     var t = n * dt;
 
-    var sol = newtonSolveKCL(ckt, unknownIndexOfNode, x, Vprev, dt, { maxIter: 10, tol: 1e-13 });
+    var sol = newtonSolveKCL(oCIRCUIT, unknownIndexOfNode, x, Vprev, dt, { maxIter: 10, tol: 1e-13 });
     x = sol.x;
 
     var V = sol.V;
