@@ -10,19 +10,17 @@ That collapse is not an accident, but a deliberate strategy - quoting the openin
 This deserves more elaboration:
 With collapsing the horizontals, we refer to 'business data' usually living in applications, over three different datasets:
 - a dataset tailored for graphical representation and human-machine interfacing
-- an internal dataset allowing application functions to make internal process decisions, or perform algorithmic operations.
+- an internal dataset allowing application functions to make internal process decisions or algorithmic operations.
 - plus one or more datasets tailored for interoperability with other compatible applications or systems   
 
-In AsciiCAD, we collapse these three layers into just one, allowing just one definition and one policy to do all the heavy lifting.
-ed as a ‘digital essay’ on fast-tracking complexity by strategising bare-bones simplicity at its conception.”
+In AsciiCAD, we collapse these three layers into just one, allowing just one definition and one policy to do the heavy lifting.
 
-Having only **one representation layer** to worry about brings a practical advantage: it concentrates effort where it matters most — on precise, high-quality policy writing and on forging detailed, shared agreements about interpretation and formatting. Those agreements become the “protocols” that makes the system scale.
+Having only **one representation layer** to worry about brings a practical advantage: it concentrates effort where it matters most — on precise, high-quality policy writing and on forging detailed, shared agreements about interpretation and formatting. Those agreements or policies become the fertile ground for “protocols” that make the system scale.
 
 This matters because AsciiCAD’s strategy for reaching higher complexity is not to multiply parallel abstractions, but to build understandable layers on top of each other:
 - start with a stable, minimal base (grid of glyphs)
-- define strict interpretation rules (policy document)
+- define systematic interpretation rules (policy document)
 - then add features that compose on top of those rules (netlist, matching, labels, tooling)
-
 
 # Policy design
 
@@ -37,9 +35,12 @@ It defines these meanings in a precise, testable way, especially for connectivit
 - how catalog components interact with linking wires (pins/protrusions, net labels)
 - what is reported in a netlist output and why
 
-As our design strategy pursues a blueprint for Computer Aided Design applicable in many different specialisations.  e.g. Enterprise or IT architectural design, mind mapping, electrical engineering etc... we need a solid foundation allowing predictable interpretation that users can learn, that the codebase can maintain, and that future features can extend without breaking existing drawings.  
+As our design strategy pursues a blueprint for Computer Aided Design (CAD) applicable in many different specialisations.  e.g. Enterprise or IT architectural design, mind mapping, electrical engineering etc... we need a solid foundation allowing predictable interpretation that
+- users can learn
+- the codebase can maintain
+- future features can extend without breaking existing drawings
 
-More about character encoding practice:
+More contet about the power of character/glyph encoding:
 It's one-dimensional aspects, text, paragraphs, phrases, idioms, words, syllables, and at it's atomic level: symbols, glyphs, characters, letters, digits, numbers, operators, punctuation, diacritics, ligatures, marks, spaces and even emoji's have become the basis of language.   
 
 A construct allowing intelligent entities to **Transform thought into data, and data into thought.**.  This is how we preceive language, in it's very one-dimensional space.  But just like barcodes and QR codes relate to each other, in a 2D space however, data density increases quadratically and so it's potential to bear more meaning in the same space.  And we utilise this potential to stuff graphic representation, internal data including references to metadata and interoperability all in one place, where multiple modes collapse into one ultimate form of simplicity: 'what you see is what you get'.
@@ -60,21 +61,21 @@ A construct allowing intelligent entities to **Transform thought into data, and 
 # AsciiCAD policy
 ## Specialisation layers
 
-                         ┌─────────┐          specialisation │  │
-                         │grid cell│                         │  │
-                         └─┬───┬───┘                         │  │
-                   ┌───────┴┐ ┌┴────────┐                    │  │
-                   │  wire  │ │component│                    │  │
-                   └────┬───┘ └────┬────┘                    │  │
-     ┌──────────────────┴───┐ ┌────┴─────────────────┐       │  │
+                       ┌───────────┐          specialisation │  │
+                       │ Grid Cell │                         │  │
+                       └──┬────┬───┘                         │  │
+                   ┌──────┴─┐ ┌┴──────────┐                  │  │
+                   │  Wire  │ │ Component │                  │  │
+                   └────┬───┘ └─────┬─────┘                  │  │
+     ┌──────────────────┴───┐ ┌─────┴────────────────┐       │  │
      │                      │ │                      │       │  │
-     │   exterior netline   │ │   interior netline   │       │  │
+     │   Exterior netline   │ │   Interior netline   │       │  │
      │lineEnd/Junction/Label│ │compEnd/Junction/Label│       │  │
      └────────────┬─────────┘ └───────────┬──────────┘       │  │
     ┌─────────────┴───────────────────────┴──────────┐       │  │
     │                                                │      ─┘  └─
-    │                     DOMAIN                     │      \    /
-    │  e.g. electronic/electric/architecture schema  │       \  /
+    │                   DOMAIN                       │      \    /
+    │  e.g. electronics/architecture/mind mapping... │       \  /
     └────────────────────────────────────────────────┘        \/
 
 ## Terminology
@@ -96,18 +97,23 @@ Note: other encodings are possible (e.g. r<<16|c), but "r,c" is explicit, safe, 
 
 ### Wire
 
-Long considered 'not serious' ASCII-table supplements emerging around 1975 (featuring continuous lines, corners and crosses e.g. Code Page 437 from IBM), the typical wire glyps were transposed and recompiled into UTF-8 (charcode range 0x2500-0x2570, representing lines, corners and crosses); all essentially pointing to a combination of 4 directions (**N**orth, **S**outh, **E**ast and **W**est).\
+Long considered 'not serious' ASCII-table supplements emerging around 1975 (featuring continuous lines, corners and crosses e.g. Code Page 437 from IBM), the typical wire glyps were transposed and recompiled into UTF-8 (charcode range 0x2500-0x2570, representing lines, corners and crosses); all essentially representing a combo of 4 directions (**N**orth, **S**outh, **E**ast and **W**est).\
 Therefore, in codebase, `glyphToMask` encodes the only meaningful data about these wire glyphs: a 4-bit mask `N = 0b0001, E = 0b0010, S = 0b0100, W = 0b1000`.  A glyph’s “line function” is then just a bitwise OR of all the directions it connects.\
 example: ` ╤ ` connects E + S + W, becoming `E | S | W = 0b0010 | 0b0100 | 0b1000 = 0b1110`
 
-__Properties of the wire glyph__
+__Properties of the UTF-8 wire glyphs__
 - stable (inherited from pioneering computer systems)
 - essentially a combo of 4 directions => encodable into a 4-bit mask
 
-### Netline
+### Component
 
-A netline is collection of wire glyphs considered as part of one or more continuous/uninterrupted lines.\
-Whenever lines split or join form multiple directions (also called 'graph degrees'), all these lines are considered part of the same net.
+TODO
+
+### Exterior Netline
+
+- Netlines are assumed external when they run entirely outside the confinement area of a component.
+- A netline is generally collection of wire glyphs considered as part of one or more continuous/uninterrupted lines.\
+- Whenever lines split or join form multiple directions (also called 'graph degrees'), all these lines are considered part of the same net.
 
 In dense schematics, efficient routing may also need [**crossings**](#crossings-without-junction) and **[labeled nodes](#netlabel-components)**, which must be _specified by policy_ as no specific glyph represents them.
 
