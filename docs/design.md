@@ -28,7 +28,7 @@ This matters because AsciiCAD’s strategy for reaching higher complexity is not
 
 Having only one representation layer here literally means **'what you see is what you get'**, and once wires and components are visually arranged in a 2D grid, this very framework needs to extract consistently and accurately across multiple [specialisation layers](#specialisation-layers) **what we get from what we see.**
 
-This where visualisation and meaning extraction require a **detailed and consistent policy**.
+This is where both the generation of visual structures and meaning extraction demand a **detailed and consistent policy**.
 
 It defines these meanings in a precise, testable way, especially for connectivity:
 - which glyphs count as wires and why
