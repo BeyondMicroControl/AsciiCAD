@@ -124,6 +124,10 @@ __Properties of the UTF-8 wire glyphs__
 - There are 3 types of wildcards '#' expecting only numbers and decimal point (but no spaces), '$' expecting alphanumeric characters including spaces, '$' expecting only wire glyphs.
 - The edge of a component is defined by the character next to any non-space character inside a component.
 
+### Box
+
+TODO
+
 ### Exterior Netline
 
 - Netlines are assumed exterior when they run entirely outside the confinement area of a component.
