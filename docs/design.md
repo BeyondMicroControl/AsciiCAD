@@ -69,7 +69,7 @@ A construct allowing intelligent entities to **Transform thought into data, and 
                    └────┬───┘ └─────┬─────┘                  │  │
      ┌──────────────────┴───┐ ┌─────┴────────────────┐       │  │
      │                      │ │                      │       │  │
-     │   Exterior netline   │ │   Interior netline   │       │  │
+     │   Exterior Netline   │ │   Interior Netline   │       │  │
      │lineEnd/Junction/Label│ │compEnd/Junction/Label│       │  │
      └────────────┬─────────┘ └───────────┬──────────┘       │  │
     ┌─────────────┴───────────────────────┴──────────┐       │  │
