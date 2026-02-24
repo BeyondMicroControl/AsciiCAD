@@ -84,7 +84,7 @@ A construct allowing intelligent entities to **Transform thought into data, and 
 - The content of a grid cell is always one UTF-8 character
 - We often refer to ASCII characters (the popular denomination) in grid cells, while in reality, we use the character encoding standard for web text: UTF-8
 - A grid cell location is internally represented as a stable string key "r,c"
-- A grid location (in telemetry, CLI, etc...) is externally represented by "x,y"
+- A grid location (in telemetry, CLI, etc...) during UI is represented by "x,y"
 
 **Rationale:** 
 - Native JavaScript Map/Set use reference identity for objects, so {r:1,c:2} can’t be used reliably as a key unless you keep the same object instance around.
@@ -116,7 +116,7 @@ TODO
 
 ### Exterior Netline
 
-- Netlines are assumed external when they run entirely outside the confinement area of a component.
+- Netlines are assumed exterior when they run entirely outside the confinement area of a component.
 - A netline is generally collection of wire glyphs considered as part of one or more continuous/uninterrupted lines.\
 - Whenever lines split or join form multiple directions (also called 'graph degrees'), all these lines are considered part of the same net.
 
@@ -128,7 +128,7 @@ A netline entry contains:
 - `CE`: component-edge glyph cells (pins/protrusions) adjacent to wire 
 - `CJ`: component-internal junctions / pin-to-pin connections (*)
 
-Some components create **permanent** connectivity between pins without external wires:
+Some components create **permanent** connectivity between pins acting like exterior wires:
 - connectors (pin to pin)
 - jumpers / shunts (bridging nets)
 - some fixed “wired” adapters
@@ -151,7 +151,7 @@ Wires that lie **inside** or **on the boundary** of valid double-line boxes must
   - box boundary (“redSet”)
   - box interior (“insideSet”)
 
-**Rationale:** double-line boxes represent grouped blocks; internal wiring should not leak into external nets.
+**Rationale:** double-line boxes represent grouped blocks called components; interior wiring should not leak into exterior nets.
 
 ### B. Exclude matched catalog component interior glyphs (net tracing)
 
@@ -163,7 +163,7 @@ For net tracing, cells belonging to matched catalog items are filtered out using
   - not a space
   - not the wildcard character §
 
-**Rationale:** a component symbol can visually contain lines that are not part of the external wiring network.
+**Rationale:** a component symbol can visually contain lines that are not part of the exterior wiring network.
 
 ### C. Wildcard meaning
 
