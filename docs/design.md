@@ -26,9 +26,9 @@ This matters because AsciiCAD’s strategy for reaching higher complexity is not
 
 # Policy design
 
-Having only one representation layer here literally means **'what you see is what you get'**, and once wires and components are visually arranged in a 2D grid, this very framework needs to extract consistently and accurately across multiple [specialisation layers](#specialisation-layers) **what we get from what we see.**
+Having only one representation layer literally implies **'what you see is what you get'**; and once wires and components are visually arranged in a 2D grid, this framework needs an accurate recipe across multiple [specialisation layers](#specialisation-layers) to make correct assumptions on **what one gets from what one sees.**
 
-This is where both the generation of visual structures and meaning extraction demand a **detailed and consistent policy**.
+This is where both generation of visual structures and meaning extraction demand a **consistent policy, applicable in both ways**.
 
 It defines these meanings in a precise, testable way, especially for connectivity:
 - which glyphs count as wires and why
@@ -37,7 +37,7 @@ It defines these meanings in a precise, testable way, especially for connectivit
 - how catalog components interact with linking wires (pins/protrusions, net labels)
 - what is reported in a netlist output and why
 
-The goal is predictable interpretation that users can learn, that the codebase can maintain, and that future features can extend without breaking existing drawings.  This design strategy can be used as a blueprint for Computer Aided Design that can be applied in many other usecases.  e.g. Enterprise or IT architectural design, mind mapping, etc...
+As our design strategy pursues a blueprint for Computer Aided Design applicable in many different specialisations.  e.g. Enterprise or IT architectural design, mind mapping, electrical engineering etc... we need a solid foundation allowing predictable interpretation that users can learn, that the codebase can maintain, and that future features can extend without breaking existing drawings.  
 
 More about character encoding practice:
 It's one-dimensional aspects, text, paragraphs, phrases, idioms, words, syllables, and at it's atomic level: symbols, glyphs, characters, letters, digits, numbers, operators, punctuation, diacritics, ligatures, marks, spaces and even emoji's have become the basis of language.   
