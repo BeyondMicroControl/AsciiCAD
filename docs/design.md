@@ -116,17 +116,28 @@ __Properties of the UTF-8 wire glyphs__
 - The text content of one component is stored in a single continuous string, where adjacent characters increment columns, and linefeeds increment rows.
   Example of a tiny box: ` "┌─┐\n└─┘" `
 - Space characters in a component string are always considered meaningless, not seen as a part or feature of a component.  Spaces only function as 'spacers'.   
-- Components are listed in a JSON structure called 'component catalog'.
-- The data structure of a component should (to be fixed) not contain any mandatory data field besides `text_data:""`.  Missing fields may cause inability to classify, identify, search or spot the connection points of a component, but must never crash or cause a hard application error, but mostly a warning (*)
+- Components are listed in a common JSON structure called 'component catalog'.
+- The data structure of the component catalog should (*) not contain any mandatory data field besides `text_data:""`.  Missing fields may cause inability to classify, identify, search or spot the connection points of a component, but must never crash or cause a hard application error, but mostly a warning (*)
 - AsciiCAD does not impose limitations on the amount of extra fields attached to a component, but it is not allowed to make any change to the component catalog at runtime. `const CATALOG = [...]`
+- Components are matched on the grid when all their non-space characters are equal (except wildcards, where other matching rules apply) to the characters in the same 2D arrangement on the grid.
+- There are 3 types of wildcards '#' expecting only numbers and decimal point (but no spaces), '$' expecting alphanumeric characters including spaces, '§' expecting only wire glyphs.
+- The perimeter of a component is defined by all non-space and non-'§' wildcards as found in `text_data` of the component template.  It's not a surface, but a character-by-character decision forming a mask we call the component perimeter.
+- A component edge location is defined by any free cell (space or '§' wildcard) on the grid directly touching the perimeter of a component. 
 - Components have pins, also called protrusions (all wire glyphs) reaching out to the edge of the component enabling the component to attach itself to an exterior netline.
-- Components are matched on the grid when all their non-space characters (except wildcards) match with the characters in the same 2D arrangement on the grid.
-- There are 3 types of wildcards '#' expecting only numbers and decimal point (but no spaces), '$' expecting alphanumeric characters including spaces, '$' expecting only wire glyphs.
-- The edge of a component is defined by the character next to any non-space character inside a component.
+- A protrusion or pin is a single-line wire glyph within the component perimeter touching an edge location that can make a continuos single-line with the protrusion.    For example:  A component edge location with 2 adjacent free cells (space or '§' wildcard) around (E|S), and 2 cells within component perimeter (N|W), which means the component edge location can only allow a protrusion at it's North flank containing an S in its bitmask, and a protrusion at its East flank containing a W in the bitmask.
+- A component (as defined in the catalog) can optionally contain a component label.  A label is defined by an opening square bracket '\[' followed by a closing square bracket '\]' on the same line, with in between ranging from 1 alphanumeric character or wildcard, until the total width of the component minus 2.
+ 
+    **TBD**: do we need to integrate labels as part of a catalog item ?  Isn't is bettter to define component/box labels as separate entities?
+    e.g. A label is defined by an opening square bracket '\[' followed by a closing square bracket '\]' on the same line, and between these brackets from 1 to      12 alphanumeric or any of the following characters '.Ωπµ⍉⍵'.
+    A label belongs to a component or a box when the center of the label is closest to the center of the component or box.  When scanning for boxes and catalog     components on the grid, each box or component tries to attach to its closest label.
+
 
 ### Box
 
-TODO
+Next to the ridgid but easy to match components, we need a more generic concept for a component, that does not rely on pre-defined outlooks of a component from the catalog.
+- A box is defined by double-line wires only and that line is always closing a rectangular area.
+- A box can have protrusions pointing inside or outside, as long as the entire rectangle outline is has a double line following the edges.
+- Optionally, a box can also contain a label obeying the same rules as for a component, only the total width of the 
 
 ### Exterior Netline
 
