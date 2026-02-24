@@ -61,22 +61,22 @@ A construct allowing intelligent entities to **Transform thought into data, and 
 # AsciiCAD policy
 ## Specialisation layers
 
-                       ┌───────────┐          specialisation │  │
-                       │ Grid Cell │                         │  │
-                       └──┬────┬───┘                         │  │
-                   ┌──────┴─┐ ┌┴──────────┐                  │  │
-                   │  Wire  │ │ Component │                  │  │
-                   └────┬───┘ └─────┬─────┘                  │  │
-     ┌──────────────────┴───┐ ┌─────┴────────────────┐       │  │
-     │                      │ │                      │       │  │
-     │   Exterior Netline   │ │   Interior Netline   │       │  │
-     │lineEnd/Junction/Label│ │compEnd/Junction/Label│       │  │
-     └────────────┬─────────┘ └───────────┬──────────┘       │  │
-    ┌─────────────┴───────────────────────┴──────────┐       │  │
-    │                                                │      ─┘  └─
-    │                   DOMAIN                       │      \    /
-    │  e.g. electronics/architecture/mind mapping... │       \  /
-    └────────────────────────────────────────────────┘        \/
+             ┌────────────────────────────────┐     Specialisation
+             │            Grid Cell           │          │  │
+             └────┬─────────────┬──────────┬──┘          │  │
+             ┌────┴───┐   ┌─────┴─────┐ ┌──┴──┐          │  │
+             │  Wire  │   │ Component │ │ Box │          │  │
+             └────┬───┘   └─────┬─────┘ └──┬──┘          │  │
+     ┌────────────┴─────────┐ ┌─┴──────────┴─────────┐   │  │
+     │                      │ │                      │   │  │
+     │   Exterior Netline   │ │   Interior Netline   │   │  │
+     │lineEnd/Junction/Label│ │compEnd/Junction/Label│   │  │
+     └────────────┬─────────┘ └───────────┬──────────┘   │  │
+    ┌─────────────┴───────────────────────┴──────────┐   │  │
+    │                                                │  ─┘  └─
+    │                   DOMAIN                       │  \    /
+    │  e.g. electronics/architecture/mind mapping... │   \  /
+    └────────────────────────────────────────────────┘    \/
 
 ## Terminology
 ### Grid Cell
@@ -112,7 +112,17 @@ __Properties of the UTF-8 wire glyphs__
 
 ### Component
 
-TODO
+- Components are essentially templates spanning over minimum 2 grid cells (≥ 2 UTF-8 characters), and arranged in a 2D manner like graphical sprites.
+- The text content of one component is stored in a single continuous string, where adjacent characters increment columns, and linefeeds increment rows.
+  Example of a tiny box: ` "┌─┐\n└─┘" `
+- Space characters in a component string are always considered meaningless, not seen as a part or feature of a component.  Spaces only function as 'spacers'.   
+- Components are listed in a JSON structure called 'component catalog'.
+- The data structure of a component should (to be fixed) not contain any mandatory data field besides `text_data:""`.  Missing fields may cause inability to classify, identify, search or spot the connection points of a component, but must never crash or cause a hard application error, but mostly a warning (*)
+- AsciiCAD does not impose limitations on the amount of extra fields attached to a component, but it is not allowed to make any change to the component catalog at runtime. `const CATALOG = [...]`
+- Components have pins, also called protrusions (all wire glyphs) reaching out to the edge of the component enabling the component to attach itself to an exterior netline.
+- Components are matched on the grid when all their non-space characters (except wildcards) match with the characters in the same 2D arrangement on the grid.
+- There are 3 types of wildcards '#' expecting only numbers and decimal point (but no spaces), '$' expecting alphanumeric characters including spaces, '$' expecting only wire glyphs.
+- The edge of a component is defined by the character next to any non-space character inside a component.
 
 ### Exterior Netline
 
