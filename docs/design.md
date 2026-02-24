@@ -26,8 +26,9 @@ This matters because AsciiCAD’s strategy for reaching higher complexity is not
 
 # Policy design
 
-In concrete terms, this chapter answers the core question:
-“Given a 2D grid of characters, what do they mean — and what must the software do consistently as a result?”
+Having only one representation layer here literally means **'what you see is what you get'**, and once wires and components are visually arranged in a 2D grid, this very framework needs to extract consistently and accurately across multiple [specialisation layers](#specialisation-layers) **what we get from what we see.**
+
+This where visualisation and meaning extraction require a **detailed and consistent policy**.
 
 It defines these meanings in a precise, testable way, especially for connectivity:
 - which glyphs count as wires and why
@@ -57,6 +58,7 @@ A construct allowing intelligent entities to **Transform thought into data, and 
 <br>
 
 # AsciiCAD policy
+## Specialisation layers
 
                          ┌─────────┐          specialisation │  │
                          │grid cell│                         │  │
