@@ -80,7 +80,11 @@ A construct allowing intelligent entities to **Transform thought into data, and 
 
 ## Terminology
 ### Grid Cell
-We represent a cell location as a stable string key "r,c".
+
+- The content of a grid cell is always one UTF-8 character
+- We often refer to ASCII characters (the popular denomination) in grid cells, while in reality, we use the character encoding standard for web text: UTF-8
+- A grid cell location is internally represented as a stable string key "r,c"
+- A grid location (in telemetry, CLI, etc...) is externally represented by "x,y"
 
 **Rationale:** 
 - Native JavaScript Map/Set use reference identity for objects, so {r:1,c:2} can’t be used reliably as a key unless you keep the same object instance around.
@@ -88,8 +92,9 @@ We represent a cell location as a stable string key "r,c".
   - value identity ("1,2" equals "1,2" anywhere)
   - predictable hashing in Set/Map
   - easy serialization and debugging (console logs, JSON)
+- We keep `"r,c"` internally rather than e.g. `"c,r"` purely as a global convention: row-major ordering matches how arrays are indexed (ascii\[r\]\[c\]), which reduces accidental swapping bugs.
+- We keep `"x,y"` externally as this is a convention on handling graphic coordinates, where `x` corresponds to a column number and `y` to a row.
 
-- We keep "r,c" rather than e.g. "c,r" purely as a global convention: row-major ordering matches how arrays are indexed (ascii[r][c]), which reduces accidental swapping bugs.
 
 Note: other encodings are possible (e.g. r<<16|c), but "r,c" is explicit, safe, and readable. (A packed numeric key could be a later micro-optimization, if needed.) (*)
 
