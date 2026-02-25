@@ -97,7 +97,7 @@ This guide defines coding standards and conventions for our project. Consistency
 **Language:** JavaScript
 
 **Testing:**
-- Debug using the <a href="https://beyondmicrocontrol.github.io/AsciiCAD/tools/AsciiCAD_debugger.html">iframe debugger</a>, aided by header/footer space providing debug commands and console messages
+- Debug using the <a href="https://beyondmicrocontrol.github.io/AsciiCAD/tools/AsciiCAD_debug.html">iframe debugger</a>, aided by header/footer space providing debug commands and console messages
 - Focus on unit-level testing
 - Test harness and test assertions are maintained and updated <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/res/AsciiCAD_SanityCheck.js">here</a>
 
