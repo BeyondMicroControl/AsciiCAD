@@ -26,7 +26,7 @@ This matters because AsciiCAD’s strategy for reaching higher complexity is not
 
 Having only one representation layer literally implies **'what you see is what you get'**; and once wires and components are visually arranged in a 2D grid, this framework needs an accurate recipe across multiple [specialisation layers](#specialisation-layers) to make correct assumptions on **what one gets from what one sees.**
 
-This is where both generation of visual structures and meaning extraction demand a **consistent policy, applicable in both ways**.
+This is where both _generation of visual structures_ and _meaning extraction_ demand a **consistent policy, applicable in both ways**.
 
 It defines these meanings in a precise, testable way, especially for connectivity:
 - which glyphs count as wires and why
@@ -34,6 +34,8 @@ It defines these meanings in a precise, testable way, especially for connectivit
 - how crossings and junctions are interpreted
 - how catalog components interact with linking wires (pins/protrusions, net labels)
 - what is reported in a netlist output and why
+
+The CAD concept implies 2 fundamental building blocks: wires and components.  As wires are supposed to go from everywhere to everywhere, we need to apply a **global policy** to describe their role and behavior.  Components however are local elements where a local policy is more suitable as it offers more flexibility, without constaining performance, because the perimeter of components is not only irrefutably delimited, in size, it is also typically limited.  
 
 As our design strategy pursues a blueprint for Computer Aided Design (CAD) applicable in many different specialisations.  e.g. Enterprise or IT architectural design, mind mapping, electrical engineering etc... we need a solid foundation allowing predictable interpretation that
 - users can learn
@@ -63,10 +65,10 @@ A construct allowing intelligent entities to **Transform thought into data, and 
 
              ┌────────────────────────────────┐     Specialisation
              │            Grid Cell           │          │  │
-             └────┬─────────────┬──────────┬──┘          │  │
-             ┌────┴───┐   ┌─────┴─────┐ ┌──┴──┐          │  │
-             │  Wire  │   │ Component │ │ Box │          │  │
-             └────┬───┘   └─────┬─────┘ └──┬──┘          │  │
+             └────┬──────────────────┬────────┘          │  │
+             ┌────┴───┐   ┌──────────┴────────┐          │  │
+             │  Wire  │   │ Component  / Box  │          │  │
+             └────┬───┘   └─────┬──────────┬──┘          │  │
      ┌────────────┴─────────┐ ┌─┴──────────┴─────────┐   │  │
      │                      │ │                      │   │  │
      │   Exterior Netline   │ │   Interior Netline   │   │  │
@@ -134,10 +136,10 @@ __Properties of the UTF-8 wire glyphs__
 
 ### Box
 
-Next to the ridgid but easy to match components, we need a more generic concept for a component, that does not rely on pre-defined outlooks of a component from the catalog.
-- A box is defined by double-line wires only and that line is always closing a rectangular area.
+Next to the ridgid but easy to match components, we need alongside, a more generic concept for a component, that does not rely on pre-defined outlooks of a component from a deterministic catalog.
+- A box is defined by double-line, and that line is always enclosing a rectangular area.
 - A box can have protrusions pointing inside or outside, as long as the entire rectangle outline is has a double line following the edges.
-- Optionally, a box can also contain a label obeying the same rules as for a component, only the total width of the 
+- Optionally, a box can also contain a label obeying the same rules as for a component, with the only difference the label has to fit inside the enclosed rectangle.  Since the role of boxes is not identified by a deterministic template (unlike components, where the shape defines component role and labels provide optional extra info), a box label has a higher determining factor as defines the role of the box, and some extra info if necessary.  To leave ambiguity on the link between the box and its determining label, we chose by policy to validate    
 
 ### Exterior Netline
 
