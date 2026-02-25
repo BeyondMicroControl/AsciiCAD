@@ -42,7 +42,7 @@ This guide defines coding standards and conventions for our project. Consistency
 ## Formatting
 
 **Indentation**
-- Use consistent indentation for code blocks, typically 2 spaces
+- Use consistent indentation in Allman style for code blocks, typically 2 spaces
 
 **Line Length**
 - Aim for 80-120 characters per line
