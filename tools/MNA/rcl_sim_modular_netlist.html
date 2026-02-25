@@ -1069,10 +1069,10 @@ function buildConfiguredSeriesRLCCircuit(Vs, R, L, C, Vcap0, IL0)
   //   V2 contains: R1.b, L1.a
   //   V3 contains: L1.b, C1.a
   //   0  contains: C1.b
-  oCIRCUIT.connect(["R1.a"], "V1");
-  oCIRCUIT.connect(["R1.b", "L1.a"], "V2");
-  oCIRCUIT.connect(["L1.b", "C1.a"], "V3");
-  oCIRCUIT.connect(["C1.b"], "0");
+  oCIRCUIT.connect(["R1.a"]         , "V1");
+  oCIRCUIT.connect(["R1.b", "L1.a"] , "V2");
+  oCIRCUIT.connect(["L1.b", "C1.a"] , "V3");
+  oCIRCUIT.connect(["C1.b"]         , "0");
 
   // STEP 5) Compile: node labels -> indices, allocate unknowns, bind devices
   oCIRCUIT.compile();
