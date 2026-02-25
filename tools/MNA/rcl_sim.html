@@ -19,7 +19,7 @@
   </style>
 </head>
 <body>
-  <h2>Series RLC Transient Simulator (stamp-based, old-school JS objects)</h2>
+  <h2>Series RLC Transient Simulator (stamp-based)</h2>
 
   <div class="note">
     <p>
@@ -720,7 +720,7 @@ function buildSeriesRLCCircuit(Vs, R, L, C, Vcap0, IL0)
 
   if(bDebug) console.log("initial guess x0 = "+JSON.stringify(x0));
 
-  return { oCIRCUIT:oCIRCUIT, x0:x0 };
+  return { "oCIRCUIT":oCIRCUIT, "x0":x0 };
 }
 
 /* ============================================================================
