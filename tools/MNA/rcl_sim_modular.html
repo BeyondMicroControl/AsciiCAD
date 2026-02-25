@@ -114,8 +114,28 @@
   <div id="out"></div>
 
 <script>
+  
   // Keep user's debugging toggle and style
   var bDebug = true;
+
+/* ============================================================================
+   OVERVIEW OF THE NEW "CONFIGURE → WIRE → COMPILE" MODEL
+   ----------------------------------------------------------------------------
+   Goal: stop hardcoding topologies in builder functions, and instead provide a
+   step-by-step workflow:
+
+   1) Create oCIRCUIT
+   2) Add device instances (each device has n pins; unconnected pins get auto nodes)
+   3) Add active devices / fixed nodes / controlled sources (this demo uses fixed V1)
+   4) Wire devices by attaching pins to node labels (parallel happens naturally)
+   5) Compile: node labels -> node indices, allocate unknowns (MNA), bind devices
+   6) Configure simulator run (dt, tend, integrator) + set initial conditions
+   7) Run transient, produce table via probes (measurement layer)
+
+   NOTE: This file still simulates the same demo circuit:
+         Vs → R1 → L1 → C1 → GND
+   but the circuit is now assembled via a wiring API.
+   ============================================================================ */
 
 /* ============================================================================
    1) GLOBAL NUMERICS / LINEAR SOLVE
@@ -171,6 +191,10 @@ function solveLinearSystem(A, b) {
 
 /* ============================================================================
    2) NODE TABLE + UNKNOWN MAPPING
+   ----------------------------------------------------------------------------
+   This still maps node LABELS to numeric node indices. The difference is:
+   - devices initially store node labels on their pins (strings)
+   - oCIRCUIT.compile() creates the NODETABLE once wiring is complete
    ============================================================================ */
 
 function NODETABLE() {
@@ -181,6 +205,7 @@ function NODETABLE() {
   this.node = function(name) {
     if (this.nameToIndex[name] === undefined) {
       this.nameToIndex[name] = this.nextIndex++;
+      if (bDebug) console.log("created node '"+name+"' as nodeIndex "+this.nameToIndex[name]);
     }
     return this.nameToIndex[name];
   };
@@ -191,7 +216,7 @@ function NODETABLE() {
 
   this.fix = function(nodeIndex, voltage) {
     this.fixed[String(nodeIndex)] = voltage;
-    if(bDebug) console.log("nodeIndex "+nodeIndex+" was fixed to voltage "+voltage);
+    if (bDebug) console.log("nodeIndex "+nodeIndex+" was fixed to voltage "+voltage);
   };
 
   this.isFixed = function(nodeIndex) {
@@ -227,53 +252,16 @@ function NODETABLE() {
 }
 
 /* ============================================================================
-   3) CIRCUIT CONTAINER + EXTRA UNKNOWN ALLOCATION
+   3) STAMP CONTEXT
    ----------------------------------------------------------------------------
-   In MNA, some devices add extra unknowns (e.g., inductor current iL).
-   We allocate those AFTER we know how many node-voltage unknowns we have.
-   ============================================================================ */
+   Same as before, but now devices are bound during oCIRCUIT.compile().
 
-function CIRCUIT(nodeTable) {
-  this.nt = nodeTable;
-  this.devices = [];
+   Residual / Jacobian:
+     - r[0..nNodeUnknown-1] correspond to node KCL equations
+     - r[extraUnknownIdx] correspond to extra device equations (MNA rows)
 
-  // Filled during preparation:
-  this.unknownIndexOfNode = null;
-  this.nUnknownTotal = 0;
-  this._nextUnknown = 0;
-
-  this.addDevice = function(device) { this.devices.push(device); };
-
-  this.prepareUnknowns = function() {
-    // 1) map node-voltage unknowns
-    var map = this.nt.buildUnknownMap();
-    this.unknownIndexOfNode = map.unknownIndexOfNode;
-    this._nextUnknown = map.nUnknown;
-
-    // 2) allocate extra unknowns requested by devices
-    for (var i=0; i<this.devices.length; i++) {
-      var dev = this.devices[i];
-      if (dev && dev.nExtraUnknowns && dev.nExtraUnknowns > 0) {
-        if (dev.nExtraUnknowns !== 1) throw new Error("Only 1 extra unknown supported per device in this demo.");
-        dev.u = this._nextUnknown++;
-        if(bDebug) console.log("allocated extra unknown index "+dev.u+" for device type "+dev.type);
-      }
-    }
-
-    this.nUnknownTotal = this._nextUnknown;
-    if(bDebug) console.log("nUnknownTotal = "+this.nUnknownTotal);
-  };
-}
-
-/* ============================================================================
-   4) STAMP CONTEXT
-   ----------------------------------------------------------------------------
-   Extends prior version with:
-     - ctx.x : the current unknown vector (so devices can read extra unknowns)
-     - ctx.addRIdx / addJIdx : stamp directly by unknown indices (node or extra)
-
-   Node helper:
-     - ctx.uNode(nodeIndex) -> unknown index for that node (or undefined if fixed)
+   The important part remains:
+     KCL residual is "sum of currents leaving node = 0"
    ============================================================================ */
 
 function STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, Vprev2, oINTEGRATOR, dt, x, r, J) {
@@ -312,13 +300,13 @@ function STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, Vprev2, oINTEGRATOR, dt,
     this.J[eqIdx][varIdx] += value;
   };
 
-  // Helper: Jacobian contribution where the equation is a NODE KCL, but the variable is an EXTRA unknown index
+  // NODE equation row, EXTRA variable column
   this.addJNodeVarIdx = function(eqNode, varIdx, value) {
     var ei = this.uNode(eqNode);
     if (ei !== undefined) this.J[ei][varIdx] += value;
   };
 
-  // Helper: Jacobian contribution where the equation is an EXTRA equation index, but the variable is a NODE voltage
+  // EXTRA equation row, NODE voltage variable column
   this.addJIdxNodeVar = function(eqIdx, varNode, value) {
     var vi = this.uNode(varNode);
     if (vi !== undefined) this.J[eqIdx][vi] += value;
@@ -326,12 +314,17 @@ function STAMPCONTEXT(nt, unknownIndexOfNode, V, Vprev, Vprev2, oINTEGRATOR, dt,
 }
 
 /* ============================================================================
-   5) 2-PIN HELPERS
+   4) 2-PIN HELPERS
+   ----------------------------------------------------------------------------
+   Devices are now created without node indices. After wiring, oCIRCUIT.compile()
+   binds node labels to indices and calls TWOPIN_BIND(dev, nt).
    ============================================================================ */
 
-function TWOPIN_INIT(dev, a, b) {
-  dev.a = a;
-  dev.b = b;
+function TWOPIN_BIND(dev, nt)
+{
+  // Convert pin labels -> node indices
+  dev.a = nt.get(dev.pins[0]);
+  dev.b = nt.get(dev.pins[1]);
 
   // Present branch voltage v = Va - Vb
   dev.vab = function(ctx) { return ctx.V[this.a] - ctx.V[this.b]; };
@@ -346,25 +339,45 @@ function TWOPIN_INIT(dev, a, b) {
   };
 }
 
+function _pinIndex(dev, pin)
+{
+  // pin can be a number (0..n-1) or a pin-name string ("a","b",...)
+  if (typeof pin === "number") return pin;
+  if (!dev.pinNames) throw new Error("device has no pinNames; use numeric pin indices.");
+  for (var i=0; i<dev.pinNames.length; i++) if (dev.pinNames[i] === pin) return i;
+  throw new Error("Unknown pin '"+pin+"' for device "+(dev.name||dev.type));
+}
+
 /* ============================================================================
-   6) DEVICES (method-agnostic)
+   5) DEVICES (method-agnostic, pin-label based)
+   ----------------------------------------------------------------------------
+   Constructors now take only component parameters. Wiring happens later:
+   - dev.pins[i] stores a NODE LABEL string
+   - oCIRCUIT.compile() binds those labels to node indices and enables stamping
    ============================================================================ */
 
-function RESISTOR(a, b, R)
+function RESISTOR(R)
 {
-  TWOPIN_INIT(this, a, b);
   this.type = "RESISTOR";
   this.R = R;
 
+  this.pinNames = ["a","b"];
+  this.pins = [null, null]; // node labels
+
+  this.bind = function(nt) { TWOPIN_BIND(this, nt); };
+
   this.stamp = function(ctx)
   {
+    // i = (Va - Vb)/R
     var G = 1 / this.R;
     var v = this.vab(ctx);
     var i = G * v;
 
+    // KCL: leaving at a is +i, leaving at b is -i
     ctx.addR(this.a, +i);
     ctx.addR(this.b, -i);
 
+    // Jacobian wrt node voltages
     ctx.addJ(this.a, this.a, +G);
     ctx.addJ(this.a, this.b, -G);
     ctx.addJ(this.b, this.a, -G);
@@ -372,14 +385,18 @@ function RESISTOR(a, b, R)
   };
 }
 
-function CAPACITOR(a, b, C)
+function CAPACITOR(C)
 {
-  TWOPIN_INIT(this, a, b);
   this.type = "CAPACITOR";
   this.C = C;
 
+  this.pinNames = ["a","b"];
+  this.pins = [null, null]; // node labels
+
   // Per-device history for methods that need it (TR uses iPrev).
   this.iPrev = 0;
+
+  this.bind = function(nt) { TWOPIN_BIND(this, nt); };
 
   this.stamp = function(ctx)
   {
@@ -398,64 +415,45 @@ function CAPACITOR(a, b, C)
   };
 }
 
-/*
-  INDUCTOR (method-agnostic) in MNA form.
-
-  Continuous-time port equation:
-    v = L * di/dt
-
-  Unlike a resistor/capacitor, an inductor is most convenient to model with an extra unknown: its branch current iL.
-  So the inductor contributes:
-
-    1) KCL at its two nodes using the extra unknown iL:
-       at node a: current leaving += +iL
-       at node b: current leaving += -iL
-
-    2) One extra equation (at row "u") enforcing v = L di/dt (discretized by oINTEGRATOR)
-
-  This device therefore requests one extra unknown:
-    this.nExtraUnknowns = 1
-
-  The allocated index is stored in this.u by CIRCUIT.prepareUnknowns().
-*/
-function INDUCTOR(a, b, L)
+function INDUCTOR(L)
 {
-  TWOPIN_INIT(this, a, b);
   this.type = "INDUCTOR";
   this.L = L;
 
+  this.pinNames = ["a","b"];
+  this.pins = [null, null]; // node labels
+
   // Requests a single extra unknown iL
   this.nExtraUnknowns = 1;
-  this.u = -1; // filled later
+  this.u = -1; // filled later during compile
 
   // Per-device current history (needed for TR and BDF2)
   this.iPrev = 0;
   this.iPrev2 = 0;
+  this._hasPrev2 = false;
+
+  this.bind = function(nt) { TWOPIN_BIND(this, nt); };
 
   this.stamp = function(ctx)
   {
-    var iL = ctx.x[this.u]; // extra unknown variable: inductor branch current (a -> b)
+    // extra unknown variable: inductor branch current (a -> b)
+    var iL = ctx.x[this.u];
 
     // ---- 1) KCL stamps (node equations) ----
-    // r[a] += +iL ; r[b] += -iL
     ctx.addR(this.a, +iL);
     ctx.addR(this.b, -iL);
 
-    // Jacobian of node KCL wrt iL:
     ctx.addJNodeVarIdx(this.a, this.u, +1);
     ctx.addJNodeVarIdx(this.b, this.u, -1);
 
     // ---- 2) Constitutive equation stamp (extra equation at row u) ----
-    // We enforce: (Va - Vb) + iCoef*iL + const = 0
-    // where iCoef and const come from chosen integration method.
+    // enforce: v + iCoef*iL + const = 0   where v = Va - Vb
     var eq = ctx.oINTEGRATOR.indEq(this, ctx);
     var v = this.vab(ctx);
 
     var res = v + (eq.iCoef * iL) + eq.const;
     ctx.addRIdx(this.u, res);
 
-    // Jacobian of this constitutive equation:
-    // d(res)/dVa = +1, d(res)/dVb = -1, d(res)/diL = iCoef
     ctx.addJIdxNodeVar(this.u, this.a, +1);
     ctx.addJIdxNodeVar(this.u, this.b, -1);
     ctx.addJIdx(this.u, this.u, eq.iCoef);
@@ -463,22 +461,16 @@ function INDUCTOR(a, b, L)
 }
 
 /* ============================================================================
-   7) INTEGRATORS (analysis-level)
+   6) INTEGRATORS (analysis-level)
    ----------------------------------------------------------------------------
-   Each integrator provides BOTH:
-     capIG(oCAP, ctx) -> { i, G } for i = C dv/dt
-     indEq(oL, ctx)   -> { iCoef, const } for v + iCoef*i + const = 0  (v = L di/dt)
-
-   Additionally, it MAY provide commitCap/commitInd to update per-device histories
-   after a timestep converges.
+   These are unchanged logically; they now work with generic CAPACITOR/INDUCTOR.
    ============================================================================ */
 
 function INTEGRATOR_BE()
 {
   this.name = "BE";
 
-  // Capacitor:
-  // i = (C/dt) * (v - vprev),  G = C/dt
+  // Capacitor: i = (C/dt) * (v - vprev), G = C/dt
   this.capIG = function(oCAP, ctx)
   {
     var C = oCAP.C;
@@ -489,10 +481,8 @@ function INTEGRATOR_BE()
     return { i:i, G:G };
   };
 
-  // Inductor:
-  // v = L * (i - iPrev)/dt
+  // Inductor: v = L * (i - iPrev)/dt
   // => v - (L/dt)*i + (L/dt)*iPrev = 0
-  // residual form: v + iCoef*i + const = 0
   this.indEq = function(oL, ctx)
   {
     var K = oL.L / ctx.dt;        // L/dt
@@ -500,9 +490,9 @@ function INTEGRATOR_BE()
   };
 
   this.commitCap = function(oCAP, V, Vprev, Vprev2, dt) { /* no-op */ };
+
   this.commitInd = function(oL, V, Vprev, Vprev2, dt)
   {
-    // For BE, we only need iPrev := i(n)
     oL.iPrev = oL.iNow;
   };
 }
@@ -511,8 +501,7 @@ function INTEGRATOR_TR()
 {
   this.name = "TR";
 
-  // Capacitor TR:
-  // i = (2C/dt)*(v - vprev) - iPrev
+  // Capacitor TR: i = (2C/dt)*(v - vprev) - iPrev
   this.capIG = function(oCAP, ctx)
   {
     var C = oCAP.C;
@@ -523,15 +512,13 @@ function INTEGRATOR_TR()
     return { i:i, G:G };
   };
 
-  // Inductor TR (trapezoidal on di/dt):
-  // i = iPrev + (dt/(2L))*(v + vPrev)
-  // Rearranged for MNA extra equation:
+  // Inductor TR:
   // v = (2L/dt)*(i - iPrev) - vPrev
   // => v - (2L/dt)*i + (2L/dt)*iPrev + vPrev = 0
   this.indEq = function(oL, ctx)
   {
     var K = (2*oL.L) / ctx.dt;   // 2L/dt
-    var vPrev = oL.vabPrev(ctx); // from previous timestep voltages
+    var vPrev = oL.vabPrev(ctx);
     return { iCoef: -K, const: +K * oL.iPrev + vPrev };
   };
 
@@ -547,7 +534,6 @@ function INTEGRATOR_TR()
 
   this.commitInd = function(oL, V, Vprev, Vprev2, dt)
   {
-    // Update iPrev := iNow
     oL.iPrev = oL.iNow;
   };
 }
@@ -579,14 +565,13 @@ function INTEGRATOR_BDF2()
   // Inductor BDF2:
   // v = L * (3i - 4i1 + i2)/(2dt)
   // => v - (3L/(2dt))*i + (L/(2dt))*(4i1 - i2) = 0
-  // Startup: if we don't have iPrev2 yet, fall back to BE.
   this.indEq = function(oL, ctx)
   {
     if (!ctx.Vprev2 || oL._hasPrev2 !== true) {
       var Kbe = oL.L / ctx.dt;
       return { iCoef: -Kbe, const: +Kbe * oL.iPrev };
     }
-    var K = (3*oL.L) / (2*ctx.dt);                  // 3L/(2dt)
+    var K = (3*oL.L) / (2*ctx.dt);
     var constTerm = (oL.L * (4*oL.iPrev - oL.iPrev2)) / (2*ctx.dt);
     return { iCoef: -K, const: +constTerm };
   };
@@ -595,10 +580,182 @@ function INTEGRATOR_BDF2()
 
   this.commitInd = function(oL, V, Vprev, Vprev2, dt)
   {
-    // Shift i history: iPrev2 <- iPrev, iPrev <- iNow
     oL.iPrev2 = oL.iPrev;
     oL.iPrev = oL.iNow;
     oL._hasPrev2 = true;
+  };
+}
+
+/* ============================================================================
+   7) CIRCUIT CONTAINER (NEW: configuration + wiring + compilation)
+   ----------------------------------------------------------------------------
+   Before compile:
+     - devices exist
+     - each device pin stores a NODE LABEL (string)
+   After compile:
+     - this.nt exists
+     - devices are bound to node indices and can stamp
+     - unknown vector length and mappings exist
+   ============================================================================ */
+
+function CIRCUIT()
+{
+  this.nt = null;
+  this.devices = [];
+  this.probes = [];            // measurement layer: evaluated after each step
+  this.fixedByLabel = {};      // nodeLabel -> voltage
+  this._deviceMap = {};        // deviceName -> device
+
+  // Filled during compile():
+  this.unknownIndexOfNode = null;
+  this.nUnknownTotal = 0;
+  this._nextUnknown = 0;
+  this._compiled = false;
+
+  this.addDevice = function(device, name)
+  {
+    if (!device) throw new Error("addDevice(device): device is null/undefined");
+    device.name = name || (device.type + (this.devices.length+1));
+    this._deviceMap[device.name] = device;
+
+    // Ensure pins exist
+    if (!device.pins || !device.pinNames || device.pins.length !== device.pinNames.length) {
+      throw new Error("Device "+device.name+" must define pinNames[] and pins[] of equal length.");
+    }
+
+    // Auto-node labels for any unconnected pins (deviceName.pinName)
+    for (var p=0; p<device.pins.length; p++) {
+      if (!device.pins[p]) device.pins[p] = device.name + "." + device.pinNames[p];
+    }
+
+    this.devices.push(device);
+
+    if (bDebug) console.log("added device "+device.name+" type "+device.type+" pins="+JSON.stringify(device.pins));
+    return device;
+  };
+
+  this.getDevice = function(name) { return this._deviceMap[name]; };
+
+  this.fix = function(nodeLabel, voltage)
+  {
+    this.fixedByLabel[nodeLabel] = voltage;
+    if (bDebug) console.log("scheduled fix node '"+nodeLabel+"' to "+voltage+" V (will apply at compile)");
+  };
+
+  this.connect = function(device, pin, nodeLabel)
+  {
+    var pi = _pinIndex(device, pin);
+    device.pins[pi] = nodeLabel;
+    if (bDebug) console.log("connect "+device.name+"."+device.pinNames[pi]+" -> node '"+nodeLabel+"'");
+  };
+
+  this.wire = function(devA, pinA, devB, pinB, nodeLabel)
+  {
+    var ia = _pinIndex(devA, pinA);
+    var ib = _pinIndex(devB, pinB);
+
+    // choose node label:
+    var label = nodeLabel || devA.pins[ia] || (devA.name+"."+devA.pinNames[ia]);
+    devA.pins[ia] = label;
+    devB.pins[ib] = label;
+
+    if (bDebug) console.log("wire "+devA.name+"."+devA.pinNames[ia]+" <-> "+devB.name+"."+devB.pinNames[ib]+" using node '"+label+"'");
+  };
+
+  // Measurement probes
+  this.addProbeV = function(probeName, nodePlusLabel, nodeMinusLabel)
+  {
+    this.probes.push({
+      name: probeName,
+      eval: function(V, x, oCIRCUIT) {
+        var nt = oCIRCUIT.nt;
+        return V[nt.get(nodePlusLabel)] - V[nt.get(nodeMinusLabel)];
+      }
+    });
+    if (bDebug) console.log("added V probe '"+probeName+"' = V("+nodePlusLabel+")-V("+nodeMinusLabel+")");
+  };
+
+  this.addProbeIResistor = function(probeName, oRES)
+  {
+    // Branch current defined from pin 'a' to pin 'b'
+    this.probes.push({
+      name: probeName,
+      eval: function(V, x, oCIRCUIT) {
+        var nt = oCIRCUIT.nt;
+        var a = nt.get(oRES.pins[0]);
+        var b = nt.get(oRES.pins[1]);
+        return (V[a] - V[b]) / oRES.R;
+      }
+    });
+    if (bDebug) console.log("added I probe '"+probeName+"' for resistor "+oRES.name);
+  };
+
+  this.compile = function()
+  {
+    if (this._compiled) throw new Error("Circuit already compiled.");
+
+    var nt = new NODETABLE();
+
+    // 1) Create nodes for all fixed labels
+    for (var lbl in this.fixedByLabel) nt.node(lbl);
+
+    // 2) Ensure all device pin labels exist as nodes
+    for (var i=0; i<this.devices.length; i++) {
+      var dev = this.devices[i];
+      for (var p=0; p<dev.pins.length; p++) {
+        if (!dev.pins[p]) dev.pins[p] = dev.name + "." + dev.pinNames[p];
+        nt.node(dev.pins[p]);
+      }
+    }
+
+    // 3) Apply fixed nodes
+    for (var lbl2 in this.fixedByLabel) {
+      nt.fix(nt.get(lbl2), this.fixedByLabel[lbl2]);
+    }
+
+    // 4) Bind devices to node indices
+    for (var i2=0; i2<this.devices.length; i2++) {
+      this.devices[i2].bind(nt);
+    }
+
+    this.nt = nt;
+
+    // 5) Allocate unknowns (node voltages first)
+    var map = nt.buildUnknownMap();
+    this.unknownIndexOfNode = map.unknownIndexOfNode;
+    this._nextUnknown = map.nUnknown;
+
+    // 6) Allocate extra unknowns requested by devices (MNA)
+    for (var k=0; k<this.devices.length; k++) {
+      var d = this.devices[k];
+      if (d && d.nExtraUnknowns && d.nExtraUnknowns > 0) {
+        if (d.nExtraUnknowns !== 1) throw new Error("Only 1 extra unknown supported per device in this demo.");
+        d.u = this._nextUnknown++;
+        if (bDebug) console.log("allocated extra unknown index "+d.u+" for device "+d.name+" type "+d.type);
+      }
+    }
+
+    this.nUnknownTotal = this._nextUnknown;
+    this._compiled = true;
+
+    if (bDebug) {
+      console.log("compile done:");
+      console.log("  nodes = "+nt.nextIndex+"  unknownNodeVoltages = "+map.nUnknown+"  nUnknownTotal = "+this.nUnknownTotal);
+    }
+  };
+
+  this.allocState = function()
+  {
+    if (!this._compiled) throw new Error("allocState(): circuit not compiled yet.");
+    var x0 = new Array(this.nUnknownTotal);
+    for (var i=0; i<this.nUnknownTotal; i++) x0[i] = 0;
+    return x0;
+  };
+
+  this.getUNode = function(nodeLabel)
+  {
+    var nodeIndex = this.nt.get(nodeLabel);
+    return this.unknownIndexOfNode[String(nodeIndex)];
   };
 }
 
@@ -665,66 +822,65 @@ function newtonSolveKCL(oCIRCUIT, x0, Vprev, Vprev2, oINTEGRATOR, dt, opts) {
 }
 
 /* ============================================================================
-   9) BUILD THIS SPECIFIC RLC CIRCUIT
+   9) CIRCUIT ASSEMBLY: demo series RLC using the new workflow
    ============================================================================ */
 
-function buildSeriesRLCCircuit(Vs, R, L, C, Vcap0, IL0)
+function buildConfiguredSeriesRLCCircuit(Vs, R, L, C, Vcap0, IL0)
 {
-  var nt = new NODETABLE();
+  var oCIRCUIT = new CIRCUIT();
 
-  nt.fix(nt.node("0"), 0);
-  nt.fix(nt.node("V1"), Vs);
+  // STEP 1) Add passive devices (pins exist but aren't yet wired to shared nodes)
+  var oR1 = oCIRCUIT.addDevice(new RESISTOR(R), "R1");
+  var oL1 = oCIRCUIT.addDevice(new INDUCTOR(L), "L1");
+  var oC1 = oCIRCUIT.addDevice(new CAPACITOR(C), "C1");
 
-  // Ensure intermediate nodes exist
-  nt.node("V2");
-  nt.node("V3");
+  // STEP 2) Active "source": for now we model Vs as a fixed node voltage:
+  //         V("0") = 0, V("V1") = Vs
+  //         (Later: replace with a proper VSOURCE device that allocates an extra unknown.)
+  oCIRCUIT.fix("0", 0);
+  oCIRCUIT.fix("V1", Vs);
 
-  var oCIRCUIT = new CIRCUIT(nt);
+  // STEP 3) Measurement probes (these are NOT devices; they don't stamp)
+  // We'll measure the resistor voltage and current.
+  // Note: node labels V2/V3 are defined by wiring in step 4.
+  oCIRCUIT.addProbeV("V_res (V)", "V1", "V2");
+  oCIRCUIT.addProbeIResistor("I_res (A)", oR1);
 
-  var oRES = new RESISTOR(nt.get("V1"), nt.get("V2"), R);
-  var oIND = new INDUCTOR(nt.get("V2"), nt.get("V3"), L);
-  var oCAP = new CAPACITOR(nt.get("V3"), nt.get("0"), C);
+  // STEP 4) Wire it up:
+  //   Vs node (V1) -> R1 -> V2 -> L1 -> V3 -> C1 -> ground (0)
+  oCIRCUIT.connect(oR1, "a", "V1");
+  oCIRCUIT.wire(oR1, "b", oL1, "a", "V2");
+  oCIRCUIT.wire(oL1, "b", oC1, "a", "V3");
+  oCIRCUIT.connect(oC1, "b", "0");
 
-  oCIRCUIT.addDevice(oRES);
-  oCIRCUIT.addDevice(oIND);
-  oCIRCUIT.addDevice(oCAP);
+  // STEP 5) Compile: node labels -> indices, allocate unknowns, bind devices
+  oCIRCUIT.compile();
 
-  // Allocate unknowns (node voltages first, then inductor current)
-  oCIRCUIT.prepareUnknowns();
+  // Allocate state vector
+  var x0 = oCIRCUIT.allocState();
 
-  var nUnknown = oCIRCUIT.nUnknownTotal;
-  var x0 = new Array(nUnknown);
-  for (var i=0; i<nUnknown; i++) x0[i]=0;
-
-  // Initial conditions:
-  // - V3(0) = Vcap0 (capacitor voltage to ground)
-  // - iL(0) = IL0 (inductor current)
-  var uV3 = oCIRCUIT.unknownIndexOfNode[String(nt.get("V3"))];
+  // STEP 6) Initial conditions:
+  // - capacitor node V3 starts at Vcap0 (i.e. V("V3")-V("0") = Vcap0)
+  // - inductor current iL starts at IL0
+  var uV3 = oCIRCUIT.getUNode("V3");
   if (uV3 !== undefined) x0[uV3] = Vcap0;
 
-  // V2 initial guess: match V3 to avoid huge initial inductor voltage spike from bad guess
-  var uV2 = oCIRCUIT.unknownIndexOfNode[String(nt.get("V2"))];
+  // Better starting guess for V2: set near V3
+  var uV2 = oCIRCUIT.getUNode("V2");
   if (uV2 !== undefined) x0[uV2] = Vcap0;
 
-  // Find inductor extra unknown index and set IL0
-  for (var di=0; di<oCIRCUIT.devices.length; di++) {
-    var dev = oCIRCUIT.devices[di];
-    if (dev && dev.type === "INDUCTOR") {
-      x0[dev.u] = IL0;
-      dev.iPrev = IL0;
-      dev.iPrev2 = IL0;
-      dev._hasPrev2 = false;
-      if(bDebug) console.log("set IL0="+IL0+" at unknown index "+dev.u);
-    }
-  }
+  // Inductor extra unknown:
+  x0[oL1.u] = IL0;
+  oL1.iPrev = IL0;
+  oL1.iPrev2 = IL0;
+  oL1._hasPrev2 = false;
 
-  if(bDebug) console.log("initial guess x0 = "+JSON.stringify(x0));
-
-  return { "oCIRCUIT":oCIRCUIT, "x0":x0 };
+  if (bDebug) console.log("initial guess x0 = "+JSON.stringify(x0));
+  return { "oCIRCUIT": oCIRCUIT, "x0": x0 };
 }
 
 /* ============================================================================
-   10) TRANSIENT LOOP + OUTPUT TABLE
+   10) TRANSIENT LOOP + OUTPUT TABLE (now driven by probes)
    ============================================================================ */
 
 function simulateAndRender()
@@ -744,7 +900,8 @@ function simulateAndRender()
     return;
   }
 
-  var built = buildSeriesRLCCircuit(Vs, R, L, C, Vcap0, IL0);
+  // Build the demo circuit via the new workflow
+  var built = buildConfiguredSeriesRLCCircuit(Vs, R, L, C, Vcap0, IL0);
   var oCIRCUIT = built.oCIRCUIT;
   var nt = oCIRCUIT.nt;
   var x = built.x0.slice();
@@ -761,16 +918,20 @@ function simulateAndRender()
   var Vprev = nt.buildFullVoltages(x, oCIRCUIT.unknownIndexOfNode);
   var Vprev2 = null;
 
+  // Table header: time + probe columns
   var html = "<table>";
-  html += "<thead><tr><th>time (s)</th><th>V_res (V)</th><th>I_res (A)</th></tr></thead><tbody>";
+  html += "<thead><tr><th>time (s)</th>";
+  for (var pi=0; pi<oCIRCUIT.probes.length; pi++) html += "<th>"+oCIRCUIT.probes[pi].name+"</th>";
+  html += "</tr></thead><tbody>";
 
   function addRow(t, V, xNow)
   {
-    var V1 = V[ nt.get("V1") ];
-    var V2 = V[ nt.get("V2") ];
-    var Vres = V1 - V2;
-    var Ires = Vres / R;
-    html += "<tr><td>" + fmt(t, 6) + "</td><td>" + fmt(Vres, 6) + "</td><td>" + fmt(Ires, 9) + "</td></tr>";
+    html += "<tr><td>" + fmt(t, 6) + "</td>";
+    for (var pi=0; pi<oCIRCUIT.probes.length; pi++) {
+      var val = oCIRCUIT.probes[pi].eval(V, xNow, oCIRCUIT);
+      html += "<td>" + fmt(val, 9) + "</td>";
+    }
+    html += "</tr>";
   }
 
   addRow(0, Vprev, x);
@@ -780,9 +941,12 @@ function simulateAndRender()
     var t = n * dt;
 
     var sol = newtonSolveKCL(oCIRCUIT, x, Vprev, Vprev2, oINTEGRATOR, dt, { maxIter: 15, tol: 1e-12 });
-    addRow(t, sol.V, sol.x);
+    x = sol.x;
+    var V = sol.V;
 
-    // Commit per-device history after convergence (TR needs cap iPrev; all methods update inductor i history)
+    addRow(t, V, x);
+
+    // Commit per-device history after convergence
     for (var di = 0; di < oCIRCUIT.devices.length; di++)
     {
       var dev = oCIRCUIT.devices[di];
@@ -792,7 +956,6 @@ function simulateAndRender()
       }
 
       if (dev && dev.type === "INDUCTOR") {
-        // Make current available as iNow for commitInd
         dev.iNow = x[dev.u];
         if (oINTEGRATOR.commitInd) oINTEGRATOR.commitInd(dev, V, Vprev, Vprev2, dt);
       }
@@ -808,6 +971,7 @@ function simulateAndRender()
 
 document.getElementById('run').addEventListener('click', simulateAndRender);
 simulateAndRender();
+
 </script>
 </body>
 </html>
