@@ -76,7 +76,7 @@ A construct allowing intelligent entities to **Transform thought into data, and 
      └────────────┬─────────┘ └───────────┬──────────┘   │  │
     ┌─────────────┴───────────────────────┴──────────┐   │  │
     │                                                │  ─┘  └─
-    │                   DOMAIN                       │  \    /
+    │                CAD DOMAIN                      │  \    /
     │  e.g. electronics/architecture/mind mapping... │   \  /
     └────────────────────────────────────────────────┘    \/
 
