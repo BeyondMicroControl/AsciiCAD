@@ -17,7 +17,7 @@ In AsciiCAD, we collapse these three layers into just one, allowing just one def
 
 Having only **one representation layer** to worry about brings a practical advantage: it concentrates effort where it matters most — on precise, high-quality policy writing and on forging detailed, shared agreements about interpretation and formatting. Those agreements or policies become the fertile ground for “protocols” that make the system scale.
 
-This matters because AsciiCAD’s strategy for reaching higher complexity is not to multiply parallel abstractions, but to build understandable layers on top of each other:
+This matters because AsciiCAD’s strategy for reaching higher complexity is not to multiply parallel abstractions, but to build only understandable layers on top of each other that support complexity at scale:
 - start with a stable, minimal base (grid of glyphs)
 - define systematic interpretation rules (policy document)
 - then add features that compose on top of those rules (netlist, matching, labels, tooling)
@@ -35,7 +35,7 @@ It defines these meanings in a precise, testable way, especially for connectivit
 - how catalog components interact with linking wires (pins/protrusions, net labels)
 - what is reported in a netlist output and why
 
-The CAD concept implies 2 fundamental building blocks: wires and components.  As wires are supposed to go from everywhere to everywhere, we need to apply a **global policy** to describe their role and behavior.  Components however are local elements where a local policy is more suitable as it offers more flexibility, without constaining performance, because the perimeter of components is not only irrefutably delimited, in size, it is also typically limited.  
+The CAD concept implies 2 fundamental building blocks: wires and components.  As wires are supposed to go from everywhere to everywhere, we need a **global policy** to describe their role, behavior and validation criteria.  Components however are locally confined elements where a **local policy** may be more suitable.  We can use the flexibility of a local policy to overcome ridgid wiring rules that are difficult to apply, let alone generalise within the tight inner space typically given to a component.
 
 As our design strategy pursues a blueprint for Computer Aided Design (CAD) applicable in many different specialisations.  e.g. Enterprise or IT architectural design, mind mapping, electrical engineering etc... we need a solid foundation allowing predictable interpretation that
 - users can learn
@@ -115,8 +115,10 @@ __Properties of the UTF-8 wire glyphs__
 ### Component
 
 - Components are essentially templates spanning over minimum 2 grid cells (≥ 2 UTF-8 characters), and arranged in a 2D manner like graphical sprites.
+- The term component here, is semantically unconnected to the domain interpretation of e.g an electronic component, as it is no more than a meaningless building block that can wear a label, can be identified by matching it's shape or label, and can be wired up at its extremities/protrusions.   A domain policy (*) later on will describe which part a component represents, and which role it plays within the domain understanding. 
 - The text content of one component is stored in a single continuous string, where adjacent characters increment columns, and linefeeds increment rows.
-  Example of a tiny box: ` "┌─┐\n└─┘" `
+  Example of a component that looks like tiny box: ` "┌─┐\n└─┘" `
+- Components come in 2 flavors:  TBD
 - Space characters in a component string are always considered meaningless, not seen as a part or feature of a component.  Spaces only function as 'spacers'.   
 - Components are listed in a common JSON structure called 'component catalog'.
 - The data structure of the component catalog should (*) not contain any mandatory data field besides `text_data:""`.  Missing fields may cause inability to classify, identify, search or spot the connection points of a component, but must never crash or cause a hard application error, but mostly a warning (*)
