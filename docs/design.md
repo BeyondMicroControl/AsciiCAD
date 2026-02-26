@@ -174,7 +174,7 @@ Implementation policy:
 ### Definition
 A **component** is a catalog-defined 2D template (“sprite”) placed on the grid.
 
-At the net-policy level, components are treated as **shapes with ends (pins/protrusions)** plus optional metadata (type, label ID). Any deeper semantics belong to higher layers.
+At the net-policy level, components are treated as **shapes with ends (pins/protrusions)** plus optional metadata (type, label ID). Any deeper semantics belong to higher specialisation layers.
 
 ### Spaces inside components
 Spaces inside a component template are **pure spacers**:
