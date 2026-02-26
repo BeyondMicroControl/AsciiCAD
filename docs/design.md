@@ -143,12 +143,13 @@ Next to the ridgid but easy to match components, we need alongside, a more gener
 - Since the identity or role of boxes is not defined by a deterministic shape (unlike components, where the shape defines component role and labels provide optional extra info), a box label fully identifies the box.  In other words, a search query on a box is entirely based on its label, while a search query on a component is based on it's shape and optionally it's label.
 - Box labels and component labels together must not be unique, but we encourage the user to review and differentiate duplicate labels.
 - All box objects have a type property "BOX", which means we are not allowed to declare a catalog component with type "BOX".
-- A search query command on components or boxes can be implemented (*) like this:  
-oASC.query({type:'MCU'})  // searching for all components (with type field = "MCU")
-oASC.query({type:'BOX'})  // searching for all boxes in the grid
-oASC.query({label:'ATTiny85'})  // search for all boxes or components with label "ATTiny85"
-oASC.query({label:'ATTiny85'},GREEN)  // search for all boxes or components with label "ATTiny85", and highlight them in GREEN (=enumerated color)
-oASC.query(null,RED) // search and highlight in RED all boxes and components on the grid
+- A search query command on components or boxes can be implemented (*) like this:
+
+    > oASC.query({type:'MCU'})  // searching for all components (with type field = "MCU")\
+    > oASC.query({type:'BOX'})  // searching for all boxes in the grid\
+    > oASC.query({label:'ATTiny85'})  // search for all boxes or components with label "ATTiny85"\
+    > oASC.query({label:'ATTiny85'},GREEN)  // search for all boxes or components with label "ATTiny85", and highlight them in GREEN (=enumerated color)\
+    > oASC.query(null,RED) // search and highlight in RED all boxes and components on the grid
 
 ### Exterior Netline
 
