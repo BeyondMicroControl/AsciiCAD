@@ -118,7 +118,7 @@ __Properties of the UTF-8 wire glyphs__
 - The term component here, is semantically unconnected to the domain interpretation of e.g an electronic component, as it is no more than a meaningless building block that can wear a label, can be identified by matching it's shape or label, and can be wired up at its extremities/protrusions.   A domain policy (*) later on will describe which part a component represents, and which role it plays within the domain understanding. 
 - The text content of one component is stored in a single continuous string, where adjacent characters increment columns, and linefeeds increment rows.
   Example of a component that looks like tiny box: ` "┌─┐\n└─┘" `
-- Components come in 2 flavors:  TBD
+- Component shapes come in 2 valid visual flavors, line fenced shapes featuring an internal space and unfenced symbols with no internal space.  We will not have a detection algorithm trying to characterise which visual flavor is used to represent a component, but the user/developer should be aware  applying a local policy to a fenced shape leaves less headroom for misinterpretation hence safer to apply compared to an unfenced shape.  
 - Space characters in a component string are always considered meaningless, not seen as a part or feature of a component.  Spaces only function as 'spacers'.   
 - Components are listed in a common JSON structure called 'component catalog'.
 - The data structure of the component catalog should (*) not contain any mandatory data field besides `text_data:""`.  Missing fields may cause inability to classify, identify, search or spot the connection points of a component, but must never crash or cause a hard application error, but mostly a warning (*)
