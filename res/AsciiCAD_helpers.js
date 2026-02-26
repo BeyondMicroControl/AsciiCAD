@@ -1713,9 +1713,9 @@ this.startPasteWithText = function(text)
   this.printNetlist.help =
   {
     type: "Tool",
-    usage: "PrintNetlist()",
+    usage: "printNetlist()",
     desc: "Extract connected wire lines (endpoints + junctions), excluding valid double-box boundaries/interiors.",
-    examples: ["oASC.PrintNetlist()"]
+    examples: ["oASC.printNetlist()"]
   };
 
 
