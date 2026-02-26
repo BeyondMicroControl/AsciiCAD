@@ -80,275 +80,270 @@ A construct allowing intelligent entities to **Transform thought into data, and 
     │  e.g. electronics/architecture/mind mapping... │   \  /
     └────────────────────────────────────────────────┘    \/
 
-## Terminology
-### Grid Cell
+---
 
-- The content of a grid cell is always one UTF-8 character
-- We often refer to ASCII characters (the popular denomination) in grid cells, while in reality, we use the character encoding standard for web text: UTF-8
-- A grid cell location is internally represented as a stable string key "r,c"
-- A grid location (in telemetry, CLI, etc...) during UI is represented by "x,y"
+# Policy terms
 
-**Rationale:** 
-- Native JavaScript Map/Set use reference identity for objects, so {r:1,c:2} can’t be used reliably as a key unless you keep the same object instance around.
-- A string key gives:
-  - value identity ("1,2" equals "1,2" anywhere)
-  - predictable hashing in Set/Map
-  - easy serialization and debugging (console logs, JSON)
-- We keep `"r,c"` internally rather than e.g. `"c,r"` purely as a global convention: row-major ordering matches how arrays are indexed (ascii\[r\]\[c\]), which reduces accidental swapping bugs.
-- We keep `"x,y"` externally as this is a convention on handling graphic coordinates, where `x` corresponds to a column number and `y` to a row.
+This document reconciles AsciiCAD’s net-related policy by grouping rules under a small set of core terms:
+**Grid Cell**, **Wire**, **Component**, **Box**, **Exterior Netline**.  
+(We will add **Interior Netline** later.)
 
+For each term we describe:
+- Definition and representation
+- Rules that apply
+- Derived artifacts (sets/overlays/JSON fields)
+- Open questions / gaps (explicitly called out)
 
-Note: other encodings are possible (e.g. r<<16|c), but "r,c" is explicit, safe, and readable. (A packed numeric key could be a later micro-optimization, if needed.) (*)
+`(*)` indicates a novelty or future feature not yet implemented.
 
-(*) future implementation
+---
 
-### Wire
+## Grid Cell
 
-Long considered 'not serious' ASCII-table supplements emerging around 1975 (featuring continuous lines, corners and crosses e.g. Code Page 437 from IBM), the typical wire glyps were transposed and recompiled into UTF-8 (charcode range 0x2500-0x2570, representing lines, corners and crosses); all essentially representing a combo of 4 directions (**N**orth, **S**outh, **E**ast and **W**est).\
-Therefore, in codebase, `glyphToMask` encodes the only meaningful data about these wire glyphs: a 4-bit mask `N = 0b0001, E = 0b0010, S = 0b0100, W = 0b1000`.  A glyph’s “line function” is then just a bitwise OR of all the directions it connects.\
-example: ` ╤ ` connects E + S + W, becoming `E | S | W = 0b0010 | 0b0100 | 0b1000 = 0b1110`
+### Definition
+A **grid cell** is the atomic unit of AsciiCAD’s single representation layer. Each cell contains exactly **one UTF‑8 character** (including space).
 
-__Properties of the UTF-8 wire glyphs__
-- stable (inherited from pioneering computer systems)
-- essentially a combo of 4 directions => encodable into a 4-bit mask
+### Representation
+- **In memory:** `ascii[r][c]` where `r` is row index and `c` is column index.
+- **Stable key for Set/Map:** `"r,c"` string key (row-major).
 
-### Component
+**Rationale (why `"r,c"`):**
+- JavaScript `Map`/`Set` treat objects by identity, not by value. A key like `{r:1,c:2}` is not stable unless the same object instance is reused.
+- A string key gives stable value identity, predictable hashing, easy logging/serialization, and matches array indexing order (`ascii[r][c]`).
 
-- Components are essentially templates spanning over minimum 2 grid cells (≥ 2 UTF-8 characters), and arranged in a 2D manner like graphical sprites.
-- The term component here, is semantically unconnected to the domain interpretation of e.g an electronic component, as it is no more than a meaningless building block that can wear a label, can be identified by matching its shape or label, and can be wired up at its extremities/protrusions.   A domain policy (*) later on will describe which part a component represents, and which role it plays in a domain context. 
-- The text content of one component is stored in a single continuous string, where adjacent characters increment columns, and linefeeds increment rows.
-  Example of a component that looks like tiny box: ` "┌─┐\n└─┘" `
-- Component shapes come in 2 valid visual flavors, line fenced shapes featuring an internal space and unfenced symbols with no internal space.  We will not have a detection algorithm trying to characterise which visual flavor is used to represent a component, but the user/developer should be aware  applying a local policy to a fenced shape leaves less headroom for misinterpretation hence safer to apply compared to an unfenced shape.  
-- Space characters in a component string are always considered meaningless, not seen as a part or feature of a component.  Spaces only function as 'spacers'.   
-- Components are listed in a common JSON structure called 'component catalog'.
-- The data structure of the component catalog should (*) not contain any mandatory data field besides `text_data:""`.  Missing fields may cause inability to classify, identify, search or spot the connection points of a component, but must never crash or cause a hard application error, but mostly a warning (*)
-- AsciiCAD does not impose limitations on the amount of extra fields attached to a component, but it is not allowed to make any change to the component catalog at runtime. `const CATALOG = [...]`
-- Components are matched on the grid when all their non-space characters are equal (except wildcards, where other matching rules apply) to the characters in the same 2D arrangement on the grid.
-- There are 3 types of wildcards '#' expecting only numbers and decimal point (but no spaces), '$' expecting alphanumeric characters including spaces, '§' expecting only wire glyphs.
-- The perimeter of a component is defined by all non-space and non-'§' wildcards as found in `text_data` of the component template.  It's not a surface, but a character-by-character decision forming a mask we call the component perimeter.
-- A component edge location is defined by any free cell (space or '§' wildcard) on the grid directly touching the perimeter of a component. 
-- Components have pins, also called protrusions (all wire glyphs) reaching out to the edge of the component enabling the component to attach itself to an exterior netline.
-- A protrusion or pin is a single-line wire glyph within the component perimeter touching an edge location that can make a continuos single-line with the protrusion.    For example:  A component edge location with 2 adjacent free cells (space or '§' wildcard) around (E|S), and 2 cells within component perimeter (N|W), which means the component edge location can only allow a protrusion at it's North flank containing an S in its bitmask, and a protrusion at its East flank containing a W in the bitmask.
-- A component (as defined in the catalog) sometimes can, sometimes must contain an associated component label (object), depending on a local policy applied to the component.  By default of a local policy, a component label is optional.  A label is defined by an opening square bracket '\[' followed by a closing square bracket '\]' on the same line, bearing minimum 1 character, and maximum the amount of available columns in the grid.  Allowed characters for labels is validated by an explicit filter e.g. "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-.,;Ωπµ⍉⍵ {}"
-- Even when component labels are optional, a component label can never exist without its associated component.
-- A label object belongs to a component (or box) when the center of the label is closest to the center of the component (or box).  When scanning for catalog components (and boxes) on the grid, each box or component gets associated with its closest label.  Each component label object wears the unique identity of the associated component.
+### Coordinate conventions
+- **Internal keys:** `"r,c"` (row, column).
+- **User-facing UI telemetry:** often uses “x,y” phrasing where **x = column** and **y = row**, but the underlying keys remain row-major.
 
+### Open questions / gaps
+- (*) Numeric packed keys (e.g. `(r<<16)|c`) could be a future micro-optimization, but would reduce readability and require careful bounds management.
 
-### Box
+---
 
-Next to the ridgid but easy to match components, we need alongside, a more generic concept for a component, that does not rely on pre-defined outlooks of a component from a deterministic catalog.
-- A box is defined by double-line, and that line is always enclosing a rectangular area.
-- A box can have protrusions pointing inside or outside, as long as the entire rectangle outline is has a double line following the edges.
-- Optionally, a box can also contain a label obeying the same rules as for a component, with the only difference the label has to fit inside the enclosed rectangle of the box shape.
-- Since the identity or role of boxes is not defined by a deterministic shape (unlike components, where the shape defines component role and labels provide optional extra info), a box label fully identifies the box.  In other words, a search query on a box is entirely based on its label, while a search query on a component is based on it's shape and optionally it's label.
-- Box labels and component labels together must not be unique, but we encourage the user to review and differentiate duplicate labels.
-- All box objects have a type property "BOX", which means we are not allowed to declare a catalog component with type "BOX".
-- A search query command on components or boxes can be implemented (*) like this:
+## Wire
 
-    > oASC.query({type:'MCU'})  // searching for all components (with type field = "MCU")\
-    > oASC.query({type:'BOX'})  // searching for all boxes in the grid\
-    > oASC.query({label:'ATTiny85'})  // search for all boxes or components with label "ATTiny85"\
-    > oASC.query({label:'ATTiny85'},GREEN)  // search for all boxes or components with label "ATTiny85", and highlight them in GREEN (=enumerated color)\
-    > oASC.query(null,RED) // search and highlight in RED all boxes and components on the grid
+### Definition
+A **wire** is any glyph that fulfills a *connectivity function* in the grid (not a decorative character).
 
-### Exterior Netline
+### Representation: `glyphToMask`
+Wires are modeled using a 4-bit directional mask:
 
-- Netlines are assumed exterior when they run entirely outside the confinement area of a component.
-- A netline is generally collection of wire glyphs considered as part of one or more continuous/uninterrupted lines.\
-- Whenever lines split or join form multiple directions (also called 'graph degrees'), all these lines are considered part of the same net.
+- `N = 0b0001`
+- `E = 0b0010`
+- `S = 0b0100`
+- `W = 0b1000`
 
-In dense schematics, efficient routing may also need [**crossings**](#crossings-without-junction) and **[labeled nodes](#netlabel-components)**, which must be _specified by policy_ as no specific glyph represents them.
+A wire glyph’s meaning is encoded as a bitwise OR of the directions it connects.
 
-A netline entry contains:
-- `LE`: wire-to-component terminations, unconnected wire ends (or flanked-components) (*)
-- `LJ`: [branching junctions](#junction-glyphs) (graph degree ≥ 3, meaning ≥ 3 legs)
-- `CE`: component-edge glyph cells (pins/protrusions) adjacent to wire 
-- `CJ`: component-internal junctions / pin-to-pin connections (*)
+**Example:** `╤` connects East + South + West ⇒ `E|S|W = 0b1110`
 
-Some components create **permanent** connectivity between pins acting like exterior wires:
-- connectors (pin to pin)
-- jumpers / shunts (bridging nets)
-- some fixed “wired” adapters
+**Why this matters:**
+- Many Unicode variants represent the same *connectivity function*; `glyphToMask` makes them behave consistently.
+- The bitmask keeps code readable: `if (m & E)` expresses intent directly and remains stable across glyph additions.
 
-Policy intent:
-- When a matched catalog component has known internal wiring, it should contribute a CJ structure describing which pins are tied together.
+### Connectivity rules (wire-to-wire)
+Two adjacent wire cells connect if:
+1) the current glyph has the directional bit toward its neighbor, and  
+2) the neighbor glyph has the reciprocal bit back.
 
-Notes:
-- Switches are special: their connectivity can depend on state, so they may be excluded from netlist policy or represented as conditional connectivity (*).
-- `CJ` would allow the net engine to optionally “collapse” nets through components that behave like fixed links. (*)
+This defines the adjacency edges used for exterior net tracing.
 
-(*) future implementation
+### Junctions (`LJ`)
+A wire cell is a junction when its **graph degree ≥ 3** after adjacency is computed.
 
-## Input filtering policy
+The policy relies on topology (degree), not on a glyph list, although junction glyphs often include: `├ ┤ ┬ ┴ ┼` and Unicode variants.
 
-### C. Wildcard meaning
-
-The wildcard character is used in CATALOG patterns to match variable content.
-
-Policy:
-- `§` participates in matching (pattern recognition).
-- `§` does not participate in:
-  - match highlighting
-  - netlist banned masking (`solidSet`)
-  - `CE` detection (it should not create a phantom protrusion)
-
-Connectivity policy (wire-to-wire)
-
-### D. Local connectivity model
-
-Connectivity between cells is determined using:
-- `glyphToMask` for a cell’s directional exits
-- reciprocal direction requirement in the neighbor
-
-Example: a connection from A → right requires:
-- `A` has `E`
-- neighbor has `W`
-
-### Crossings without junction
-
-We intentionally support **one canonical crossing pattern**:
+### Crossings without junction: canonical pattern
+The canonical non-junction crossing is:
 
 `─│─`
 
-Horizontal and vertical lines cross without connection (no junction)
-**Rationale:**
-- horizontal connectivity may “bridge over” a vertical-only glyph to continue
-- vertical connectivity does not bridge through horizontal-only glyphs
+Policy meaning:
+- horizontal and vertical lines cross visually but do **not** connect as a junction.
 
-Notes:
-- We could add an equally valid rotated/alternative crossing convention (e.g. a different arrangement or spacing), but every additional alias increases:
-  - detection ambiguity
-  - risk of false junctions
-  - maintenance burden
-- Since users can already draw crossings reliably using a single convention, we prefer “one pattern, well-tested” over multiple patterns that are hard to validate.
+Implementation policy:
+- horizontal continuity may “bridge over” a vertical-only glyph to keep the horizontal net continuous.
+- vertical continuity does **not** bridge (consensus: one canonical crossing pattern avoids excessive aliasing).
 
-### Junction glyphs
+**Note:** supporting additional crossing aliases is possible (*), but increases ambiguity and raises detection/matching failure risks.
 
-Junctions are characters with branching masks, e.g.:
-`├ ┤ ┬ ┴ ┼` and similar box-drawing junctions
+---
 
-A cell is considered a junction (`LJ`) when its graph degree is ≥ 3.
+## Component
 
-## Endpoint policy
+### Definition
+A **component** is a catalog-defined 2D template (“sprite”) placed on the grid.
 
-### G. Line ends `LE`
+At the net-policy level, components are treated as **shapes with ends (pins/protrusions)** plus optional metadata (type, label ID). Any deeper semantics belong to higher layers.
 
-A wire cell is considered a line end if:
+### Spaces inside components
+Spaces inside a component template are **pure spacers**:
+- they exist to position glyphs correctly in preview/paste and in matching alignment.
+- they do not participate in footprint, masking, or connectivity rules.
 
-1. It has graph degree == 1 (classic endpoint), OR
-2. It terminates into a component footprint (see CE rules) even if its graph degree != 1
+### Labels are separate objects (policy)
+Component labels are treated as **separate objects** positioned within or near a component.
+- The label *area* does not participate in component rules (net masking, CE, perimeter, etc.).
+- Wildcards used for labels are therefore **label-local only**.
 
-This allows a node to be both:
-- a junction (`LJ`, degree ≥ 3, meaning min. 3 legs)
-- and a termination into a component (LE via component adjacency)
+### Wildcards (re-scoped)
 
-**Rationale:** a tee/junction glyph can still represent a “terminal” into a component even while conducting elsewhere.
+#### `§` wildcard (component-local)
+`§` is a wildcard for **exactly one wire glyph** (it cannot match a space).  
+It serves as a **flexible component end**: it allows tight turns near the component while still acting as an “end region” for connectivity.
 
-## Component interaction policy
-### H. Component footprint sets
+**Consequences:**
+- `§` participates in matching.
+- Whether `§` participates in CE/pin-zone reasoning is policy-defined:
+  - Intended: `§` may designate a pin-zone cell *when it matches a wire glyph*.
+  - Visual match highlight should still not highlight `§` positions, to avoid showing “variable” structure as fixed. (*)
 
-We derive multiple sets from catalog matching. The goal is to separate **three different concerns:**
-1. What we highlight visually
-2. What we remove from net tracing
-3. What we consider part of the component presence for CE/pin adjacency
+#### Other wildcards (`#`, `$`, …) (label-local)
+Other wildcards (such as `#` digit patterns and `$` alphanumeric patterns) are **label-local only**.
+They are not used to define component geometry and do not influence net tracing or CE.
 
-Current naming:
-- `greenSet`: used for match highlight (green overlay)
-- `solidSet`: used as “ban mask” for net tracing
-- `footprintSet`: used for component presence / CE detection
+### Component matching artifacts (current implementation; to be replaced by Query API) (*)
+Historically, matching yields multiple sets:
 
-**Clarifying explanations**
-- `greenSet` (“highlight set”)
-  Cells that should be visually highlighted as part of a match.
-  Skips spaces and wildcard § so we don’t highlight “variable/unknown” placeholders.
+- `matchHighlightSet` (formerly `greenSet`): cells highlighted visually as part of a match (skips spaces and `§`)
+- `netTraceMaskSet` (formerly `solidSet`): cells excluded from exterior net tracing (skips spaces and `§`)
+- `componentFootprintSet` (formerly `footprintSet`): cells representing component presence for adjacency (skips spaces; may include `§` depending on policy)
 
-- `solidSet` (“ban mask”)
-  Cells that are treated as “occupied by a component” for net tracing.
-  Also skips § because wildcard regions should not erase wiring by default.
+**Forward-looking note:** a dedicated Query API is expected to replace the set/overlay approach (*), including the current “Match” tool.
 
-`footprintSet` (“presence/shape set”)
-Cells that define where the component exists for adjacency tests (CE).
-Includes wildcard § positions because those positions still belong to the component’s “shape,” even if we don’t highlight or ban them.
+### Protrusions / pins and Component Ends (`CE`)
+A **component end** is the protruding/pin cell on the component side that connects to an exterior net.
 
-**Possible naming improvement (*)**
+Policy meaning:
+- `CE` records the **component-side** glyph cell (pin/protrusion), not the wire cell.
 
-If we agree, we can rename in the document (and optionally in code later):
-- `greenSet` → `matchHighlightSet`
-- `solidSet` → `netTraceBanSet` (or componentOccupancySet)
-- `footprintSet` → `componentFootprintSet`
+Detection policy (exterior perspective):
+- A wire cell that has a directional exit into an adjacent component footprint cell,
+- and that component cell has a `glyphToMask` that points back,
+⇒ record the component cell as `CE`.
 
-This would reduce cognitive load for new contributors. (*)
+Additionally:
+- the wire cell is forced into `LE` (a termination into a component), even if it is also a junction.
 
-### I. Component ends `CE`
+### Net-label components (type: `Net`)
+Some catalog components represent a **logical net label**.
+If `type === "Net"`, the component carries a `LabelID` that ties exterior nets together.
 
-A component end is recorded when a wire cell has a directional exit into an adjacent cell that:
-- belongs to a matched catalog item’s footprintSet, and
-- contains a glyph that expresses directional connectivity toward the wire (via glyphToMask)
+**LabelID extraction**
+Derived from the template text (rotation-aware) by stripping:
+- whitespace/newlines
+- `§`
+- wire glyphs (`glyphToMask != 0`)
+Fallback: catalog `name` if the result is empty.
 
-The component-side cell coordinate is recorded as:
-- `CE += {c, r}`
+**Merge rule**
+All exterior nets that touch (via `CE`) a Net-label component with the same `LabelID` are considered the same net.
 
-Additionally, the wire cell is forced into `LE` (“termination into component”).
+### Component Bridge Map (internal connectivity) (*)
+Some components (connectors, jumpers, fixed links) tie their ends together **inside the component**.
+Rather than tracing internal glyphs, AsciiCAD will use a dedicated per-component policy function:
 
-**Rationale:** CE represents the component’s “pin/protrusion glyph”, not the wire cell itself.
+**Component Bridge Map**: given a matched component instance, return groups of ends that are internally connected.
 
-### J. “Protrusions” and pin glyphs
+Example (group-based):
+- `[[P1, P2], [P3, P4, P5]]`
 
-Pins/protrusions can be:
-- straight wire glyphs on the component edge: ─ │
-- small connector glyphs: `╪ ╫ ╢ ╟ ╧ ╤` (and others supported by `glyphToMask`)
+or coordinate-based early form:
+- `[[{r,c},{r,c}], ...]`
 
-Policy: CE detection relies on `glyphToMask`, not a narrow `isWireGlyph()`, so these protrusions are supported.
+**Pin identity source** (*):
+- Prefer explicit `pin_data` if available.
+- Otherwise derive pin identities from CE coordinates.
 
-## netLabel policy
-### netLabel components
+---
 
-Catalog items with:
-- type === "Net"
+## Box
 
-are interpreted as logical connectivity labels.
+### Definition
+A **box** is a non-catalog, generic container defined by a **double-line rectangular outline**.
 
-Examples:
-- `GND`
-- `NetLabel` (circled digits)
+### Rules
+- A box is valid if its border is a closed rectangle with double-line glyphs.
+- Boxes can contain labels, but labels are separate objects and do not change net tracing rules.
 
-### L. LabelID extraction
+### Interaction with exterior net tracing (Option A)
+Boxes act as **containers**:
+- The **interior** of a valid double-line box is not part of exterior nets.
+- The **border and protrusions** are not automatically eliminated and may participate in exterior nets (e.g., wires can connect on the outside).
 
-Each Net-label match has:
-- `catalog_idx`
-- `rotation`
+**Rationale:** excluding border+interior wholesale was too destructive; container semantics belong to the interior.
 
-LabelID is derived from the catalog pattern text_data\[rotation\] by stripping:
-- whitespace + newlines
-- wildcard `§`
-- wire glyphs (any glyph where `glyphToMask != 0`)
+### Open questions / gaps
+- (*) Define explicit “box pin” exceptions if we want controlled connectivity between exterior nets and interior nets in the future.
 
-If the result is empty, fallback to:
-- `CATALOG\[catalog_idx\].name`
+---
 
-### M. Net merge rule
+## Exterior Netline
 
-If two (or more) nets each touch a Net-label component with the same LabelID, they are considered **the same net**.
+### Definition
+An **exterior netline** is the wiring graph traced outside component internals and outside box interiors.
 
-“Touch” means:
-- a net has a CE cell that belongs to that Net-label match footprint
+It is computed as connected components over wire cells after filtering, then optionally merged by label/bridges.
 
-Merge behavior:
-- union of `cells`
-- union of `LE`, `LJ`, `CE`
+### Filtering (inputs to exterior net tracing)
+Exterior net tracing operates on a filtered grid:
+- exclude valid double-line box **interiors** (container semantics)
+- exclude catalog component `netTraceMaskSet` (component solids; excluding `§`)
+- apply canonical crossing rule (`─│─`)
 
-**Rationale:** labels create logical connectivity without a drawn wire.
+### Derived JSON entry (netline report)
+A netline entry contains:
+- `LE`: line ends  
+  - classic endpoints (degree==1)  
+  - plus wire cells terminating into components (forced LE)
+- `LJ`: junctions (degree ≥ 3)
+- `CE`: component-end cells adjacent to wire
+- `CJ`: component-internal connections (*deferred; see Component Bridge Map*)
 
-## Output policy
-### N. Netlist interactive mode
+### Trace-then-bridge pipeline
+Exterior netline discovery is conceptualized as:
 
-When Netlist mode is ON:
-- hovering a wire cell highlights the entire net in BLUE
-- in debug mode, CE cells can be overlaid in RED for inspection
+1) **Trace:** build provisional nets from wire connectivity in the filtered grid.
+2) **Attach ends:** determine which provisional nets touch which component ends (`CE`) and which component instances.
+3) **Bridge within components** (*): apply the Component Bridge Map to union provisional nets that are internally tied by a component.
+4) **Merge by net labels:** union nets that touch Net-label components with the same `LabelID`.
 
-### O. JSON netlist report
+**Implementation note:** union-find is the preferred merging mechanism for steps (3) and (4).
 
-The JSON report uses netline objects:
-- `{ LE, LJ, CE }`
+### Output / interactivity
+- Netlist interactive mode highlights hovered net in BLUE.
+- Debug mode may overlay `CE` cells in RED when Netlist is ON.
 
-and is derived from the same core net computation to ensure consistency with interactive highlighting.
+### Open questions / gaps
+- (*) Interior Netline will later describe nets inside boxes and/or component interiors.
+- (*) Component Bridge Map is the intended mechanism for “fixed internal connections” without tracing component internals.
+
+---
+
+# Contradictions and gaps to discuss (before further editing)
+
+1) **`§` as flexible component end vs masking/highlight**
+   - `§` matches exactly one wire glyph and represents a flexible end-zone.
+   - We must decide precisely how `§` participates in:
+     - CE detection (likely yes, when it matches a wire glyph)
+     - netTraceMaskSet (likely no)
+     - matchHighlightSet (likely no)
+
+2) **Component footprint / pin-zone definition**
+   - Since labels are separate objects, the component perimeter/pin-zone should be defined purely by the component template + adjacency rules (mask reciprocity).
+   - Avoid perimeter rules that depend on label semantics.
+
+3) **Box border semantics**
+   - Option A excludes interior from exterior nets; border/protrusions remain.
+   - Clarify whether exterior wires may connect to border glyphs as “pins” or only to protrusions.
+
+4) **Transition to Query API** (*)
+   - The current multi-set matching outputs are expected to be replaced.
+   - Policy should remain stable even if implementation changes.
+
+5) **Component Bridge Map** (*)
+   - Define minimal output contract and testing strategy before implementation.
+
+---
+
+`(*)` indicates a novelty or future implementation idea not yet implemented.
