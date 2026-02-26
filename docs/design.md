@@ -115,7 +115,7 @@ __Properties of the UTF-8 wire glyphs__
 ### Component
 
 - Components are essentially templates spanning over minimum 2 grid cells (≥ 2 UTF-8 characters), and arranged in a 2D manner like graphical sprites.
-- The term component here, is semantically unconnected to the domain interpretation of e.g an electronic component, as it is no more than a meaningless building block that can wear a label, can be identified by matching it's shape or label, and can be wired up at its extremities/protrusions.   A domain policy (*) later on will describe which part a component represents, and which role it plays within the domain understanding. 
+- The term component here, is semantically unconnected to the domain interpretation of e.g an electronic component, as it is no more than a meaningless building block that can wear a label, can be identified by matching its shape or label, and can be wired up at its extremities/protrusions.   A domain policy (*) later on will describe which part a component represents, and which role it plays in a domain context. 
 - The text content of one component is stored in a single continuous string, where adjacent characters increment columns, and linefeeds increment rows.
   Example of a component that looks like tiny box: ` "┌─┐\n└─┘" `
 - Component shapes come in 2 valid visual flavors, line fenced shapes featuring an internal space and unfenced symbols with no internal space.  We will not have a detection algorithm trying to characterise which visual flavor is used to represent a component, but the user/developer should be aware  applying a local policy to a fenced shape leaves less headroom for misinterpretation hence safer to apply compared to an unfenced shape.  
@@ -129,11 +129,9 @@ __Properties of the UTF-8 wire glyphs__
 - A component edge location is defined by any free cell (space or '§' wildcard) on the grid directly touching the perimeter of a component. 
 - Components have pins, also called protrusions (all wire glyphs) reaching out to the edge of the component enabling the component to attach itself to an exterior netline.
 - A protrusion or pin is a single-line wire glyph within the component perimeter touching an edge location that can make a continuos single-line with the protrusion.    For example:  A component edge location with 2 adjacent free cells (space or '§' wildcard) around (E|S), and 2 cells within component perimeter (N|W), which means the component edge location can only allow a protrusion at it's North flank containing an S in its bitmask, and a protrusion at its East flank containing a W in the bitmask.
-- A component (as defined in the catalog) can optionally contain a component label.  A label is defined by an opening square bracket '\[' followed by a closing square bracket '\]' on the same line, with in between ranging from 1 alphanumeric character or wildcard, until the total width of the component minus 2.
- 
-    **TBD**: do we need to integrate labels as part of a catalog item ?  Isn't is bettter to define component/box labels as separate entities?
-    e.g. A label is defined by an opening square bracket '\[' followed by a closing square bracket '\]' on the same line, and between these brackets from 1 to      12 alphanumeric or any of the following characters '.Ωπµ⍉⍵'.
-    A label belongs to a component or a box when the center of the label is closest to the center of the component or box.  When scanning for boxes and catalog     components on the grid, each box or component tries to attach to its closest label.
+- A component (as defined in the catalog) sometimes can, sometimes must contain an associated component label (object), depending on a local policy applied to the component.  By default of a local policy, a component label is optional.  A label is defined by an opening square bracket '\[' followed by a closing square bracket '\]' on the same line, bearing minimum 1 character, and maximum the amount of available columns in the grid.  Allowed characters for labels is validated by an explicit filter e.g. "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-.,;Ωπµ⍉⍵ {}"
+- Even when component labels are optional, a component label can never exist without its associated component.
+- A label object belongs to a component (or box) when the center of the label is closest to the center of the component (or box).  When scanning for catalog components (and boxes) on the grid, each box or component gets associated with its closest label.  Each component label object wears the unique identity of the associated component.
 
 
 ### Box
@@ -141,7 +139,16 @@ __Properties of the UTF-8 wire glyphs__
 Next to the ridgid but easy to match components, we need alongside, a more generic concept for a component, that does not rely on pre-defined outlooks of a component from a deterministic catalog.
 - A box is defined by double-line, and that line is always enclosing a rectangular area.
 - A box can have protrusions pointing inside or outside, as long as the entire rectangle outline is has a double line following the edges.
-- Optionally, a box can also contain a label obeying the same rules as for a component, with the only difference the label has to fit inside the enclosed rectangle.  Since the role of boxes is not identified by a deterministic template (unlike components, where the shape defines component role and labels provide optional extra info), a box label has a higher determining factor as defines the role of the box, and some extra info if necessary.  To leave ambiguity on the link between the box and its determining label, we chose by policy to validate    
+- Optionally, a box can also contain a label obeying the same rules as for a component, with the only difference the label has to fit inside the enclosed rectangle of the box shape.
+- Since the identity or role of boxes is not defined by a deterministic shape (unlike components, where the shape defines component role and labels provide optional extra info), a box label fully identifies the box.  In other words, a search query on a box is entirely based on its label, while a search query on a component is based on it's shape and optionally it's label.
+- Box labels and component labels together must not be unique, but we encourage the user to review and differentiate duplicate labels.
+- All box objects have a type property "BOX", which means we are not allowed to declare a catalog component with type "BOX".
+- A search query command on components or boxes can be implemented (*) like this:  
+oASC.query({type:'MCU'})  // searching for all components (with type field = "MCU")
+oASC.query({type:'BOX'})  // searching for all boxes in the grid
+oASC.query({label:'ATTiny85'})  // search for all boxes or components with label "ATTiny85"
+oASC.query({label:'ATTiny85'},GREEN)  // search for all boxes or components with label "ATTiny85", and highlight them in GREEN (=enumerated color)
+oASC.query(null,RED) // search and highlight in RED all boxes and components on the grid
 
 ### Exterior Netline
 
