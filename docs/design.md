@@ -15,7 +15,7 @@ With collapsing the horizontals, we refer to 'business data' usually living in a
 
 In AsciiCAD, we collapse these three layers into just one, allowing just one definition and one policy to do the heavy lifting.
 
-Having only **one representation layer** to worry about brings a practical advantage: it concentrates effort where it matters most — on precise, high-quality policy writing and on forging detailed, shared agreements about interpretation and formatting. Those agreements or policies become the fertile ground for “protocols” that make the system scale.
+Having only **one presentation layer** to worry about brings a practical advantage: it concentrates effort where it matters most — on precise, high-quality policy writing and on forging detailed, shared agreements about interpretation and formatting. Those agreements or policies become the fertile ground for “protocols” that make the system scale.
 
 This matters because AsciiCAD’s strategy for reaching higher complexity is not to multiply parallel abstractions, but to build only understandable layers on top of each other that support complexity at scale:
 - start with a stable, minimal base (grid of glyphs)
