@@ -180,27 +180,6 @@ Notes:
 (*) future implementation
 
 ## Input filtering policy
-### A. Exclude double-line boxes
-
-Wires that lie **inside** or **on the boundary** of valid double-line boxes must be ignored for netlist purposes.
-- Uses the same box-detection logic as computeHighlightOverlay().
-- Banned cells include:
-  - box boundary (“redSet”)
-  - box interior (“insideSet”)
-
-**Rationale:** double-line boxes represent grouped blocks called components; interior wiring should not leak into exterior nets.
-
-### B. Exclude matched catalog component interior glyphs (net tracing)
-
-Catalog components can include wire-like characters (e.g., `─│═║`) that must not be interpreted as wiring.
-
-For net tracing, cells belonging to matched catalog items are filtered out using a catalog-derived set:
-
-- **solidSet** = all matched pattern cells that are:
-  - not a space
-  - not the wildcard character §
-
-**Rationale:** a component symbol can visually contain lines that are not part of the exterior wiring network.
 
 ### C. Wildcard meaning
 
@@ -246,7 +225,7 @@ Notes:
 ### Junction glyphs
 
 Junctions are characters with branching masks, e.g.:
-- `├ ┤ ┬ ┴ ┼` and similar box-drawing junctions
+`├ ┤ ┬ ┴ ┼` and similar box-drawing junctions
 
 A cell is considered a junction (`LJ`) when its graph degree is ≥ 3.
 
