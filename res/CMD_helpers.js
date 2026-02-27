@@ -790,10 +790,10 @@ function CMD()
       "  return enqueue(async () => {",
       "    const resolvedArgs = await await$(args);",
 
-      "    // format AFTER promise resolution",
-      "    if (objName === \"oTERM\" && (fnName === \"output\" || fnName === \"print\")) {",
-      "      resolvedArgs[0] = formatForOutput(resolvedArgs[0]);",
-      "    }",
+      //"    // format AFTER promise resolution",
+      //"    if (objName === \"oTERM\" && (fnName === \"output\" || fnName === \"print\")) {",
+      //"      resolvedArgs[0] = formatForOutput(resolvedArgs[0]);",
+      //"    }",
 
       "    ensureCloneableArgs(objName, fnName, resolvedArgs);",
 
@@ -806,45 +806,45 @@ function CMD()
 
 
 
-      "function formatForOutput(v) {",
-      "  // already HTML/string: keep as-is",
-      "  if (typeof v === \"string\") return v;",
+      //"function formatForOutput(v) {",
+      //"  // already HTML/string: keep as-is",
+      //"  if (typeof v === \"string\") return v;",
 
-      "  // null/undefined",
-      "  if (v == null) return String(v); // \"null\" / \"undefined\"",
+      //"  // null/undefined",
+      //"  if (v == null) return String(v); // \"null\" / \"undefined\"",
 
-      "  // Error objects",
-      "  if (v instanceof Error) {",
-      "    const msg = v.stack || v.message || String(v);",
-      "    return \"<pre>\" + escapeHtml(msg) + \"</pre>\";",
-      "  }",
+      //"  // Error objects",
+      //"  if (v instanceof Error) {",
+      //"    const msg = v.stack || v.message || String(v);",
+      //"    return \"<pre>\" + escapeHtml(msg) + \"</pre>\";",
+      //"  }",
 
-      "  // Try JSON pretty print for objects/arrays",
-      "  if (typeof v === \"object\") {",
-      "    try {",
-      "      return \"<pre>\" + escapeHtml(JSON.stringify(v, null, 2)) + \"</pre>\";",
-      "    } catch (e) {",
-      "      // circular or non-serializable",
-      "      return \"<pre>\" + escapeHtml(String(v)) + \"</pre>\";",
-      "    }",
-      "  }",
+      //"  // Try JSON pretty print for objects/arrays",
+      //"  if (typeof v === \"object\") {",
+      //"    try {",
+      //"      return \"<pre>\" + escapeHtml(JSON.stringify(v, null, 2)) + \"</pre>\";",
+      //"    } catch (e) {",
+      //"      // circular or non-serializable",
+      //"      return \"<pre>\" + escapeHtml(String(v)) + \"</pre>\";",
+      //"    }",
+      //"  }",
 
-      "  // numbers, booleans, symbols, functions",
-      "  return \"<pre>\" + escapeHtml(String(v)) + \"</pre>\";",
-      "}",
+      //"  // numbers, booleans, symbols, functions",
+      //"  return \"<pre>\" + escapeHtml(String(v)) + \"</pre>\";",
+      //"}",
 
-      "function escapeHtml(s) {",
-      "  return String(s).replace(/[&<>\"']/g, (ch) => {",
-      "    switch (ch) {",
-      "      case \"&\": return \"&amp;\";",
-      "      case \"<\": return \"&lt;\";",
-      "      case \">\": return \"&gt;\";",
-      "      case '\"': return \"&quot;\";",
-      "      case \"'\": return \"&#39;\";",
-      "      default: return ch;",
-      "    }",
-      "  });",
-      "}",
+      //"function escapeHtml(s) {",
+      //"  return String(s).replace(/[&<>\"']/g, (ch) => {",
+      //"    switch (ch) {",
+      //"      case \"&\": return \"&amp;\";",
+      //"      case \"<\": return \"&lt;\";",
+      //"      case \">\": return \"&gt;\";",
+      //"      case '\"': return \"&quot;\";",
+      //"      case \"'\": return \"&#39;\";",
+      //"      default: return ch;",
+      //"    }",
+      //"  });",
+      //"}",
 
 
       "function makeContainerProxy(objName) {",
@@ -1413,7 +1413,7 @@ var oCMD = new CMD();
 /**
  * Make a JSON string pretty and interactive by showing boundary character [] {} pairs.
  *
-  * @param {HTMLElement} mountEl - where to get JSON input and where to render output
+ * @param {HTMLElement} mountEl - where to get JSON input and where to render output
  * @param {Object|Array} boundaryStyles - e.g. { "{}":"color:#0f0;font-weight:800", "[]":"color:#f0f;font-weight:800" }
  *                                      If you pass an array, it should be like:
  *                                      [ ["{}", "color:#0f0"], ["[]", "color:#f0f"] ]
