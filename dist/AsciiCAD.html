@@ -4749,7 +4749,8 @@ function CMD()
       "async function print$(v) {",
       "  const x = await await$(v);",
       "  let s = x;",
-      "  if (x && typeof x === \"object\") s = JSON.stringify(x, null, 2);",
+      "  if (x && typeof x === \"object\")",
+      "     s = JSON.stringify(x, null, 2).replace(/\\{\\n\\s+\"r\":\\s+(\\d+),\\n\\s+\"c\":\\s+(\\d+)\\n\\s+\}/g,'{\"r\":$1,\"c\":$2}\"');",
       "  return callMain(\"oTERM\", \"output\", [\"<pre>\" + escapeHTML_local(s) + \"</pre>\"]);",
       "}"
       ,
