@@ -216,6 +216,11 @@ AsciiCAD> CADScript {freeform(0,2,'+'); freeform(1,2,'+'); freeform(1,3,'+')};
 AsciiCAD> CADScript {oCMD.run("clear")};
 ```
 
+#### Run a query command + JSON printing from CADScript
+```text
+AsciiCAD> CADScript { oTERM.printJSON(oASC.qryLocate({type:"M.U"})); }
+```
+
 #### Exit back to the UI
 ```text
 AsciiCAD> exit
