@@ -1467,7 +1467,8 @@ this.qryLocate = function(criteria)
   function matchField(val, want)
   {
     if (want === null) return true;
-    return String(val ?? "") === want;
+    //return String(val ?? "") === want;
+    return String(val ?? "").match(new RegExp(want,"g")) != null;
   }
 
   function accept(item)
@@ -1484,7 +1485,7 @@ this.qryLocate = function(criteria)
       }
       else
       {
-        // any non-BOX type targets catalog items
+        // any non-BOX type (so far) targets catalog items
         if (item.ref !== "CATALOG") return false;
         if (!matchField(item.type, wantType)) return false;
       }
@@ -1560,10 +1561,10 @@ this.qryLocate = function(criteria)
 this.qryLocate.help =
 {
   type: "CADScript_FN",
-  usage: "qryLocate(<i>filter</i>)",
-  desc: "Locate matching catalog components and BOX rectangles; returns bounding rectangles with tl/br coordinates.",
+  usage: "qryLocate(<i>regexp</i>)",
+  desc: "Locate matching catalog components and BOX rectangles with regular expressions; returns bounding rectangles with tl/br coordinates.",
   examples: [
-    "oASC.qryLocate({type:'MCU'})",
+    "oASC.qryLocate({ref:'CAT.+'})",
     "oASC.qryLocate({type:'BOX'})",
     "oASC.qryLocate({name:'ATTiny85'})",
     "oASC.qryLocate({name:'ATTiny85',MFR:'ATTINY85V-10PU'})"
