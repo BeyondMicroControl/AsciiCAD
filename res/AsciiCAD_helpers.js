@@ -1348,6 +1348,227 @@ this.startPasteWithText = function(text)
   //
   // SECTION: TOOLS
 
+
+// ---------------------------------------------------------------------------
+// SECTION: QUERY (Locate)
+//
+// Policy note:
+// - Components are located via computeMatchOverlay() (catalog pattern matching).
+// - Boxes are located via the same “valid double-line box” rule used by highlight.
+//
+// qryLocate() is intended as a *pre-step* to richer queries:
+// it returns only bounding rectangles (top-left + bottom-right), plus minimal metadata.
+// ---------------------------------------------------------------------------
+
+// Extract a human label for a BOX (optional):
+// convention: first bracketed token inside the box, e.g. "[ATTiny85]".
+// Returns "" if none is found.
+this.computeBoxLabel = function(r0, c0, r1, c1)
+{
+  const top   = Math.min(r0, r1) + 1;
+  const bot   = Math.max(r0, r1) - 1;
+  const left  = Math.min(c0, c1) + 1;
+  const right = Math.max(c0, c1) - 1;
+
+  if (top > bot || left > right) return "";
+
+  for (let r = top; r <= bot; r++)
+  {
+    const row = ascii?.[r];
+    if (!row) continue;
+
+    // Find '['
+    let s = -1;
+    for (let c = left; c <= right; c++) { if (row[c] === "[") { s = c; break; } }
+    if (s < 0) continue;
+
+    // Find matching ']'
+    let e = -1;
+    for (let c = s + 1; c <= right; c++) { if (row[c] === "]") { e = c; break; } }
+    if (e <= s) continue;
+
+    const label = row.slice(s + 1, e).join("").trim();
+    if (label) return label;
+  }
+
+  return "";
+}
+
+// Locate all valid BOX rectangles (double-line boxes) on the grid.
+// Returns [{ kind:"BOX", r0,c0,r1,c1, name, type:"BOX" }, ...]
+this.computeBoxRects = function()
+{
+  const out = [];
+  const seen = new Set();
+
+  for (let r0 = 0; r0 < ROWS; r0++)
+  {
+    for (let c0 = 0; c0 < COLS; c0++)
+    {
+      if (ascii?.[r0]?.[c0] !== "╔") continue;
+
+      for (let c1 = c0 + 1; c1 < COLS; c1++)
+      {
+        if (ascii[r0][c1] !== "╗") continue;
+
+        for (let r1 = r0 + 1; r1 < ROWS; r1++)
+        {
+          if (ascii[r1][c0] !== "╚") continue;
+          if (ascii[r1][c1] !== "╝") continue;
+
+          if (!this.isValidDoubleBox?.(r0, c0, r1, c1)) continue;
+
+          const k = r0 + "," + c0 + "," + r1 + "," + c1;
+          if (seen.has(k)) continue;
+          seen.add(k);
+
+          const name = this.computeBoxLabel?.(r0, c0, r1, c1) ?? "";
+
+          out.push({
+            kind: "BOX",
+            type: "BOX",
+            name,
+            r0, c0, r1, c1,
+            tl: { r: r0, c: c0 },
+            br: { r: r1, c: c1 },
+          });
+        }
+      }
+    }
+  }
+
+  return out;
+}
+
+// Locate matching catalog components and/or boxes according to policy.
+//
+// Examples:
+//   oASC.qryLocate({type:'MCU'})
+//   oASC.qryLocate({type:'BOX'})
+//   oASC.qryLocate({name:'ATTiny85'})
+//   oASC.qryLocate({name:'ATTiny85',MFR:'ATTINY85V-10PU'})
+//
+// Return format (per hit):
+//   {
+//     kind: "CAT"|"BOX",
+//     name, type, MFR,
+//     r0,c0,r1,c1,
+//     tl:{r,c}, br:{r,c},
+//     ... (catalog-only: catalog_idx, rotation, uid)
+//   }
+this.qryLocate = function(criteria)
+{
+  const q = criteria || {};
+
+  const wantType = (q.type === undefined || q.type === null) ? null : String(q.type);
+  const wantName = (q.name === undefined || q.name === null) ? null : String(q.name);
+  const wantMFR  = (q.MFR  === undefined || q.MFR  === null) ? null : String(q.MFR);
+
+  function matchField(val, want)
+  {
+    if (want === null) return true;
+    return String(val ?? "") === want;
+  }
+
+  function accept(item)
+  {
+    // type
+    if (wantType !== null)
+    {
+      if (wantType === "BOX")
+      {
+        if (item.kind !== "BOX") return false;
+      }
+      else
+      {
+        // any non-BOX type targets catalog items
+        if (item.kind !== "CAT") return false;
+        if (!matchField(item.type, wantType)) return false;
+      }
+    }
+
+    // name
+    if (wantName !== null && !matchField(item.name, wantName)) return false;
+
+    // MFR only makes sense for catalog items
+    if (wantMFR !== null)
+    {
+      if (item.kind !== "CAT") return false;
+      if (!matchField(item.MFR, wantMFR)) return false;
+    }
+
+    return true;
+  }
+
+  const out = [];
+
+  // ---- Catalog components (pattern matches) ----
+  // computeMatchOverlay returns matches[] with bounding boxes and catalog metadata.
+  const mo = (typeof this.computeMatchOverlay === "function") ? this.computeMatchOverlay() : null;
+  const matches = mo?.matches || [];
+
+  if (matches && matches.length)
+  {
+    const items = (typeof CATALOG !== "undefined" && Array.isArray(CATALOG)) ? CATALOG : [];
+
+    for (let i = 0; i < matches.length; i++)
+    {
+      const m = matches[i];
+      const it = items[m.catalog_idx] || {};
+
+      const name = String(m.name ?? it.name ?? "");
+      const type = String(m.type ?? it.type ?? "");
+      const MFR  = String(m.MFR  ?? it.MFR  ?? "");
+      const uid  = String(m.uid  ?? (name + "_" + type + "_" + MFR));
+
+      const hit = {
+        kind: "CAT",
+        name, type, MFR,
+        uid,
+        catalog_idx: m.catalog_idx,
+        rotation: m.rotation,
+        r0: m.r0, c0: m.c0, r1: m.r1, c1: m.c1,
+        tl: { r: m.r0, c: m.c0 },
+        br: { r: m.r1, c: m.c1 },
+      };
+
+      if (accept(hit)) out.push(hit);
+    }
+  }
+
+  // ---- Boxes (valid double-line rectangles) ----
+  // Include boxes when:
+  // - explicit type:BOX
+  // - OR no type constraint (so name-only searches can match boxes too)
+  // - OR name constraint (boxes may carry labels)
+  const shouldIncludeBoxes = (wantType === null) || (wantType === "BOX") || (wantName !== null);
+  if (shouldIncludeBoxes)
+  {
+    const boxes = (typeof this.computeBoxRects === "function") ? this.computeBoxRects() : [];
+    for (let i = 0; i < boxes.length; i++)
+    {
+      const b = boxes[i];
+      if (accept(b)) out.push(b);
+    }
+  }
+
+  return out;
+}
+
+this.qryLocate.help =
+{
+  type: "CADScript_FN",
+  usage: "qryLocate(<i>filter</i>)",
+  desc: "Locate matching catalog components and BOX rectangles; returns bounding rectangles with tl/br coordinates.",
+  examples: [
+    "oASC.qryLocate({type:'MCU'})",
+    "oASC.qryLocate({type:'BOX'})",
+    "oASC.qryLocate({name:'ATTiny85'})",
+    "oASC.qryLocate({name:'ATTiny85',MFR:'ATTINY85V-10PU'})"
+  ]
+};
+
+
   this.computeHighlightOverlay = function() 
   {
     const redSet = new Set();    // frame cells of valid double boxes
