@@ -1459,6 +1459,7 @@ this.qryLocate = function(criteria)
 {
   const q = criteria || {};
 
+  const wantRef  = (q.ref === undefined  || q.ref === null) ? null : String(q.ref);
   const wantType = (q.type === undefined || q.type === null) ? null : String(q.type);
   const wantName = (q.name === undefined || q.name === null) ? null : String(q.name);
   const wantMFR  = (q.MFR  === undefined || q.MFR  === null) ? null : String(q.MFR);
@@ -1471,6 +1472,9 @@ this.qryLocate = function(criteria)
 
   function accept(item)
   {
+    // ref
+    if (wantRef !== null && !matchField(item.ref, wantRef)) return false;
+
     // type
     if (wantType !== null)
     {
@@ -2738,7 +2742,8 @@ function TERMINAL(props)
 
   this.print = function(str)
   {
-    this.output(str);
+    if(typeof(str) == "object") this.output("[object]");
+    else this.output(str);
   }
   this.print.help = 
   {
@@ -2746,6 +2751,59 @@ function TERMINAL(props)
     usage: "print(<i>str</i>)",
     desc: "",
     examples: ["oTERM.print(\"DONE\")"]    
+  }
+
+  this.printJSON = function(obj)
+  {
+
+    this.output(formatForOutput(obj));
+
+      function formatForOutput(v) {
+        // already HTML/string: keep as-is
+        if (typeof v === "string") return v;
+
+        // null/undefined
+        if (v == null) return String(v); // \"null\" / \"undefined\"
+
+        // Error objects
+        if (v instanceof Error) {
+          const msg = v.stack || v.message || String(v);
+          return "<pre>" + escapeHtml(msg) + "</pre>";
+        }
+
+        // Try JSON pretty print for objects/arrays
+        if (typeof v === "object") {
+          try {
+            return "<pre>" + escapeHtml(JSON.stringify(v, null, 2)) + "</pre>";
+          } catch (e) {
+            // circular or non-serializable
+            return "<pre>" + escapeHtml(String(v)) + "</pre>";
+          }
+        }
+
+        // numbers, booleans, symbols, functions
+        return "<pre>" + escapeHtml(String(v)) + "</pre>";
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>\"']/g, (ch) => {
+          switch (ch) {
+            case "&": return "&amp;";
+            case "<": return "&lt;";
+            case ">": return "&gt;";
+            case '"': return "&quot;";
+            case "'": return "&#39;";
+            default: return ch;
+          }
+        });
+      }
+  }
+  this.printJSON.help = 
+  {
+    type: "",
+    usage: "printJSON(<i>obj</i>)",
+    desc: "",
+    examples: ["oTERM.printJSON({so:true})"]    
   }
 
   this.setPrompt = function (newPrompt) {
