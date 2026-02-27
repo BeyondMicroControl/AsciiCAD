@@ -41,7 +41,7 @@
           <div id="cellsLine">Cells: —</div>
           <div id="zoomLine">Zoom: 100%</div>
           <div class="tiny muted" id="coordLine">Cell: —</div>
-        <div class="tiny muted" id="panLine">Pan: x 0.00, y 0.00</div>
+        <div class="tiny muted" id="panLine" style="float:left">Pan: x 0.00, y 0.00</div>&nbsp;<button id="flipPan" class="btn" style="height:17px;width:20px;padding-top:0px;padding-left:4px;margin-top:0px" data-hint="Reverse Pan direction">⬌</button>
         <div class="tiny muted" id="netLine">Net: —</div>
         </div>
 
@@ -212,6 +212,8 @@ const cliSidebar = document.getElementById("cliSidebar");
 const toggleCLI = document.getElementById("toggleCLI");
 const titleCLI = document.getElementById("titleCLI");
 
+const flipPanBtn =  document.getElementById("flipPan");
+
 const cliTerminal = document.getElementById("cliTerminal");
 const resizeHandleCLI = document.getElementById("resizeHandleCLI");
 
@@ -269,6 +271,8 @@ let tool = "modeFreeform";
 let op = { type: "place", ch: '+' };
 let hoverCell = null;
 let stageSize = { w: 1, h: 1 };
+
+let flipPanOn = false;
 
 let schemaHighlightOn = false;
 let highlightCache = null; // { redSet:Set, insideSet:Set } cached for current ascii state
@@ -720,7 +724,7 @@ function updateRadioButtonUI(mode,mode_el,hint)
   }
 }
 
-function updateToogleButtonUI(onoff,mode_el,hint)
+function updateToggleButtonUI(onoff,mode_el,hint)
 {
   onoff = !onoff;
   if(onoff) { mode_el.classList.add("primary"); hint.textContent = schemaHighlightBtn.dataset.hint; }
@@ -752,19 +756,15 @@ function updateUI()
   const __cellW = __cw * scale;   // cell size in screen coordinates
   const __cellH = __ch * scale;
 
-  const __px = __cellW ? (__originX / __cellW) : 0;   // right = positive
+  const __px = __cellW ? (__originX / __cellW)  : 0;  // right = positive
   const __py = __cellH ? (-__originY / __cellH) : 0;  // up = positive
 
   const __fx = (Math.abs(__px) < 1e-9 ? 0 : __px).toFixed(0);
   const __fy = (Math.abs(__py) < 1e-9 ? 0 : __py).toFixed(0);
   panLine.textContent = "Pan: x " + __fx + ", y " + __fy;
 
-  if (!netTraceOn) {
-    netLine.textContent = "Net: —";
-  } else {
-    netLine.textContent = (hoverNetIndex >= 0) ? ("Net: " + hoverNetIndex) : "Net: —";
-  }
-
+  if (!netTraceOn) netLine.textContent = "Net: —";
+  else netLine.textContent = (hoverNetIndex >= 0) ? ("Net: " + hoverNetIndex) : "Net: —";
 
   pasteLine.style.display = pasteDrag ? "block" : "none";
 
@@ -1436,22 +1436,21 @@ eraserBtn.addEventListener("click", () => { op = { type: "erase" }; setMode('mod
 
 schemaHighlightBtn.addEventListener("click", () => 
 {
-  schemaHighlightOn = updateToogleButtonUI(schemaHighlightOn,schemaHighlightBtn,toolHint);
+  schemaHighlightOn = updateToggleButtonUI(schemaHighlightOn,schemaHighlightBtn,toolHint);
   highlightCache = null;     // force full rescan next draw
   oASC.draw("schemaHighlightToggle");
 });
 
 schemaMatchBtn.addEventListener("click", () => 
 {
-  schemaMatchOn = updateToogleButtonUI(schemaMatchOn,schemaMatchBtn,toolHint);
+  schemaMatchOn = updateToggleButtonUI(schemaMatchOn,schemaMatchBtn,toolHint);
   matchCache = null;        // force full rescan next draw
   oASC.draw("schemaMatchToggle");
 });
 
-
 netTraceBtn.addEventListener("click", () =>
 {
-  netTraceOn = updateToogleButtonUI(netTraceOn, netTraceBtn, toolHint);
+  netTraceOn = updateToggleButtonUI(netTraceOn, netTraceBtn, toolHint);
 
   // Turning OFF
   if (!netTraceOn) {
@@ -1483,6 +1482,24 @@ netTraceBtn.addEventListener("click", () =>
     console.error(err);
   }
 });
+
+
+flipPanBtn.addEventListener("click", () =>
+{
+  flipPanOn = updateToggleButtonUI(flipPanOn, flipPanBtn, toolHint);
+  if(!flipPanOn)
+  {
+      flipPanBtn.classList.remove("btnInv");
+      flipPanBtn.classList.add("btn");
+  }
+  else 
+  {
+    flipPanBtn.classList.remove("btn");
+    flipPanBtn.classList.add("btnInv");
+  }
+})
+
+
 
 
 /*
@@ -1708,8 +1725,8 @@ canvas.addEventListener("wheel",(e) =>
   if (looksLikeTrackpad) 
   {
     // Two-finger scroll pans (KiCad-like)
-    panX += (e.deltaX || 0) / scale;
-    panY += (e.deltaY || 0) / scale;
+    panX += (flipPanOn?1:-1)*(e.deltaX || 0) / scale;
+    panY += (flipPanOn?1:-1)*(e.deltaY || 0) / scale;
     __clampPanToKeepCenterInGrid();
     updateUI();
     oASC.draw("onwheel - looksLikeTrackpad");
