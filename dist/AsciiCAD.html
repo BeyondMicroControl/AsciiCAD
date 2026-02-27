@@ -2472,7 +2472,7 @@ this.computeBoxLabel = function(r0, c0, r1, c1)
 }
 
 // Locate all valid BOX rectangles (double-line boxes) on the grid.
-// Returns [{ kind:"BOX", r0,c0,r1,c1, name, type:"BOX" }, ...]
+// Returns [{ ref:"DEFINITION", r0,c0,r1,c1, name, type:"BOX" }, ...]
 this.computeBoxRects = function()
 {
   const out = [];
@@ -2502,7 +2502,7 @@ this.computeBoxRects = function()
           const name = this.computeBoxLabel?.(r0, c0, r1, c1) ?? "";
 
           out.push({
-            kind: "BOX",
+            ref: "DEFINITION",  // referring to the definition (of a BOX)
             type: "BOX",
             name,
             tl: { r: r0, c: c0 },
@@ -2526,7 +2526,7 @@ this.computeBoxRects = function()
 //
 // Return format (per hit):
 //   {
-//     kind: "CAT"|"BOX",
+//     ref: "CATALOG"|"DEFINITION",
 //     name, type, MFR,
 //     r0,c0,r1,c1,
 //     tl:{r,c}, br:{r,c},
@@ -2553,12 +2553,12 @@ this.qryLocate = function(criteria)
     {
       if (wantType === "BOX")
       {
-        if (item.kind !== "BOX") return false;
+        if (item.ref !== "DEFINITION") return false;
       }
       else
       {
         // any non-BOX type targets catalog items
-        if (item.kind !== "CAT") return false;
+        if (item.ref !== "CATALOG") return false;
         if (!matchField(item.type, wantType)) return false;
       }
     }
@@ -2569,7 +2569,7 @@ this.qryLocate = function(criteria)
     // MFR only makes sense for catalog items
     if (wantMFR !== null)
     {
-      if (item.kind !== "CAT") return false;
+      if (item.ref !== "CATALOG") return false;
       if (!matchField(item.MFR, wantMFR)) return false;
     }
 
@@ -2598,7 +2598,7 @@ this.qryLocate = function(criteria)
       const uid  = String(m.uid  ?? (name + "_" + type + "_" + MFR));
 
       const hit = {
-        kind: "CAT",
+        ref: "CATALOG",
         name, type, MFR,
         uid,
         catalog_idx: m.catalog_idx,
