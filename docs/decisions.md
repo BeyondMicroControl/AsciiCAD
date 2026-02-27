@@ -1009,7 +1009,8 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [x] 7. Extend self-help documentation: display syntax and usage in an Ascii table - AsciiTable() became factually a generic function 
 - [x] 8. One single zone-sensitive pasteSink (instead of 3 confusing event handlers), pasteSink anchor placed in the center and clipped when navigating over the grid edges
 - [x] 9. Netlist builder: report netlist in JSON format in Terminal, color nets onmouseover and identify real-time the net number in button sidebar (canvas card). v1.15
-- [ ] 10. Conceptualise bridges (connectors) 
+- [ ] 10. Conceptualise bridges (connectors)
+- [x] 11. CADScript { oTERM.printJSON( oASC.qryLocate(_regexp_) ); }  (also fixing function call precedence with await)
 
 ---
 
