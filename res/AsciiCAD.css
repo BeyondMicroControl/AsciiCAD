@@ -20,6 +20,8 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 .sb-top{padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .btn{border:1px solid #cbd5e1;background:#fff;border-radius:14px;padding:8px 12px;font-weight:500;font-size:13px;cursor:pointer;user-select:none}
 .btn:hover{background:#f8fafc} .btn:disabled{opacity:.5;cursor:not-allowed} .btn.primary{border-color:#334155}
+.btnInv{border:1px solid #cbd5e1;background:#888;border-radius:14px;padding:8px 12px;font-weight:500;font-size:13px;cursor:pointer;user-select:none;color:#fff;}
+.btnInv:hover{background:#444; color:#aaa;} .btn:disabled{opacity:.5;cursor:not-allowed} .btn.primary{border-color:#334155}
 .sb-title{font-size:13px;color:var(--muted)}
 .sb-content{padding:10px;overflow:auto} 
 
