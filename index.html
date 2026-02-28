@@ -1729,6 +1729,7 @@ canvas.addEventListener("mousemove", (e) =>
       panY = panDrag.panY0 + dy / scale;
       __clampPanToKeepCenterInGrid();
       setHoverFromEvent(e);
+      refreshHoverFromLastPointer();
       oASC.draw("onmousemove - panDrag");
       return;
   }
