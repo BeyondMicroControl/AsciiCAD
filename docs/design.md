@@ -439,17 +439,13 @@ Interpretation:
 
 Required mappings:
 
-**Pure double-line:**
+**Pure double-line (only straigt and corner parts):**
 - `═` : `E|W`
 - `║` : `N|S`
 - `╔` : `E|S`
 - `╗` : `S|W`
 - `╚` : `N|E`
 - `╝` : `N|W`
-- `╠` : `N|E|S`
-- `╣` : `N|S|W`
-- `╦` : `E|S|W`
-- `╩` : `N|E|W`
 
 **Mixed connectors (double part only):**
 - `╢` : `N|S`   (vertical double)
