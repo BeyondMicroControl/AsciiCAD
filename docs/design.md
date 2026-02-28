@@ -4,16 +4,17 @@
 
 - [Design strategy](#design-strategy)
 - [Policy design](#policy-design)
-  - [Specialisation layers](#specialisation-layers)
-  - [Normative language and scope](#normative-language-and-scope)
-  - [Policy terms (reconciled and expanded)](#policy-terms-reconciled-and-expanded)
 - [AsciiCAD policy](#asciicad-policy)
+  - [Specialisation layers](#specialisation-layers)
+- [Normative language and scope](#normative-language-and-scope)
+- [Policy terms (reconciled and expanded)](#policy-terms-reconciled-and-expanded)
   - [Grid Cell](#grid-cell)
   - [Wire](#wire)
   - [Component](#component)
   - [Box](#box)
   - [Label](#label)
   - [Exterior Netline](#exterior-netline)
+  - [Interior Netline](#interior-netline)
 - [Contradictions, gaps, and required decisions (separate before further editing)](#contradictions-gaps-and-required-decisions-separate-before-further-editing)
 
 In January 2026, the idea to develop AsciiCAD was born. As deceiving as it may sound; AsciiCAD was never aiming at becoming a serious application, but was built with serious intent nonetheless.
@@ -58,6 +59,7 @@ As our design strategy pursues a blueprint for Computer Aided Design (CAD) appli
 
 <br>
 
+# AsciiCAD policy
 ## Specialisation layers
 
              ┌────────────────────────────────┐     Specialisation
@@ -77,8 +79,9 @@ As our design strategy pursues a blueprint for Computer Aided Design (CAD) appli
     │  e.g. electronics/architecture/mind mapping... │   \  /
     └────────────────────────────────────────────────┘    \/
 
+---
 
-## Normative language and scope
+# Normative language and scope
 
 This document is a **requirements / policy specification** for **detecting** and **interpreting** schematic features on a 2D **UTF‑8 (Unicode)** character grid.
 
@@ -88,10 +91,12 @@ This document is a **requirements / policy specification** for **detecting** and
 **Single representation layer:**
 All meaning is derived from the grid itself, plus a *catalog* (for components). No separate geometric model is assumed.
 
-## Policy terms (reconciled and expanded)
+---
+
+# Policy terms (reconciled and expanded)
 
 This document groups rules under a small set of core terms:
-**Grid Cell**, **Wire**, **Component**, **Box**, **Label**, **Exterior Netline**.
+**Grid Cell**, **Wire**, **Component**, **Box**, **Label**, **Exterior Netline**, **Interior Netline**.
 
 For each term we specify:
 - Formal definition
@@ -104,7 +109,6 @@ For each term we specify:
 
 ---
 
-# AsciiCAD policy
 ## Grid Cell
 
 ### Definition
@@ -744,7 +748,7 @@ Each final netline must provide at least:
 - `labels`: list of `LabelID` strings attached to this net via Net-label components (may be empty)
 - `components`: list of component instance IDs touched by this net (for reporting)
 
-`CJ` (component-internal connections) is deferred to Bridge Map (*) and is not required in current policy.
+If interior bridges are present, the netline report should also include a `CJ` list describing which component-internal ties contributed to unions (see Interior Netline).
 
 ### Invariants
 - A wire cell belongs to at most one final netline.
@@ -754,14 +758,144 @@ Each final netline must provide at least:
 
 ---
 
+## Interior Netline
+
+### Definition
+
+An **interior netline** is a connectivity relation that is **created inside a component** (including a box-defined component), without requiring exterior wires to draw every internal tie explicitly.
+
+Interior netlines exist to model **permanent pin-to-pin connectivity** that is intrinsic to a component instance, such as:
+- connectors that internally tie pins (pin ↔ pin)
+- jumpers / shunts (bridging nets when “on”)
+- fixed wired adapters
+
+Switches are a special case: they may be *stateful* rather than permanent, but they can still be handled by the same mechanism via a state-dependent transform (see below).
+
+### Netline entry taxonomy (wire-graph reporting)
+
+When reporting net structures, the following “entry” roles are used:
+
+- `LE`: line ends (wire degree == 1) and wire→component terminations
+- `LJ`: branching junctions (wire degree ≥ 3)
+- `CE`: component-end cells (pins / protrusions) adjacent to wire, represented by the component-end wildcard `§`
+- `CJ`: component-internal junctions / internal pin-to-pin connectivity derived from the component’s local policy
+
+`CJ` is not a separate glyph class on the global grid; it is a **derived artefact** emitted by interior-net processing.
+
+### Component Bridge Map
+
+A **Component Bridge Map** is an **instance-level** description of internal electrical ties between component ends.
+
+It is the formal output of interior-net processing.
+
+**Input**
+- a matched component instance (catalog index + rotation + placement)
+- the instance’s detected `CE` pins (component-end cells)
+- optional: instance-specific state (e.g. jumper on/off, switch position)
+
+**Output (recommended group-based form)**
+
+A list of CE groups, where each group is a set of pins that are electrically tied inside the component:
+
+```json
+[
+  ["P1", "P2"],
+  ["P3", "P4", "P5"]
+]
+```
+
+**Alternative output (coordinate-based form, early implementation)**
+
+```json
+[
+  [{"r":1,"c":8}, {"r":1,"c":11}],
+  [{"r":5,"c":20}, {"r":6,"c":20}]
+]
+```
+
+**Policy intent**
+- Exterior net tracing discovers connectivity **outside components**.
+- Bridge maps then create additional **unions** between those exterior nets.
+- This avoids treating every character *inside* a component as global wiring, while still letting jumpers/connectors tie nets together.
+
+### Local policy mechanism for deriving a Bridge Map
+
+Each catalog component (and each box-defined component) may define an optional **local policy** that produces a Bridge Map.
+
+The mechanism is deliberately shaped to reuse the **same net tracer** as exterior wiring.
+
+#### Step 1 — Normalization: build a temporary internal grid
+
+From the component’s rotated template `text_data[rotation]` (plus any instance text needed for labels), build a temporary internal grid:
+
+- it uses the same `wireMask()` mapping table and adjacency rules as exterior tracing
+- it reuses the same crossing canonical forms
+- it treats `§` as “pin zone markers” (component ends) inside the local grid
+
+The temporary grid is independent of the global grid: it exists only to compute interior connectivity.
+
+#### Step 2 — Transform: rewrite symbol conventions into explicit wire glyphs
+
+A local policy may specify a sequence of deterministic rewrite rules on the temporary grid.
+
+Three transform primitives cover the known use cases:
+
+**T1 — Placeholder-to-wire replacement**  
+Replace placeholders by wire glyphs to make internal bridges traceable.
+
+Examples:
+- `# → ─`
+- `● → ─`
+
+**T2 — Pattern-based rewrite (“semantic normalization”)**  
+Rewrite non-wire drawing conventions (e.g. `o`, `/`) into explicit wire glyphs.
+
+Example (illustrative):
+- `o─/ → ───┘`
+- `/-o → ┌──`
+
+**T3 — Conditional transform based on component state**  
+Apply different rewrites depending on instance state.
+
+Example (jumper):
+- `●` (head on) → `─`
+- `○` (head off) → `' '` (leave open)
+
+All transforms must be:
+- deterministic (same input → same output)
+- local (operate only within the component’s temporary grid)
+- explicitly enumerated per component type (no global heuristics)
+
+#### Step 3 — Trace: run the net tracer on the temporary internal grid
+
+Run the same connectivity tracer used for exterior nets, but with a local goal:
+
+- identify which `§` positions belong to the same connected component in the temporary grid
+- emit each connected pin group as one Bridge Map group
+
+No global wires are involved at this stage.
+
+### Applying Bridge Maps to exterior nets
+
+After exterior nets are traced and `CE` attachments are known:
+
+For each Bridge Map group:
+1) collect the exterior net IDs attached to each member `CE`
+2) if the group touches multiple distinct exterior nets, union them
+3) record a `CJ` entry for reporting, so the final netlist explains *why* the union happened (component-internal connectivity)
+
+This “bridge step” is transitive and should be implemented using union-find (or any deterministic equivalent).
+
+### Interaction with Box-defined components
+
+A drawn box can be treated as a component instance for interior-net purposes:
+
+- the box border defines the component boundary
+- mixed connector glyphs (`╢╟╧╤╫╪`) define `CE` pins
+- the same local policy mechanism (temporary grid + transforms + trace) can be applied if the box type defines one
+
+---
+
+---
+
 # Contradictions, gaps, and required decisions (separate before further editing)
-
-All previously listed “open” items have been resolved by explicit policy:
-
-- Box edge scanning forbids **double-line** perpendicular crossings; only **single-line** protrusions are allowed.
-- Component/box overlap candidates are resolved by “**largest footprint wins**” with deterministic tie-breaks.
-- Label scope is explicit (ComponentLabel, NetLabel, and CE pin labels).
-- Crossing aliases are explicit and limited to the listed canonical forms.
-
-If new glyphs, new label forms, or additional crossing variants are introduced later, they must be added as explicit
-enumerations to avoid ambiguity.
