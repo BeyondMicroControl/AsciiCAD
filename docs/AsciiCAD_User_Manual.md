@@ -208,7 +208,7 @@ Prompt: `AsciiCAD>`
 
 #### Place a few characters (CADScript)
 ```text
-AsciiCAD> CADScript {freeform(0,2,'+'); freeform(1,2,'+'); freeform(1,3,'+')};
+AsciiCAD> CADScript {putCell(0,2,'+'); putCell(1,2,'+'); putCell(1,3,'+')};
 ```
 
 #### Run a terminal command from CADScript
