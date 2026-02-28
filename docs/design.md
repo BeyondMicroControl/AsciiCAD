@@ -146,9 +146,11 @@ Every cell falls into exactly one of these classes for the purpose of this docum
 **Important precedence rule (must):**
 - Component detection and Box detection must run **before** label and exterior-net tracing, because they define exclusion areas.
 
-### Testing a cell
-
-    CADScript { freeform(0,0,'+') }    // place a '+' character at grid location (0,0) 
+### Test a cell
+    
+    CADScript { freeform(0,0,'+') }    // place one '+' character at cell location (0,0) 
+    
+    CADScript { text(0,1,"How cool is this?") }    //  start a string at cell location (0,1) 
 
 ---
 
