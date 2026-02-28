@@ -405,7 +405,7 @@ Certain **box-border** glyphs include **single-line** protrusions and are allowe
 
 For these glyphs, `wireMask` must reflect **only** the single-line portions (the double-line portions are ignored for net tracing):
 
-`╢`:`W`   `╟`:`E`  `╧`:`N`  `╤`:`S`  `╫`:`E|W`  `╪`:`N|S`
+`╢`:`W`&nbsp;&nbsp;&nbsp;`╟`:`E`&nbsp;&nbsp;&nbsp;`╧`:`N`&nbsp;&nbsp;&nbsp;`╤`:`S`&nbsp;&nbsp;&nbsp;`╫`:`E|W`&nbsp;&nbsp;&nbsp;`╪`:`N|S`
 
 These glyphs are *also* used by Box detection (see Box).
 
