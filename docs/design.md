@@ -1,8 +1,8 @@
 # Design strategy
 
-In January 2026, the idea to develop AsciiCAD was born. As deceiving as it may sound; AsciiCAD was never aiming at becoming a serious application, but built with serious intent nonetheless.
+In January 2026, the idea to develop AsciiCAD was born. As deceiving as it may sound; AsciiCAD was never aiming at becoming a serious application, but was built with serious intent nonetheless.
 
-While mainstream applications, and certainly Computer Aided Design tools are made of **vertical layers** (the complexity makeup, ruled by functions) and **horizontal pillars** (the multimodal makeup or data), thanks to the properties of ASCII characters serving both as meaningful text and visual properties of glyphs, our experiment collapses the horizontals and simplifies the foundation, hoping this way (that's our hypothesis) achieving maturity more quickly.
+While mainstream applications, and certainly Computer Aided Design tools are made of **vertical layers** (the complexity makeup, ruled by functions) and **horizontal pillars** (the multimodal makeup or data), our experiment collapses the horizontals and simplifies the foundation, hoping this way (that's our hypothesis) achieving maturity more quickly.
 
 That collapse is not an accident, but a deliberate strategy—quoting the opening statement for this project: “designed as a ‘digital essay’ on fast-tracking complexity by strategising bare-bones simplicity at its conception.”
 
@@ -76,7 +76,7 @@ All meaning is derived from the grid itself, plus a *catalog* (for components). 
 
 ---
 
-# Policy terms
+# Policy terms (reconciled and expanded)
 
 This document groups rules under a small set of core terms:
 **Grid Cell**, **Wire**, **Component**, **Box**, **Label**, **Exterior Netline**.
@@ -162,25 +162,40 @@ Rules:
 
 The following glyphs MUST be supported at minimum, with the masks shown.
 
-#### Light lines and heavy lines
+#### Light (single) lines
+- `─` : `E|W`
+- `│` : `N|S`
+- `┌` : `E|S`
+- `┐` : `S|W`
+- `└` : `N|E`
+- `┘` : `N|W`
+- `├` : `N|E|S`
+- `┤` : `N|S|W`
+- `┬` : `E|S|W`
+- `┴` : `N|E|W`
+- `┼` : `N|E|S|W`
+- `╴` : `W`
+- `╶` : `E`
+- `╵` : `N`
+- `╷` : `S`
 
-| light<br>line<br>glyph | heavy<br>line<br>glyph | fallback<br>ASCII<br>glyph | mask |
-|:-----:|:----:|:----:|:----:|
-|  `─`  | `━`  | `-`  | E\|W |
-|  `│`  | `┃`  | `\|` | N\|S |
-|  `┌`  | `┏`  | `+`  | E\|S |
-|  `┐`  | `┓`  | `+`  | S\|W |
-|  `└`  | `┗`  | `+`  | N\|E |
-|  `┘`  | `┛`  | `+`  | N\|W |
-|  `├`  | `┣`  | `+`  | N\|E\|S |
-|  `┤`  | `┫`  | `+`  | N\|S\|W |
-|  `┬`  | `┳`  | `+`  | E\|S\|W |
-|  `┴`  | `┻`  | `+`  | N\|E\|W |
-|  `┼`  | `╋`  | `+`  | N\|S\|E\|W |
-|  `╴`  | `╸`  | `-`  | W |
-|  `╶`  | `╺`  | `-`  | E |
-|  `╵`  | `╹`  | `\|` | N |
-|  `╷`  | `╻`  | `\|` | S |
+#### Heavy lines (treated as equivalent connectivity)
+- `━` : `E|W`
+- `┃` : `N|S`
+- `┏` : `E|S`
+- `┓` : `S|W`
+- `┗` : `N|E`
+- `┛` : `N|W`
+- `┣` : `N|E|S`
+- `┫` : `N|S|W`
+- `┳` : `E|S|W`
+- `┻` : `N|E|W`
+- `╋` : `N|E|S|W`
+
+#### ASCII fallbacks (optional but recommended)
+- `-` : `E|W`
+- `|` : `N|S`
+- `+` : `N|E|S|W`
 
 ### Box-border glyphs are NOT wires (MUST)
 
@@ -222,24 +237,41 @@ Let `deg(cell)` be the number of connected neighbors (0..4) after adjacency is c
 
 A wire cell with `deg == 2` is a normal run/turn, not an end and not a junction.
 
-### Crossing without junction (canonical)
+### Crossing without junction (canonical aliases only) (MUST)
 
-The canonical non-junction crossing is the pattern:
+A **non-junction crossing** is permitted **only** in the following explicit canonical 1×3 patterns:
 
-`─│─`
+- `─│─`
+- `─┃─`
+- `━│━`
+- `━┃━`
 
-Meaning:
-- Horizontal and vertical lines cross visually but MUST NOT connect as a junction.
+(Where the middle cell is a **pure vertical** glyph and the side cells are the same **pure horizontal** glyph.)
 
-Detection rule (MUST):
-- During horizontal adjacency evaluation, a purely vertical glyph (mask == `N|S`) MAY be treated as **transparent** *only* when both its left and right neighbors are horizontal-capable and reciprocal.
-- During vertical adjacency evaluation, purely horizontal glyph (mask == `E|W`) MUST NOT be treated as transparent (no vertical bridging).
+#### Detection rule (MUST)
 
-This rule is intentionally asymmetric to keep ambiguity low.
+A cell `p` is a crossing center iff all conditions hold:
 
-(*) Supporting more crossing aliases is possible but MUST be specified explicitly before implementation.
+1) `grid[p] ∈ { "│", "┃" }` (pure vertical only)
+2) `grid[left(p)] == grid[right(p)] ∈ { "─", "━" }` (pure horizontal only, both sides same)
+3) `wireMask(grid[up(p)])` and `wireMask(grid[down(p)])` include the reciprocal vertical directions to/from `p`
+   (so the vertical line is truly continuous through `p`)
 
----
+No other variations are allowed.
+
+#### Connectivity rule (MUST)
+
+If `p` is a crossing center per the rule above:
+
+- Horizontal adjacency MUST treat `p` as **transparent**:
+  - connect `left(p)` ↔ `right(p)` if they reciprocate,
+  - and MUST NOT connect `left(p)` ↔ `p` nor `right(p)` ↔ `p`.
+
+- Vertical adjacency MUST treat `p` as a normal vertical wire cell:
+  - connect `p` ↔ `up(p)` and `p` ↔ `down(p)` if reciprocal.
+
+If `p` is not a crossing center, no transparency is allowed (i.e. a vertical wire glyph does not automatically permit
+horizontal bridging).
 
 ## Component
 ### Definition
@@ -289,13 +321,25 @@ A component instance exists at location `(r0,c0)` if, for some allowed rotation,
 Matching MUST be deterministic:
 - Same input grid + same catalog MUST yield the same set of matches.
 
-### Validity constraint: non-overlap (MUST)
+### Validity constraint: overlap resolution (MUST)
 
-**Valid diagrams MUST NOT contain overlapping components or boxes.**
+The **final** detection output MUST contain **no overlapping component bodies** (including box-defined components).
 
-If the matching stage produces overlapping component body footprints, the implementation MUST:
-- emit an explicit diagnostic (error/warning with involved uids and cells), AND
-- apply a deterministic tie-break to pick a single winner per cell (so downstream steps remain deterministic).
+However, the matching/detection stage MAY produce overlapping or nested *candidates* (e.g. a box inside a larger box,
+or a catalog component inside a larger catalog component). In that case the implementation MUST resolve overlaps
+deterministically so downstream steps remain well-defined.
+
+**Winner selection (MUST):**
+- When two candidates overlap in their **body footprint** (`componentFootprintSet`), the winner MUST be the candidate with
+  the larger footprint area (`|componentFootprintSet|`).
+- Nested candidates are therefore resolved by keeping the larger/outer candidate.
+
+**Tie-break (MUST):**
+1) Larger `|componentFootprintSet|`.
+2) If tied, lexicographically smaller `(rMin,cMin)` of the candidate’s body bounding box.
+3) If still tied, lexicographically smaller `uid`.
+
+The implementation MUST emit a diagnostic listing all discarded candidates and the winner(s).
 
 ### Derived sets per matched component instance (MUST)
 
@@ -437,24 +481,60 @@ Required mappings:
 
 The implementation MUST provide a deterministic detection algorithm.
 
-A minimal compliant algorithm is:
+**Key constraint (MUST):**  
+A box border is defined by **double-line** connectivity *along* the rectangle perimeter.  
+Perpendicular crossings over that border are permitted **only as single-line** protrusions.
+
+Therefore, perimeter scanning MUST reject any cell on an edge (excluding corners) that contains a **double-line**
+protrusion perpendicular to that edge (e.g. `╦`, `╩`, `╠`, `╣`, `╬`). Mixed glyphs that provide only **single-line**
+perpendicular protrusions (e.g. `╤`, `╧`, `╪`, `╢`, `╟`, `╫`) are allowed.
+
+#### Edge predicates (MUST)
+
+Let `g` be a glyph.
+
+- `isTopOrBottomEdgeCell(g)` is true iff:
+  - `boxMask(g)` includes `E|W`, AND
+  - `boxMask(g)` does **not** include `N` and does **not** include `S`.
+
+- `isLeftOrRightEdgeCell(g)` is true iff:
+  - `boxMask(g)` includes `N|S`, AND
+  - `boxMask(g)` does **not** include `E` and does **not** include `W`.
+
+#### Minimal compliant algorithm (MUST)
 
 1) Enumerate candidate top-left corners `╔`.
 2) For each candidate `(r0,c0)`:
-   - Find the top-right corner by scanning right until a `╗` is found, requiring that every visited cell has `boxMask` including `E|W` **or** is a top-edge-compatible glyph (`╦`, or a mixed glyph whose `boxMask` includes `E|W`).
-   - Find the bottom-left corner by scanning down until a `╚` is found, requiring that every visited cell has `boxMask` including `N|S` **or** is a left-edge-compatible glyph (`╠`, or a mixed glyph whose `boxMask` includes `N|S`).
-   - Let the found corners be `(r0,c1)` and `(r1,c0)`. The bottom-right corner MUST be `╝` at `(r1,c1)`.
-3) Validate the entire perimeter:
-   - top edge cells `(r0, c0..c1)` must all have `boxMask` containing `E` and/or `W` appropriately for continuous double-horizontal connectivity.
-   - bottom edge cells `(r1, c0..c1)` likewise.
-   - left edge cells `(r0..r1, c0)` must all have `boxMask` containing `N`/`S` appropriately.
-   - right edge cells `(r0..r1, c1)` likewise.
+   - Scan right from `(r0,c0+1)` until a `╗` is found at `(r0,c1)`.  
+     Every visited intermediate cell `(r0,c)` with `c0 < c < c1` MUST satisfy `isTopOrBottomEdgeCell(grid[r0,c])`.
+   - Scan down from `(r0+1,c0)` until a `╚` is found at `(r1,c0)`.  
+     Every visited intermediate cell `(r,c0)` with `r0 < r < r1` MUST satisfy `isLeftOrRightEdgeCell(grid[r,c0])`.
+   - The bottom-right corner MUST be `╝` at `(r1,c1)`.
+
+3) Validate the entire perimeter (excluding corners):
+   - Top edge interior cells `(r0, c0+1..c1-1)` MUST satisfy `isTopOrBottomEdgeCell`.
+   - Bottom edge interior cells `(r1, c0+1..c1-1)` MUST satisfy `isTopOrBottomEdgeCell`.
+   - Left edge interior cells `(r0+1..r1-1, c0)` MUST satisfy `isLeftOrRightEdgeCell`.
+   - Right edge interior cells `(r0+1..r1-1, c1)` MUST satisfy `isLeftOrRightEdgeCell`.
+   - Corners MUST be exactly `╔`, `╗`, `╚`, `╝`.
+
 4) Reject if any perimeter cell contains a glyph outside the Allowed border glyph set, or if any perimeter cell is `╬`.
+
 5) Define:
    - `boxBorderSet` = all perimeter cell coordinates
    - `boxInteriorSet` = all cells `(r,c)` where `r0 < r < r1` and `c0 < c < c1`
 
-Boxes MUST NOT overlap each other. If multiple detected boxes overlap, emit diagnostics and deterministically choose a resolution.
+#### Overlap resolution for detected boxes (MUST)
+
+Detection MAY find nested/overlapping box *candidates*. The final accepted box set MUST be **non-overlapping**.
+
+If two detected boxes overlap in their `boxBorderSet ∪ boxInteriorSet`, the winner MUST be chosen deterministically:
+
+1) Prefer the larger box by area `(r1-r0+1) * (c1-c0+1)`.
+2) If tied, prefer the one with lexicographically smaller top-left `(r0,c0)`.
+3) If still tied, prefer earlier detection order (row-major scan).
+
+All discarded boxes MUST be reported in diagnostics.
 
 ### Box ports (`BP`) (MUST)
 
@@ -479,68 +559,160 @@ but they are detected from the grid, not from a catalog template.
 
 ## Label
 
-### Definition
+### Definition (MUST)
 
-A **label** is a semantic identifier extracted from the grid that can be attached to:
-- a component instance (component reference / name label), or
-- an exterior net (net label).
+A **label** is semantic text stored on the grid that does **not** participate in geometry:
+- label cells MUST NOT participate in component masking (`componentFootprintSet`, `netTraceMaskSet`), and
+- label cells MUST NOT participate in wire connectivity (`wireMask` / `boxMask`).
 
-Labels are **separate objects**:
-- label areas MUST NOT participate in component footprint or net masking
-- label content MUST NOT affect exterior net tracing (no hidden connectivity)
+All label-related cells MUST be collected into `labelCellSet` and excluded from the masking/tracing sets.
 
-This matches the established intent that labels are not geometry.
+### Label kinds (MUST)
 
-### Label sources (current)
+There are only two label kinds that exist in the **exterior space**:
 
-This document specifies two label sources:
+1) **Component labels** (renamed from “catalog-defined labels”)  
+2) **Net-labels** (materialised as catalog components with `type == "Net"`)
 
-1) **Net-label components** (`type == "Net"`)  
-   - Produce a `LabelID` (see Component: Net-label components).
-   - Used to merge exterior nets.
+The **interior space** (within a component body) MAY also contain labels:
+- Component labels (same rules as exterior), and
+- **Component-end labels** (`CE labels`, also called pin labels), which are direction-sensitive (specified below).
 
-2) **Catalog-defined component label slots**  
-   - A component template MAY define `label_slots` (set of template coordinates) where label characters exist or can be matched.
-   - Labels in these slots belong to the component instance, not to nets.
+### Component label syntax and detection (MUST)
 
-(*) Free-floating text labels near wires are intentionally **out of scope** until specified.
+A component label is a **single-row** bracketed sequence:
 
-### Label character class (MUST)
+`[<text>]`
 
-For label slots, the catalog MUST specify which characters are allowed; if not specified, the default allowed class MUST be:
+Rules:
+- `[` and `]` MUST be on the same row.
+- `<text>` MUST contain at least one 7-bit ASCII character (codepoints `0x20..0x7E`) and MAY include spaces.
+- The extracted label text is `<text>` with leading/trailing spaces trimmed, and MUST contain at least one non-space
+  character to be accepted.
+- Bracketed labels MUST NOT overlap. The first `]` to the right closes the label.
 
-- `A..Z`, `a..z`, `0..9`, `_`
+The cells of `[` + `<text>` + `]` MUST be added to `labelCellSet`.
 
-Spaces are allowed inside a label slot for padding but MUST be trimmed from the extracted label.
+#### Component label anchor (MUST)
 
-### Label-local wildcards (MUST)
+Let `[` be at `(r,cL)` and `]` at `(r,cR)` with `cL < cR`.
 
-The following wildcards are reserved for label matching inside label slots:
+Define the label anchor point in **half-cell coordinates** as:
 
-- `#` matches exactly one digit `0..9`
-- `$` matches exactly one alphanumeric or `_` (same class as default allowed)
+- `labelAnchor = (r + 0.0, (cL + cR) / 2)`
 
-Any additional label wildcards MUST be defined explicitly and MUST be restricted to label slots only.
+(So the anchor can have a `.5` column coordinate.)
 
-### Label extraction (MUST)
+### Component label association (MUST)
 
-Given a matched component instance with label slots:
+Each detected component label MUST be linked to exactly one **eligible** component instance (catalog component or
+box-defined component) by **nearest-anchor**.
 
-1) Read the grid glyphs at the label-slot positions.
-2) Concatenate in a deterministic order:
-   - default: left-to-right, top-to-bottom (row-major) within the smallest bounding rectangle of the slot set
-   - rotation-aware: order MUST rotate consistently with the component rotation
-3) Trim leading/trailing spaces from the resulting string.
-4) The remaining string is the component label; if empty, the component is considered “unlabeled” (no label object emitted).
+#### Component anchor (MUST)
 
-### Derived label artefact
+For any component instance, define:
 
-A label object MUST minimally contain:
+- `componentAnchor = ((rMin + rMax) / 2, (cMin + cMax) / 2)` in half-cell coordinates,
+
+where `(rMin,rMax,cMin,cMax)` is the bounding rectangle of its `componentFootprintSet` (after excluding `labelCellSet`
+and component ends).
+
+#### Distance metric and tie-break (MUST)
+
+- Distance is Manhattan distance on half-cell coordinates:
+  - `dist = abs(rL - rC) + abs(cL - cC)`
+
+Tie-break ordering (deterministic):
+1) Smaller `dist`
+2) Larger `|componentFootprintSet|`
+3) Lexicographically smaller `uid`
+
+Eligibility constraint (MUST):
+- Net-label components (`type == "Net"`) MUST NOT be eligible targets for component labels.
+
+If no eligible component exists, the label MUST be reported as an `OrphanComponentLabel` diagnostic and MUST NOT be
+attached to any component.
+
+### Net-labels (MUST)
+
+A **Net-label** is produced only by a matched catalog component instance with `type == "Net"`.
+
+- Its extracted label ID/text MUST be used to merge exterior nets (see Component: Net-label components and Exterior Netline).
+- Net-label component cells belong to the component footprint policy; their label text itself is still a label and MUST be
+  excluded via `labelCellSet`.
+
+- For `labelCellSet`, the **label-text cells** of a Net-label component instance MUST be derived the same way as `LabelID` extraction:
+  - include any cell whose glyph is not whitespace, is not `§`, and has `wireMask(glyph) == 0`
+  - (i.e. the remaining non-wire glyphs that contribute to the `LabelID` string)
+
+### Component-end labels (`CE labels` / pin labels) (MUST)
+
+A **CE label** is a direction-sensitive label associated to a **component end** located on a **closed double-line**
+component border.
+
+Applicability:
+- CE labels apply only to components (catalog or box-defined) featuring a closed double-line box border.
+
+#### Eligible protrusion glyphs (MUST)
+
+A component end on a double-line border may be represented by:
+
+- Left edge protrusion: `╢` or `╫`
+- Right edge protrusion: `╟` or `╫`
+- Top edge protrusion: `╧` or `╪`
+- Bottom edge protrusion: `╤` or `╪`
+
+These protrusion cells are component-end (`CE`) cells and MAY coincide with `LJ`/`LE` tagging (see Wire).
+
+#### CE label extraction (MUST)
+
+**Horizontal CE labels** (left/right edges) accept multi-character strings.
+
+Let ASCII7 be any character with codepoint `0x20..0x7E` (including space).
+
+1) Left edge (`╢` / `╫`) at `(r,c)`:
+   - scan right starting at `(r,c+1)`
+   - collect consecutive ASCII7 characters
+   - stop when:
+     - a non-ASCII7 character is encountered, OR
+     - two consecutive spaces `"  "` are encountered, OR
+     - grid boundary is reached
+   - strip trailing spaces from the collected string (including any terminating spaces)
+   - accept only if the result contains at least one non-space character
+
+2) Right edge (`╟` / `╫`) at `(r,c)`:
+   - scan left starting at `(r,c-1)` with the same stop conditions
+   - reverse the collected characters to obtain the label text
+   - strip trailing spaces and accept only if it contains at least one non-space character
+
+**Vertical CE labels** (top/bottom edges) are single-character only.
+
+3) Top edge (`╧` / `╪`) at `(r,c)`:
+   - if `(r+1,c)` exists and is ASCII7 and is **not a space**, the CE label text is exactly that one character
+   - otherwise no CE label is present
+   - vertically stacked multi-character labels are NOT allowed
+
+4) Bottom edge (`╤` / `╪`) at `(r,c)`:
+   - if `(r-1,c)` exists and is ASCII7 and is **not a space**, the CE label text is exactly that one character
+   - otherwise no CE label is present
+
+All CE-label character cells used by these rules MUST be added to `labelCellSet`.
+
+#### CE label ownership (MUST)
+
+A CE label is a property of the **component end located at the protrusion cell**. It MUST be emitted as part of the CE artefact, e.g.:
+
+- `CE.pinLabel: string | null`
+
+### Label artefacts (MUST)
+
+A label artefact MUST minimally include:
 
 - `kind`: `"ComponentLabel"` or `"NetLabel"`
-- `text`: extracted label text
-- `owner`: component instance ID (for ComponentLabel) or net ID (for NetLabel)
-- `cells`: list of cell coordinates that contributed to the label
+- `text`: label text
+- `anchor`: `(r,c)` in half-cell coordinates (for ComponentLabel)
+- `owner`: component instance ID (for ComponentLabel) or net ID / LabelID (for NetLabel)
+- `cells`: list of grid cell coordinates that contributed to the label
 
 ---
 
@@ -633,18 +805,12 @@ Each final netline MUST provide at least:
 
 # Contradictions, gaps, and required decisions (separate before further editing)
 
-The following items are explicitly *not fully pinned down* by current text and MUST be resolved before shipping additional behaviour:
+All previously listed “open” items have been resolved by explicit policy:
 
-1) **Component overlap resolution policy (diagnostics + tie-break)**
-   - Valid diagrams MUST NOT overlap components/boxes.
-   - However, matching may still yield overlapping candidates; the deterministic tie-break ordering is still an implementation decision.
+- Box edge scanning forbids **double-line** perpendicular crossings; only **single-line** protrusions are allowed.
+- Component/box overlap candidates are resolved by “**largest footprint wins**” with deterministic tie-breaks.
+- Label scope is explicit (ComponentLabel, NetLabel, and CE pin labels).
+- Crossing aliases are explicit and limited to the listed canonical forms.
 
-2) **Label scope**
-   - Only catalog-defined label slots and Net-label components are specified.
-   - Free-form text labels near wires are not specified yet.
-
-3) **Crossing aliases**
-   - Only the canonical `─│─` crossing is specified.
-   - Any additional aliases must be listed explicitly to avoid ambiguity.
-
-`(*)` indicates a novelty or future feature not yet implemented.
+If new glyphs, new label forms, or additional crossing variants are introduced later, they MUST be added as explicit
+enumerations to avoid ambiguity.
