@@ -76,7 +76,7 @@ All meaning is derived from the grid itself, plus a *catalog* (for components). 
 
 ---
 
-# Policy terms (reconciled and expanded)
+# Policy terms
 
 This document groups rules under a small set of core terms:
 **Grid Cell**, **Wire**, **Component**, **Box**, **Label**, **Exterior Netline**.
