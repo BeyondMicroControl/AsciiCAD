@@ -162,40 +162,26 @@ Rules:
 
 The following glyphs MUST be supported at minimum, with the masks shown.
 
-#### Light (single) lines
-- `─` : `E|W`
-- `│` : `N|S`
-- `┌` : `E|S`
-- `┐` : `S|W`
-- `└` : `N|E`
-- `┘` : `N|W`
-- `├` : `N|E|S`
-- `┤` : `N|S|W`
-- `┬` : `E|S|W`
-- `┴` : `N|E|W`
-- `┼` : `N|E|S|W`
-- `╴` : `W`
-- `╶` : `E`
-- `╵` : `N`
-- `╷` : `S`
+#### Light (single) lines and heavy lines (treated as equivalent connectivity)
 
-#### Heavy lines (treated as equivalent connectivity)
-- `━` : `E|W`
-- `┃` : `N|S`
-- `┏` : `E|S`
-- `┓` : `S|W`
-- `┗` : `N|E`
-- `┛` : `N|W`
-- `┣` : `N|E|S`
-- `┫` : `N|S|W`
-- `┳` : `E|S|W`
-- `┻` : `N|E|W`
-- `╋` : `N|E|S|W`
 
-#### ASCII fallbacks (optional but recommended)
-- `-` : `E|W`
-- `|` : `N|S`
-- `+` : `N|E|S|W`
+| light<br>line<br>glyph | heavy<br>line<br>glyph | fallback<br>ASCII<br>glyph | mask |
+|:-----:|:----:|:----:|:----:|
+|  `─`  | `━`  |   -  | E\|W |
+|  `│`  | `━`  |   |  | N\|S |
+|  `┌`  | `━`  |   +  | E\|S |
+|  `┐`  | `━`  |   +  | S\|W |
+|  `└`  | `━`  |   +  | N\|E |
+|  `┘`  | `━`  |   +  | N\|W |
+|  `├`  | `━`  |   +  | N\|E\|S |
+|  `┤`  | `━`  |   +  | N\|S\|W |
+|  `┬`  | `━`  |   +  | E\|S\|W |
+|  `┴`  | `━`  |   +  | N\|E\|W |
+|  `┼`  | `━`  |   +  | N\|S\|E\|W |
+|  `╴`  | `━`  |   -  | W |
+|  `╶`  | `━`  |   -  | E |
+|  `╵`  | `━`  |   |  | N |
+|  `╷`  | `━`  |   |  | S |
 
 ### Box-border glyphs are NOT wires (MUST)
 
