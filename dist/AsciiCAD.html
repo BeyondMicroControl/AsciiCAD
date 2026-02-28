@@ -2534,7 +2534,8 @@ this.computeBoxRects = function()
 //     tl:{r,c}, br:{r,c},
 //     ... (catalog-only: catalog_idx, rotation, uid)
 //   }
-this.qryLocate = function(criteria)
+// Locate matching catalog components, boxes, and labels according to policy.
+this.qryLocate = function(criteria) 
 {
   const q = criteria || {};
 
@@ -2543,67 +2544,51 @@ this.qryLocate = function(criteria)
   const wantName = (q.name === undefined || q.name === null) ? null : String(q.name);
   const wantMFR  = (q.MFR  === undefined || q.MFR  === null) ? null : String(q.MFR);
 
-  function matchField(val, want)
-  {
+  function matchField(val, want) {
     if (want === null) return true;
-    //return String(val ?? "") === want;
-    return String(val ?? "").match(new RegExp(want,"g")) != null;
+    return String(val ?? "").match(new RegExp(want, "g")) != null;
   }
 
-  function accept(item)
-  {
+  function accept(item) {
     // ref
     if (wantRef !== null && !matchField(item.ref, wantRef)) return false;
-
     // type
-    if (wantType !== null)
-    {
-      if (wantType === "BOX")
-      {
+    if (wantType !== null) {
+      if (wantType === "BOX") {
         if (item.ref !== "DEFINITION") return false;
-      }
-      else
-      {
-        // any non-BOX type (so far) targets catalog items
+      } else if (wantType === "LABEL") {
+        if (item.ref !== "DEFINITION") return false;
+      } else {
+        // any non-BOX/LABEL type (so far) targets catalog items
         if (item.ref !== "CATALOG") return false;
         if (!matchField(item.type, wantType)) return false;
       }
     }
-
     // name
     if (wantName !== null && !matchField(item.name, wantName)) return false;
-
     // MFR only makes sense for catalog items
-    if (wantMFR !== null)
-    {
+    if (wantMFR !== null) {
       if (item.ref !== "CATALOG") return false;
       if (!matchField(item.MFR, wantMFR)) return false;
     }
-
     return true;
   }
 
   const out = [];
 
   // ---- Catalog components (pattern matches) ----
-  // computeMatchOverlay returns matches[] with bounding boxes and catalog metadata.
   const mo = (typeof this.computeMatchOverlay === "function") ? this.computeMatchOverlay() : null;
   const matches = mo?.matches || [];
 
-  if (matches && matches.length)
-  {
+  if (matches && matches.length) {
     const items = (typeof CATALOG !== "undefined" && Array.isArray(CATALOG)) ? CATALOG : [];
-
-    for (let i = 0; i < matches.length; i++)
-    {
+    for (let i = 0; i < matches.length; i++) {
       const m = matches[i];
       const it = items[m.catalog_idx] || {};
-
       const name = String(m.name ?? it.name ?? "");
       const type = String(m.type ?? it.type ?? "");
       const MFR  = String(m.MFR  ?? it.MFR  ?? "");
       const uid  = String(m.uid  ?? (name + "_" + type + "_" + MFR));
-
       const hit = {
         ref: "CATALOG",
         name, type, MFR,
@@ -2613,29 +2598,35 @@ this.qryLocate = function(criteria)
         tl: { r: m.r0, c: m.c0 },
         br: { r: m.r1, c: m.c1 },
       };
-
       if (accept(hit)) out.push(hit);
     }
   }
 
   // ---- Boxes (valid double-line rectangles) ----
-  // Include boxes when:
-  // - explicit type:BOX
-  // - OR no type constraint (so name-only searches can match boxes too)
-  // - OR name constraint (boxes may carry labels)
   const shouldIncludeBoxes = (wantType === null) || (wantType === "BOX") || (wantName !== null);
-  if (shouldIncludeBoxes)
-  {
+  if (shouldIncludeBoxes) {
     const boxes = (typeof this.computeBoxRects === "function") ? this.computeBoxRects() : [];
-    for (let i = 0; i < boxes.length; i++)
-    {
+    for (let i = 0; i < boxes.length; i++) {
       const b = boxes[i];
       if (accept(b)) out.push(b);
     }
   }
 
+  // ---- Labels (text strings) ----
+  const shouldIncludeLabels = (wantType === "LABEL") || (wantName !== null);
+  if (shouldIncludeLabels) {
+    const labels = (typeof this.computeLabelRects === "function") ? this.computeLabelRects() : [];
+    for (let i = 0; i < labels.length; i++) {
+      const l = labels[i];
+      if (accept(l)) out.push(l);
+    }
+  }
+
   return out;
-}
+};
+
+
+
 
 this.qryLocate.help =
 {
@@ -2649,6 +2640,67 @@ this.qryLocate.help =
     "oASC.qryLocate({name:'ATTiny85',MFR:'ATTINY85V-10PU'})"
   ]
 };
+
+
+  // Locate all labels (text strings) on the grid.
+  // Returns [{ ref:"DEFINITION", name, type:"LABEL", tl:{r,c}, br:{r,c} }, ...]
+  this.computeLabelRects = function() {
+    const out = [];
+    const seen = new Set();
+
+    // Iterate through the grid
+    for (let r = 0; r < ROWS; r++) {
+      const row = ascii[r];
+      if (!row) continue;
+
+      let c = 0;
+      while (c < COLS) {
+        const ch = row[c];
+        if (!ch || ch === " " || ch === "\n" || ch === "\r" || ch === "\t") {
+          c++;
+          continue;
+        }
+
+        // Check if this is the start of a label (e.g., alphanumeric string)
+        if (/[a-zA-Z0-9\+-]/.test(ch)) {
+          let label = "";
+          let startC = c;
+          let endC = c;
+
+          // Find the end of the label
+          while (endC < COLS && /[a-zA-Z0-9\.Ω\+-]/.test(row[endC])) {
+            label += row[endC];
+            endC++;
+          }
+
+          if (label.length > 0) {
+            const key = `${r},${startC},${r},${endC - 1}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              out.push({
+                ref: "DEFINITION",
+                name: label,
+                type: "LABEL",
+                tl: { r, c: startC },
+                br: { r, c: endC - 1 }
+              });
+            }
+
+            // Skip ahead to avoid detecting substrings of the same label
+            c = endC;
+          } else {
+            c++;
+          }
+        } else {
+          c++;
+        }
+      }
+    }
+
+    return out;
+  };
+
+
 
 
   this.computeHighlightOverlay = function() 
@@ -8607,7 +8659,7 @@ function updateUI()
 {
   cellsLine.textContent = "Cells: " + COLS + " x " + ROWS;
   zoomLine.textContent = "Zoom: " + Math.round(scale * 100) + "%";
-  coordLine.textContent = hoverCell ? ("Cell: Ln " + (hoverCell.r) + ", Col " + (hoverCell.c)) : "Cell: —";
+  coordLine.textContent = hoverCell ? ("Cell: Col " + (hoverCell.c) + ", Row " + (hoverCell.r)) : "Cell: —";
 
   // Pan offset in "cell units": +x = grid moved right, +y = grid moved up
   // Note: zoom is centered on the screen, so even without "active panning" the grid origin shifts when scale changes.
