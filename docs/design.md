@@ -96,9 +96,7 @@ For each term we specify:
 
 ### Definition
 
-A **grid cell** is the atomic unit of AsciiCAD’s single representation layer.
-
-A grid cell MUST contain **exactly one Unicode code point** (including space).
+A **grid cell** is the atomic unit of AsciiCAD’s single representation layer, which MUST contain **exactly one Unicode code point** (including space).
 
 ### Parsing a source text into a grid
 
@@ -225,10 +223,7 @@ A wire cell with `deg == 2` is a normal run/turn, not an end and not a junction.
 
 A **non-junction crossing** is permitted **only** in the following explicit canonical 1×3 patterns:
 
-- `─│─`
-- `─┃─`
-- `━│━`
-- `━┃━`
+`─│─`  `─┃─`  `━│━`  `━┃━`
 
 (Where the middle cell is a **pure vertical** glyph and the side cells are the same **pure horizontal** glyph.)
 
