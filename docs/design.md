@@ -395,8 +395,8 @@ Box borders are drawn with **double-line** glyphs (and some **mixed** glyphs tha
 - For **net tracing**, border glyphs must not become wires **except** for the single-line protrusions of the mixed connector glyphs (handled via `wireMask` in Wire).
 
 ### Box-border glyphs and net tracing
-All **pure double-line** box-border glyphs must have `wireMask == 0`:
-- `═║╔╗╚╝╠╣╦╩╬` (and any other double-line-only border glyphs)
+All **pure double-line**  glyphs must have `wireMask == 0` as they won't participate in any wiring:
+- `═ ║ ╔ ╗ ╚ ╝ ╠ ╣ ╦ ╩ ╬`
 
 **Rationale:** boxes are detected as container borders and must not accidentally become exterior nets.
 
