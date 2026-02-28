@@ -162,8 +162,7 @@ Rules:
 
 The following glyphs MUST be supported at minimum, with the masks shown.
 
-#### Light (single) lines and heavy lines (treated as equivalent connectivity)
-
+#### Light lines and heavy lines
 
 | light<br>line<br>glyph | heavy<br>line<br>glyph | fallback<br>ASCII<br>glyph | mask |
 |:-----:|:----:|:----:|:----:|
