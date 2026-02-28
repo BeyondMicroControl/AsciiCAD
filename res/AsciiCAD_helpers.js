@@ -151,7 +151,7 @@ function ASC()
     this.pushStrokeIfNonEmpty(stroke);
   }
 
-  this.putCell = function(r, c, next) 
+  this.putCell = function(r, c, str) 
   {
     if(r===undefined || c===undefined || str===undefined) return;  // safe escape if no arguments provided
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
