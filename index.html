@@ -812,6 +812,26 @@ function setHoverFromEvent(e)
   }
 }
 
+function refreshHoverFromLastPointer()
+{
+  // Only meaningful when pointer is on canvas
+  if (lastPointer.zone !== "canvas") return;
+
+  const prevNet = hoverNetIndex;
+
+  hoverCell = oASC.canvasPointToCell(lastPointer.x, lastPointer.y);
+
+  if (netTraceOn) hoverNetIndex = __netIndexAtHoverCell(hoverCell);
+  else hoverNetIndex = -1;
+
+  if (pasteDrag && hoverCell) setPasteAnchorFromPointerCell({ r: hoverCell.r, c: hoverCell.c });
+
+  updateUI();
+
+  // Netlist hover is purely visual; force repaint when it changes
+  if (netTraceOn && hoverNetIndex !== prevNet) oASC.draw("netlistHover");
+}
+
 function __refreshNetlistDebugCE()
 {
   netlistDebugLines = null;
@@ -1608,32 +1628,6 @@ fileInput.addEventListener("change", async (e) =>
 // Clear
 clearBtn.addEventListener("click", () => { oASC.wipeSelection(' '); });
 
-
-/*
-// Paste capture (also allow direct paste anywhere)
-// Paste capture (context-dependent):
-// - If user is working in sidebars (UI or CLI), DO NOT hijack (let native paste work).
-// - Otherwise, hijack paste to paste-preview into the grid.
-window.addEventListener("paste", (e) => 
-{
-  const t = e.target;
-  const ae = document.activeElement;
-
-  // If paste originates from (or focus is in) either sidebar, don't hijack.
-  if (isInSidebar(t) || isInSidebar(ae)) return;
-
-  // If user is editing any text field, don't hijack.
-  if (isEditingTextTarget({ target: t }) || isEditingTextTarget({ target: ae })) return;
-
-  const text = e.clipboardData ? oASC.expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : "";
-  if (typeof text === "string" && text.length > 0) {
-    e.preventDefault();
-    oASC.startPasteWithText(text);
-    canvas.focus();
-  }
-});
-*/
-
 window.addEventListener("paste", (e) => {
   // Decide based on where the user is operating (mouse/pointer), not focus
   const zone = lastPointer.zone;
@@ -1654,31 +1648,6 @@ window.addEventListener("paste", (e) => {
     canvas.focus(); // keep your current behavior
   }
 });
-
-
-/*
-pasteSink.addEventListener("paste", (e) => 
-{
-  const t = e.target;
-  const ae = document.activeElement;
-
-  if (isInSidebar(t) || isInSidebar(ae)) return;
-  if (isEditingTextTarget({ target: t }) || isEditingTextTarget({ target: ae })) return;
-
-  const text = e.clipboardData ? oASC.expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : "";
-  if (typeof text === "string" && text.length > 0) {
-    e.preventDefault();
-    oASC.startPasteWithText(text);
-    canvas.focus();
-  }
-});
-
-pasteSink.addEventListener("paste", (e) => 
-{
-  const text = e.clipboardData ? oASC.expandWideCharsForGrid(e.clipboardData.getData("text/plain")) : '';
-  if (typeof text === "string" && text.length > 0) { e.preventDefault(); oASC.startPasteWithText(text); canvas.focus(); }
-});
-*/
 
 pasteSink.addEventListener("paste", (e) => {
   if (lastPointer.zone !== "canvas") return;
@@ -1710,7 +1679,7 @@ canvas.addEventListener("wheel",(e) =>
 
     const zoomFactor = Math.exp(-e.deltaY * 0.01);
     __zoomAtCanvasPoint(mx, my, zoomFactor);
-
+    refreshHoverFromLastPointer();
     updateUI();
     oASC.draw("onwheel - ctrlKey");
     return;
@@ -1728,6 +1697,7 @@ canvas.addEventListener("wheel",(e) =>
     panX += (flipPanOn?1:-1)*(e.deltaX || 0) / scale;
     panY += (flipPanOn?1:-1)*(e.deltaY || 0) / scale;
     __clampPanToKeepCenterInGrid();
+    refreshHoverFromLastPointer();
     updateUI();
     oASC.draw("onwheel - looksLikeTrackpad");
     return;
@@ -1740,7 +1710,7 @@ canvas.addEventListener("wheel",(e) =>
 
   const zoomFactor = Math.exp(-e.deltaY * 0.01);
   __zoomAtCanvasPoint(mx, my, zoomFactor);
-
+  refreshHoverFromLastPointer();
   updateUI();
   oASC.draw("onwheel - zoom");
 },
