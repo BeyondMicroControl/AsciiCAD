@@ -173,7 +173,7 @@ function ASC()
       examples: ["oASC.freeform(0,0,'+')"]
     }
 
-  this.text = function(r, c, str) 
+  this.text = function(c, r, str) 
   {
     if(r===undefined || c===undefined || str===undefined) return;  // safe escape if no arguments provided
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
