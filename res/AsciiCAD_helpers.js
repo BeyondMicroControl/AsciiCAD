@@ -6,7 +6,7 @@
 //    ██   ██ ███████  ██████ ██ ██  ██████ ██   ██ ██████      ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
 
 
-
+// TODO UPDATE CELL WHEN PANNING !!!
 
 
 //     █████  ███████  ██████                                                                                           
@@ -1583,13 +1583,13 @@ this.qryLocate.help =
         }
 
         // Check if this is the start of a label (e.g., alphanumeric string)
-        if (/[a-zA-Z0-9\+-]/.test(ch)) {
+        if (/[a-zA-Z0-9\+-µ]/.test(ch)) {
           let label = "";
           let startC = c;
           let endC = c;
 
           // Find the end of the label
-          while (endC < COLS && /[a-zA-Z0-9\.Ω\+-]/.test(row[endC])) {
+          while (endC < COLS && /[a-zA-Z0-9\.Ωµ\+-]/.test(row[endC])) {
             label += row[endC];
             endC++;
           }
