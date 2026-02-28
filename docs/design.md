@@ -436,12 +436,12 @@ Required mappings:
 
 | Pure double-line<br>(only straigt and corner parts) | Mixed connectors<br>(double part only) |
 |:---:|:---:|
-| `═` \: `E|W` | `╢` \: `N|S` |
-| `║` \: `N|S` | `╟` \: `N|S` |
-| `╔` \: `E|S` | `╧` \: `E|W` |
-| `╗` \: `S|W` | `╤` \: `E|W` |
-| `╚` \: `N|E` | `╫` \: `N|S` |
-| `╝` \: `N|W` | `╪` \: `E|W` |
+| `═` \: `E\|W` | `╢` \: `N\|S` |
+| `║` \: `N\|S` | `╟` \: `N\|S` |
+| `╔` \: `E\|S` | `╧` \: `E\|W` |
+| `╗` \: `S\|W` | `╤` \: `E\|W` |
+| `╚` \: `N\|E` | `╫` \: `N\|S` |
+| `╝` \: `N\|W` | `╪` \: `E\|W` |
 
 `╬` must not be used for boxes, even though it has a well-defined double mask.
 
