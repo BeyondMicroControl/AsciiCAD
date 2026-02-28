@@ -1,8 +1,8 @@
 # Design strategy
 
-In January 2026, the idea to develop AsciiCAD was born. As deceiving as it may sound; AsciiCAD was never aiming at becoming a serious application, but was built with serious intent nonetheless.
+In January 2026, the idea to develop AsciiCAD was born. As deceiving as it may sound; AsciiCAD was never aiming at becoming a serious application, but built with serious intent nonetheless.
 
-While mainstream applications, and certainly Computer Aided Design tools are made of **vertical layers** (the complexity makeup, ruled by functions) and **horizontal pillars** (the multimodal makeup or data), our experiment collapses the horizontals and simplifies the foundation, hoping this way (that's our hypothesis) achieving maturity more quickly.
+While mainstream applications, and certainly Computer Aided Design tools are made of **vertical layers** (the complexity makeup, ruled by functions) and **horizontal pillars** (the multimodal makeup or data), thanks to the properties of ASCII characters serving both as meaningful text and visual properties of glyphs, our experiment collapses the horizontals and simplifies the foundation, hoping this way (that's our hypothesis) achieving maturity more quickly.
 
 That collapse is not an accident, but a deliberate strategy—quoting the opening statement for this project: “designed as a ‘digital essay’ on fast-tracking complexity by strategising bare-bones simplicity at its conception.”
 
@@ -76,7 +76,7 @@ All meaning is derived from the grid itself, plus a *catalog* (for components). 
 
 ---
 
-# Policy terms (reconciled and expanded)
+# Policy terms
 
 This document groups rules under a small set of core terms:
 **Grid Cell**, **Wire**, **Component**, **Box**, **Label**, **Exterior Netline**.
@@ -162,40 +162,26 @@ Rules:
 
 The following glyphs MUST be supported at minimum, with the masks shown.
 
-#### Light (single) lines
-- `─` : `E|W`
-- `│` : `N|S`
-- `┌` : `E|S`
-- `┐` : `S|W`
-- `└` : `N|E`
-- `┘` : `N|W`
-- `├` : `N|E|S`
-- `┤` : `N|S|W`
-- `┬` : `E|S|W`
-- `┴` : `N|E|W`
-- `┼` : `N|E|S|W`
-- `╴` : `W`
-- `╶` : `E`
-- `╵` : `N`
-- `╷` : `S`
+#### Light (single) lines and heavy lines (treated as equivalent connectivity)
 
-#### Heavy lines (treated as equivalent connectivity)
-- `━` : `E|W`
-- `┃` : `N|S`
-- `┏` : `E|S`
-- `┓` : `S|W`
-- `┗` : `N|E`
-- `┛` : `N|W`
-- `┣` : `N|E|S`
-- `┫` : `N|S|W`
-- `┳` : `E|S|W`
-- `┻` : `N|E|W`
-- `╋` : `N|E|S|W`
 
-#### ASCII fallbacks (optional but recommended)
-- `-` : `E|W`
-- `|` : `N|S`
-- `+` : `N|E|S|W`
+| light<br>line<br>glyph | heavy<br>line<br>glyph | fallback<br>ASCII<br>glyph | mask |
+|:-----:|:----:|:----:|:----:|
+|  `─`  | `━`  | `-`  | E\|W |
+|  `│`  | `┃`  | `\|` | N\|S |
+|  `┌`  | `┏`  | `+`  | E\|S |
+|  `┐`  | `┓`  | `+`  | S\|W |
+|  `└`  | `┗`  | `+`  | N\|E |
+|  `┘`  | `┛`  | `+`  | N\|W |
+|  `├`  | `┣`  | `+`  | N\|E\|S |
+|  `┤`  | `┫`  | `+`  | N\|S\|W |
+|  `┬`  | `┳`  | `+`  | E\|S\|W |
+|  `┴`  | `┻`  | `+`  | N\|E\|W |
+|  `┼`  | `╋`  | `+`  | N\|S\|E\|W |
+|  `╴`  | `╸`  | `-`  | W |
+|  `╶`  | `╺`  | `-`  | E |
+|  `╵`  | `╹`  | `\|` | N |
+|  `╷`  | `╻`  | `\|` | S |
 
 ### Box-border glyphs are NOT wires (MUST)
 
