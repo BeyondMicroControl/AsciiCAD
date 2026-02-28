@@ -148,9 +148,9 @@ Every cell falls into exactly one of these classes for the purpose of this docum
 
 ### Test a cell
     
-    CADScript { freeform(0,0,'+') }    // place one '+' character at cell location (0,0) 
+    CADScript { freeform(0,0,'+') }                // place one '+' character at cell location (0,0) 
     
-    CADScript { text(0,1,"How cool is this?") }    //  start a string at cell location (0,1) 
+    CADScript { text(0,1,"How cool is this?") }    // place a string at cell location (0,1) = just below 
 
 ---
 
