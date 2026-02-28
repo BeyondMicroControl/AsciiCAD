@@ -15,7 +15,6 @@
   - [Label](#label)
   - [Exterior Netline](#exterior-netline)
   - [Interior Netline](#interior-netline)
-- [Contradictions, gaps, and required decisions (separate before further editing)](#contradictions-gaps-and-required-decisions-separate-before-further-editing)
 
 In January 2026, the idea to develop AsciiCAD was born. As deceiving as it may sound; AsciiCAD was never aiming at becoming a serious application, but was built with serious intent nonetheless.
 
