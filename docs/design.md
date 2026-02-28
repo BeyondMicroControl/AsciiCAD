@@ -4,10 +4,10 @@
 
 - [Design strategy](#design-strategy)
 - [Policy design](#policy-design)
-- [AsciiCAD policy](#asciicad-policy)
   - [Specialisation layers](#specialisation-layers)
-- [Normative language and scope](#normative-language-and-scope)
-- [Policy terms (reconciled and expanded)](#policy-terms-reconciled-and-expanded)
+  - [Normative language and scope](#normative-language-and-scope)
+  - [Policy terms (reconciled and expanded)](#policy-terms-reconciled-and-expanded)
+- [AsciiCAD policy](#asciicad-policy)
   - [Grid Cell](#grid-cell)
   - [Wire](#wire)
   - [Component](#component)
@@ -58,7 +58,6 @@ As our design strategy pursues a blueprint for Computer Aided Design (CAD) appli
 
 <br>
 
-# AsciiCAD policy
 ## Specialisation layers
 
              ┌────────────────────────────────┐     Specialisation
@@ -78,9 +77,8 @@ As our design strategy pursues a blueprint for Computer Aided Design (CAD) appli
     │  e.g. electronics/architecture/mind mapping... │   \  /
     └────────────────────────────────────────────────┘    \/
 
----
 
-# Normative language and scope
+## Normative language and scope
 
 This document is a **requirements / policy specification** for **detecting** and **interpreting** schematic features on a 2D **UTF‑8 (Unicode)** character grid.
 
@@ -90,9 +88,7 @@ This document is a **requirements / policy specification** for **detecting** and
 **Single representation layer:**
 All meaning is derived from the grid itself, plus a *catalog* (for components). No separate geometric model is assumed.
 
----
-
-# Policy terms (reconciled and expanded)
+## Policy terms (reconciled and expanded)
 
 This document groups rules under a small set of core terms:
 **Grid Cell**, **Wire**, **Component**, **Box**, **Label**, **Exterior Netline**.
@@ -108,6 +104,7 @@ For each term we specify:
 
 ---
 
+# AsciiCAD policy
 ## Grid Cell
 
 ### Definition
