@@ -168,7 +168,7 @@ The following glyphs MUST be supported at minimum, with the masks shown.
 | light<br>line<br>glyph | heavy<br>line<br>glyph | fallback<br>ASCII<br>glyph | mask |
 |:-----:|:----:|:----:|:----:|
 |  `─`  | `━`  |   -  | E\|W |
-|  `│`  | `━`  |   |  | N\|S |
+|  `│`  | `━`  |   \|  | N\|S |
 |  `┌`  | `━`  |   +  | E\|S |
 |  `┐`  | `━`  |   +  | S\|W |
 |  `└`  | `━`  |   +  | N\|E |
@@ -180,8 +180,8 @@ The following glyphs MUST be supported at minimum, with the masks shown.
 |  `┼`  | `━`  |   +  | N\|S\|E\|W |
 |  `╴`  | `━`  |   -  | W |
 |  `╶`  | `━`  |   -  | E |
-|  `╵`  | `━`  |   |  | N |
-|  `╷`  | `━`  |   |  | S |
+|  `╵`  | `━`  |   \|  | N |
+|  `╷`  | `━`  |   \|  | S |
 
 ### Box-border glyphs are NOT wires (MUST)
 
