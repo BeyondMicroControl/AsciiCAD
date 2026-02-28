@@ -1523,9 +1523,6 @@ this.qryLocate = function(criteria)
   return out;
 };
 
-
-
-
 this.qryLocate.help =
 {
   type: "CADScript_FN",
@@ -1535,7 +1532,7 @@ this.qryLocate.help =
     "oASC.qryLocate({ref:'CAT.+'})",
     "oASC.qryLocate({type:'BOX'})",
     "oASC.qryLocate({name:'ATTiny85'})",
-    "oASC.qryLocate({name:'ATTiny85',MFR:'ATTINY85V-10PU'})"
+    "oASC.qryLocate({name:'ATTiny85'\n\t,MFR:'ATTINY85V-10PU'})"
   ]
 };
 
