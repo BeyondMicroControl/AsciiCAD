@@ -893,8 +893,3 @@ A drawn box can be treated as a component instance for interior-net purposes:
 - mixed connector glyphs (`╢╟╧╤╫╪`) define `CE` pins
 - the same local policy mechanism (temporary grid + transforms + trace) can be applied if the box type defines one
 
----
-
----
-
-# Contradictions, gaps, and required decisions (separate before further editing)
