@@ -158,44 +158,28 @@ Rules:
 - If `wireMask(glyph) != 0`, the glyph MUST be treated as a **wire glyph**.
 - Unknown/unmapped glyphs MUST yield mask `0`.
 
-### Minimum required mapping table (baseline)
+### Minimum required mapping table
 
 The following glyphs MUST be supported at minimum, with the masks shown.
 
-#### Light (single) lines
-- `─` : `E|W`
-- `│` : `N|S`
-- `┌` : `E|S`
-- `┐` : `S|W`
-- `└` : `N|E`
-- `┘` : `N|W`
-- `├` : `N|E|S`
-- `┤` : `N|S|W`
-- `┬` : `E|S|W`
-- `┴` : `N|E|W`
-- `┼` : `N|E|S|W`
-- `╴` : `W`
-- `╶` : `E`
-- `╵` : `N`
-- `╷` : `S`
+| light<br>line<br>glyph | heavy<br>line<br>glyph | fallback<br>ASCII<br>glyph | mask |
+|:-----:|:----:|:----:|:----:|
+|  `─`  | `━`  | `-`  | E\|W |
+|  `│`  | `┃`  | `\|` | N\|S |
+|  `┌`  | `┏`  | `+`  | E\|S |
+|  `┐`  | `┓`  | `+`  | S\|W |
+|  `└`  | `┗`  | `+`  | N\|E |
+|  `┘`  | `┛`  | `+`  | N\|W |
+|  `├`  | `┣`  | `+`  | N\|E\|S |
+|  `┤`  | `┫`  | `+`  | N\|S\|W |
+|  `┬`  | `┳`  | `+`  | E\|S\|W |
+|  `┴`  | `┻`  | `+`  | N\|E\|W |
+|  `┼`  | `╋`  | `+`  | N\|S\|E\|W |
+|  `╴`  | `╸`  | `-`  | W |
+|  `╶`  | `╺`  | `-`  | E |
+|  `╵`  | `╹`  | `\|` | N |
+|  `╷`  | `╻`  | `\|` | S |
 
-#### Heavy lines (treated as equivalent connectivity)
-- `━` : `E|W`
-- `┃` : `N|S`
-- `┏` : `E|S`
-- `┓` : `S|W`
-- `┗` : `N|E`
-- `┛` : `N|W`
-- `┣` : `N|E|S`
-- `┫` : `N|S|W`
-- `┳` : `E|S|W`
-- `┻` : `N|E|W`
-- `╋` : `N|E|S|W`
-
-#### ASCII fallbacks (optional but recommended)
-- `-` : `E|W`
-- `|` : `N|S`
-- `+` : `N|E|S|W`
 
 ### Box-border glyphs are NOT wires (MUST)
 
