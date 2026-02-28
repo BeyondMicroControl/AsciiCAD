@@ -434,21 +434,14 @@ Interpretation:
 
 Required mappings:
 
-**Pure double-line (only straigt and corner parts):**
-- `═` : `E|W`
-- `║` : `N|S`
-- `╔` : `E|S`
-- `╗` : `S|W`
-- `╚` : `N|E`
-- `╝` : `N|W`
-
-**Mixed connectors (double part only):**
-- `╢` : `N|S`   (vertical double)
-- `╟` : `N|S`   (vertical double)
-- `╧` : `E|W`   (horizontal double)
-- `╤` : `E|W`   (horizontal double)
-- `╫` : `N|S`   (vertical double)
-- `╪` : `E|W`   (horizontal double)
+| Pure double-line<br>(only straigt and corner parts) | Mixed connectors<br>(double part only) |
+|:---:|:---:|
+| `═` \: `E|W` | `╢` \: `N|S` |
+| `║` \: `N|S` | `╟` \: `N|S` |
+| `╔` \: `E|S` | `╧` \: `E|W` |
+| `╗` \: `S|W` | `╤` \: `E|W` |
+| `╚` \: `N|E` | `╫` \: `N|S` |
+| `╝` \: `N|W` | `╪` \: `E|W` |
 
 `╬` must not be used for boxes, even though it has a well-defined double mask.
 
