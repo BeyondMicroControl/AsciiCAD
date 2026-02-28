@@ -151,29 +151,7 @@ function ASC()
     this.pushStrokeIfNonEmpty(stroke);
   }
 
-  this.freeform = function(r, c, next) 
-  {
-    if(r===undefined || c===undefined || next===undefined) return;  // safe escape if no arguments provided
-    if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
-      throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
-      
-    this.currentStroke = [];
-    op.ch    = next;
-    op.type  = "place";
-    var cell = {"r":r,"c":c};
-
-    this.applyOpAtCell(cell,op);                   // display character on grid & push coordinate to currentStroke
-    this.pushStrokeIfNonEmpty(this.currentStroke);   // feed undo buffer
-  }
-  this.freeform.help = 
-    {
-      type: "CADScript_FN",
-      usage: "freeform(<i>c</i>,<i>r</i>,<i>char</i>)",
-      desc: "",
-      examples: ["oASC.freeform(0,0,'+')"]
-    }
-
-  this.text = function(c, r, str) 
+  this.putCell = function(r, c, next) 
   {
     if(r===undefined || c===undefined || str===undefined) return;  // safe escape if no arguments provided
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
@@ -191,13 +169,12 @@ function ASC()
 
     this.pushStrokeIfNonEmpty(this.currentStroke);     // feed undo buffer
   }
-  this.text.help = "text(<i>c</i>,<i>r</i>,<i>string</i>)";
-  this.text.help = 
-    {
-      type: "CADScript_FN",
-      usage: "text(<i>c</i>,<i>r</i>,<i>string</i>)",
-      desc: "",
-      examples: ["oASC.text(0,0,\"TEST\")"]
+  this.putCell.help = 
+  {
+    type: "CADScript_FN",
+    usage: "putCell(<i>c</i>,<i>r</i>,<i>string</i>)",
+    desc: "",
+    examples: ["oASC.putCell(0,0,\"TEST\")"]
   }
 
   // subsection catalog items
