@@ -1,5 +1,21 @@
 # Design strategy
 
+## Table of contents
+
+- [Design strategy](#design-strategy)
+- [Policy design](#policy-design)
+- [AsciiCAD policy](#asciicad-policy)
+  - [Specialisation layers](#specialisation-layers)
+- [Normative language and scope](#normative-language-and-scope)
+- [Policy terms (reconciled and expanded)](#policy-terms-reconciled-and-expanded)
+  - [Grid Cell](#grid-cell)
+  - [Wire](#wire)
+  - [Component](#component)
+  - [Box](#box)
+  - [Label](#label)
+  - [Exterior Netline](#exterior-netline)
+- [Contradictions, gaps, and required decisions (separate before further editing)](#contradictions-gaps-and-required-decisions-separate-before-further-editing)
+
 In January 2026, the idea to develop AsciiCAD was born. As deceiving as it may sound; AsciiCAD was never aiming at becoming a serious application, but was built with serious intent nonetheless.
 
 While mainstream applications, and certainly Computer Aided Design tools are made of **vertical layers** (the complexity makeup, ruled by functions) and **horizontal pillars** (the multimodal makeup or data), our experiment collapses the horizontals and simplifies the foundation, hoping this way (that's our hypothesis) achieving maturity more quickly.
@@ -68,7 +84,7 @@ As our design strategy pursues a blueprint for Computer Aided Design (CAD) appli
 
 This document is a **requirements / policy specification** for **detecting** and **interpreting** schematic features on a 2D **UTF‑8 (Unicode)** character grid.
 
-- **MUST / MUST NOT / SHOULD / MAY** are used with their common RFC-style meaning.
+- **must / must not / should / may** are used with their common RFC-style meaning (lowercase to improve readability).
 - All rules in this document are **about detection and interpretation**, not about UI rendering.
 
 **Single representation layer:**
@@ -96,26 +112,26 @@ For each term we specify:
 
 ### Definition
 
-A **grid cell** is the atomic unit of AsciiCAD’s single representation layer, which MUST contain **exactly one Unicode code point** (including space).
+A **grid cell** is the atomic unit of AsciiCAD’s single representation layer, which must contain **exactly one Unicode code point** (including space).
 
 ### Parsing a source text into a grid
 
 Given an input text file:
 
-1) The implementation MUST normalise line endings to `\n` (LF).  
-2) The grid MUST be formed by splitting on `\n` **without** keeping the newline characters.  
+1) The implementation must normalise line endings to `\n` (LF).  
+2) The grid must be formed by splitting on `\n` **without** keeping the newline characters.  
 3) Let `H = number of lines`. Let `W = max code-point length of any line`.  
-4) The in-memory grid MUST be a rectangle of size `H × W`:
-   - A line shorter than `W` MUST be padded on the right with ASCII space `' '` cells.
+4) The in-memory grid must be a rectangle of size `H × W`:
+   - A line shorter than `W` must be padded on the right with ASCII space `' '` cells.
    - A line longer than `W` is impossible by definition; `W` is the maximum observed.
 
 **Rationale:** schematics rely on fixed columns; trimming would destroy alignment.
 
 ### Coordinates and keys
 
-- Coordinates MUST be **0-indexed** integers: `r ∈ [0..H-1]`, `c ∈ [0..W-1]`.
-- The canonical stable identity of a cell MUST be the string key `"r,c"` (row-major).  
-- Any “x,y” telemetry MAY be used in UI (x=column, y=row), but MUST NOT change internal semantics.
+- Coordinates must be **0-indexed** integers: `r ∈ [0..H-1]`, `c ∈ [0..W-1]`.
+- The canonical stable identity of a cell must be the string key `"r,c"` (row-major).  
+- Any “x,y” telemetry may be used in UI (x=column, y=row), but must not change internal semantics.
 
 ### Cell classes (foundational)
 
@@ -128,8 +144,8 @@ Every cell falls into exactly one of these classes for the purpose of this docum
 5) **Label glyph**: participates in a label object (see Label)  
 6) **Other**: everything else (ignored by net detection unless later specialised)
 
-**Important precedence rule (MUST):**
-- Component detection and Box detection MUST run **before** label and exterior-net tracing, because they define exclusion areas.
+**Important precedence rule (must):**
+- Component detection and Box detection must run **before** label and exterior-net tracing, because they define exclusion areas.
 
 ---
 
@@ -145,20 +161,19 @@ Connectivity is defined entirely by a 4-bit directional mask per glyph:
 - `S = 0b0100` (connects to cell at `(r+1, c)`)
 - `W = 0b1000` (connects to cell at `(r, c-1)`)
 
-### `wireMask(glyph)` (MUST)
-
-The implementation MUST provide a deterministic function:
+### `wireMask(glyph)`
+The implementation must provide a deterministic function:
 
 `wireMask: (glyph: Unicode code point) -> 0..15`
 
 Rules:
-- If `wireMask(glyph) == 0`, the glyph MUST be treated as **non-wire** for net tracing.
-- If `wireMask(glyph) != 0`, the glyph MUST be treated as a **wire glyph**.
-- Unknown/unmapped glyphs MUST yield mask `0`.
+- If `wireMask(glyph) == 0`, the glyph must be treated as **non-wire** for net tracing.
+- If `wireMask(glyph) != 0`, the glyph must be treated as a **wire glyph**.
+- Unknown/unmapped glyphs must yield mask `0`.
 
 ### Minimum required mapping table
 
-The following glyphs MUST be supported at minimum, with the masks shown.
+The following glyphs must be supported at minimum, with the masks shown.
 
 | light<br>line<br>glyph | heavy<br>line<br>glyph | fallback<br>ASCII<br>glyph | mask |
 |:-----:|:----:|:----:|:----:|
@@ -179,27 +194,9 @@ The following glyphs MUST be supported at minimum, with the masks shown.
 |  `╷`  | `╻`  | `\|` | S |
 
 
-### Box-border glyphs are NOT wires (MUST)
 
-All **pure double-line** box-border glyphs MUST have `wireMask == 0`:
-- `═║╔╗╚╝╠╣╦╩╬` (and any other double-line-only border glyphs)
-
-**Rationale:** boxes are detected as container borders and must not accidentally become exterior nets.
-
-### Box-border connector glyphs (mixed double + single) (MUST)
-
-Certain **box-border** glyphs include **single-line** protrusions and are allowed to participate in net tracing **only via those single-line protrusions**.
-
-For these glyphs, `wireMask` MUST reflect **only** the single-line portions (the double-line portions are ignored for net tracing):
-
-- `╢` (VERTICAL DOUBLE AND LEFT SINGLE): `W`
-- `╟` (VERTICAL DOUBLE AND RIGHT SINGLE): `E`
-- `╧` (UP SINGLE AND HORIZONTAL DOUBLE): `N`
-- `╤` (DOWN SINGLE AND HORIZONTAL DOUBLE): `S`
-- `╫` (VERTICAL DOUBLE AND HORIZONTAL SINGLE): `E|W`
-- `╪` (VERTICAL SINGLE AND HORIZONTAL DOUBLE): `N|S`
-
-These glyphs are *also* used by Box detection (see Box).
+### Interaction with boxes
+Pure double-line box-border glyphs are not treated as wires. Mixed box-border connector glyphs may contribute to net tracing only via their single-line protrusions; see **Box** for details.
 
 ### Wire adjacency (wire-to-wire)
 
@@ -219,16 +216,14 @@ Let `deg(cell)` be the number of connected neighbors (0..4) after adjacency is c
 
 A wire cell with `deg == 2` is a normal run/turn, not an end and not a junction.
 
-### Crossing without junction (canonical aliases only) (MUST)
-
+### Crossing without junction (canonical aliases only)
 A **non-junction crossing** is permitted **only** in the following explicit canonical 1×3 patterns:
 
 `─│─`  `─┃─`  `━│━`  `━┃━`
 
 (Where the middle cell is a **pure vertical** glyph and the side cells are the same **pure horizontal** glyph.)
 
-#### Detection rule (MUST)
-
+#### Detection rule
 A cell `p` is a crossing center iff all conditions hold:
 
 1) `grid[p] ∈ { "│", "┃" }` (pure vertical only)
@@ -238,15 +233,14 @@ A cell `p` is a crossing center iff all conditions hold:
 
 No other variations are allowed.
 
-#### Connectivity rule (MUST)
-
+#### Connectivity rule
 If `p` is a crossing center per the rule above:
 
-- Horizontal adjacency MUST treat `p` as **transparent**:
+- Horizontal adjacency must treat `p` as **transparent**:
   - connect `left(p)` ↔ `right(p)` if they reciprocate,
-  - and MUST NOT connect `left(p)` ↔ `p` nor `right(p)` ↔ `p`.
+  - and must not connect `left(p)` ↔ `p` nor `right(p)` ↔ `p`.
 
-- Vertical adjacency MUST treat `p` as a normal vertical wire cell:
+- Vertical adjacency must treat `p` as a normal vertical wire cell:
   - connect `p` ↔ `up(p)` and `p` ↔ `down(p)` if reciprocal.
 
 If `p` is not a crossing center, no transparency is allowed (i.e. a vertical wire glyph does not automatically permit
@@ -262,9 +256,8 @@ At the net-policy level, a component instance is treated as:
 - a set of **component ends** (`CE`) where exterior nets attach
 - optional label slots, and optional net-label identity
 
-### Component catalog (MUST)
-
-A component catalog entry MUST provide at minimum:
+### Component catalog
+A component catalog entry must provide at minimum:
 - `uid` (stable ID)
 - `type` (e.g. `"MCU"`, `"R"`, `"Net"`, …)
 - `name` (human-readable)
@@ -277,76 +270,72 @@ A component catalog entry MUST provide at minimum:
 In a component template, each cell glyph is interpreted as one of:
 
 1) **Spacer**: ASCII space `' '`  
-   - MUST be ignored for footprint, masking, and matching constraints (it matches anything).
+   - must be ignored for footprint, masking, and matching constraints (it matches anything).
 
 2) **Fixed glyph**: any non-space glyph that is not a wildcard  
-   - MUST match exactly the same glyph in the design grid.
+   - must match exactly the same glyph in the design grid.
    - Fixed wire-drawing glyphs, if present, are treated as *component art*, not as exterior wiring.
 
-3) **Component-end wildcard**: `§` (MUST)  
-   - `§` MUST match **exactly one wire glyph** in the design grid (i.e. `wireMask(gridGlyph) != 0`).
-   - `§` MUST NOT match space.
-   - `§` MUST be used **only** to represent a **flexible component end** (pin/protrusion zone).
-   - A `§` position MUST be orthogonally adjacent to at least one fixed (non-space, non-label-slot) template glyph cell.  
+3) **Component-end wildcard**: `§` (must)  
+   - `§` must match **exactly one wire glyph** in the design grid (i.e. `wireMask(gridGlyph) != 0`).
+   - `§` must not match space.
+   - `§` must be used **only** to represent a **flexible component end** (pin/protrusion zone).
+   - A `§` position must be orthogonally adjacent to at least one fixed (non-space, non-label-slot) template glyph cell.  
      (This guarantees ends lie on the component perimeter.)
 
 4) **Label-local wildcards**: `#`, `$`, …  
-   - MUST only be legal inside **label slots** and MUST NOT participate in component geometry.
+   - must only be legal inside **label slots** and must not participate in component geometry.
 
-### Matching policy (MUST)
-
+### Matching policy
 A component instance exists at location `(r0,c0)` if, for some allowed rotation, all template cells satisfy their matching rule against the design grid at that placement.
 
-Matching MUST be deterministic:
-- Same input grid + same catalog MUST yield the same set of matches.
+Matching must be deterministic:
+- Same input grid + same catalog must yield the same set of matches.
 
-### Validity constraint: overlap resolution (MUST)
+### Validity constraint: overlap resolution
+The **final** detection output must contain **no overlapping component bodies** (including box-defined components).
 
-The **final** detection output MUST contain **no overlapping component bodies** (including box-defined components).
-
-However, the matching/detection stage MAY produce overlapping or nested *candidates* (e.g. a box inside a larger box,
-or a catalog component inside a larger catalog component). In that case the implementation MUST resolve overlaps
+However, the matching/detection stage may produce overlapping or nested *candidates* (e.g. a box inside a larger box,
+or a catalog component inside a larger catalog component). In that case the implementation must resolve overlaps
 deterministically so downstream steps remain well-defined.
 
-**Winner selection (MUST):**
-- When two candidates overlap in their **body footprint** (`componentFootprintSet`), the winner MUST be the candidate with
+**Winner selection (must):**
+- When two candidates overlap in their **body footprint** (`componentFootprintSet`), the winner must be the candidate with
   the larger footprint area (`|componentFootprintSet|`).
 - Nested candidates are therefore resolved by keeping the larger/outer candidate.
 
-**Tie-break (MUST):**
+**Tie-break (must):**
 1) Larger `|componentFootprintSet|`.
 2) If tied, lexicographically smaller `(rMin,cMin)` of the candidate’s body bounding box.
 3) If still tied, lexicographically smaller `uid`.
 
-The implementation MUST emit a diagnostic listing all discarded candidates and the winner(s).
+The implementation must emit a diagnostic listing all discarded candidates and the winner(s).
 
-### Derived sets per matched component instance (MUST)
-
+### Derived sets per matched component instance
 For a matched component instance, derive the following sets of cell keys `"r,c"`:
 
 1) `componentFootprintSet` (**body footprint**)  
    - All template positions where template glyph is a **fixed glyph** (non-space, non-label-slot, non-`§`).  
-   - MUST exclude all label-slot positions.  
-   - MUST exclude all `§` positions.
+   - must exclude all label-slot positions.  
+   - must exclude all `§` positions.
 
 2) `netTraceMaskSet` (**net blocking mask**)  
-   - In current policy, this MUST be identical to `componentFootprintSet`.  
+   - In current policy, this must be identical to `componentFootprintSet`.  
    - Rationale: exterior nets are traced after filtering out the component body, but **not** its ends.
 
 3) `matchHighlightSet` (**visual match highlight**)  
    - Cells highlighted as a stable part of the component’s shape.  
-   - MUST include all fixed glyph positions in the template.  
-   - MUST exclude spaces, all label slots, and all `§` positions.
+   - must include all fixed glyph positions in the template.  
+   - must exclude spaces, all label slots, and all `§` positions.
 
 4) `componentEndSet` (**end/perimeter cells**)  
    - All grid cell coordinates corresponding to `§` positions in the template (after placement + rotation).  
-   - Every cell in `componentEndSet` MUST be a wire cell in the grid (`wireMask != 0`).  
-   - Every cell in `componentEndSet` MUST be orthogonally adjacent to at least one cell in `componentFootprintSet`.
+   - Every cell in `componentEndSet` must be a wire cell in the grid (`wireMask != 0`).  
+   - Every cell in `componentEndSet` must be orthogonally adjacent to at least one cell in `componentFootprintSet`.
 
 > These sets correspond to the legacy names `footprintSet`, `solidSet`, and `greenSet`, except that `§` is now unambiguously treated as an end and excluded from footprint/masking/highlight.
 
-### Component Ends (`CE`) (MUST)
-
+### Component Ends (`CE`)
 A **Component End** (`CE`) is any cell in `componentEndSet`.
 
 Policy meaning:
@@ -354,17 +343,15 @@ Policy meaning:
 - A `CE` is also an attachment point owned by exactly one component instance.
 
 Consequences:
-- A cell MAY be simultaneously classified as `CE` and `LE`/`LJ` (depending on degree).
-- `CE` cells MUST NOT be removed during exterior net tracing.
+- A cell may be simultaneously classified as `CE` and `LE`/`LJ` (depending on degree).
+- `CE` cells must not be removed during exterior net tracing.
 
-### Net-label components (`type == "Net"`) (MUST)
-
+### Net-label components (`type == "Net"`)
 Some catalog components represent a logical net label. If `type === "Net"`:
 
-- The component instance MUST be considered a **NetLabel source** for net merging (see Exterior Netline).
+- The component instance must be considered a **NetLabel source** for net merging (see Exterior Netline).
 
-#### `LabelID` extraction (MUST)
-
+#### `LabelID` extraction
 Given the (rotation-aware) template glyph grid:
 
 1) Concatenate all glyphs into a string in row-major order.
@@ -377,7 +364,7 @@ Given the (rotation-aware) template glyph grid:
 
 ### Component Bridge Map (*) (future)
 
-Some components tie multiple ends together internally (jumpers, connectors, etc.). Instead of tracing internal art, AsciiCAD MAY use a per-component bridge policy:
+Some components tie multiple ends together internally (jumpers, connectors, etc.). Instead of tracing internal art, AsciiCAD may use a per-component bridge policy:
 
 **Bridge Map contract (proposed):**
 - Input: a matched component instance and its detected CEs.
@@ -386,7 +373,7 @@ Some components tie multiple ends together internally (jumpers, connectors, etc.
 Example:
 - `[[CE1, CE2], [CE3, CE4, CE5]]`
 
-Pin identity SHOULD come from explicit `pin_data` when available; otherwise from CE coordinates.
+Pin identity should come from explicit `pin_data` when available; otherwise from CE coordinates.
 
 ---
 
@@ -399,38 +386,52 @@ Boxes exist to:
 - delimit a rectangular area where local policy applies (grouping / sub-circuit / note region)
 - provide controlled “ports” on the border for net connectivity (via mixed glyphs)
 
-A box MUST be detectable directly from the grid.
+A box must be detectable directly from the grid.
 
 ### Dual semantics: box-border vs net-wire
 
 Box borders are drawn with **double-line** glyphs (and some **mixed** glyphs that include single-line protrusions).
 
-- For **box detection**, border connectivity MUST be validated using **double-line connectivity** (“box connectivity”).
-- For **net tracing**, border glyphs MUST NOT become wires **except** for the single-line protrusions of the mixed connector glyphs (handled via `wireMask` in Wire).
+- For **box detection**, border connectivity must be validated using **double-line connectivity** (“box connectivity”).
+- For **net tracing**, border glyphs must not become wires **except** for the single-line protrusions of the mixed connector glyphs (handled via `wireMask` in Wire).
 
-### Allowed border glyph set (MUST)
+### Box-border glyphs and net tracing
+All **pure double-line** box-border glyphs must have `wireMask == 0`:
+- `═║╔╗╚╝╠╣╦╩╬` (and any other double-line-only border glyphs)
 
-A valid box border MAY use only the following glyphs:
+**Rationale:** boxes are detected as container borders and must not accidentally become exterior nets.
 
-**Pure double-line border glyphs (NOT wires):**
-- `═║╔╗╚╝╠╣╦╩`
+### Box-border connector glyphs (mixed double + single)
+Certain **box-border** glyphs include **single-line** protrusions and are allowed to participate in net tracing **only via those single-line protrusions**.
 
-**Mixed double+single connector glyphs (wire via protrusion only):**
-- `╢╟╧╤╫╪`
+For these glyphs, `wireMask` must reflect **only** the single-line portions (the double-line portions are ignored for net tracing):
 
-**Explicitly disallowed on box borders (MUST):**
-- `╬` (DOUBLE VERTICAL AND HORIZONTAL)  
-  If `╬` is present on the candidate border path, the rectangle MUST be rejected as a box.
+- `╢` (VERTICAL DOUBLE AND LEFT SINGLE): `W`
+- `╟` (VERTICAL DOUBLE AND RIGHT SINGLE): `E`
+- `╧` (UP SINGLE AND HORIZONTAL DOUBLE): `N`
+- `╤` (DOWN SINGLE AND HORIZONTAL DOUBLE): `S`
+- `╫` (VERTICAL DOUBLE AND HORIZONTAL SINGLE): `E|W`
+- `╪` (VERTICAL SINGLE AND HORIZONTAL DOUBLE): `N|S`
 
-### `boxMask(glyph)` (MUST)
+These glyphs are *also* used by Box detection (see Box).
 
-The implementation MUST provide a deterministic function for box detection:
+### Allowed border glyph set
+
+A valid box border may use only the following glyphs:
+
+| Category | Glyphs | Notes |
+|---|---|---|
+| Pure double-line border (not wires) | `═║╔╗╚╝╠╣╦╩` | Used to form a rectangle perimeter (see edge predicates). |
+| Mixed double+single connector glyphs | `╢╟╧╤╫╪` | Double-line part contributes to box detection; single-line part may connect to nets via `wireMask`. |
+| Explicitly disallowed | `╬` | If present on a candidate perimeter, the rectangle is rejected as a box. |
+### `boxMask(glyph)`
+The implementation must provide a deterministic function for box detection:
 
 `boxMask: (glyph: Unicode code point) -> 0..15`
 
 Interpretation:
 - `boxMask` encodes **double-line** border connectivity only.
-- Unknown/unmapped glyphs MUST yield mask `0`.
+- Unknown/unmapped glyphs must yield mask `0`.
 
 Required mappings:
 
@@ -450,22 +451,20 @@ Required mappings:
 - `╫` : `N|S`   (vertical double)
 - `╪` : `E|W`   (horizontal double)
 
-`╬` MUST NOT be used for boxes, even though it has a well-defined double mask.
+`╬` must not be used for boxes, even though it has a well-defined double mask.
 
-### Box detection algorithm (MUST)
+### Box detection algorithm
+The implementation must provide a deterministic detection algorithm.
 
-The implementation MUST provide a deterministic detection algorithm.
-
-**Key constraint (MUST):**  
+**Key constraint (must):**  
 A box border is defined by **double-line** connectivity *along* the rectangle perimeter.  
 Perpendicular crossings over that border are permitted **only as single-line** protrusions.
 
-Therefore, perimeter scanning MUST reject any cell on an edge (excluding corners) that contains a **double-line**
+Therefore, perimeter scanning must reject any cell on an edge (excluding corners) that contains a **double-line**
 protrusion perpendicular to that edge (e.g. `╦`, `╩`, `╠`, `╣`, `╬`). Mixed glyphs that provide only **single-line**
 perpendicular protrusions (e.g. `╤`, `╧`, `╪`, `╢`, `╟`, `╫`) are allowed.
 
-#### Edge predicates (MUST)
-
+#### Edge predicates
 Let `g` be a glyph.
 
 - `isTopOrBottomEdgeCell(g)` is true iff:
@@ -476,22 +475,21 @@ Let `g` be a glyph.
   - `boxMask(g)` includes `N|S`, AND
   - `boxMask(g)` does **not** include `E` and does **not** include `W`.
 
-#### Minimal compliant algorithm (MUST)
-
+#### Minimal compliant algorithm
 1) Enumerate candidate top-left corners `╔`.
 2) For each candidate `(r0,c0)`:
    - Scan right from `(r0,c0+1)` until a `╗` is found at `(r0,c1)`.  
-     Every visited intermediate cell `(r0,c)` with `c0 < c < c1` MUST satisfy `isTopOrBottomEdgeCell(grid[r0,c])`.
+     Every visited intermediate cell `(r0,c)` with `c0 < c < c1` must satisfy `isTopOrBottomEdgeCell(grid[r0,c])`.
    - Scan down from `(r0+1,c0)` until a `╚` is found at `(r1,c0)`.  
-     Every visited intermediate cell `(r,c0)` with `r0 < r < r1` MUST satisfy `isLeftOrRightEdgeCell(grid[r,c0])`.
-   - The bottom-right corner MUST be `╝` at `(r1,c1)`.
+     Every visited intermediate cell `(r,c0)` with `r0 < r < r1` must satisfy `isLeftOrRightEdgeCell(grid[r,c0])`.
+   - The bottom-right corner must be `╝` at `(r1,c1)`.
 
 3) Validate the entire perimeter (excluding corners):
-   - Top edge interior cells `(r0, c0+1..c1-1)` MUST satisfy `isTopOrBottomEdgeCell`.
-   - Bottom edge interior cells `(r1, c0+1..c1-1)` MUST satisfy `isTopOrBottomEdgeCell`.
-   - Left edge interior cells `(r0+1..r1-1, c0)` MUST satisfy `isLeftOrRightEdgeCell`.
-   - Right edge interior cells `(r0+1..r1-1, c1)` MUST satisfy `isLeftOrRightEdgeCell`.
-   - Corners MUST be exactly `╔`, `╗`, `╚`, `╝`.
+   - Top edge interior cells `(r0, c0+1..c1-1)` must satisfy `isTopOrBottomEdgeCell`.
+   - Bottom edge interior cells `(r1, c0+1..c1-1)` must satisfy `isTopOrBottomEdgeCell`.
+   - Left edge interior cells `(r0+1..r1-1, c0)` must satisfy `isLeftOrRightEdgeCell`.
+   - Right edge interior cells `(r0+1..r1-1, c1)` must satisfy `isLeftOrRightEdgeCell`.
+   - Corners must be exactly `╔`, `╗`, `╚`, `╝`.
 
 4) Reject if any perimeter cell contains a glyph outside the Allowed border glyph set, or if any perimeter cell is `╬`.
 
@@ -499,20 +497,18 @@ Let `g` be a glyph.
    - `boxBorderSet` = all perimeter cell coordinates
    - `boxInteriorSet` = all cells `(r,c)` where `r0 < r < r1` and `c0 < c < c1`
 
-#### Overlap resolution for detected boxes (MUST)
+#### Overlap resolution for detected boxes
+Detection may find nested/overlapping box *candidates*. The final accepted box set must be **non-overlapping**.
 
-Detection MAY find nested/overlapping box *candidates*. The final accepted box set MUST be **non-overlapping**.
-
-If two detected boxes overlap in their `boxBorderSet ∪ boxInteriorSet`, the winner MUST be chosen deterministically:
+If two detected boxes overlap in their `boxBorderSet ∪ boxInteriorSet`, the winner must be chosen deterministically:
 
 1) Prefer the larger box by area `(r1-r0+1) * (c1-c0+1)`.
 2) If tied, prefer the one with lexicographically smaller top-left `(r0,c0)`.
 3) If still tied, prefer earlier detection order (row-major scan).
 
-All discarded boxes MUST be reported in diagnostics.
+All discarded boxes must be reported in diagnostics.
 
-### Box ports (`BP`) (MUST)
-
+### Box ports (`BP`)
 A **box port** is a border cell that participates in net tracing via a single-line protrusion:
 
 - `BP` = `{ cell ∈ boxBorderSet | wireMask(gridGlyph(cell)) != 0 }`
@@ -522,8 +518,8 @@ Port connectivity is defined by the normal net rules (Wire):
 - a wire outside the box can connect to the port only if the port’s `wireMask` includes the outward direction and the neighbor wire reciprocates
 
 **Two-sided ports (feedthrough):**
-- If a border cell’s `wireMask` includes both directions across the border (e.g. `E|W` on a vertical edge, or `N|S` on a horizontal edge), then nets MAY pass from exterior region to interior region through that port cell.
-- If a border cell’s `wireMask` includes only one side, nets MAY terminate at that border (but cannot pass through).
+- If a border cell’s `wireMask` includes both directions across the border (e.g. `E|W` on a vertical edge, or `N|S` on a horizontal edge), then nets may pass from exterior region to interior region through that port cell.
+- If a border cell’s `wireMask` includes only one side, nets may terminate at that border (but cannot pass through).
 
 ### Relationship to component policy (clarification)
 
@@ -534,42 +530,38 @@ but they are detected from the grid, not from a catalog template.
 
 ## Label
 
-### Definition (MUST)
-
+### Definition
 A **label** is semantic text stored on the grid that does **not** participate in geometry:
-- label cells MUST NOT participate in component masking (`componentFootprintSet`, `netTraceMaskSet`), and
-- label cells MUST NOT participate in wire connectivity (`wireMask` / `boxMask`).
+- label cells must not participate in component masking (`componentFootprintSet`, `netTraceMaskSet`), and
+- label cells must not participate in wire connectivity (`wireMask` / `boxMask`).
 
-All label-related cells MUST be collected into `labelCellSet` and excluded from the masking/tracing sets.
+All label-related cells must be collected into `labelCellSet` and excluded from the masking/tracing sets.
 
-### Label kinds (MUST)
-
+### Label kinds
 There are only two label kinds that exist in the **exterior space**:
 
 1) **Component labels** (renamed from “catalog-defined labels”)  
 2) **Net-labels** (materialised as catalog components with `type == "Net"`)
 
-The **interior space** (within a component body) MAY also contain labels:
+The **interior space** (within a component body) may also contain labels:
 - Component labels (same rules as exterior), and
 - **Component-end labels** (`CE labels`, also called pin labels), which are direction-sensitive (specified below).
 
-### Component label syntax and detection (MUST)
-
+### Component label syntax and detection
 A component label is a **single-row** bracketed sequence:
 
 `[<text>]`
 
 Rules:
-- `[` and `]` MUST be on the same row.
-- `<text>` MUST contain at least one 7-bit ASCII character (codepoints `0x20..0x7E`) and MAY include spaces.
-- The extracted label text is `<text>` with leading/trailing spaces trimmed, and MUST contain at least one non-space
+- `[` and `]` must be on the same row.
+- `<text>` must contain at least one 7-bit ASCII character (codepoints `0x20..0x7E`) and may include spaces.
+- The extracted label text is `<text>` with leading/trailing spaces trimmed, and must contain at least one non-space
   character to be accepted.
-- Bracketed labels MUST NOT overlap. The first `]` to the right closes the label.
+- Bracketed labels must not overlap. The first `]` to the right closes the label.
 
-The cells of `[` + `<text>` + `]` MUST be added to `labelCellSet`.
+The cells of `[` + `<text>` + `]` must be added to `labelCellSet`.
 
-#### Component label anchor (MUST)
-
+#### Component label anchor
 Let `[` be at `(r,cL)` and `]` at `(r,cR)` with `cL < cR`.
 
 Define the label anchor point in **half-cell coordinates** as:
@@ -578,13 +570,11 @@ Define the label anchor point in **half-cell coordinates** as:
 
 (So the anchor can have a `.5` column coordinate.)
 
-### Component label association (MUST)
-
-Each detected component label MUST be linked to exactly one **eligible** component instance (catalog component or
+### Component label association
+Each detected component label must be linked to exactly one **eligible** component instance (catalog component or
 box-defined component) by **nearest-anchor**.
 
-#### Component anchor (MUST)
-
+#### Component anchor
 For any component instance, define:
 
 - `componentAnchor = ((rMin + rMax) / 2, (cMin + cMax) / 2)` in half-cell coordinates,
@@ -592,8 +582,7 @@ For any component instance, define:
 where `(rMin,rMax,cMin,cMax)` is the bounding rectangle of its `componentFootprintSet` (after excluding `labelCellSet`
 and component ends).
 
-#### Distance metric and tie-break (MUST)
-
+#### Distance metric and tie-break
 - Distance is Manhattan distance on half-cell coordinates:
   - `dist = abs(rL - rC) + abs(cL - cC)`
 
@@ -602,34 +591,31 @@ Tie-break ordering (deterministic):
 2) Larger `|componentFootprintSet|`
 3) Lexicographically smaller `uid`
 
-Eligibility constraint (MUST):
-- Net-label components (`type == "Net"`) MUST NOT be eligible targets for component labels.
+Eligibility constraint (must):
+- Net-label components (`type == "Net"`) must not be eligible targets for component labels.
 
-If no eligible component exists, the label MUST be reported as an `OrphanComponentLabel` diagnostic and MUST NOT be
+If no eligible component exists, the label must be reported as an `OrphanComponentLabel` diagnostic and must not be
 attached to any component.
 
-### Net-labels (MUST)
-
+### Net-labels
 A **Net-label** is produced only by a matched catalog component instance with `type == "Net"`.
 
-- Its extracted label ID/text MUST be used to merge exterior nets (see Component: Net-label components and Exterior Netline).
-- Net-label component cells belong to the component footprint policy; their label text itself is still a label and MUST be
+- Its extracted label ID/text must be used to merge exterior nets (see Component: Net-label components and Exterior Netline).
+- Net-label component cells belong to the component footprint policy; their label text itself is still a label and must be
   excluded via `labelCellSet`.
 
-- For `labelCellSet`, the **label-text cells** of a Net-label component instance MUST be derived the same way as `LabelID` extraction:
+- For `labelCellSet`, the **label-text cells** of a Net-label component instance must be derived the same way as `LabelID` extraction:
   - include any cell whose glyph is not whitespace, is not `§`, and has `wireMask(glyph) == 0`
   - (i.e. the remaining non-wire glyphs that contribute to the `LabelID` string)
 
-### Component-end labels (`CE labels` / pin labels) (MUST)
-
+### Component-end labels (`CE labels` / pin labels)
 A **CE label** is a direction-sensitive label associated to a **component end** located on a **closed double-line**
 component border.
 
 Applicability:
 - CE labels apply only to components (catalog or box-defined) featuring a closed double-line box border.
 
-#### Eligible protrusion glyphs (MUST)
-
+#### Eligible protrusion glyphs
 A component end on a double-line border may be represented by:
 
 - Left edge protrusion: `╢` or `╫`
@@ -637,10 +623,9 @@ A component end on a double-line border may be represented by:
 - Top edge protrusion: `╧` or `╪`
 - Bottom edge protrusion: `╤` or `╪`
 
-These protrusion cells are component-end (`CE`) cells and MAY coincide with `LJ`/`LE` tagging (see Wire).
+These protrusion cells are component-end (`CE`) cells and may coincide with `LJ`/`LE` tagging (see Wire).
 
-#### CE label extraction (MUST)
-
+#### CE label extraction
 **Horizontal CE labels** (left/right edges) accept multi-character strings.
 
 Let ASCII7 be any character with codepoint `0x20..0x7E` (including space).
@@ -671,17 +656,15 @@ Let ASCII7 be any character with codepoint `0x20..0x7E` (including space).
    - if `(r-1,c)` exists and is ASCII7 and is **not a space**, the CE label text is exactly that one character
    - otherwise no CE label is present
 
-All CE-label character cells used by these rules MUST be added to `labelCellSet`.
+All CE-label character cells used by these rules must be added to `labelCellSet`.
 
-#### CE label ownership (MUST)
-
-A CE label is a property of the **component end located at the protrusion cell**. It MUST be emitted as part of the CE artefact, e.g.:
+#### CE label ownership
+A CE label is a property of the **component end located at the protrusion cell**. It must be emitted as part of the CE artefact, e.g.:
 
 - `CE.pinLabel: string | null`
 
-### Label artefacts (MUST)
-
-A label artefact MUST minimally include:
+### Label artefacts
+A label artefact must minimally include:
 
 - `kind`: `"ComponentLabel"` or `"NetLabel"`
 - `text`: label text
@@ -701,9 +684,8 @@ Key clarifications:
 - Component ends (`CE`, i.e. `§`-matched cells) are **not** excluded; they remain part of the traced net geometry.
 - Box borders are not removed; they delimit regions because pure double-line border glyphs are **not wires** (`wireMask == 0`), except at explicit box ports.
 
-### Inputs and filtering (MUST)
-
-Exterior net tracing MUST operate on a filtered view of the grid:
+### Inputs and filtering
+Exterior net tracing must operate on a filtered view of the grid:
 
 Exclude (treat as non-wire / space for adjacency purposes):
 1) all cells in every component instance `netTraceMaskSet` (which equals `componentFootprintSet` in current policy)
@@ -715,9 +697,8 @@ Do NOT exclude:
 
 Apply the canonical crossing rule (`─│─`) during adjacency evaluation (see Wire).
 
-### Trace → attach → merge pipeline (MUST)
-
-Exterior netline discovery MUST follow this conceptual pipeline:
+### Trace → attach → merge pipeline
+Exterior netline discovery must follow this conceptual pipeline:
 
 1) **Trace provisional nets**  
    Build a wire adjacency graph on the filtered grid and compute connected components. Each connected component is a **provisional net**.
@@ -733,31 +714,30 @@ Exterior netline discovery MUST follow this conceptual pipeline:
    - Record an attachment `(componentInstance, CEcell) -> netId`.
 
    Requirements:
-   - Each `CE` MUST be owned by exactly one component instance.
-   - A `CE` MUST attach to exactly one provisional net (possibly a single-cell net).
+   - Each `CE` must be owned by exactly one component instance.
+   - A `CE` must attach to exactly one provisional net (possibly a single-cell net).
 
 4) **Bridge within components (*)**  
-   If a matched component provides a Bridge Map, provisional nets touching bridged CEs MUST be unioned.
+   If a matched component provides a Bridge Map, provisional nets touching bridged CEs must be unioned.
 
-5) **Merge by net labels (MUST for `type=="Net"`)**  
-   If a provisional net attaches to a Net-label component with `LabelID`, then all nets attaching to Net-label components of the same `LabelID` MUST be unioned.
+5) **Merge by net labels (must for `type=="Net"`)**  
+   If a provisional net attaches to a Net-label component with `LabelID`, then all nets attaching to Net-label components of the same `LabelID` must be unioned.
 
 Union-find is the recommended structure for steps (4) and (5), but any deterministic equivalent is acceptable.
 
-### CE adjacency edge-case (MUST)
-
+### CE adjacency edge-case
 Components/boxes do not overlap, but component ends may be **directly adjacent**.
 
 Policy requirement:
-- The tracer MUST allow a cell to be simultaneously classified as `CE` and as `LE`/`LJ`.
+- The tracer must allow a cell to be simultaneously classified as `CE` and as `LE`/`LJ`.
 - If a provisional net consists of exactly **two adjacent wire cells**, and both cells are `CE` cells owned by different components (or a component and a box port),
-  then both cells MUST be reported as `LJ` (connection nodes) and MUST NOT be reported as `LE`, even though their graph degree is 1.
+  then both cells must be reported as `LJ` (connection nodes) and must not be reported as `LE`, even though their graph degree is 1.
 
 **Rationale:** this pattern represents a direct pin-to-pin connection and should be treated as a junction, not as two “dangling ends”.
 
 ### Derived netline artefact (JSON schema)
 
-Each final netline MUST provide at least:
+Each final netline must provide at least:
 
 - `id`: stable net identifier (deterministic across runs)
 - `cells`: list/set of all wire cell coordinates in the final net
@@ -769,12 +749,11 @@ Each final netline MUST provide at least:
 
 `CJ` (component-internal connections) is deferred to Bridge Map (*) and is not required in current policy.
 
-### Invariants (MUST)
-
+### Invariants
 - A wire cell belongs to at most one final netline.
 - A `CE` cell belongs to exactly one component instance and at most one final netline.
-- Every final netline MUST be a union of one or more provisional nets.
-- Merging MUST be transitive and deterministic.
+- Every final netline must be a union of one or more provisional nets.
+- Merging must be transitive and deterministic.
 
 ---
 
@@ -787,5 +766,5 @@ All previously listed “open” items have been resolved by explicit policy:
 - Label scope is explicit (ComponentLabel, NetLabel, and CE pin labels).
 - Crossing aliases are explicit and limited to the listed canonical forms.
 
-If new glyphs, new label forms, or additional crossing variants are introduced later, they MUST be added as explicit
+If new glyphs, new label forms, or additional crossing variants are introduced later, they must be added as explicit
 enumerations to avoid ambiguity.
