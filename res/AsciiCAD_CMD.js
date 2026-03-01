@@ -261,8 +261,16 @@ function TERMINAL(props)
 
   this.print = function(str)
   {
-    if(typeof(str) == "object") this.output("[object]");
-    else this.output(str);
+    if (typeof(str) == "object") { this.output("[object]"); return; }
+
+    const s = String(str ?? "");
+    // If it looks like "grid text" (newlines or leading/trailing spaces), render in <pre>
+    if (s.includes("\n") || /^\s/.test(s) || /\s$/.test(s)) {
+      // Use existing escape helper to avoid HTML injection and keep raw grid text intact
+      this.output("<pre>" + escapeHtml(s) + "</pre>");
+    } else {
+      this.output(s);
+    }
   }
   this.print.help = 
   {
