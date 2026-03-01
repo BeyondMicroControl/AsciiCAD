@@ -158,11 +158,11 @@ function ASC()
       throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
      
     this.currentStroke = [];
-    for(var i=0;i<str.length;i++)
+    for(var i=0,dx=0;i<str.length;i++,dx++)
     {
-      op.ch    = str.charAt(i);
+      op.ch    = str.charAt(i);  if(op.ch=="\n") { dx=-1; r++; continue; }
       op.type  = "place";
-      var cell = {"r":r,"c":c+i};
+      var cell = {"r":r,"c":c+dx};
       if(cell.c < COLS)
         this.applyOpAtCell(cell,op);                   // display character on grid & push coordinate to currentStroke
     }
@@ -177,87 +177,64 @@ function ASC()
     examples: ["oASC.putCell(0,0,\"TEST\")"]
   }
 
- this.N = 0b0001, this.E = 0b0010, this.S = 0b0100, this.W = 0b1000;
+  this.N = 0b0001, this.E = 0b0010, this.S = 0b0100, this.W = 0b1000;
 
-// ---------------------------------------------------------------------------
-// getCell(c,r,len,dir)
-// Returns the content of one or more cells around an origin cell.
-// O = origin position
-// N,E,S,W = strings from origin outward (nearest -> farthest), padded with ' ' when out-of-bounds.
-// If dir is provided, only returns {O:..., <dir>:...}
-// Examples:
-//   getCell(2,2) -> {O:'M'}
-//   getCell(2,2,1) -> {O:'M',N:'H',E:'N',S:'R',W:'L'}
-//   getCell(2,2,2) -> {O:'M',N:'HC',E:'NO',S:'RW',W:'LK'}
-//   getCell(2,2,3,E) -> {O:'M',E:'NO '}
-this.getCell = function(c, r, len, dir) 
-{
-  if (r===undefined || c===undefined) return;
-  if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
-    throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
+  this.getCell = function(c, r, len, dir)
+  {
+    if (r===undefined || c===undefined) return;
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
+      throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
 
-  // len = number of steps away from origin (NOT including origin)
-  const steps = (len === undefined || len === null) ? 0 : Math.max(0, Math.floor(Number(len) || 0));
+    const L = (len === undefined || len === null) ? 1 : Math.max(1, Math.floor(Number(len) || 1));
+    const radius = L - 1;
 
-  // Accept dir as 'N'|'S'|'E'|'W' OR numeric bitmask constants N/E/S/W
-  let wantDir = null;
-  if (dir !== undefined && dir !== null) {
-    if (typeof dir === "number") {
-      if (dir === N) wantDir = "N";
-      else if (dir === E) wantDir = "E";
-      else if (dir === S) wantDir = "S";
-      else if (dir === W) wantDir = "W";
-    } else {
-      wantDir = String(dir).trim().toUpperCase();
+    const charAtSafe = (rr, cc) => {
+      if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) return " ";
+      const row = ascii?.[rr];
+      if (!row) return " ";
+      return (row[cc] === undefined) ? " " : row[cc];
+    };
+
+    // dir is a bitmask; omitted => all directions
+    const fullMask = (N|E|S|W);
+    const mask = (dir === undefined || dir === null) ? fullMask : (typeof dir === "number" ? (dir >>> 0) : fullMask);
+
+    const hasW = (mask & W) !== 0;
+    const hasE = (mask & E) !== 0;
+    const hasN = (mask & N) !== 0;
+    const hasS = (mask & S) !== 0;
+
+    const minC = c - (hasW ? radius : 0);
+    const maxC = c + (hasE ? radius : 0);
+    const minR = r - (hasN ? radius : 0);
+    const maxR = r + (hasS ? radius : 0);
+
+    const lines = [];
+    for (let rr = minR; rr <= maxR; rr++) {
+      let line = "";
+      for (let cc = minC; cc <= maxC; cc++) line += charAtSafe(rr, cc);
+      lines.push(line);              // IMPORTANT: do NOT trim here
     }
-  }
-  const filter = (wantDir === "N" || wantDir === "S" || wantDir === "E" || wantDir === "W") ? wantDir : null;
-
-  const charAtSafe = (rr, cc) => {
-    if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) return " ";
-    const row = ascii?.[rr];
-    if (!row) return " ";
-    return (row[cc] === undefined) ? " " : row[cc];
+    return lines.join("\n");         // IMPORTANT: do NOT sanitize here
   };
 
-  const collect = (dr, dc) => {
-    if (steps <= 0) return "";
-    let s = "";
-    for (let i = 1; i <= steps; i++) {
-      s += charAtSafe(r + dr * i, c + dc * i);
-    }
-    return s;
+  this.getCell.help = 
+  {
+    type: "CADScript_FN",
+    usage: "getCell(c,r,len,dir)",
+    desc:
+      "Windowing-only grid getter. Returns a rectangular text block (\\n separated) in grid order. " +
+      "len controls radius: len=1 origin only; len=2 one cell outward; ... " +
+      "dir is a mask (N|E|S|W) selecting which sides extend from the origin. Omitted dir => N|E|S|W. " +
+      "Off-grid cells are padded with spaces.",
+    examples: [
+      "putCell(0,0,\"ABCDE\\nFGHIJ\\nKLMNO\\nPQRST\\nUVWXY\")",
+      "oTERM.print(getCell(2,2))",
+      "oTERM.print(getCell(1,1,2,N|E|S|W))",
+      "oTERM.print(getCell(1,1,2,W|N|S))",
+      "oTERM.print(getCell(0,0,2,N|W|E|S))"
+    ]
   };
-
-  const out = { O: charAtSafe(r, c) };
-  if (filter) {
-    if (filter === "N") out.N = collect(-1, 0);
-    else if (filter === "S") out.S = collect( 1, 0);
-    else if (filter === "E") out.E = collect( 0, 1);
-    else if (filter === "W") out.W = collect( 0,-1);
-    return out;
-  }
-
-  out.N = collect(-1, 0);
-  out.E = collect( 0, 1);
-  out.S = collect( 1, 0);
-  out.W = collect( 0,-1);
-
-  // If steps==0, keep output minimal like your example {O:'M'}
-  if (steps === 0) { delete out.N; delete out.E; delete out.S; delete out.W; }
-  return out;
-}
-this.getCell.help = {
-  type: "CADScript_FN",
-  usage: "getCell(c,r,len,dir)",
-  desc: "Return origin cell and neighbors as {O,N,E,S,W}. len is steps away; dir optionally filters to one direction.",
-  examples: [
-    "printJSON(getCell(2,2))",
-    "printJSON(getCell(2,2,1))",
-    "printJSON(getCell(2,2,2))",
-    "printJSON(getCell(2,2,3,E))"
-  ]
-}
 
 
   // subsection catalog items
