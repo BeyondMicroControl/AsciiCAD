@@ -19,9 +19,9 @@
     <link rel="stylesheet" href="res/AsciiCAD.css">
     <script type="text/javascript"  src="res/COM_MAIN.js"></script>
     <script type="text/javascript"  src="res/AsciiCAD_helpers.js"></script>
-    <script type="text/javascript"  src="res/CMD_helpers.js"></script>
+    <script type="text/javascript"  src="res/AsciiCAD_CMD.js""></script>
     <script type="text/javascript"  src="res/AsciiCAD_catalog.js"></script>
-    <!--script type="text/javascript"  src="res/codec_pako.min.js"></script-->
+    <script type="text/javascript"  src="res/codec_pako.min.js"></script>
     <!--script type="text/javascript"  src="res/codec_zeroRun.js"></script-->
     <!--script type="text/javascript"  src="res/codec_packBits.js"></script-->
     <!--script type="text/javascript"  src="res/codec_topToken.js"></script-->
@@ -325,7 +325,7 @@ let catalogTab = "All";
 
 
 // Bit flags for connections
-const N = 0b0001, E = 2, S = 4, W = 8;
+const N = 0b0001, E = 0b0010, S = 0b0100, W = 0b1000;
 
 // Only "light" box drawing for now (keeps it simple & readable)
 const glyphToMask = new Map([
