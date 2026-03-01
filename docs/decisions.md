@@ -1013,6 +1013,7 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [x] 11. CADScript { oTERM.printJSON( oASC.qryLocate(_regexp_) ); }  (also fixing function call precedence with await)
 - [x] 11. CADScript {oTERM.print(getCell(2,2,2))}
 - [x] 12. CADScript {oASC.putCell(0,0,"TEST\nABCD")}
+- [x] 13. CADScript {vars.STR = getCell(0,2,3,E)}
 
 ---
 

@@ -27,6 +27,8 @@ function ASC()
   //
   // SECTION: GRID
 
+  this.vars = Object.create(null);
+
   this.CADScript = function()
   {
   }

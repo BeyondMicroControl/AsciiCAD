@@ -226,7 +226,8 @@ AsciiCAD> CADScript { oTERM.printJSON(oASC.qryLocate({type:"M.U"})); }
 CADScript {putCell(0,0,"ABCDE\nFGHIJ\nKLMNO\nPQRST\nUVWXY")}
 CADScript {oTERM.print(getCell(2,2))}         // returns "M"
 CADScript {oTERM.print(getCell(2,2,2))}       // returns "GHI\nLMN\nQRS"
-CADScript {oTERM.printJSON(getCell(0,2,3,E))} // returns "KLM"
+CADScript { vars.STR = getCell(0,2,3,E); }
+CADScript {oTERM.print(vars.STR)}             // returns "KLM"
 ```
 
 #### Exit back to the UI
