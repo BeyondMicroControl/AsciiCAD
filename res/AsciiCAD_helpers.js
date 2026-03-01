@@ -177,6 +177,89 @@ function ASC()
     examples: ["oASC.putCell(0,0,\"TEST\")"]
   }
 
+ this.N = 0b0001, this.E = 0b0010, this.S = 0b0100, this.W = 0b1000;
+
+// ---------------------------------------------------------------------------
+// getCell(c,r,len,dir)
+// Returns the content of one or more cells around an origin cell.
+// O = origin position
+// N,E,S,W = strings from origin outward (nearest -> farthest), padded with ' ' when out-of-bounds.
+// If dir is provided, only returns {O:..., <dir>:...}
+// Examples:
+//   getCell(2,2) -> {O:'M'}
+//   getCell(2,2,1) -> {O:'M',N:'H',E:'N',S:'R',W:'L'}
+//   getCell(2,2,2) -> {O:'M',N:'HC',E:'NO',S:'RW',W:'LK'}
+//   getCell(2,2,3,E) -> {O:'M',E:'NO '}
+this.getCell = function(c, r, len, dir) 
+{
+  if (r===undefined || c===undefined) return;
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
+    throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
+
+  // len = number of steps away from origin (NOT including origin)
+  const steps = (len === undefined || len === null) ? 0 : Math.max(0, Math.floor(Number(len) || 0));
+
+  // Accept dir as 'N'|'S'|'E'|'W' OR numeric bitmask constants N/E/S/W
+  let wantDir = null;
+  if (dir !== undefined && dir !== null) {
+    if (typeof dir === "number") {
+      if (dir === N) wantDir = "N";
+      else if (dir === E) wantDir = "E";
+      else if (dir === S) wantDir = "S";
+      else if (dir === W) wantDir = "W";
+    } else {
+      wantDir = String(dir).trim().toUpperCase();
+    }
+  }
+  const filter = (wantDir === "N" || wantDir === "S" || wantDir === "E" || wantDir === "W") ? wantDir : null;
+
+  const charAtSafe = (rr, cc) => {
+    if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) return " ";
+    const row = ascii?.[rr];
+    if (!row) return " ";
+    return (row[cc] === undefined) ? " " : row[cc];
+  };
+
+  const collect = (dr, dc) => {
+    if (steps <= 0) return "";
+    let s = "";
+    for (let i = 1; i <= steps; i++) {
+      s += charAtSafe(r + dr * i, c + dc * i);
+    }
+    return s;
+  };
+
+  const out = { O: charAtSafe(r, c) };
+  if (filter) {
+    if (filter === "N") out.N = collect(-1, 0);
+    else if (filter === "S") out.S = collect( 1, 0);
+    else if (filter === "E") out.E = collect( 0, 1);
+    else if (filter === "W") out.W = collect( 0,-1);
+    return out;
+  }
+
+  out.N = collect(-1, 0);
+  out.E = collect( 0, 1);
+  out.S = collect( 1, 0);
+  out.W = collect( 0,-1);
+
+  // If steps==0, keep output minimal like your example {O:'M'}
+  if (steps === 0) { delete out.N; delete out.E; delete out.S; delete out.W; }
+  return out;
+}
+this.getCell.help = {
+  type: "CADScript_FN",
+  usage: "getCell(c,r,len,dir)",
+  desc: "Return origin cell and neighbors as {O,N,E,S,W}. len is steps away; dir optionally filters to one direction.",
+  examples: [
+    "printJSON(getCell(2,2))",
+    "printJSON(getCell(2,2,1))",
+    "printJSON(getCell(2,2,2))",
+    "printJSON(getCell(2,2,3,E))"
+  ]
+}
+
+
   // subsection catalog items
   this.cat = function(c, r, a, uid)       // TODO: CONTINUE 
   {
@@ -2498,392 +2581,3 @@ this.qryLocate.help =
 var oASC = new ASC();
 
 
-
-/////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////
-
-                                                                  
-//    ████████ ███████ ██████  ███    ███ ██ ███    ██  █████  ██      
-//       ██    ██      ██   ██ ████  ████ ██ ████   ██ ██   ██ ██      
-//       ██    █████   ██████  ██ ████ ██ ██ ██ ██  ██ ███████ ██      
-//       ██    ██      ██   ██ ██  ██  ██ ██ ██  ██ ██ ██   ██ ██      
-//       ██    ███████ ██   ██ ██      ██ ██ ██   ████ ██   ██ ███████ 
-
-
-
-
-
-
-function TERMINAL(props) 
-{
-  props = props || {};
-
-  // ---- config --------------------------------------------------------------
-  var containerId = props.container || "vanilla-terminal";
-  var userCommands = props.commands || {};
-  var welcome =
-    props.welcome !== undefined ? props.welcome : 'Welcome to <a href="">Vanilla</a> terminal.';
-  var prompt = props.prompt || "";
-  var separator = props.separator || "&gt;";
-
-  // ---- constants -----------------------------------------------------------
-  var STORAGE_KEY = "VanillaTerm";
-  var ROOT_CLASS = "VanillaTerm";
-
-  // ---- helpers -------------------------------------------------------------
-
-  function renderMarkup(shell) {
-    return (
-      '\n      <div class="container">\n' +
-      "        <output></output>\n" +
-      '        <div class="command">\n' +
-      '          <div class="prompt">' +
-      shell.prompt +
-      shell.separator +
-      "</div>\n" +
-      '          <input class="input" spellcheck="false" autofocus />\n' +
-      "        </div>\n" +
-      "      </div>\n    "
-    );
-  }
-
-  function escapeHtml(str) {
-    return String(str)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  function cloneCommandNode(commandEl) {
-    var line = commandEl.cloneNode(true);
-    var input = line.querySelector(".input");
-
-    input.autofocus = false;
-    input.readOnly = true;
-    input.insertAdjacentHTML("beforebegin", escapeHtml(input.value));
-    input.parentNode.removeChild(input);
-
-    line.classList.add("line");
-    return line;
-  }
-
-  function loadHistory() {
-    try {
-      var raw = window.localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (_) {
-      return [];
-    }
-  }
-
-  function saveHistory(history) {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-    } catch (_) {
-      // ignore quota / privacy mode errors
-    }
-  }
-
-  // ---- instance state ------------------------------------------------------
-
-  var builtins =
-    window.VanillaTerminalBuiltins &&
-    typeof window.VanillaTerminalBuiltins.createBuiltInCommands === "function"
-      ? window.VanillaTerminalBuiltins.createBuiltInCommands()
-      : {};
-
-  this.commands = Object.assign({}, userCommands, builtins);
-
-  this.history = loadHistory();
-  this.historyCursor = this.history.length;
-
-  this.shell = { prompt: prompt, separator: separator };
-
-  this.state = {
-    prompt: false, // prompt mode = next ENTER answers a question
-    idle: false,
-  };
-
-  this.onAskCallback = function () {};
-  this.onInputCallback = null;
-
-  // ---- DOM -----------------------------------------------------------------
-
-  var root = document.getElementById(containerId);
-  if (!root) {
-    throw new Error("Container #" + containerId + " doesn't exists.");
-  }
-
-  // Cache DOM
-  root.classList.add(ROOT_CLASS);
-  root.insertAdjacentHTML("beforeEnd", renderMarkup(this.shell));   // Expected behavior in iframe: Blocked autofocusing on a form control in a cross-origin subframe.
-
-  var container = root.querySelector(".container");
-  this.DOM = {
-    root: root,
-    container: container,
-    output: container.querySelector("output"),
-    command: container.querySelector(".command"),
-    input: container.querySelector(".command .input"),
-    prompt: container.querySelector(".command .prompt"),
-  };
-
-  // ---- internal methods that need `this` -----------------------------------
-
-  var self = this;
-
-  function resetCommand() {
-    self.DOM.input.value = "";
-    self.DOM.command.classList.remove("input");
-    self.DOM.command.classList.remove("hidden");
-
-    if (typeof self.DOM.input.scrollIntoView === "function") {
-      self.DOM.input.scrollIntoView({ block: "nearest" });
-    }
-  }
-
-  function handleKeyUp(event) {
-    var key = event.key || "";
-    var code = event.keyCode;
-
-    if (key === "Escape" || code === 27) {
-      self.DOM.input.value = "";
-      event.stopPropagation();
-      event.preventDefault();
-      return;
-    }
-
-    var isUp = key === "ArrowUp" || code === 38;
-    var isDown = key === "ArrowDown" || code === 40;
-    if (!isUp && !isDown) return;
-
-    if (isUp && self.historyCursor > 0) self.historyCursor -= 1;
-    if (isDown && self.historyCursor < self.history.length - 1) self.historyCursor += 1;
-
-    var value = self.history[self.historyCursor];
-    if (value !== undefined) self.DOM.input.value = value;
-  }
-
-  function handleKeyDown(event) {
-    var key = event.key || "";
-    var code = event.keyCode;
-
-    var isEnter = key === "Enter" || code === 13;
-    if (!isEnter) return;
-
-    var commandLine = self.DOM.input.value.trim();
-    if (!commandLine) return;
-
-    // Prompt mode: answer a question instead of dispatching a command
-    if (self.state.prompt) {
-      self.state.prompt = false;
-      self.onAskCallback(commandLine);
-      self.setPrompt(); // restore normal prompt
-      resetCommand();
-      return;
-    }
-
-    // Save in history
-    self.history.push(commandLine);
-    saveHistory(self.history);
-    self.historyCursor = self.history.length;
-
-    // Echo command as output line
-    self.DOM.output.appendChild(cloneCommandNode(self.DOM.command));
-
-    // Hide live command line while processing
-    self.DOM.command.classList.add("hidden");
-    self.DOM.input.value = "";
-
-    // Pre-dispatch hook: allow host to handle the raw line.
-    var parts = commandLine.split(" ");
-    var command = parts[0];
-    var params = parts.slice(1);
-
-
-    if (typeof self.onInputCallback === "function") {
-      try {
-        var handled = self.onInputCallback(command, params, commandLine);
-        if (handled === true) {
-          resetCommand();
-          return;
-        }
-      } catch (err) {
-        self.output("[ERROR] " + escapeHtml(err && err.message ? err.message : String(err)));
-        resetCommand();
-        return;
-      }
-    }
-
-    /*
-    // REMOVED, we prefer to have no built-ins as such, everything should be handled as user command
-
-    // Dispatch (built-ins / user commands)
-    var callback = self.commands[command];
-
-    if (typeof callback === "function") {
-      callback(self, params);
-    } else {
-      self.output("<u>" + escapeHtml(command) + "</u>: command not found.");
-    }
-    */
-  }
-
-  // ---- public API (instance methods defined here) ---------------------------
-
-  
-  this.clear = function () {
-    self.DOM.output.innerHTML = "";
-    resetCommand();
-  };
-
-  this.idle = function () {
-    self.state.idle = true;
-    self.DOM.command.classList.add("idle");
-    self.DOM.prompt.innerHTML = '<div class="spinner"></div>';
-  };
-
-  this.prompt = function (question, callback) {
-    self.state.prompt = true;
-    self.onAskCallback = typeof callback === "function" ? callback : function () {};
-
-    self.DOM.prompt.innerHTML = String(question) + ":";
-    resetCommand();
-    self.DOM.command.classList.add("input");
-  };
-
-  this.onInput = function (callback) {
-    self.onInputCallback = callback;
-  };
-
-  this.output = function (html) {
-    if (html === undefined) html = "&nbsp;";
-    self.DOM.output.insertAdjacentHTML("beforeEnd", "<span>" + html + "</span>");
-    resetCommand();
-  };
-
-  this.print = function(str)
-  {
-    if(typeof(str) == "object") this.output("[object]");
-    else this.output(str);
-  }
-  this.print.help = 
-  {
-    type: "",
-    usage: "print(<i>str</i>)",
-    desc: "",
-    examples: ["oTERM.print(\"DONE\")"]    
-  }
-
-  this.printJSON = function(obj)
-  {
-
-    this.output(formatForOutput(obj));
-
-      function formatForOutput(v) {
-        // already HTML/string: keep as-is
-        if (typeof v === "string") return v;
-
-        // null/undefined
-        if (v == null) return String(v); // \"null\" / \"undefined\"
-
-        // Error objects
-        if (v instanceof Error) {
-          const msg = v.stack || v.message || String(v);
-          return "<pre>" + escapeHtml(msg) + "</pre>";
-        }
-
-        // Try JSON pretty print for objects/arrays
-        if (typeof v === "object") {
-          try {
-            return "<pre>" + escapeHtml(JSON.stringify(v, null, 2)) + "</pre>";
-          } catch (e) {
-            // circular or non-serializable
-            return "<pre>" + escapeHtml(String(v)) + "</pre>";
-          }
-        }
-
-        // numbers, booleans, symbols, functions
-        return "<pre>" + escapeHtml(String(v)) + "</pre>";
-      }
-
-      function escapeHtml(s) {
-        return String(s).replace(/[&<>\"']/g, (ch) => {
-          switch (ch) {
-            case "&": return "&amp;";
-            case "<": return "&lt;";
-            case ">": return "&gt;";
-            case '"': return "&quot;";
-            case "'": return "&#39;";
-            default: return ch;
-          }
-        });
-      }
-  }
-  this.printJSON.help = 
-  {
-    type: "",
-    usage: "printJSON(<i>obj</i>)",
-    desc: "",
-    examples: ["oTERM.printJSON({so:true})"]    
-  }
-
-  this.setPrompt = function (newPrompt) {
-    if (newPrompt === undefined) newPrompt = self.shell.prompt;
-
-    self.shell = { prompt: newPrompt, separator: self.shell.separator };
-    self.state.idle = false;
-
-    self.DOM.command.classList.remove("idle");
-    self.DOM.prompt.innerHTML = String(newPrompt) + self.shell.separator;
-    self.DOM.input.focus();
-  };
-
-  // ---- listeners -----------------------------------------------------------
-
-  // Auto-scroll when new output is appended.
-  var observer = new MutationObserver(function () 
-  {
-    setTimeout(function () {
-      self.DOM.input.scrollIntoView({ block: "nearest" });
-    }, 0);
-  });
-  observer.observe(self.DOM.output, { childList: true, subtree: true });
-
-  // Focus handling: focus the input when clicking inside the terminal,
-  // but do NOT steal focus when selecting/copying text in the output.
-  self.DOM.root.addEventListener(
-    "click",
-    function (ev) {
-      // Ignore clicks outside the terminal root
-      if (!self.DOM.root.contains(ev.target)) return;
-      // Don't steal focus when the user is interacting with the output area (selection/copy)
-      if (self.DOM.output.contains(ev.target)) return;
-      self.DOM.input.focus();
-    },
-    false
-  );
-
-  self.DOM.command.addEventListener(
-    "click",
-    function () {
-      self.DOM.input.focus();
-    },
-    false
-  );
-
-  self.DOM.input.addEventListener("keyup", handleKeyUp, false);
-  self.DOM.input.addEventListener("keydown", handleKeyDown, false);
-
-  // ---- initial output ------------------------------------------------------
-
-  if (welcome) this.output(welcome);
-};
-
-
-var oTERM;
