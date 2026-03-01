@@ -27,17 +27,24 @@ function ASC()
   //
   // SECTION: GRID
 
-  this.vars = Object.create(null);
-
   this.CADScript = function()
   {
   }
   this.CADScript.help = 
   {
-    type: "AsciiCAD_CMD",
+    type:  "AsciiCAD_CMD",
     usage: "CADScript {<i>expression</i>}",
-    desc: "Run a CADScript expression",
+    desc:  "Run a CADScript expression",
     examples: ["CADScript {clear();doUndo()}"]
+  };
+
+  this.vars = Object.create(null);
+  this.vars.help = 
+  {
+    type:  "AsciiCAD_Var",
+    usage: "vars.my_variable = <i>expression<i>;",
+    desc:  "assign a session persistent variable",
+    examples: ["oASC.vars.my_variable = 123","oASC.vars.my_variable = \"ABC\""]
   };
 
   // Stage sizing: ensure integer cell sizes (avoid remainder pixels -> spacing artifacts)
@@ -61,13 +68,13 @@ function ASC()
 
   this.getCellSize = function() { return { cw: baseCellW, ch: baseCellH }; }
 
-    // Resize observer (debounced via rAF)
-  this.resizeRaf = null;
+  // Resize observer (debounced via rAF)
   this.scheduleResize = function() 
   {
-    if (this.resizeRaf != null) return;
-    this.resizeRaf = requestAnimationFrame(() => {
-      this.resizeRaf = null;
+    if (typeof(this.resizeRaf) != "undefined") return;
+    this.resizeRaf = requestAnimationFrame(() => 
+    {
+      delete this.resizeRaf;
       const next = this.computeStageSize();
       if (next.w === stageSize.w && next.h === stageSize.h) return;
       stageSize = next;
