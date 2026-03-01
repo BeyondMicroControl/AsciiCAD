@@ -9157,8 +9157,8 @@ function __cliHandleTerminal(line)
 
         oTERM.output(oCOM.escapeHTML(
           "<u>Options:</u>\n"+
-          "-h  [<i>objName</i>] objTokens\n"+
-          "-h -v [<i>objName</i>] objVariables (same as -hv)\n"
+          "-h  [<i>objName</i>] - list objTokens\n"+
+          "-hv [<i>objName</i>] - list objVariables\n"
         ));
 
         oTERM.output(oCOM.escapeHTML(
@@ -9208,7 +9208,7 @@ function __cliHandleTerminal(line)
     // ... fall through to worker execution if no helpOpt
 
 
-
+    const code = script_node.arguments.raw;
 
     // SEND A JOB TO THE CMD WORKER
     oCMD.runExternalScript(code)
