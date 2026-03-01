@@ -1011,6 +1011,8 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [x] 9. Netlist builder: report netlist in JSON format in Terminal, color nets onmouseover and identify real-time the net number in button sidebar (canvas card). v1.15
 - [ ] 10. Conceptualise bridges (connectors)
 - [x] 11. CADScript { oTERM.printJSON( oASC.qryLocate(_regexp_) ); }  (also fixing function call precedence with await)
+- [x] 11. CADScript {oTERM.print(getCell(2,2,2))}
+- [x] 12. CADScript {oASC.putCell(0,0,"TEST\nABCD")}
 
 ---
 
