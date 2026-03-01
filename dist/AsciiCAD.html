@@ -1253,7 +1253,7 @@ function ASC()
     type: "CADScript_FN",
     usage: "putCell(<i>c</i>,<i>r</i>,<i>string</i>)",
     desc: "",
-    examples: ["oASC.putCell(0,0,\"TEST\")"]
+    examples: ["oASC.putCell(0,0,\"TEST\\nABCD\")"]
   }
 
   this.N = 0b0001, this.E = 0b0010, this.S = 0b0100, this.W = 0b1000;
@@ -1307,7 +1307,6 @@ function ASC()
       "dir is a mask (N|E|S|W) selecting which sides extend from the origin. Omitted dir => N|E|S|W. " +
       "Off-grid cells are padded with spaces.",
     examples: [
-      "putCell(0,0,\"ABCDE\\nFGHIJ\\nKLMNO\\nPQRST\\nUVWXY\")",
       "oTERM.print(getCell(2,2))",
       "oTERM.print(getCell(1,1,2,N|E|S|W))",
       "oTERM.print(getCell(1,1,2,W|N|S))",
