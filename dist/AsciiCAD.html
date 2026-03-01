@@ -1106,6 +1106,8 @@ function ASC()
   //
   // SECTION: GRID
 
+  this.vars = Object.create(null);
+
   this.CADScript = function()
   {
   }
@@ -4811,7 +4813,7 @@ function CMD()
       "    const v = args[i];",
       "    if (typeof v === 'function') {",
       "      throw new Error('Argument ' + i + ' to ' + objName + '.' + fnName + '() is a function. ' +",
-      "                      'Likely a misspelled constant (e.g. BOX_DOUUBLE).');",
+      "                      'Likely a misspelled constant');",
       "    }",
       "  }",
       "}",
@@ -4883,18 +4885,25 @@ function CMD()
 
 
       "function makeContainerProxy(objName) {",
-      "  return new Proxy({}, {",
+      "  const target = Object.create(null);",
+      "  return new Proxy(target, {",
       "    get(_t, prop) {",
       "      const p = String(prop);",
       "      const b = BINDINGS[objName];",
       "      if (b && b.consts && (p in b.consts)) return b.consts[p];",
       "",
-      "      // Optional: special-case output/print to pretty-print objects",
-      "      if (objName === \"oTERM\" && (p === \"output\" || p === \"print\")) {",
-      "        return (...args) => callMainSeq(\"oTERM\", p, args);",
+      "      if (objName === 'oTERM' && (p === 'output' || p === 'print')) {",
+      "        return (...args) => callMainSeq('oTERM', p, args);",
       "      }",
       "",
       "      return (...args) => callMainSeq(objName, p, args);",
+      "    },",
+      "",
+      "    set(_t, prop, _value) {",
+      "      throw new ReferenceError(",
+      "        'Cannot assign to ' + objName + '.' + String(prop) +",
+      "        ' inside CADScript. Use a persistent store, e.g. oASC.vars.' + String(prop)",
+      "      );",
       "    }",
       "  });",
       "}",
@@ -4932,9 +4941,9 @@ function CMD()
       "      // Do not allow confusing container names like ASC (use oASC. or unqualified calls)",
       "      if (p === 'ASC') { throw new ReferenceError('Unknown container: ASC (use oASC. or unqualified calls)'); }",
       "",
-      "      // nicer error for BOX_* typos",
-      "      if (p.indexOf('BOX_') === 0 && (!b || !b.consts || !(p in b.consts))) {",
-      "        throw new ReferenceError('Unknown constant: ' + p + ' (check spelling, e.g. BOX_DOUBLE)');",
+      "      // nicer error for unknown CONSTANT_LIKE identifiers (generic)",
+      "      if (/^[A-Z][A-Z0-9_]*$/.test(p) && (!b || !b.consts || !(p in b.consts))) {",
+      "        throw new ReferenceError('Unknown constant: ' + p);",
       "      }",
       "",
       "      // unqualified calls route to the default container",
