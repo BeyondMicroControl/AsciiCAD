@@ -1106,17 +1106,24 @@ function ASC()
   //
   // SECTION: GRID
 
-  this.vars = Object.create(null);
-
   this.CADScript = function()
   {
   }
   this.CADScript.help = 
   {
-    type: "AsciiCAD_CMD",
+    type:  "AsciiCAD_CMD",
     usage: "CADScript {<i>expression</i>}",
-    desc: "Run a CADScript expression",
+    desc:  "Run a CADScript expression",
     examples: ["CADScript {clear();doUndo()}"]
+  };
+
+  this.vars = Object.create(null);
+  this.vars.help = 
+  {
+    type:  "AsciiCAD_Var",
+    usage: "vars.my_variable = <i>expression<i>;",
+    desc:  "assign a session persistent variable",
+    examples: ["oASC.vars.my_variable = 123","oASC.vars.my_variable = \"ABC\""]
   };
 
   // Stage sizing: ensure integer cell sizes (avoid remainder pixels -> spacing artifacts)
@@ -1140,13 +1147,13 @@ function ASC()
 
   this.getCellSize = function() { return { cw: baseCellW, ch: baseCellH }; }
 
-    // Resize observer (debounced via rAF)
-  this.resizeRaf = null;
+  // Resize observer (debounced via rAF)
   this.scheduleResize = function() 
   {
-    if (this.resizeRaf != null) return;
-    this.resizeRaf = requestAnimationFrame(() => {
-      this.resizeRaf = null;
+    if (typeof(this.resizeRaf) != "undefined") return;
+    this.resizeRaf = requestAnimationFrame(() => 
+    {
+      delete this.resizeRaf;
       const next = this.computeStageSize();
       if (next.w === stageSize.w && next.h === stageSize.h) return;
       stageSize = next;
@@ -9079,72 +9086,130 @@ function __cliHandleTerminal(line)
     const values = Object.values(oASC);
     const types = values.map(v => v === null ? "null" : Array.isArray(v) ? "array" : typeof v);
 
-    const code = script_node.arguments.raw;
+    // ...
     const options = script_node.options;
+    var helpVarsOnly = false;
+    var helpOpt = null;
 
-    for(i in options)
+    function __JSvarCollector(obj, opts)
     {
-      switch(options[i]?.key)
+      opts = opts || {};
+      const rows = [];
+      const keys = Object.keys(obj || {}).sort();
+      for (const k of keys)
       {
-        case "h":                 
+        const v = obj[k];
+        if (typeof v === "function") continue;
+        if (opts.filter && opts.filter.indexOf(k) >= 0) continue;
 
-          if(options[i]?.value == true)         // responding to CADScript -h
-          {
-            var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["usage"]});
-            var str = oCOM.AsciiTable(tokenlist,
-            {"header":false
-            ,"rowLine":false
-            ,"colLine":false
-            ,"style" :"─│├┼┤└┴┘┏┳┓ ┃"
-            ,"Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║"
-            ,"sort":null
-            ,"max":[null,null]
-            ,"align":"LL"
-            ,"Halign":"CC"
-            });
+        const t = (v === null) ? "null" : Array.isArray(v) ? "array" : typeof v;
 
-            oTERM.output(oCOM.escapeHTML( "<u>Options:</u>\n"+
-              "-h [<i>objName</i>] objList / objTokens\n"
-            ));
+        let val = "";
+        try {
+          if (t === "string") val = v.length > 80 ? (v.slice(0,77) + "...") : v;
+          else if (t === "number" || t === "boolean" || t === "null" || t === "undefined") val = String(v);
+          else if (t === "array") val = "[array " + v.length + "]";
+          else val = "[object]";
+        } catch (e) { val = "[unprintable]"; }
 
-            oTERM.output(oCOM.escapeHTML( "<u>BuiltIn (oASC) token scope:</u>\n"+str ));
+        rows.push([k, t, val]);
+      }
+      return rows;
+    }
 
-            var list = [];
-            list.push("<u>Other object names:</u>");
-            for(var i in oCMD._bindings)
-              list.push(i);
-            oTERM.output(oCOM.escapeHTML( list.join("\n") ));
-          }
-          else if(typeof(options[i]?.value)=="string")  // // responding to CADScript -h [objName]
-          {
-              var list = [];
-              var searchBindings = options[i]?.value.split(",");
-              for(var i=0;i<searchBindings.length;i++)
-              {
-                list.push("<u>"+searchBindings[i]+" token details:</u>");
-                var obj = oCMD._bindings[searchBindings[i]]
-                var tokenlist = [["SYNTAX","EXAMPLES"]]
-                                .concat( oCOM.JShelpCollector(obj,{"sort":true,"filter":["usage","examples"]}) );
-                var str = oCOM.AsciiTable(tokenlist,
-                  {"header":true
-                  ,"rowLine":true
-                  ,"colLine":true
-                  ,"style" : "─│├┼┤└┴┘┌┬┐ ┃"
-                  ,"Hstyle": "━┃┡╇┩┗┻┛┏┳┓ ║"
-                  ,"sort":0
-                  ,"max":[null,null]
-                  ,"align":"LL"
-                  ,"Halign":"CC"
-                  });
-              list.push( str );
-              oTERM.output(oCOM.escapeHTML( list.join("\n") )); 
-            }         
-          }
-          return true;
-        break;
-       
+    for (var oi = 0; oi < options.length; oi++)
+    {
+      switch(options[oi]?.key)
+      {
+        case "v":
+          helpVarsOnly = true;
+          continue;
+
+        case "h":
+          helpOpt = options[oi];
+          continue;
       }
     }
+
+    // Render help once (order-independent)
+    if (helpOpt)
+    {
+      // --- This is your existing "case h" body, but reading helpOpt and helpVarsOnly ---
+      if (helpOpt.value === true)
+      {
+        var str;
+        if (helpVarsOnly)
+        {
+          var tokenlist = [["NAME","TYPE","VALUE"]].concat(__JSvarCollector(oASC));
+          str = oCOM.AsciiTable(tokenlist,
+          {"header":true,"rowLine":true,"colLine":true,
+          "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
+          "sort":0,"max":[null,null,null],"align":"LLL","Halign":"CCC"});
+        }
+        else
+        {
+          var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["usage"]});
+          str = oCOM.AsciiTable(tokenlist,
+          {"header":false,"rowLine":false,"colLine":false,
+          "style":"─│├┼┤└┴┘┏┳┓ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
+          "sort":null,"max":[null,null],"align":"LL","Halign":"CC"});
+        }
+
+        oTERM.output(oCOM.escapeHTML(
+          "<u>Options:</u>\n"+
+          "-h  [<i>objName</i>] objTokens\n"+
+          "-h -v [<i>objName</i>] objVariables (same as -hv)\n"
+        ));
+
+        oTERM.output(oCOM.escapeHTML(
+          (helpVarsOnly ? "<u>BuiltIn (oASC) variable scope:</u>\n"
+                        : "<u>BuiltIn (oASC) token scope:</u>\n") + str
+        ));
+
+        var list = [];
+        list.push("<u>Other object names:</u>");
+        for (var bn in oCMD._bindings) list.push(bn);
+        oTERM.output(oCOM.escapeHTML(list.join("\n")));
+      }
+      else if (typeof(helpOpt.value) === "string")
+      {
+        // keep your existing "-h objName" branch, switching collector based on helpVarsOnly
+        // (same as you already wrote)
+
+          var list = [];
+          var searchBindings = options[0]?.value.split(",");
+          for(var i=0;i<searchBindings.length;i++)
+          {
+            const name = searchBindings[i].trim();
+            var obj = oCMD._bindings[name];
+
+  
+              list.push("<u>"+name+" token details:</u>");
+              var tokenlist = [["SYNTAX","EXAMPLES"]]
+                              .concat( oCOM.JShelpCollector(obj,{"sort":true,"filter":["usage","examples"]}) );
+              var str = oCOM.AsciiTable(tokenlist,
+                {"header":true
+                ,"rowLine":true
+                ,"colLine":true
+                ,"style" : "─│├┼┤└┴┘┌┬┐ ┃"
+                ,"Hstyle": "━┃┡╇┩┗┻┛┏┳┓ ║"
+                ,"sort":0
+                ,"max":[null,null]
+                ,"align":"LL"
+                ,"Halign":"CC"
+                });
+              list.push(str);
+            
+          }
+          oTERM.output(oCOM.escapeHTML( list.join("\n") ));
+      }
+      return true;
+    }
+    // ... fall through to worker execution if no helpOpt
+
+
+
+
     // SEND A JOB TO THE CMD WORKER
     oCMD.runExternalScript(code)
       .then(() => { oASC.draw("runExternalScript"); })
@@ -9158,6 +9223,10 @@ function __cliHandleTerminal(line)
     oCMD.run(line);
   }
 }
+
+
+
+
 
 
 // If you want it global like pako/LZSS:
