@@ -220,6 +220,15 @@ AsciiCAD> CADScript {oCMD.run("clear")};
 ```text
 AsciiCAD> CADScript { oTERM.printJSON(oASC.qryLocate({type:"M.U"})); }
 ```
+#### Run a query command + JSON printing from CADScript
+
+```text
+CADScript {putCell(0,0,"ABCDE"); putCell(0,1,"FGHIJ"); putCell(0,2,"KLMNO"); putCell(0,3,"PQRST"); putCell(0,4,"UVWXY"); }
+CADScript {printJSON(getCell(2,2))} // returns {O:'M'}
+CADScript {printJSON(getCell(2,2,1))} // returns {O:'M',N:'H',E:'N',S:'R',W:'L'}
+CADScript {printJSON(getCell(2,2,2))} // returns {O:'M',N:'HC',E:'NO',S:'RW',W:'LK'}
+CADScript {printJSON(getCell(2,2,3,E))} // returns {O:'M',E:'NO '}
+```
 
 #### Exit back to the UI
 ```text
