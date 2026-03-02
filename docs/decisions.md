@@ -1016,6 +1016,7 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [x] 13. CADScript {vars.STR = getCell(0,2,3,E)}
 - [x] 14. abort pasteDrag when user is pressing the 'esc' key
 - [ ] Extend oASC.cat() parameter to prefill wildcard characters in labels
+         example:   cat(0,0,0,'ATTiny85_MCU_ATTINY85V-10PU'); (getLabel(0,0,"label>>","loc>>")) oTERM.prompt("?",">>label","####",true); (setLabel("label",">>loc"))
 - [x] CADScript prompt() -> demonstrate how to process user input
 - [ ] CADScript setPrompt() -> always add CADScript and put the entire input between {}
 - [ ] Write a gentle sanityCheck for each CADScript command
