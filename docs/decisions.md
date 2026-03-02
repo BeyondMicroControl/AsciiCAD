@@ -1015,6 +1015,7 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [x] 12. CADScript {oASC.putCell(0,0,"TEST\nABCD")}
 - [x] 13. CADScript {vars.STR = getCell(0,2,3,E)}
 - [x] 14. abort pasteDrag when user is pressing the 'esc' key
+- [ ] Extend oASC.cat() parameter to prefill wildcard characters in labels
 
 ---
 
