@@ -94,7 +94,7 @@ function TERMINAL(props)
   this.history = loadHistory();
   this.historyCursor = this.history.length;
 
-  this.shell = { prompt: prompt, separator: separator };
+  this._shell = { prompt: prompt, separator: separator };
 
   this.state = {
     prompt: false, // prompt mode = next ENTER answers a question
@@ -113,7 +113,7 @@ function TERMINAL(props)
 
   // Cache DOM
   root.classList.add(ROOT_CLASS);
-  root.insertAdjacentHTML("beforeEnd", renderMarkup(this.shell));   // Expected behavior in iframe: Blocked autofocusing on a form control in a cross-origin subframe.
+  root.insertAdjacentHTML("beforeEnd", renderMarkup(this._shell));   // Expected behavior in iframe: Blocked autofocusing on a form control in a cross-origin subframe.
 
   var container = root.querySelector(".container");
   this.DOM = {
@@ -212,18 +212,7 @@ function TERMINAL(props)
       }
     }
 
-    /*
-    // REMOVED, we prefer to have no built-ins as such, everything should be handled as user command
 
-    // Dispatch (built-ins / user commands)
-    var callback = self.commands[command];
-
-    if (typeof callback === "function") {
-      callback(self, params);
-    } else {
-      self.output("<u>" + escapeHtml(command) + "</u>: command not found.");
-    }
-    */
   }
 
   // ---- public API (instance methods defined here) ---------------------------
@@ -233,14 +222,40 @@ function TERMINAL(props)
     self.DOM.output.innerHTML = "";
     resetCommand();
   };
-
-  this.idle = function () {
-    self.state.idle = true;
-    self.DOM.command.classList.add("idle");
-    self.DOM.prompt.innerHTML = '<div class="spinner"></div>';
+  this.clear.help = 
+  {
+    type:  "TERMINAL_Fn",
+    usage: "clear()",
+    desc:  "clear terminal screen",
+    examples:  ["oTERM.clear()"]
   };
 
-  this.prompt = function (question, callback) {
+  this.idle = function () 
+  {
+    self.state.idle = !self.state.idle;
+    if(self.state.idle)
+    {
+      self.DOM.command.classList.add("idle");
+      self.DOM.prompt.innerHTML = '<div class="spinner"></div>';
+    }
+    else
+    {
+      self.DOM.command.classList.remove("idle");
+      self.DOM.prompt.innerHTML = self._shell.prompt + self._shell.separator;
+      self.DOM.input.focus();
+    }
+
+  };
+  this.idle.help = 
+  {
+    type: "TERMINAL_Fn",
+    usage: "idle()",
+    desc: "toggle the terminal busy (call a second time to reset to available)",
+    examples: ["oTERM.idle(); <i>long process</i> oTERM.idle();"]    
+  }
+
+  this.prompt = function (question, callback) 
+  {
     self.state.prompt = true;
     self.onAskCallback = typeof callback === "function" ? callback : function () {};
 
@@ -253,7 +268,8 @@ function TERMINAL(props)
     self.onInputCallback = callback;
   };
 
-  this.output = function (html) {
+  this.output = function (html) 
+  {
     if (html === undefined) html = "&nbsp;";
     self.DOM.output.insertAdjacentHTML("beforeEnd", "<span>" + html + "</span>");
     resetCommand();
@@ -274,7 +290,7 @@ function TERMINAL(props)
   }
   this.print.help = 
   {
-    type: "",
+    type: "TERMINAL_Fn",
     usage: "print(<i>str</i>)",
     desc: "",
     examples: ["oTERM.print(\"DONE\")"]    
@@ -327,22 +343,30 @@ function TERMINAL(props)
   }
   this.printJSON.help = 
   {
-    type: "",
+    type: "TERMINAL_Fn",
     usage: "printJSON(<i>obj</i>)",
     desc: "",
     examples: ["oTERM.printJSON({so:true})"]    
   }
 
-  this.setPrompt = function (newPrompt) {
-    if (newPrompt === undefined) newPrompt = self.shell.prompt;
+  this.setPrompt = function (newPrompt) 
+  {
+    if (newPrompt === undefined) newPrompt = self._shell.prompt;
 
-    self.shell = { prompt: newPrompt, separator: self.shell.separator };
+    self._shell = { prompt: newPrompt, separator: self._shell.separator };
     self.state.idle = false;
 
     self.DOM.command.classList.remove("idle");
-    self.DOM.prompt.innerHTML = String(newPrompt) + self.shell.separator;
+    self.DOM.prompt.innerHTML = String(newPrompt) + self._shell.separator;
     self.DOM.input.focus();
   };
+  this.setPrompt.help = 
+  {
+    type: "TERMINAL_Fn",
+    usage: "setPrompt(<i>str</i>)",
+    desc: "",
+    examples: ["oTERM.setPrompt(\"GPT\")"]    
+  }
 
   // ---- listeners -----------------------------------------------------------
 

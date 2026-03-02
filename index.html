@@ -1178,11 +1178,27 @@ function __cliHandleTerminal(line)
       }
     }
 
+
+    // Normalize: allow "CADScript -h oTERM" even when parser keeps -h as boolean and
+    // puts "oTERM" in arguments.raw.
+    var helpTarget = null;
+
+    if (helpOpt) {
+      if (typeof helpOpt.value === "string") {
+        helpTarget = helpOpt.value;
+      } else if (helpOpt.value === true) {
+        const arg = String(script_node.arguments?.raw || "").trim();
+        // If user provided an objName after -h/-hv, use it
+        if (arg.length > 0) helpTarget = arg;
+      }
+    }
+
+
     // Render help once (order-independent)
     if (helpOpt)
     {
       // --- This is your existing "case h" body, but reading helpOpt and helpVarsOnly ---
-      if (helpOpt.value === true)
+      if (!helpTarget)
       {
         var str;
         if (helpVarsOnly)
@@ -1218,37 +1234,41 @@ function __cliHandleTerminal(line)
         for (var bn in oCMD._bindings) list.push(bn);
         oTERM.output(oCOM.escapeHTML(list.join("\n")));
       }
-      else if (typeof(helpOpt.value) === "string")
+      else
       {
-        // keep your existing "-h objName" branch, switching collector based on helpVarsOnly
-        // (same as you already wrote)
+        var list = [];
+        var searchBindings = String(helpTarget || "").split(",");
 
-          var list = [];
-          var searchBindings = options[0]?.value.split(",");
-          for(var i=0;i<searchBindings.length;i++)
+        for (var i = 0; i < searchBindings.length; i++)
+        {
+          const name = searchBindings[i].trim();
+          const obj = oCMD._bindings[name];
+
+          if (helpVarsOnly)
           {
-            const name = searchBindings[i].trim();
-            var obj = oCMD._bindings[name];
-
-  
-              list.push("<u>"+name+" token details:</u>");
-              var tokenlist = [["SYNTAX","EXAMPLES"]]
-                              .concat( oCOM.JShelpCollector(obj,{"sort":true,"filter":["usage","examples"]}) );
-              var str = oCOM.AsciiTable(tokenlist,
-                {"header":true
-                ,"rowLine":true
-                ,"colLine":true
-                ,"style" : "─│├┼┤└┴┘┌┬┐ ┃"
-                ,"Hstyle": "━┃┡╇┩┗┻┛┏┳┓ ║"
-                ,"sort":0
-                ,"max":[null,null]
-                ,"align":"LL"
-                ,"Halign":"CC"
-                });
-              list.push(str);
-            
+            list.push("<u>" + name + " variable details:</u>");
+            var tokenlist = [["NAME","TYPE","VALUE"]].concat(__JSvarCollector(obj));
+            var str = oCOM.AsciiTable(tokenlist,
+              {"header":true,"rowLine":true,"colLine":true,
+              "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
+              "sort":0,"max":[null,null,null],"align":"LLL","Halign":"CCC"});
+            list.push(str);
           }
-          oTERM.output(oCOM.escapeHTML( list.join("\n") ));
+          else
+          {
+            list.push("<u>" + name + " token details:</u>");
+            var tokenlist = [["SYNTAX","EXAMPLES"]]
+              .concat(oCOM.JShelpCollector(obj, {"sort":true,"filter":["usage","examples"]}));
+            var str = oCOM.AsciiTable(tokenlist,
+              {"header":true,"rowLine":true,"colLine":true,
+              "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
+              "sort":0,"max":[null,null],"align":"LL","Halign":"CC"});
+            list.push(str);
+          }
+        }
+
+        oTERM.output(oCOM.escapeHTML(list.join("\n")));
+
       }
       return true;
     }
