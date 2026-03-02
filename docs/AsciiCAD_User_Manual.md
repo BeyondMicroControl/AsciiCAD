@@ -230,6 +230,13 @@ CADScript { vars.STR = getCell(0,2,3,E); }
 CADScript {oTERM.print(vars.STR)}             // returns "KLM"
 ```
 
+#### CADScript input prompt
+
+```text
+CADScript {oTERM.prompt("label","label","####")}
+CADScript { oTERM.print(oTERM.getenv('label')) }
+```
+
 #### Exit back to the UI
 ```text
 AsciiCAD> exit
