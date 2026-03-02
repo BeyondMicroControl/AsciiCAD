@@ -11,6 +11,7 @@
 
 function TERMINAL(props) 
 {
+  this._o = {};
   props = props || {};
 
   // ---- config --------------------------------------------------------------
@@ -89,14 +90,14 @@ function TERMINAL(props)
       ? window.VanillaTerminalBuiltins.createBuiltInCommands()
       : {};
 
-  this.commands = Object.assign({}, userCommands, builtins);
+  this._o.commands = Object.assign({}, userCommands, builtins);
 
-  this.history = loadHistory();
-  this.historyCursor = this.history.length;
+  this._o.history = loadHistory();
+  this._o.historyCursor = this._o.history.length;
 
-  this._shell = { prompt: prompt, separator: separator };
+  this._o.shell = { prompt: prompt, separator: separator };
 
-  this.state = {
+  this._o.state = {
     prompt: false, // prompt mode = next ENTER answers a question
     idle: false,
   };
@@ -113,10 +114,10 @@ function TERMINAL(props)
 
   // Cache DOM
   root.classList.add(ROOT_CLASS);
-  root.insertAdjacentHTML("beforeEnd", renderMarkup(this._shell));   // Expected behavior in iframe: Blocked autofocusing on a form control in a cross-origin subframe.
+  root.insertAdjacentHTML("beforeEnd", renderMarkup(this._o.shell));   // Expected behavior in iframe: Blocked autofocusing on a form control in a cross-origin subframe.
 
   var container = root.querySelector(".container");
-  this.DOM = {
+  this._o.DOM = {
     root: root,
     container: container,
     output: container.querySelector("output"),
@@ -130,12 +131,12 @@ function TERMINAL(props)
   var self = this;
 
   function resetCommand() {
-    self.DOM.input.value = "";
-    self.DOM.command.classList.remove("input");
-    self.DOM.command.classList.remove("hidden");
+    self._o.DOM.input.value = "";
+    self._o.DOM.command.classList.remove("input");
+    self._o.DOM.command.classList.remove("hidden");
 
-    if (typeof self.DOM.input.scrollIntoView === "function") {
-      self.DOM.input.scrollIntoView({ block: "nearest" });
+    if (typeof self._o.DOM.input.scrollIntoView === "function") {
+      self._o.DOM.input.scrollIntoView({ block: "nearest" });
     }
   }
 
@@ -144,7 +145,7 @@ function TERMINAL(props)
     var code = event.keyCode;
 
     if (key === "Escape" || code === 27) {
-      self.DOM.input.value = "";
+      self._o.DOM.input.value = "";
       event.stopPropagation();
       event.preventDefault();
       return;
@@ -154,11 +155,11 @@ function TERMINAL(props)
     var isDown = key === "ArrowDown" || code === 40;
     if (!isUp && !isDown) return;
 
-    if (isUp && self.historyCursor > 0) self.historyCursor -= 1;
-    if (isDown && self.historyCursor < self.history.length - 1) self.historyCursor += 1;
+    if (isUp && self._o.historyCursor > 0) self._o.historyCursor -= 1;
+    if (isDown && self._o.historyCursor < self._o.history.length - 1) self._o.historyCursor += 1;
 
-    var value = self.history[self.historyCursor];
-    if (value !== undefined) self.DOM.input.value = value;
+    var value = self._o.history[self._o.historyCursor];
+    if (value !== undefined) self._o.DOM.input.value = value;
   }
 
   function handleKeyDown(event) {
@@ -168,12 +169,12 @@ function TERMINAL(props)
     var isEnter = key === "Enter" || code === 13;
     if (!isEnter) return;
 
-    var commandLine = self.DOM.input.value.trim();
+    var commandLine = self._o.DOM.input.value.trim();
     if (!commandLine) return;
 
     // Prompt mode: answer a question instead of dispatching a command
-    if (self.state.prompt) {
-      self.state.prompt = false;
+    if (self._o.state.prompt) {
+      self._o.state.prompt = false;
       self.onAskCallback(commandLine);
       self.setPrompt(); // restore normal prompt
       resetCommand();
@@ -181,16 +182,16 @@ function TERMINAL(props)
     }
 
     // Save in history
-    self.history.push(commandLine);
-    saveHistory(self.history);
-    self.historyCursor = self.history.length;
+    self._o.history.push(commandLine);
+    saveHistory(self._o.history);
+    self._o.historyCursor = self._o.history.length;
 
     // Echo command as output line
-    self.DOM.output.appendChild(cloneCommandNode(self.DOM.command));
+    self._o.DOM.output.appendChild(cloneCommandNode(self._o.DOM.command));
 
     // Hide live command line while processing
-    self.DOM.command.classList.add("hidden");
-    self.DOM.input.value = "";
+    self._o.DOM.command.classList.add("hidden");
+    self._o.DOM.input.value = "";
 
     // Pre-dispatch hook: allow host to handle the raw line.
     var parts = commandLine.split(" ");
@@ -219,7 +220,7 @@ function TERMINAL(props)
 
   
   this.clear = function () {
-    self.DOM.output.innerHTML = "";
+    self._o.DOM.output.innerHTML = "";
     resetCommand();
   };
   this.clear.help = 
@@ -232,17 +233,17 @@ function TERMINAL(props)
 
   this.idle = function () 
   {
-    self.state.idle = !self.state.idle;
-    if(self.state.idle)
+    self._o.state.idle = !self._o.state.idle;
+    if(self._o.state.idle)
     {
-      self.DOM.command.classList.add("idle");
-      self.DOM.prompt.innerHTML = '<div class="spinner"></div>';
+      self._o.DOM.command.classList.add("idle");
+      self._o.DOM.prompt.innerHTML = '<div class="spinner"></div>';
     }
     else
     {
-      self.DOM.command.classList.remove("idle");
-      self.DOM.prompt.innerHTML = self._shell.prompt + self._shell.separator;
-      self.DOM.input.focus();
+      self._o.DOM.command.classList.remove("idle");
+      self._o.DOM.prompt.innerHTML = self._o.shell.prompt + self._o.shell.separator;
+      self._o.DOM.input.focus();
     }
 
   };
@@ -256,12 +257,12 @@ function TERMINAL(props)
 
   this.prompt = function (question, callback) 
   {
-    self.state.prompt = true;
+    self._o.state.prompt = true;
     self.onAskCallback = typeof callback === "function" ? callback : function () {};
 
-    self.DOM.prompt.innerHTML = String(question) + ":";
+    self._o.DOM.prompt.innerHTML = String(question) + ":";
     resetCommand();
-    self.DOM.command.classList.add("input");
+    self._o.DOM.command.classList.add("input");
   };
 
   this.onInput = function (callback) {
@@ -271,7 +272,7 @@ function TERMINAL(props)
   this.output = function (html) 
   {
     if (html === undefined) html = "&nbsp;";
-    self.DOM.output.insertAdjacentHTML("beforeEnd", "<span>" + html + "</span>");
+    self._o.DOM.output.insertAdjacentHTML("beforeEnd", "<span>" + html + "</span>");
     resetCommand();
   };
 
@@ -351,14 +352,14 @@ function TERMINAL(props)
 
   this.setPrompt = function (newPrompt) 
   {
-    if (newPrompt === undefined) newPrompt = self._shell.prompt;
+    if (newPrompt === undefined) newPrompt = self._o.shell.prompt;
 
-    self._shell = { prompt: newPrompt, separator: self._shell.separator };
-    self.state.idle = false;
+    self._o.shell = { prompt: newPrompt, separator: self._o.shell.separator };
+    self._o.state.idle = false;
 
-    self.DOM.command.classList.remove("idle");
-    self.DOM.prompt.innerHTML = String(newPrompt) + self._shell.separator;
-    self.DOM.input.focus();
+    self._o.DOM.command.classList.remove("idle");
+    self._o.DOM.prompt.innerHTML = String(newPrompt) + self._o.shell.separator;
+    self._o.DOM.input.focus();
   };
   this.setPrompt.help = 
   {
@@ -374,35 +375,35 @@ function TERMINAL(props)
   var observer = new MutationObserver(function () 
   {
     setTimeout(function () {
-      self.DOM.input.scrollIntoView({ block: "nearest" });
+      self._o.DOM.input.scrollIntoView({ block: "nearest" });
     }, 0);
   });
-  observer.observe(self.DOM.output, { childList: true, subtree: true });
+  observer.observe(self._o.DOM.output, { childList: true, subtree: true });
 
   // Focus handling: focus the input when clicking inside the terminal,
   // but do NOT steal focus when selecting/copying text in the output.
-  self.DOM.root.addEventListener(
+  self._o.DOM.root.addEventListener(
     "click",
     function (ev) {
       // Ignore clicks outside the terminal root
-      if (!self.DOM.root.contains(ev.target)) return;
+      if (!self._o.DOM.root.contains(ev.target)) return;
       // Don't steal focus when the user is interacting with the output area (selection/copy)
-      if (self.DOM.output.contains(ev.target)) return;
-      self.DOM.input.focus();
+      if (self._o.DOM.output.contains(ev.target)) return;
+      self._o.DOM.input.focus();
     },
     false
   );
 
-  self.DOM.command.addEventListener(
+  self._o.DOM.command.addEventListener(
     "click",
     function () {
-      self.DOM.input.focus();
+      self._o.DOM.input.focus();
     },
     false
   );
 
-  self.DOM.input.addEventListener("keyup", handleKeyUp, false);
-  self.DOM.input.addEventListener("keydown", handleKeyDown, false);
+  self._o.DOM.input.addEventListener("keyup", handleKeyUp, false);
+  self._o.DOM.input.addEventListener("keydown", handleKeyDown, false);
 
   // ---- initial output ------------------------------------------------------
 
@@ -1668,9 +1669,9 @@ function CMD()
 
       if (!opt) 
       {
-        if (!oTERM.history || oTERM.history.length === 0) oTERM.output("(history empty)");
+        if (!oTERM._o.history || oTERM._o.history.length === 0) oTERM.output("(history empty)");
         else {
-          const lines = oTERM.history
+          const lines = oTERM._o.history
             .map((h, i) => String(i + 1) + ": " + oCOM.escapeHTML(h))
             .join("<br>");
           oTERM.output(lines);
@@ -1687,8 +1688,8 @@ function CMD()
         try {
           window.localStorage.removeItem("VanillaTerm");
         } catch (_) {}
-        oTERM.history = [];
-        oTERM.historyCursor = 0;
+        oTERM._o.history = [];
+        oTERM._o.historyCursor = 0;
         oTERM.output("History cleared");
         return true;
       }

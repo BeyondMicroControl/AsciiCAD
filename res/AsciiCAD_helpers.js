@@ -133,7 +133,7 @@ function ASC()
   {
     isDrawing = true;
     lastCellKey = null;
-    this.currentStroke = [];
+    this._currentStroke = [];
     if (!cell) return;
     lastCellKey = cell.r + ',' + cell.c;
     this.applyOpAtCell(cell,op);
@@ -154,8 +154,8 @@ function ASC()
   {
     if (!isDrawing) return;
     isDrawing = false;
-    const stroke = this.currentStroke;
-    this.currentStroke = [];
+    const stroke = this._currentStroke;
+    this._currentStroke = [];
     lastCellKey = null;
     this.pushStrokeIfNonEmpty(stroke);
   }
@@ -166,7 +166,7 @@ function ASC()
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
       throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
      
-    this.currentStroke = [];
+    this._currentStroke = [];
     for(var i=0,dx=0;i<str.length;i++,dx++)
     {
       op.ch    = str.charAt(i);  if(op.ch=="\n") { dx=-1; r++; continue; }
@@ -176,7 +176,7 @@ function ASC()
         this.applyOpAtCell(cell,op);                   // display character on grid & push coordinate to currentStroke
     }
 
-    this.pushStrokeIfNonEmpty(this.currentStroke);     // feed undo buffer
+    this.pushStrokeIfNonEmpty(this._currentStroke);     // feed undo buffer
   }
   this.putCell.help = 
   {
@@ -648,7 +648,7 @@ function ASC()
       m.set(p.r + ',' + p.c, p.ch);
     }
 
-    this.currentStroke = [];
+    this._currentStroke = [];
     for (const [key, ch] of m) 
     {
       const [r, c] = key.split(',').map(Number);
@@ -656,7 +656,7 @@ function ASC()
       const op = {"ch":ch,"type":"place"};
       this.applyOpAtCell( cell , op );                     // display character on grid & build undo buffer
     }
-    this.pushStrokeIfNonEmpty(this.currentStroke);   // commit undo buffer 
+    this.pushStrokeIfNonEmpty(this._currentStroke);   // commit undo buffer 
   }
   this.box.help = 
   {
@@ -670,7 +670,7 @@ function ASC()
 
   this.clear = function () 
   {
-    this.currentStroke = [];
+    this._currentStroke = [];
     for(var c=0;c<COLS;c++)
       for(var r=0;r<ROWS;r++)
       {
@@ -681,7 +681,7 @@ function ASC()
           this.applyOpAtCell?.( cell , op ) ?? {};           // display character on grid & build undo buffer
         }
       };
-    this.pushStrokeIfNonEmpty?.(this.currentStroke) ?? {};   // commit undo buffer 
+    this.pushStrokeIfNonEmpty?.(this._currentStroke) ?? {};   // commit undo buffer 
   }
   this.clear.help = 
   {
@@ -698,7 +698,7 @@ function ASC()
     const prev = ascii[cell.r][cell.c];
     const next = (op.type === "place") ? op.ch : ' ';
     if (prev === next) return;
-    this.currentStroke.push({ r: cell.r, c: cell.c, prev, next });
+    this._currentStroke.push({ r: cell.r, c: cell.c, prev, next });
     ascii[cell.r][cell.c] = next;
   }  
 
