@@ -1018,6 +1018,7 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [ ] Extend oASC.cat() parameter to prefill wildcard characters in labels
 - [ ] CADScript prompt -> always add CADScript and put the entire input between {}
 - [ ] Write a gentle sanityCheck for each CADScript command
+- [ ] Replace doUndo, doRedo, resetUndo and getUndoRedo by stack(<arg>)  - "undo", "redo" , "reset", "get"
 ---
 
 ## Summary of Key Design Principles
