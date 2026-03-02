@@ -233,7 +233,7 @@ CADScript {oTERM.print(vars.STR)}             // returns "KLM"
 #### CADScript input prompt
 
 ```text
-CADScript {oTERM.prompt("label","label","####")}
+CADScript {oTERM.prompt("label","label","####",true)}
 CADScript { oTERM.print(oTERM.getenv('label')) }
 ```
 
