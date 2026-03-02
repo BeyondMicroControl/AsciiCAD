@@ -1016,9 +1016,10 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [x] 13. CADScript {vars.STR = getCell(0,2,3,E)}
 - [x] 14. abort pasteDrag when user is pressing the 'esc' key
 - [ ] Extend oASC.cat() parameter to prefill wildcard characters in labels
-- [ ] CADScript prompt -> always add CADScript and put the entire input between {}
+- [ ] CADScript prompt() -> demonstrate how to process user input
+- [ ] CADScript setPrompt() -> always add CADScript and put the entire input between {}
 - [ ] Write a gentle sanityCheck for each CADScript command
-- [ ] Replace doUndo, doRedo, resetUndo and getUndoRedo by stack(<arg>)  - "undo", "redo" , "reset", "get"
+- [x] Replace doUndo, doRedo, resetUndo and getUndoRedo by stack(<arg>)  - "undo", "redo" , "reset", "get"
 ---
 
 ## Summary of Key Design Principles
