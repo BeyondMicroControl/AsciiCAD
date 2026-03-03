@@ -53,10 +53,10 @@
             <button id="modeCopy" class="btn" data-hint="Drag to select. Drag inside selection to copy (source remains).">Copy</button>
             <button id="modeBlank" class="btn" data-hint="Drag to select. Release to blank the selected area.">Blank</button>
             <button id="modeSLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, hold 'shift' for horizontal origin, release to place line. Use 'o' to override instead of merge lines.">SLine</button>
-            <button id="modeTLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, hold 'shift' for horizontal origin, release to place line. Use 'o' to override instead of merge lines.">TLine</button>
+            <button id="modeFLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, hold 'shift' for horizontal origin, release to place line. Use 'o' to override instead of merge lines.">FLine</button>
             <button id="modeDLine" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, hold 'shift' for horizontal origin, release to place line. Use 'o' to override instead of merge lines.">DLine</button>
             <button id="modeSBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place single line box.">SBox</button>
-            <button id="modeTBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place thick line box.">TBox</button>
+            <button id="modeFBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place fat line box.">FBox</button>
             <button id="modeDBox" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag: press to set start, move to preview, release to place double line box.">DBox</button>
             <button id="modeFreetext" class="btn" data-hint="Move cursor to text origin (not click), enter free text preview, press enter to commit.">Text</button>
           </div>
@@ -295,8 +295,7 @@ let hoverNetIndex = -1;
 
 let isDrawing = false;
 let lastCellKey = null;
-const undoStack = [];
-const redoStack = [];
+
 
 let selection = null;  // {r0,r1,c0,c1}
 let selectDrag = null; // {start,current}
@@ -319,152 +318,6 @@ let catalogTab = "All";
 //    ███████ █████   ██      ██████  █████   ██████  ███████ 
 //    ██   ██ ██      ██      ██      ██      ██   ██      ██ 
 //    ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
-
-
-
-
-// Bit flags for connections
-const N = 0b0001, E = 0b0010, S = 0b0100, W = 0b1000;
-
-// Only "light" box drawing for now (keeps it simple & readable)
-const glyphToMask = new Map([
-[" ", 0],
-
-// half
-["╵",N],["╷",S],
-['╴',E],['╶',W],
-
-// single
-["─", E|W], ["│", N|S],
-["┌", E|S], ["┐", W|S], ["└", E|N], ["┘", W|N],
-["├", N|E|S], ["┤", N|W|S],
-["┬", E|S|W], ["┴", E|N|W],
-["┼", N|E|S|W],
-
-// thick
-["━", E|W], ["┃", N|S],
-["┏", E|S], ["┓", W|S], ["┗", E|N], ["┛", W|N],
-["┣", N|E|S], ["┫", N|W|S],
-["┳", E|S|W], ["┻", E|N|W],
-["╋", N|E|S|W],
-
-// double
-["═", E|W], ["║", N|S],
-["╔", E|S], ["╗", W|S], ["╚", E|N], ["╝", W|N],
-["╠", N|E|S], ["╣", N|W|S],
-["╦", E|S|W], ["╩", E|N|W],
-["╬", N|E|S|W],
-
-// mixed crosses single/double
-["╪", N|E|S|W],["╫", N|E|S|W],
-
-// mixed crosses single/thick
-["┿", N|E|S|W],["╂", N|E|S|W],
-/*
-["┽", N|E|S|W],["┾", N|E|S|W],["╀", N|E|S|W],["╁", N|E|S|W],["╃", N|E|S|W],["╄", N|E|S|W],
-["╅", N|E|S|W],["╆", N|E|S|W],["╇", N|E|S|W],["╈", N|E|S|W],["╉", N|E|S|W],["╊", N|E|S|W],
-*/
-// mixed tees single/double
-["╤", E|S|W],["╥", E|S|W],["╧", E|N|W],["╨", E|N|W],["╞", N|E|S],["╟", N|E|S],["╡", N|W|S],["╢", N|W|S],
-
-// mixed tees single/thick
-["┯", E|S|W],["┰", E|S|W],["┷", E|N|W],["┸", E|N|W],["┝", N|E|S],["┠", N|E|S],["┥", N|W|S],["┨", N|W|S],
-
-// mixed corners single/double
-["╒", E|S],["╓", E|S],["╕", W|S],["╖", W|S],["╘", E|N],["╙", E|N],["╛", W|N],["╜", W|N],
-
-// mixed corners single/thick
-["┍", E|S],["┎", E|S],["┑", W|S],["┒", W|S],["┕", E|N],["┖", E|N],["┙", W|N],["┚", W|N]
-]);
-
-const maskToGlyph = new Map([
-[0, ' '],
-
-[N,'╵'],[S,'╷'],
-[E,'╴'],[W,'╶'],
-
-[E | W, '─'],
-[N | S, '│'],
-
-[E | S, '┌'],
-[W | S, '┐'],
-[E | N, '└'],
-[W | N, '┘'],
-
-[N | E | S, '├'],
-[N | W | S, '┤'],
-[E | S | W, '┬'],
-[E | N | W, '┴'],
-
-[N | E | S | W, '┼'],
-]);
-
-const maskToSingle = new Map([
-[0," "],
-[N,'╵'],[S,'╷'],
-[E,'╴'],[W,'╶'],
-[E|W,"─"], [N|S,"│"],
-[E|S,"┌"], [W|S,"┐"], [E|N,"└"], [W|N,"┘"],
-[N|E|S,"├"], [N|W|S,"┤"],
-[E|S|W,"┬"], [E|N|W,"┴"],
-[N|E|S|W,"┼"],
-]);
-
-const maskToThick = new Map([
-[0," "],
-[E|W,"━"], [N|S,"┃"],
-[E|S,"┏"], [W|S,"┓"], [E|N,"┗"], [W|N,"┛"],
-[N|E|S,"┣"], [N|W|S,"┫"],
-[E|S|W,"┳"], [E|N|W,"┻"],
-[N|E|S|W,"╋"],
-]);
-
-const maskToDouble = new Map([
-[0," "],
-[E|W,"═"], [N|S,"║"],
-[E|S,"╔"], [W|S,"╗"], [E|N,"╚"], [W|N,"╝"],
-[N|E|S,"╠"], [N|W|S,"╣"],
-[E|S|W,"╦"], [E|N|W,"╩"],
-[N|E|S|W,"╬"],
-]);
-
-const BOX_SINGLE = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
-const BOX_THICK =  { h:'━', v:'┃', tl:'┏', tr:'┓', bl:'┗', br:'┛' };
-const BOX_DOUBLE = { h:'═', v:'║', tl:'╔', tr:'╗', bl:'╚', br:'╝' };
-
-function isThickWire(ch) {
-return ch === "━" || ch === "┃" || ch === "┏" || ch === "┓" || ch === "┗" || ch === "┛" ||
-        ch === "┣" || ch === "┫" || ch === "┳" || ch === "┻" || ch === "╋";
-}
-
-function isDoubleWire(ch) {
-return ch === "═" || ch === "║" || ch === "╔" || ch === "╗" || ch === "╚" || ch === "╝" ||
-        ch === "╠" || ch === "╣" || ch === "╦" || ch === "╩" || ch === "╬";
-}
-
-function keyRC(r, c) { return r + "," + c; }
-
-const DOUBLE_H = new Set(["═","╦","╩","╤","╧","╬","╪"]);
-const DOUBLE_V = new Set(["║","╠","╣","╟","╢","╬","╫"]);
-
-
-
-
-
-
-// ===== Match overlay (catalog pattern matching) =====
-// Wildcards:
-//   #  => one digit [0-9]
-//   $  => one of [0-9A-Za-z +-*/%Ωπµ⍉⍵°.,;:?@&§_]
-const WILDCARD_D = "0123456789. ";
-const WILDCARD_S = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-*/%Ωπµ⍉⍵°.,;:?@&§_ ";
-const WILDCARD_U = /*oCOM.rangeChars(0x0020, 0x007E)+*/oCOM.rangeChars(0x2500, 0x257F);
-const WILDCHAR_U = '§';
-const WILD_D_SET = new Set(Array.from(WILDCARD_D));
-const WILD_S_SET = new Set(Array.from(WILDCARD_S));
-const WILD_U_SET = new Set(Array.from(WILDCARD_U));
-
-let catalogVariantsCache = null; // rebuilt on demand (CATALOG is static during a session)
 
 
 
@@ -586,7 +439,7 @@ function renderCatalogGrid()
         updateOpLine("catalog",it);
 
         const expanded = oASC.expandWideCharsForGrid(text_data || "");
-        const forPaste = expanded.replace(new RegExp(WILDCHAR_U,"g"), " ");   // WILDCARD_U becomes a real space for placement
+        const forPaste = expanded.replace(new RegExp(oASC.WILDCHAR_U,"g"), " ");   // WILDCARD_U becomes a real space for placement
         oASC.startPasteWithText(forPaste);
 
         canvas.focus();
@@ -767,9 +620,10 @@ function updateUI()
 
   pasteLine.style.display = pasteDrag ? "block" : "none";
 
-  undoBtn.disabled = undoStack.length === 0;
-  redoBtn.disabled = redoStack.length === 0;
-  historyLine.textContent = "Undo stack: " + undoStack.length + " · Redo stack: " + redoStack.length;
+  const stack = oASC.stack("get");
+  undoBtn.disabled = stack.undoStack.length === 0;
+  redoBtn.disabled = stack.redoStack.length === 0;
+  historyLine.textContent = "Undo stack: " + stack.undoStack.length + " · Redo stack: " + stack.redoStack.length;
 }
 
 
@@ -1118,6 +972,20 @@ function __cliHandleTerminal(line)
 {
   if(bDebug) oTERM.output("<a href=\"tools/CMD_tool.html?d="+encodeURIComponent(line)+"\" target=\"CMD_tool\">visual debug</a>");  // for debugging purposes
   
+  // DIRECTLY PARSE CADScript
+  if(oTERM._o.shell.prompt=="CADScript")
+  {
+      var code = "{"+line+"}";
+    // SEND A JOB TO THE CMD WORKER
+    oCMD.runExternalScript(code)
+      .then(() => { oASC.draw("runExternalScript"); })
+      .catch((err) => { oTERM.output("[ERROR] worker thread failed:<br><small>"+JSON.stringify(err)+"</small>");
+      })
+
+    return true;
+  }
+
+  // PARSE CMD
   const parsed = oCMD.parseLine(line, { /* any data you want to give it */ });
   if (!parsed.ok && parsed.error) { oTERM.output("[ERROR] "+parsed.error); return true; }
 
@@ -1272,9 +1140,7 @@ function __cliHandleTerminal(line)
       return true;
     }
     // ... fall through to worker execution if no helpOpt
-
-
-    const code = script_node.arguments.raw;
+    var code = script_node.arguments.raw;
 
     // SEND A JOB TO THE CMD WORKER
     oCMD.runExternalScript(code)
@@ -1495,9 +1361,9 @@ for(var uri in oCOM.URL.uri)
   }  
 }
 
-if(deflator == null)
+if(deflator == null) // when URI is empty, initialise default compression method (for permalink)
 {
-  const isCompressedURI = initCompressionMethod("pako");
+  const isCompressedURI = initCompressionMethod("LZSS");
   if(isCompressedURI==true) update_data_to_grid();
 }
 
@@ -1600,28 +1466,9 @@ flipPanBtn.addEventListener("click", () =>
   }
 })
 
-
-
-
-/*
-// Invalidate overlay caches after any committed stroke (undo/redo uses same path).
-if (typeof oASC.pushStrokeIfNonEmpty === "function") 
-{
-  // TODO: review this construct: why override the original method at this point?
-  const _pushStrokeIfNonEmpty = oASC.pushStrokeIfNonEmpty;
-  oASC.pushStrokeIfNonEmpty = function(stroke) 
-  {
-    highlightCache = null;
-    matchCache = null;
-
-    return _pushStrokeIfNonEmpty(stroke);
-  };
-}
-*/
-
 // Undo/redo
-undoBtn.addEventListener("click", () =>  {oASC.doUndo(); if (bDebug && netTraceOn) __refreshNetlistDebugCE(); });
-redoBtn.addEventListener("click", () =>  {oASC.doRedo(); if (bDebug && netTraceOn) __refreshNetlistDebugCE(); });
+undoBtn.addEventListener("click", () =>  {oASC.stack("undo"); if (bDebug && netTraceOn) __refreshNetlistDebugCE(); });
+redoBtn.addEventListener("click", () =>  {oASC.stack("redo"); if (bDebug && netTraceOn) __refreshNetlistDebugCE(); });
 
 // Save/load
 saveBtn.addEventListener("click", () => 
@@ -1829,10 +1676,10 @@ canvas.addEventListener("mousemove", (e) =>
   if (tool === "modeFreeform")      oASC.moveFreeform(cell);
   else if(tool === "modeSelect" || tool === "modeCopy" || tool === "modeBlank") oASC.moveSelect(cell)
   else if (tool === "modeSLine")    oASC.moveLine(cell);
-  else if (tool === "modeTLine")    oASC.moveLine(cell);
+  else if (tool === "modeFLine")    oASC.moveLine(cell);
   else if (tool === "modeDLine")    oASC.moveLine(cell);
   else if (tool === "modeSBox")     oASC.moveBox(cell);
-  else if (tool === "modeTBox")     oASC.moveBox(cell);
+  else if (tool === "modeFBox")     oASC.moveBox(cell);
   else if (tool === "modeDBox")     oASC.moveBox(cell);
   else if (tool === "modeFreetext") oASC.beginFreetext(cell);
   else console.error("tool mismatch (move)");
@@ -1877,10 +1724,10 @@ canvas.addEventListener("mousedown", (e) =>
   if (tool === "modeFreeform")      oASC.beginFreeform(cell);
   else if (tool === "modeSelect" || tool === "modeCopy" || tool === "modeBlank") oASC.beginSelect(cell);
   else if (tool === "modeSLine")    oASC.beginLine(cell,"single");
-  else if (tool === "modeTLine")    oASC.beginLine(cell,"thick");
+  else if (tool === "modeFLine")    oASC.beginLine(cell,"fat");
   else if (tool === "modeDLine")    oASC.beginLine(cell,"double");
   else if (tool === "modeSBox")     oASC.beginBox(cell, "single");
-  else if (tool === "modeTBox")     oASC.beginBox(cell, "thick");
+  else if (tool === "modeFBox")     oASC.beginBox(cell, "fat");
   else if (tool === "modeDBox")     oASC.beginBox(cell, "double");
   else if (tool === "modeFreetext") oASC.beginFreetext(cell);
   else console.error("tool mismatch (begin)");
@@ -1893,13 +1740,13 @@ window.addEventListener("mouseup", () =>
   if (pasteDrag) return;
 
   // TODO SERIALISE (COMMIT functions)??
-  if ((tool == "modeSLine" || tool == "modeDLine" || tool == "modeTLine") && lineDrag!=null)
+  if ((tool == "modeSLine" || tool == "modeDLine" || tool == "modeFLine") && lineDrag!=null)
   { 
     oASC.commitLineWithOptionalMerge(lineDrag.merge, lineDrag.kind);
     return; 
   }
   else if (tool === "modeSBox" && boxDrag)  { oASC.commitBox(); return; }
-  else if (tool === "modeTBox" && boxDrag)  { oASC.commitBox(); return; }
+  else if (tool === "modeFBox" && boxDrag)  { oASC.commitBox(); return; }
   else if (tool === "modeDBox" && boxDrag)  { oASC.commitBox(); return; }
 
   if (isDrawing) oASC.endFreeform();
@@ -1937,8 +1784,8 @@ window.addEventListener("keydown", (e) =>
   //  Always allow Undo/Redo (even while typing)
   if (mod) {
     const k = String(e.key || "").toLowerCase();
-    if (k === "z" && !e.shiftKey) { e.preventDefault(); oASC.doUndo(); if (bDebug && netTraceOn) __refreshNetlistDebugCE(); return; }
-    if (k === "z" &&  e.shiftKey) { e.preventDefault(); oASC.doRedo(); if (bDebug && netTraceOn) __refreshNetlistDebugCE(); return; }
+    if (k === "z" && !e.shiftKey) { e.preventDefault(); oASC.stack("undo"); if (bDebug && netTraceOn) __refreshNetlistDebugCE(); return; }
+    if (k === "z" &&  e.shiftKey) { e.preventDefault(); oASC.stack("redo"); if (bDebug && netTraceOn) __refreshNetlistDebugCE(); return; }
   }
 
   // If the user is typing in the sidebar (terminal / inputs), do not run canvas shortcuts.
@@ -1984,11 +1831,14 @@ window.addEventListener("keydown", (e) =>
       const n = it.text_data.length;
       pasteDrag.item_data.rotation = ((pasteDrag.item_data.rotation || 0) + 1) % n;
       const text_data = it.text_data[pasteDrag.item_data.rotation] || "";
-      oASC.startPasteWithText(oASC.expandWideCharsForGrid(text_data));
+      const forPaste = text_data.replace(new RegExp(oASC.WILDCHAR_U,"g"), " ");   // WILDCARD_U becomes a real space for placement
+      oASC.startPasteWithText(oASC.expandWideCharsForGrid(forPaste));
       if (oldAnchor && pasteDrag) pasteDrag.anchor = oldAnchor; // keep anchor stable while rotating
       oASC.draw("onkeydown - 'r'");
       return;
     }
+
+    if (e.key === "Escape") { e.preventDefault(); oASC.cancelPaste(); return; }     // Cancel
   }
   // ... keep the rest of your existing handler here ...
 }, { passive: false });

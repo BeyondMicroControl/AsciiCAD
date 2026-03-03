@@ -375,7 +375,7 @@ function runWorkerThreadSmokeTests()
 
   // caution: oTERM does not exist yet at this stage (because instantiation has to wait for "onload")
   oCMD.bind([
-     { name: "oASC", constPrefixes: ["BOX_"] }
+     { name: "oASC", exposeAllNonFunctions:true }
     ,{ name: "oCMD" }
     ,{ name: "oCOM" }
   ]);
@@ -412,7 +412,7 @@ function runWorkerThreadSmokeTests()
     })
     .then(function(){
       // cleanup
-      return oCMD.runExternalScript("oASC.doUndo();oASC.doUndo();oASC.doUndo();");
+    return oCMD.runExternalScript("oASC.resetUndo();");
     })
     .then(function() { worker?.terminate?.(); });
 }

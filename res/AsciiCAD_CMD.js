@@ -11,7 +11,7 @@
 
 function TERMINAL(props) 
 {
-  this._o = {};
+  this._o = {env:{}};
   props = props || {};
 
   // ---- config --------------------------------------------------------------
@@ -130,28 +130,30 @@ function TERMINAL(props)
 
   var self = this;
 
-  function resetCommand() {
-    self._o.DOM.input.value = "";
+  function resetCommand(prefill) 
+  {
+    self._o.DOM.input.value = prefill?prefill:"";
     self._o.DOM.command.classList.remove("input");
     self._o.DOM.command.classList.remove("hidden");
 
-    if (typeof self._o.DOM.input.scrollIntoView === "function") {
+    if (typeof self._o.DOM.input.scrollIntoView === "function")
       self._o.DOM.input.scrollIntoView({ block: "nearest" });
-    }
   }
 
-  function handleKeyUp(event) {
+  function handleKeyUp(event) 
+  {
     var key = event.key || "";
     var code = event.keyCode;
 
-    if (key === "Escape" || code === 27) {
+    if (key === "Escape" || code === 27) 
+    {
       self._o.DOM.input.value = "";
       event.stopPropagation();
       event.preventDefault();
       return;
     }
 
-    var isUp = key === "ArrowUp" || code === 38;
+    var isUp   = key === "ArrowUp"   || code === 38;
     var isDown = key === "ArrowDown" || code === 40;
     if (!isUp && !isDown) return;
 
@@ -162,9 +164,57 @@ function TERMINAL(props)
     if (value !== undefined) self._o.DOM.input.value = value;
   }
 
-  function handleKeyDown(event) {
+  function handleKeyDown(event) 
+  {
     var key = event.key || "";
     var code = event.keyCode;
+
+
+    // Overwrite-mode editing while prompting (emulates terminal overwrite)
+    if (self._o.state.prompt && self._o.state.overwrite)
+    {
+      const k = event.key || "";
+      const isChar = (k.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey);
+
+      // Let navigation keys behave normally
+      const navKeys = new Set(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End","Tab"]);
+      if (navKeys.has(k)) return;
+
+      // Backspace/Delete should behave normally too (optional: custom)
+      if (k === "Backspace" || k === "Delete") return;
+
+      if (isChar)
+      {
+        const input = self._o.DOM.input;
+        const v = input.value || "";
+        const s0 = input.selectionStart ?? v.length;
+        const s1 = input.selectionEnd ?? v.length;
+
+        // If user has a selection, replace selection like normal typing
+        // Otherwise replace the char under caret (overwrite)
+        let newV;
+        let newPos;
+
+        if (s1 > s0) {
+          newV = v.slice(0, s0) + k + v.slice(s1);
+          newPos = s0 + 1;
+        } else {
+          // overwrite at caret
+          if (s0 >= v.length) {
+            newV = v + k;                 // past end => append
+          } else {
+            newV = v.slice(0, s0) + k + v.slice(s0 + 1);
+          }
+          newPos = s0 + 1;
+        }
+
+        input.value = newV;
+        try { input.setSelectionRange(newPos, newPos); } catch(_) {}
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+    }
 
     var isEnter = key === "Enter" || code === 13;
     if (!isEnter) return;
@@ -173,8 +223,10 @@ function TERMINAL(props)
     if (!commandLine) return;
 
     // Prompt mode: answer a question instead of dispatching a command
-    if (self._o.state.prompt) {
+    if (self._o.state.prompt)
+    {
       self._o.state.prompt = false;
+      self._o.state.overwrite = false;  // <-- step 4: reset overwrite mode after answering
       self.onAskCallback(commandLine);
       self.setPrompt(); // restore normal prompt
       resetCommand();
@@ -220,7 +272,7 @@ function TERMINAL(props)
 
   
   this.clear = function () {
-    self._o.DOM.output.innerHTML = "";
+    this._o.DOM.output.innerHTML = "";
     resetCommand();
   };
   this.clear.help = 
@@ -233,17 +285,17 @@ function TERMINAL(props)
 
   this.idle = function () 
   {
-    self._o.state.idle = !self._o.state.idle;
-    if(self._o.state.idle)
+    this._o.state.idle = !this._o.state.idle;
+    if(this._o.state.idle)
     {
-      self._o.DOM.command.classList.add("idle");
-      self._o.DOM.prompt.innerHTML = '<div class="spinner"></div>';
+      this._o.DOM.command.classList.add("idle");
+      this._o.DOM.prompt.innerHTML = '<div class="spinner"></div>';
     }
     else
     {
-      self._o.DOM.command.classList.remove("idle");
-      self._o.DOM.prompt.innerHTML = self._o.shell.prompt + self._o.shell.separator;
-      self._o.DOM.input.focus();
+      this._o.DOM.command.classList.remove("idle");
+      this._o.DOM.prompt.innerHTML = this._o.shell.prompt + this._o.shell.separator;
+      this._o.DOM.input.focus();
     }
 
   };
@@ -255,24 +307,71 @@ function TERMINAL(props)
     examples: ["oTERM.idle(); <i>long process</i> oTERM.idle();"]    
   }
 
-  this.prompt = function (question, callback) 
+  this.prompt = function (varName, question, prefill, overwriteMode)
   {
-    self._o.state.prompt = true;
-    self.onAskCallback = typeof callback === "function" ? callback : function () {};
+    const key = String(varName || "").trim();
+    if (!key) throw new Error("prompt(varName,question): varName is required");
 
-    self._o.DOM.prompt.innerHTML = String(question) + ":";
-    resetCommand();
-    self._o.DOM.command.classList.add("input");
+    this._o.state.prompt = true;
+    this._o.state.overwrite = !!overwriteMode;   // <-- add this
+
+    // IMPORTANT: use `self` (captured TERMINAL instance), not `this`, inside callback
+    const self = this;
+    this.onAskCallback = function(ans)
+    {
+      this._o.env[key] = ans;
+    };
+
+    this._o.DOM.prompt.innerHTML = String(question ?? key) + this._o.shell.separator;
+
+    // --- overwrite-style behavior when prefill is present ---
+    if (prefill !== undefined && prefill !== null && String(prefill).length > 0)
+    {
+      resetCommand(prefill);
+      // overwrite-mode UX: caret starts at the left
+      if (this._o.state.overwrite) {
+        const input = this._o.DOM.input;
+        input.focus();
+        try { input.setSelectionRange(0, 0); } catch(_) {}
+      }
+      this._o.DOM.command.classList.add("input");
+      this._o.DOM.input.focus();
+    }
+    else
+    {
+      this._o.DOM.input.focus();
+    }
+  };
+  this.prompt.help = {
+    type: "TERMINAL_Fn",
+    usage: "prompt(<i>varName</i>,<i>question</i>,<i>prefill</i>,<i>overwriteMode</i>)",
+    desc: "Prompt user and store answer in oTERM.env[varName]. overwriteMode=true enables terminal-like overwrite editing.",
+    examples: [
+      "oTERM.prompt(\"label\",\"Enter\",\"1234\",false)",
+      "oTERM.prompt(\"label\",\"Enter\",\"1234\",true)"
+    ]
   };
 
-  this.onInput = function (callback) {
-    self.onInputCallback = callback;
+  this.getenv = function(key) 
+  {
+    return this._o.env ? this._o.env[String(key)] : undefined;
+  };
+
+  this.setenv = function(key, value) 
+  {
+    if (!this._o.env) this._o.env = {};
+    this._o.env[String(key)] = value;
+  };
+
+  this.onInput = function (callback)
+  {
+    this.onInputCallback = callback;
   };
 
   this.output = function (html) 
   {
     if (html === undefined) html = "&nbsp;";
-    self._o.DOM.output.insertAdjacentHTML("beforeEnd", "<span>" + html + "</span>");
+    this._o.DOM.output.insertAdjacentHTML("beforeEnd", "<span>" + html + "</span>");
     resetCommand();
   };
 
@@ -352,14 +451,14 @@ function TERMINAL(props)
 
   this.setPrompt = function (newPrompt) 
   {
-    if (newPrompt === undefined) newPrompt = self._o.shell.prompt;
+    if (newPrompt === undefined) newPrompt = this._o.shell.prompt;
 
-    self._o.shell = { prompt: newPrompt, separator: self._o.shell.separator };
-    self._o.state.idle = false;
+    this._o.shell = { prompt: newPrompt, separator: this._o.shell.separator };
+    this._o.state.idle = false;
 
-    self._o.DOM.command.classList.remove("idle");
-    self._o.DOM.prompt.innerHTML = String(newPrompt) + self._o.shell.separator;
-    self._o.DOM.input.focus();
+    this._o.DOM.command.classList.remove("idle");
+    this._o.DOM.prompt.innerHTML = String(newPrompt) + this._o.shell.separator;
+    this._o.DOM.input.focus();
   };
   this.setPrompt.help = 
   {
@@ -402,8 +501,8 @@ function TERMINAL(props)
     false
   );
 
-  self._o.DOM.input.addEventListener("keyup", handleKeyUp, false);
-  self._o.DOM.input.addEventListener("keydown", handleKeyDown, false);
+  this._o.DOM.input.addEventListener("keyup", handleKeyUp, false);
+  this._o.DOM.input.addEventListener("keydown", handleKeyDown, false);
 
   // ---- initial output ------------------------------------------------------
 
@@ -434,7 +533,9 @@ var oTERM;
 // - Does NOT implement variable expansion, globbing, command substitution, redirections, etc.
 
 function CMD()
-{  
+{ 
+  this._inCliDispatch = false;
+
   //     __                             
   //    [  |                            
   //     | | .---.  _   __              
@@ -1365,6 +1466,7 @@ function CMD()
 
       "// Print helper: prints value or promise; if object => JSON.",
       "async function print$(v) {",
+      "log('print$', v);",
       "  const x = await await$(v);",
       "  let s = x;",
       "  if (x && typeof x === \"object\")",
@@ -1405,6 +1507,7 @@ function CMD()
       "  if (msg.type === 'ret') {",
       "    const p = pending.get(msg.id);",
       "    if (!p) return;",
+      "    log('RET start', msg.result);",
       "    pending.delete(msg.id);",
       "    msg.ok ? p.resolve(msg.result) : p.reject(new Error(msg.error));",
       "    return;",
@@ -1640,8 +1743,55 @@ function CMD()
       return true;
     }
 
+    const raw = String(line || "").trim();
+
+    if (/^cadscript\b/i.test(raw)) {
+      // Re-entrancy guard prevents ping-pong between oCMD.run and __cliHandleTerminal
+      if (this._inCliDispatch) return true;
+
+      this._inCliDispatch = true;
+      try {
+        if (typeof __cliHandleTerminal === "function") {
+          return __cliHandleTerminal(raw);
+        }
+        oTERM.output("[ERROR] __cliHandleTerminal not available");
+        return true;
+      } finally {
+        this._inCliDispatch = false;
+      }
+    }
+
     const cmd = m[1].toLowerCase();
     const rest = (m[2] || "").trim();
+
+
+
+    // Allow CADScript lines to be run through the same CLI handler, even when invoked from worker:
+    // CADScript { oCMD.run('CADScript -h') }
+    if (cmd === "cadscript") {
+      // Prefer the existing CLI pipeline in index.html
+      if (typeof __cliHandleTerminal === "function") {
+        return __cliHandleTerminal(line);
+      }
+
+      // Fallback: at least run "CADScript { ... }" bodies if handler isn't available
+      // (This won't support -h/-v options unless you re-implement them here)
+      const t = String(line || "").trim();
+      const brace = t.indexOf("{");
+      if (brace >= 0) {
+        const code = t.slice(brace);         // "{...}"
+        this.runExternalScript(code)
+          .then(() => { if (typeof oASC?.draw === "function") oASC.draw("runExternalScript"); })
+          .catch((err) => { oTERM.output("[ERROR] worker thread failed:<br><small>"+JSON.stringify(err)+"</small>"); });
+        return true;
+      }
+
+      oTERM.output("[ERROR] CADScript usage: CADScript { ... } or CADScript -h");
+      return true;
+    }
+
+
+
 
     if (cmd === "help") { this.CMDHelp(); return true; }
     if (cmd === "clear")
@@ -1778,7 +1928,7 @@ function CMD()
     // VANILLA-TERMINAL RUNTIME (AsciiCAD CLI)
     // Two modes:
     //  1) Terminal mode (Linux-like): help, clear, history [-c], script, exec("..."), exit
-    //  2) Script mode (CADScript): help(), clear(), undo(), redo(), freeform(col,row,char), exit()
+    //  2) Script mode (CADScript): help(), clear(), stack("undo"), stack("redo"), freeform(col,row,char), exit()
 
     // object instantiation/initialisation
     oTERM = new TERMINAL(
@@ -1792,7 +1942,7 @@ function CMD()
     // Authorise terminal access to internal JavaScript objects (by name)
     // We can authorise by prefix, explicit variable names, or just scope all variables in the object 
     this.bind([
-      { name: "oASC" ,  exposeAllNonFunctions:true /*constPrefixes: ["BOX_"],*/  /*, explicitKeys: ["BOX_SINGLE","BOX_DOUBLE","BOX_THICK","N","S","E","W"]*/ }
+      { name: "oASC" ,  exposeAllNonFunctions:true /*constPrefixes: ["BOX_"],*/  /*, explicitKeys: ["BOX_SINGLE","BOX_DOUBLE","BOX_FAT","N","S","E","W"]*/ }
       ,{ name: "oCMD"  }
       ,{ name: "oTERM" }
       ,{ name: "oCOM"  }

@@ -18,6 +18,155 @@
 function ASC()
 {
 
+  //       ______  __                    __              
+  //     .' ___  |[  |                  [  |             
+  //    / .'   \_| | |   _   __  _ .--.  | |--.   .--.   
+  //    | |   ____ | |  [ \ [  ][ '/'`\ \| .-. | ( (`\]  
+  //    \ `.___]  || |   \ '/ /  | \__/ || | | |  `'.'.  
+  //     `._____.'[___][\_:  /   | ;.__/[___]|__][\__) ) 
+  //                    \__.'   [__|
+
+  this.N = 0b0001, this.E = 0b0010, this.S = 0b0100, this.W = 0b1000;
+  const N = this.N, E = this.E, S = this.S, W = this.W;
+
+  // Only "light" box drawing for now (keeps it simple & readable)
+  this.glyphToMask = new Map([
+  [" ", 0],
+
+  // half
+  ["╵",N],["╷",S],
+  ['╴',E],['╶',W],
+
+  // single
+  ["─", E|W], ["│", N|S],
+  ["┌", E|S], ["┐", W|S], ["└", E|N], ["┘", W|N],
+  ["├", N|E|S], ["┤", N|W|S],
+  ["┬", E|S|W], ["┴", E|N|W],
+  ["┼", N|E|S|W],
+
+  // fat
+  ["━", E|W], ["┃", N|S],
+  ["┏", E|S], ["┓", W|S], ["┗", E|N], ["┛", W|N],
+  ["┣", N|E|S], ["┫", N|W|S],
+  ["┳", E|S|W], ["┻", E|N|W],
+  ["╋", N|E|S|W],
+
+  // double
+  ["═", E|W], ["║", N|S],
+  ["╔", E|S], ["╗", W|S], ["╚", E|N], ["╝", W|N],
+  ["╠", N|E|S], ["╣", N|W|S],
+  ["╦", E|S|W], ["╩", E|N|W],
+  ["╬", N|E|S|W],
+
+  // mixed crosses single/double
+  ["╪", N|E|S|W],["╫", N|E|S|W],
+
+  // mixed crosses single/fat
+  ["┿", N|E|S|W],["╂", N|E|S|W],
+  /*
+  ["┽", N|E|S|W],["┾", N|E|S|W],["╀", N|E|S|W],["╁", N|E|S|W],["╃", N|E|S|W],["╄", N|E|S|W],
+  ["╅", N|E|S|W],["╆", N|E|S|W],["╇", N|E|S|W],["╈", N|E|S|W],["╉", N|E|S|W],["╊", N|E|S|W],
+  */
+  // mixed tees single/double
+  ["╤", E|S|W],["╥", E|S|W],["╧", E|N|W],["╨", E|N|W],["╞", N|E|S],["╟", N|E|S],["╡", N|W|S],["╢", N|W|S],
+
+  // mixed tees single/fat
+  ["┯", E|S|W],["┰", E|S|W],["┷", E|N|W],["┸", E|N|W],["┝", N|E|S],["┠", N|E|S],["┥", N|W|S],["┨", N|W|S],
+
+  // mixed corners single/double
+  ["╒", E|S],["╓", E|S],["╕", W|S],["╖", W|S],["╘", E|N],["╙", E|N],["╛", W|N],["╜", W|N],
+
+  // mixed corners single/fat
+  ["┍", E|S],["┎", E|S],["┑", W|S],["┒", W|S],["┕", E|N],["┖", E|N],["┙", W|N],["┚", W|N]
+  ]);
+
+
+/*
+  this.maskToGlyph = new Map([
+  [0, ' '],
+
+  [N,'╵'],[S,'╷'],
+  [E,'╴'],[W,'╶'],
+
+  [E | W, '─'],
+  [N | S, '│'],
+
+  [E | S, '┌'],
+  [W | S, '┐'],
+  [E | N, '└'],
+  [W | N, '┘'],
+
+  [N | E | S, '├'],
+  [N | W | S, '┤'],
+  [E | S | W, '┬'],
+  [E | N | W, '┴'],
+
+  [N | E | S | W, '┼'],
+  ]);
+*/
+
+
+  this.maskToSingle = new Map([
+  [0," "],
+  [N,'╵'],[S,'╷'],
+  [E,'╴'],[W,'╶'],
+  [E|W,"─"], [N|S,"│"],
+  [E|S,"┌"], [W|S,"┐"], [E|N,"└"], [W|N,"┘"],
+  [N|E|S,"├"], [N|W|S,"┤"],
+  [E|S|W,"┬"], [E|N|W,"┴"],
+  [N|E|S|W,"┼"],
+  ]);
+
+  this.maskToFat = new Map([
+  [0," "],
+  [E|W,"━"], [N|S,"┃"],
+  [E|S,"┏"], [W|S,"┓"], [E|N,"┗"], [W|N,"┛"],
+  [N|E|S,"┣"], [N|W|S,"┫"],
+  [E|S|W,"┳"], [E|N|W,"┻"],
+  [N|E|S|W,"╋"],
+  ]);
+
+  this.maskToDouble = new Map([
+  [0," "],
+  [E|W,"═"], [N|S,"║"],
+  [E|S,"╔"], [W|S,"╗"], [E|N,"╚"], [W|N,"╝"],
+  [N|E|S,"╠"], [N|W|S,"╣"],
+  [E|S|W,"╦"], [E|N|W,"╩"],
+  [N|E|S|W,"╬"],
+  ]);
+
+  this.BOX_SINGLE = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
+  this.BOX_FAT =  { h:'━', v:'┃', tl:'┏', tr:'┓', bl:'┗', br:'┛' };
+  this.BOX_DOUBLE = { h:'═', v:'║', tl:'╔', tr:'╗', bl:'╚', br:'╝' };
+
+  const DOUBLE_H = new Set(["═","╦","╩","╤","╧","╬","╪"]);
+  const DOUBLE_V = new Set(["║","╠","╣","╟","╢","╬","╫"]);
+
+  function isFatWire(ch) {
+  return ch === "━" || ch === "┃" || ch === "┏" || ch === "┓" || ch === "┗" || ch === "┛" ||
+          ch === "┣" || ch === "┫" || ch === "┳" || ch === "┻" || ch === "╋";
+  }
+
+  function isDoubleWire(ch) {
+  return ch === "═" || ch === "║" || ch === "╔" || ch === "╗" || ch === "╚" || ch === "╝" ||
+          ch === "╠" || ch === "╣" || ch === "╦" || ch === "╩" || ch === "╬";
+  }
+
+  // ===== Match overlay (catalog pattern matching) =====
+  // Wildcards:
+  //   #  => one digit [0-9]
+  //   $  => one of [0-9A-Za-z +-*/%Ωπµ⍉⍵°.,;:?@&§_]
+  const WILDCARD_D = "0123456789. ";
+  const WILDCARD_S = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-*/%Ωπµ⍉⍵°.,;:?@&§_ ";
+  const WILDCARD_U = /*oCOM.rangeChars(0x0020, 0x007E)+*/oCOM.rangeChars(0x2500, 0x257F);
+  this.WILDCHAR_U = '§';
+  const WILD_D_SET = new Set(Array.from(WILDCARD_D));
+  const WILD_S_SET = new Set(Array.from(WILDCARD_S));
+  const WILD_U_SET = new Set(Array.from(WILDCARD_U));
+
+
+  function keyRC(r, c) { return r + "," + c; }
+
   //       ______           _        __
   //     .' ___  |         (_)      |  ] 
   //    / .'   \_| _ .--.  __   .--.| |
@@ -35,7 +184,7 @@ function ASC()
     type:  "AsciiCAD_CMD",
     usage: "CADScript {<i>expression</i>}",
     desc:  "Run a CADScript expression",
-    examples: ["CADScript {clear();doUndo()}"]
+    examples: ["CADScript {clear();stack(\"undo\")}"]
   };
 
   this.vars = Object.create(null);
@@ -46,6 +195,9 @@ function ASC()
     desc:  "assign a session persistent variable",
     examples: ["oASC.vars.my_variable = 123","oASC.vars.my_variable = \"ABC\""]
   };
+
+  var undoStack = [];
+  var redoStack = [];
 
   // Stage sizing: ensure integer cell sizes (avoid remainder pixels -> spacing artifacts)
   this.computeStageSize = function() 
@@ -183,10 +335,8 @@ function ASC()
     type: "CADScript_FN",
     usage: "putCell(<i>c</i>,<i>r</i>,<i>string</i>)",
     desc: "",
-    examples: ["oASC.putCell(0,0,\"TEST\\nABCD\")"]
+    examples: ["oASC.putCell(0,0,\"ABC\\nDEF\\nGHI\")"]
   }
-
-  this.N = 0b0001, this.E = 0b0010, this.S = 0b0100, this.W = 0b1000;
 
   this.getCell = function(c, r, len, dir)
   {
@@ -246,33 +396,50 @@ function ASC()
 
 
   // subsection catalog items
-  this.cat = function(c, r, a, uid)       // TODO: CONTINUE 
+
+  let catalogVariantsCache = null; // rebuilt on demand (CATALOG is static during a session)
+
+  // TODO:  Extend cat to prefill wildcard characters in labels
+  this.cat = function(c, r, a, uid)
   {
-    it = this.findCatalogItemByUID(uid);
+    const it = this.findCatalogItemByUID(uid);
+    if (!it) throw new Error("Catalog UID not found: " + uid);
 
-    if(pasteDrag==null) pasteDrag = {item_data:{}};
-    pasteDrag.item_data.rotation = a;                           // default rotation
-    pasteDrag.item_data.uid = uid   // unique id for this catalog item
-    const text_data = it.text_data[ pasteDrag.item_data.rotation ];
+    if (pasteDrag == null) pasteDrag = { item_data: {} };
+    pasteDrag.item_data.rotation = a || 0;
+    pasteDrag.item_data.uid = uid;
 
-    updateOpLine("catalog",it);
+    // FIX #1: text_data may be string or array
+    const td = it.text_data;
+    const variants = Array.isArray(td) ? td : [td];
+    const rot = pasteDrag.item_data.rotation || 0;
+    const text_data = String(variants[rot] ?? variants[0] ?? "");
 
-    const expanded = oASC.expandWideCharsForGrid(text_data || "");
+    updateOpLine("catalog", it);
 
-    const forPaste = expanded.replace(new RegExp(WILDCHAR_U, 'g'), " ");   // WILDCARD_U becomes a real space for placement
-    oASC.startPasteWithText(forPaste);
+    const expanded = this.expandWideCharsForGrid(text_data);
+    const forPaste = expanded.replace(new RegExp(this.WILDCHAR_U, "g"), " ");
 
+    this.startPasteWithText(forPaste);
 
-    var cell = {"r":r,"c":c}; 
-    oASC.commitPasteAt(cell);
+    // Force scripted placement: treat (c,r) as TOP-LEFT of the paste block
+    if (pasteDrag) {
+      pasteDrag.anchor = { r: r, c: c };
+      pasteDrag.anchorMode = "topleft";
+      pasteDrag.anchorOffset = { r: 0, c: 0 };
+    }
 
-  }
+    // FIX #2: ensure paste anchor is the requested cell
+    const cell = { r, c };
+    this.commitPasteAt(cell);
+  };
+
   this.cat.help = 
   {
     type: "CADScript_CMD",
     usage: "cat(<i>c</i>,<i>r</i>,<i>angle</i>,<i>uid</i>)",
     desc: "",
-    examples: ["oASC.cat(0,0,0,\"ATTINY85V-10PU\")"]
+    examples: ["oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")"]
   }
 
   this.lcat = function() 
@@ -387,7 +554,7 @@ function ASC()
       return v_leg?chset.tr:chset.bl;                                // right + up   | down + left
     }
 
-    const chset = kind === "double" ? BOX_DOUBLE : (kind === "thick" ? BOX_THICK : BOX_SINGLE);
+    const chset = kind === "double" ? this.BOX_DOUBLE : (kind === "fat" ? this.BOX_FAT : this.BOX_SINGLE);
 
     const r0 = start.r, c0 = start.c;
     const r1 = end.r, c1 = end.c;
@@ -480,10 +647,10 @@ function ASC()
     {
       const ch = expanded[i];
       if (ch === " " || ch === "\n" || ch === "\r" || ch === "\t") continue;
-      if (typeof WILDCHAR_U !== "undefined" && ch === WILDCHAR_U) continue;
+      if (typeof this.WILDCHAR_U !== "undefined" && ch === this.WILDCHAR_U) continue;
 
       // Drop wire glyphs (box drawing chars) so rotation/protrusions don't affect LabelID.
-      if ((glyphToMask.get(ch) ?? 0) !== 0) continue;
+      if ((this.glyphToMask.get(ch) ?? 0) !== 0) continue;
 
       out += ch;
     }
@@ -563,8 +730,8 @@ function ASC()
 
         if (prevIsWire && nextIsWire) {
           // If styles differ and prev is not blank, keep prev style here.
-          const prevStyle = isDoubleWire(prev) ? "double" : isThickWire(prev) ? "thick" : (prev === " " ? null : "single");
-          const nextStyle = isDoubleWire(next) ? "double" : isThickWire(next) ? "thick" : (next === " " ? null : "single");
+          const prevStyle = isDoubleWire(prev) ? "double" : isFatWire(prev) ? "fat" : (prev === " " ? null : "single");
+          const nextStyle = isDoubleWire(next) ? "double" : isFatWire(next) ? "fat" : (next === " " ? null : "single");
 
           if (prev !== " " && prevStyle && nextStyle && prevStyle !== nextStyle) {
             // leave it for recompute to resolve as mixed junction; don't upgrade
@@ -624,15 +791,11 @@ function ASC()
   this.commitBox = function() 
   {
     if (!boxDrag) return;
-    const style = boxDrag.kind === "double" ? BOX_DOUBLE : boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE;
+    const style = boxDrag.kind === "double" ? this.BOX_DOUBLE : boxDrag.kind === "fat" ? this.BOX_FAT : this.BOX_SINGLE;
     this.box( boxDrag.start.c,boxDrag.start.r , boxDrag.cur.c,boxDrag.cur.r , style );
     boxDrag = null;
     this.draw("commitBox");
   }
-
-  this.BOX_SINGLE = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
-  this.BOX_THICK =  { h:'━', v:'┃', tl:'┏', tr:'┓', bl:'┗', br:'┛' };
-  this.BOX_DOUBLE = { h:'═', v:'║', tl:'╔', tr:'╗', bl:'╚', br:'╝' };
 
   this.box = function(c0,r0,c1,r1, style)
   {
@@ -662,8 +825,8 @@ function ASC()
   {
     type: "CADScript_Fn",
     usage: "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)",
-    desc: "Draw a box in line style BOX_DOUBLE|BOX_THICK|BOX_DOUBLE",
-    examples: ["oASC.box(1,0,3,2,BOX_SINGLE)","oASC.box(1,0,3,2,BOX_THICK)","oASC.box(1,0,3,2,BOX_DOUBLE)"]
+    desc: "Draw a box in line style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
+    examples: ["oASC.box(1,0,3,2,BOX_SINGLE)","oASC.box(1,0,3,2,BOX_FAT)","oASC.box(1,0,3,2,BOX_DOUBLE)"]
   }
   
   "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)";
@@ -803,7 +966,7 @@ function ASC()
     this.pushStrokeIfNonEmpty(stroke);
   }
 
-  this.isWireGlyph = function(ch) { return glyphToMask.has(ch); }
+  this.isWireGlyph = function(ch) { return this.glyphToMask.has(ch); }
 
 
   this.isVisiblyRenderable = function(ch, font = "16px monospace") 
@@ -828,17 +991,17 @@ function ASC()
     return false;
   }
 
-  this.mergedWireGlyph = function(prevCh, nextCh, lineKind /* "single"|"double","thick" */)
+  this.mergedWireGlyph = function(prevCh, nextCh, lineKind /* "single"|"double","fat" */)
   {
-    const pm = glyphToMask.get(prevCh) ?? 0;
-    const nm = glyphToMask.get(nextCh) ?? 0;
+    const pm = this.glyphToMask.get(prevCh) ?? 0;
+    const nm = this.glyphToMask.get(nextCh) ?? 0;
     const m  = pm | nm;
 
     // double wins:
     const wantDouble = (lineKind === "double") || isDoubleWire(prevCh) || isDoubleWire(nextCh);
-    const wantThick  = (lineKind === "thick")  || isThickWire(prevCh)  || isThickWire(nextCh);
+    const wantFat  = (lineKind === "fat")  || isFatWire(prevCh)  || isFatWire(nextCh);
 
-    const out = wantDouble ? maskToDouble.get(m) : wantThick ? maskToThick.get(m) : maskToSingle.get(m);
+    const out = wantDouble ? this.maskToDouble.get(m) : wantFat ? this.maskToFat.get(m) : this.maskToSingle.get(m);
     return out ?? nextCh;
   }
 
@@ -875,52 +1038,52 @@ function ASC()
     let m = 0;
     let hDouble = false; // any double on horizontal axis
     let vDouble = false; // any double on vertical axis
-    let hThick  = false; // any thick on horizontal axis
-    let vThick  = false; // any thick on vertical axis
+    let hFat  = false; // any fat on horizontal axis
+    let vFat  = false; // any fat on vertical axis
 
       // earlier implemented in separate function cellMaskFromNeighbors() and axisStylesFromNeighbors()
       // UP contributes N if it connects DOWN (S)
       if (r > 0) {
         const up = ascii[r - 1][c];
-        const um = glyphToMask.get(up) ?? 0;
-        if (um & S) { m |= N; if (isDoubleWire(up)) vDouble = true; else if (isThickWire(up)) vThick = true; }
+        const um = this.glyphToMask.get(up) ?? 0;
+        if (um & S) { m |= N; if (isDoubleWire(up)) vDouble = true; else if (isFatWire(up)) vFat = true; }
       }
 
       // DOWN contributes S if it connects UP (N)
       if (r < ROWS - 1) {
         const dn = ascii[r + 1][c];
-        const dm = glyphToMask.get(dn) ?? 0;
-        if (dm & N) { m |= S; if (isDoubleWire(dn)) vDouble = true; else if (isThickWire(dn)) vThick = true; }
+        const dm = this.glyphToMask.get(dn) ?? 0;
+        if (dm & N) { m |= S; if (isDoubleWire(dn)) vDouble = true; else if (isFatWire(dn)) vFat = true; }
       }
 
       // LEFT contributes W if it connects RIGHT (E)
       if (c > 0) {
         const lt = ascii[r][c - 1];
-        const lm = glyphToMask.get(lt) ?? 0;
-        if (lm & E) { m |= W; if (isDoubleWire(lt)) hDouble = true; else if (isThickWire(lt)) hThick = true; }
+        const lm = this.glyphToMask.get(lt) ?? 0;
+        if (lm & E) { m |= W; if (isDoubleWire(lt)) hDouble = true; else if (isFatWire(lt)) hFat = true; }
       }
 
       // RIGHT contributes E if it connects LEFT (W)
       if (c < COLS - 1) {
         const rt = ascii[r][c + 1];
-        const rm = glyphToMask.get(rt) ?? 0;
-        if (rm & W) { m |= E; if (isDoubleWire(rt)) hDouble = true; else if (isThickWire(rt)) hThick = true; }
+        const rm = this.glyphToMask.get(rt) ?? 0;
+        if (rm & W) { m |= E; if (isDoubleWire(rt)) hDouble = true; else if (isFatWire(rt)) hFat = true; }
       }
 
     if (m === 0) { ascii[r][c] = " "; return " "; }
 
     // Determine style per axis
-    const hStyle = hDouble ? "double" : (hThick ? "thick" : "single");
-    const vStyle = vDouble ? "double" : (vThick ? "thick" : "single");
+    const hStyle = hDouble ? "double" : (hFat ? "fat" : "single");
+    const vStyle = vDouble ? "double" : (vFat ? "fat" : "single");
 
     const bothSingle = (hStyle === "single" && vStyle === "single");
-    const bothThick  = (hStyle === "thick"  && vStyle === "thick");
+    const bothFat  = (hStyle === "fat"  && vStyle === "fat");
     const bothDouble = (hStyle === "double" && vStyle === "double");
 
     function cross() {
       // same-style crosses
       if (hStyle === "single" && vStyle === "single") return "┼";
-      if (hStyle === "thick"  && vStyle === "thick")  return "╋";
+      if (hStyle === "fat"  && vStyle === "fat")  return "╋";
       if (hStyle === "double" && vStyle === "double") return "╬";
 
       // mixed-style crosses
@@ -928,33 +1091,33 @@ function ASC()
       if (hStyle === "double" && vStyle === "single") return "╪";
       if (hStyle === "single" && vStyle === "double") return "╫";
 
-      // double × thick
-      if (hStyle === "thick"  && vStyle === "double") return "╫";
-      if (hStyle === "double" && vStyle === "thick")  return "╪";
+      // double × fat
+      if (hStyle === "fat"  && vStyle === "double") return "╫";
+      if (hStyle === "double" && vStyle === "fat")  return "╪";
 
-      // thick × single
-      if (hStyle === "thick"  && vStyle === "single") return "┿";
-      if (hStyle === "single" && vStyle === "thick")  return "╂";
+      // fat × single
+      if (hStyle === "fat"  && vStyle === "single") return "┿";
+      if (hStyle === "single" && vStyle === "fat")  return "╂";
 
       return "┼";
     }
 
-    function horiz() { return hDouble ? "═" : (hThick ? "━" : "─"); }
-    function vert()  { return vDouble ? "║" : (vThick ? "┃" : "│"); }
+    function horiz() { return hDouble ? "═" : (hFat ? "━" : "─"); }
+    function vert()  { return vDouble ? "║" : (vFat ? "┃" : "│"); }
 
     function corner(mask) {
-      if (mask === (E|S)) return bothSingle ? "┌" : bothThick ? "┏" : bothDouble ? "╔" : hDouble ? "╒" : vDouble ? "╓" : hThick ? "┍" : "┎";
-      if (mask === (W|S)) return bothSingle ? "┐" : bothThick ? "┓" : bothDouble ? "╗" : hDouble ? "╕" : vDouble ? "╖" : hThick ? "┑" : "┒";
-      if (mask === (E|N)) return bothSingle ? "└" : bothThick ? "┗" : bothDouble ? "╚" : hDouble ? "╘" : vDouble ? "╙" : hThick ? "┕" : "┖";
-      if (mask === (W|N)) return bothSingle ? "┘" : bothThick ? "┛" : bothDouble ? "╝" : hDouble ? "╛" : vDouble ? "╜" : hThick ? "┙" : "┚";
+      if (mask === (E|S)) return bothSingle ? "┌" : bothFat ? "┏" : bothDouble ? "╔" : hDouble ? "╒" : vDouble ? "╓" : hFat ? "┍" : "┎";
+      if (mask === (W|S)) return bothSingle ? "┐" : bothFat ? "┓" : bothDouble ? "╗" : hDouble ? "╕" : vDouble ? "╖" : hFat ? "┑" : "┒";
+      if (mask === (E|N)) return bothSingle ? "└" : bothFat ? "┗" : bothDouble ? "╚" : hDouble ? "╘" : vDouble ? "╙" : hFat ? "┕" : "┖";
+      if (mask === (W|N)) return bothSingle ? "┘" : bothFat ? "┛" : bothDouble ? "╝" : hDouble ? "╛" : vDouble ? "╜" : hFat ? "┙" : "┚";
       return cur;
     }
 
     function tee(mask) {
-      if (mask === (E|S|W)) return bothSingle ? "┬" : bothThick ? "┳" : bothDouble ? "╦" : hDouble ? "╤" : vDouble ? "╥" : hThick ? "┯" : "┰";
-      if (mask === (E|N|W)) return bothSingle ? "┴" : bothThick ? "┻" : bothDouble ? "╩" : hDouble ? "╧" : vDouble ? "╨" : hThick ? "┷" : "┸";
-      if (mask === (N|E|S)) return bothSingle ? "├" : bothThick ? "┣" : bothDouble ? "╠" : hDouble ? "╞" : vDouble ? "╟" : hThick ? "┝" : "┠";
-      if (mask === (N|W|S)) return bothSingle ? "┤" : bothThick ? "┫" : bothDouble ? "╣" : hDouble ? "╡" : vDouble ? "╢" : hThick ? "┥" : "┨";
+      if (mask === (E|S|W)) return bothSingle ? "┬" : bothFat ? "┳" : bothDouble ? "╦" : hDouble ? "╤" : vDouble ? "╥" : hFat ? "┯" : "┰";
+      if (mask === (E|N|W)) return bothSingle ? "┴" : bothFat ? "┻" : bothDouble ? "╩" : hDouble ? "╧" : vDouble ? "╨" : hFat ? "┷" : "┸";
+      if (mask === (N|E|S)) return bothSingle ? "├" : bothFat ? "┣" : bothDouble ? "╠" : hDouble ? "╞" : vDouble ? "╟" : hFat ? "┝" : "┠";
+      if (mask === (N|W|S)) return bothSingle ? "┤" : bothFat ? "┫" : bothDouble ? "╣" : hDouble ? "╡" : vDouble ? "╢" : hFat ? "┥" : "┨";
       return cur;
     }
 
@@ -1183,8 +1346,13 @@ function ASC()
     this.pushStrokeIfNonEmpty(stroke);
   }
 
-  this.commitPasteAt = function() {
-    if (!pasteDrag || !pasteDrag.anchor) return;
+  this.commitPasteAt = function(cell) 
+  {
+    if (!pasteDrag) return;
+    if (cell && cell.r !== undefined && cell.c !== undefined) {
+      pasteDrag.anchor = { r: cell.r, c: cell.c };
+    }
+    if (!pasteDrag.anchor) return;
 
     const a = pasteDrag.anchor; // <-- use live anchor (may be outside grid)
     const stroke = [];
@@ -1369,7 +1537,7 @@ this.startPasteWithText = function(text)
   {
     if (patCh === "#") return WILD_D_SET.has(gridCh);
     if (patCh === "$") return WILD_S_SET.has(gridCh);
-    if (patCh === WILDCHAR_U) return WILD_U_SET.has(gridCh);
+    if (patCh === this.WILDCHAR_U) return WILD_U_SET.has(gridCh);
     return patCh === gridCh;
   }
 
@@ -1394,215 +1562,215 @@ this.startPasteWithText = function(text)
   // SECTION: TOOLS
 
 
-// ---------------------------------------------------------------------------
-// SECTION: QUERY (Locate)
-//
-// Policy note:
-// - Components are located via computeMatchOverlay() (catalog pattern matching).
-// - Boxes are located via the same “valid double-line box” rule used by highlight.
-//
-// qryLocate() is intended as a *pre-step* to richer queries:
-// it returns only bounding rectangles (top-left + bottom-right), plus minimal metadata.
-// ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // SECTION: QUERY (Locate)
+  //
+  // Policy note:
+  // - Components are located via computeMatchOverlay() (catalog pattern matching).
+  // - Boxes are located via the same “valid double-line box” rule used by highlight.
+  //
+  // qryLocate() is intended as a *pre-step* to richer queries:
+  // it returns only bounding rectangles (top-left + bottom-right), plus minimal metadata.
+  // ---------------------------------------------------------------------------
 
-// Extract a human label for a BOX (optional):
-// convention: first bracketed token inside the box, e.g. "[ATTiny85]".
-// Returns "" if none is found.
-this.computeBoxLabel = function(r0, c0, r1, c1)
-{
-  const top   = Math.min(r0, r1) + 1;
-  const bot   = Math.max(r0, r1) - 1;
-  const left  = Math.min(c0, c1) + 1;
-  const right = Math.max(c0, c1) - 1;
-
-  if (top > bot || left > right) return "";
-
-  for (let r = top; r <= bot; r++)
+  // Extract a human label for a BOX (optional):
+  // convention: first bracketed token inside the box, e.g. "[ATTiny85]".
+  // Returns "" if none is found.
+  this.computeBoxLabel = function(r0, c0, r1, c1)
   {
-    const row = ascii?.[r];
-    if (!row) continue;
+    const top   = Math.min(r0, r1) + 1;
+    const bot   = Math.max(r0, r1) - 1;
+    const left  = Math.min(c0, c1) + 1;
+    const right = Math.max(c0, c1) - 1;
 
-    // Find '['
-    let s = -1;
-    for (let c = left; c <= right; c++) { if (row[c] === "[") { s = c; break; } }
-    if (s < 0) continue;
+    if (top > bot || left > right) return "";
 
-    // Find matching ']'
-    let e = -1;
-    for (let c = s + 1; c <= right; c++) { if (row[c] === "]") { e = c; break; } }
-    if (e <= s) continue;
+    for (let r = top; r <= bot; r++)
+    {
+      const row = ascii?.[r];
+      if (!row) continue;
 
-    const label = row.slice(s + 1, e).join("").trim();
-    if (label) return label;
+      // Find '['
+      let s = -1;
+      for (let c = left; c <= right; c++) { if (row[c] === "[") { s = c; break; } }
+      if (s < 0) continue;
+
+      // Find matching ']'
+      let e = -1;
+      for (let c = s + 1; c <= right; c++) { if (row[c] === "]") { e = c; break; } }
+      if (e <= s) continue;
+
+      const label = row.slice(s + 1, e).join("").trim();
+      if (label) return label;
+    }
+
+    return "";
   }
 
-  return "";
-}
-
-// Locate all valid BOX rectangles (double-line boxes) on the grid.
-// Returns [{ ref:"DEFINITION", r0,c0,r1,c1, name, type:"BOX" }, ...]
-this.computeBoxRects = function()
-{
-  const out = [];
-  const seen = new Set();
-
-  for (let r0 = 0; r0 < ROWS; r0++)
+  // Locate all valid BOX rectangles (double-line boxes) on the grid.
+  // Returns [{ ref:"DEFINITION", r0,c0,r1,c1, name, type:"BOX" }, ...]
+  this.computeBoxRects = function()
   {
-    for (let c0 = 0; c0 < COLS; c0++)
+    const out = [];
+    const seen = new Set();
+
+    for (let r0 = 0; r0 < ROWS; r0++)
     {
-      if (ascii?.[r0]?.[c0] !== "╔") continue;
-
-      for (let c1 = c0 + 1; c1 < COLS; c1++)
+      for (let c0 = 0; c0 < COLS; c0++)
       {
-        if (ascii[r0][c1] !== "╗") continue;
+        if (ascii?.[r0]?.[c0] !== "╔") continue;
 
-        for (let r1 = r0 + 1; r1 < ROWS; r1++)
+        for (let c1 = c0 + 1; c1 < COLS; c1++)
         {
-          if (ascii[r1][c0] !== "╚") continue;
-          if (ascii[r1][c1] !== "╝") continue;
+          if (ascii[r0][c1] !== "╗") continue;
 
-          if (!this.isValidDoubleBox?.(r0, c0, r1, c1)) continue;
+          for (let r1 = r0 + 1; r1 < ROWS; r1++)
+          {
+            if (ascii[r1][c0] !== "╚") continue;
+            if (ascii[r1][c1] !== "╝") continue;
 
-          const k = r0 + "," + c0 + "," + r1 + "," + c1;
-          if (seen.has(k)) continue;
-          seen.add(k);
+            if (!this.isValidDoubleBox?.(r0, c0, r1, c1)) continue;
 
-          const name = this.computeBoxLabel?.(r0, c0, r1, c1) ?? "";
+            const k = r0 + "," + c0 + "," + r1 + "," + c1;
+            if (seen.has(k)) continue;
+            seen.add(k);
 
-          out.push({
-            ref: "DEFINITION",  // referring to the definition (of a BOX)
-            type: "BOX",
-            name,
-            tl: { r: r0, c: c0 },
-            br: { r: r1, c: c1 },
-          });
+            const name = this.computeBoxLabel?.(r0, c0, r1, c1) ?? "";
+
+            out.push({
+              ref: "DEFINITION",  // referring to the definition (of a BOX)
+              type: "BOX",
+              name,
+              tl: { r: r0, c: c0 },
+              br: { r: r1, c: c1 },
+            });
+          }
         }
       }
     }
+
+    return out;
   }
 
-  return out;
-}
+  // Locate matching catalog components and/or boxes according to policy.
+  //
+  // Examples:
+  //   oASC.qryLocate({type:'MCU'})
+  //   oASC.qryLocate({type:'BOX'})
+  //   oASC.qryLocate({name:'ATTiny85'})
+  //   oASC.qryLocate({name:'ATTiny85',MFR:'ATTINY85V-10PU'})
+  //
+  // Return format (per hit):
+  //   {
+  //     ref: "CATALOG"|"DEFINITION",
+  //     name, type, MFR,
+  //     r0,c0,r1,c1,
+  //     tl:{r,c}, br:{r,c},
+  //     ... (catalog-only: catalog_idx, rotation, uid)
+  //   }
+  // Locate matching catalog components, boxes, and labels according to policy.
+  this.qryLocate = function(criteria) 
+  {
+    const q = criteria || {};
 
-// Locate matching catalog components and/or boxes according to policy.
-//
-// Examples:
-//   oASC.qryLocate({type:'MCU'})
-//   oASC.qryLocate({type:'BOX'})
-//   oASC.qryLocate({name:'ATTiny85'})
-//   oASC.qryLocate({name:'ATTiny85',MFR:'ATTINY85V-10PU'})
-//
-// Return format (per hit):
-//   {
-//     ref: "CATALOG"|"DEFINITION",
-//     name, type, MFR,
-//     r0,c0,r1,c1,
-//     tl:{r,c}, br:{r,c},
-//     ... (catalog-only: catalog_idx, rotation, uid)
-//   }
-// Locate matching catalog components, boxes, and labels according to policy.
-this.qryLocate = function(criteria) 
-{
-  const q = criteria || {};
+    const wantRef  = (q.ref === undefined  || q.ref === null) ? null : String(q.ref);
+    const wantType = (q.type === undefined || q.type === null) ? null : String(q.type);
+    const wantName = (q.name === undefined || q.name === null) ? null : String(q.name);
+    const wantMFR  = (q.MFR  === undefined || q.MFR  === null) ? null : String(q.MFR);
 
-  const wantRef  = (q.ref === undefined  || q.ref === null) ? null : String(q.ref);
-  const wantType = (q.type === undefined || q.type === null) ? null : String(q.type);
-  const wantName = (q.name === undefined || q.name === null) ? null : String(q.name);
-  const wantMFR  = (q.MFR  === undefined || q.MFR  === null) ? null : String(q.MFR);
+    function matchField(val, want) {
+      if (want === null) return true;
+      return String(val ?? "").match(new RegExp(want, "g")) != null;
+    }
 
-  function matchField(val, want) {
-    if (want === null) return true;
-    return String(val ?? "").match(new RegExp(want, "g")) != null;
-  }
-
-  function accept(item) {
-    // ref
-    if (wantRef !== null && !matchField(item.ref, wantRef)) return false;
-    // type
-    if (wantType !== null) {
-      if (wantType === "BOX") {
-        if (item.ref !== "DEFINITION") return false;
-      } else if (wantType === "LABEL") {
-        if (item.ref !== "DEFINITION") return false;
-      } else {
-        // any non-BOX/LABEL type (so far) targets catalog items
+    function accept(item) {
+      // ref
+      if (wantRef !== null && !matchField(item.ref, wantRef)) return false;
+      // type
+      if (wantType !== null) {
+        if (wantType === "BOX") {
+          if (item.ref !== "DEFINITION") return false;
+        } else if (wantType === "LABEL") {
+          if (item.ref !== "DEFINITION") return false;
+        } else {
+          // any non-BOX/LABEL type (so far) targets catalog items
+          if (item.ref !== "CATALOG") return false;
+          if (!matchField(item.type, wantType)) return false;
+        }
+      }
+      // name
+      if (wantName !== null && !matchField(item.name, wantName)) return false;
+      // MFR only makes sense for catalog items
+      if (wantMFR !== null) {
         if (item.ref !== "CATALOG") return false;
-        if (!matchField(item.type, wantType)) return false;
+        if (!matchField(item.MFR, wantMFR)) return false;
+      }
+      return true;
+    }
+
+    const out = [];
+
+    // ---- Catalog components (pattern matches) ----
+    const mo = (typeof this.computeMatchOverlay === "function") ? this.computeMatchOverlay() : null;
+    const matches = mo?.matches || [];
+
+    if (matches && matches.length) {
+      const items = (typeof CATALOG !== "undefined" && Array.isArray(CATALOG)) ? CATALOG : [];
+      for (let i = 0; i < matches.length; i++) {
+        const m = matches[i];
+        const it = items[m.catalog_idx] || {};
+        const name = String(m.name ?? it.name ?? "");
+        const type = String(m.type ?? it.type ?? "");
+        const MFR  = String(m.MFR  ?? it.MFR  ?? "");
+        const uid  = String(m.uid  ?? (name + "_" + type + "_" + MFR));
+        const hit = {
+          ref: "CATALOG",
+          name, type, MFR,
+          uid,
+          catalog_idx: m.catalog_idx,
+          rotation: m.rotation,
+          tl: { r: m.r0, c: m.c0 },
+          br: { r: m.r1, c: m.c1 },
+        };
+        if (accept(hit)) out.push(hit);
       }
     }
-    // name
-    if (wantName !== null && !matchField(item.name, wantName)) return false;
-    // MFR only makes sense for catalog items
-    if (wantMFR !== null) {
-      if (item.ref !== "CATALOG") return false;
-      if (!matchField(item.MFR, wantMFR)) return false;
+
+    // ---- Boxes (valid double-line rectangles) ----
+    const shouldIncludeBoxes = (wantType === null) || (wantType === "BOX") || (wantName !== null);
+    if (shouldIncludeBoxes) {
+      const boxes = (typeof this.computeBoxRects === "function") ? this.computeBoxRects() : [];
+      for (let i = 0; i < boxes.length; i++) {
+        const b = boxes[i];
+        if (accept(b)) out.push(b);
+      }
     }
-    return true;
-  }
 
-  const out = [];
-
-  // ---- Catalog components (pattern matches) ----
-  const mo = (typeof this.computeMatchOverlay === "function") ? this.computeMatchOverlay() : null;
-  const matches = mo?.matches || [];
-
-  if (matches && matches.length) {
-    const items = (typeof CATALOG !== "undefined" && Array.isArray(CATALOG)) ? CATALOG : [];
-    for (let i = 0; i < matches.length; i++) {
-      const m = matches[i];
-      const it = items[m.catalog_idx] || {};
-      const name = String(m.name ?? it.name ?? "");
-      const type = String(m.type ?? it.type ?? "");
-      const MFR  = String(m.MFR  ?? it.MFR  ?? "");
-      const uid  = String(m.uid  ?? (name + "_" + type + "_" + MFR));
-      const hit = {
-        ref: "CATALOG",
-        name, type, MFR,
-        uid,
-        catalog_idx: m.catalog_idx,
-        rotation: m.rotation,
-        tl: { r: m.r0, c: m.c0 },
-        br: { r: m.r1, c: m.c1 },
-      };
-      if (accept(hit)) out.push(hit);
+    // ---- Labels (text strings) ----
+    const shouldIncludeLabels = (wantType === "LABEL") || (wantName !== null);
+    if (shouldIncludeLabels) {
+      const labels = (typeof this.computeLabelRects === "function") ? this.computeLabelRects() : [];
+      for (let i = 0; i < labels.length; i++) {
+        const l = labels[i];
+        if (accept(l)) out.push(l);
+      }
     }
-  }
 
-  // ---- Boxes (valid double-line rectangles) ----
-  const shouldIncludeBoxes = (wantType === null) || (wantType === "BOX") || (wantName !== null);
-  if (shouldIncludeBoxes) {
-    const boxes = (typeof this.computeBoxRects === "function") ? this.computeBoxRects() : [];
-    for (let i = 0; i < boxes.length; i++) {
-      const b = boxes[i];
-      if (accept(b)) out.push(b);
-    }
-  }
+    return out;
+  };
 
-  // ---- Labels (text strings) ----
-  const shouldIncludeLabels = (wantType === "LABEL") || (wantName !== null);
-  if (shouldIncludeLabels) {
-    const labels = (typeof this.computeLabelRects === "function") ? this.computeLabelRects() : [];
-    for (let i = 0; i < labels.length; i++) {
-      const l = labels[i];
-      if (accept(l)) out.push(l);
-    }
-  }
-
-  return out;
-};
-
-this.qryLocate.help =
-{
-  type: "CADScript_FN",
-  usage: "qryLocate({<i>key</i>:<i>regexp</i>})",
-  desc: "Locate matching catalog components and BOX rectangles with regular expressions; returns bounding rectangles with tl/br coordinates.",
-  examples: [
-    "oASC.qryLocate({ref:'CAT.+'})",
-    "oASC.qryLocate({type:'BOX'})",
-    "oASC.qryLocate({name:'ATTiny85'})",
-    "oASC.qryLocate({name:'ATTiny85'\n\t,MFR:'ATTINY85V-10PU'})"
-  ]
-};
+  this.qryLocate.help =
+  {
+    type: "CADScript_FN",
+    usage: "qryLocate({<i>key</i>:<i>regexp</i>})",
+    desc: "Locate matching catalog components and BOX rectangles with regular expressions; returns bounding rectangles with tl/br coordinates.",
+    examples: [
+      "oASC.qryLocate({ref:'CAT.+'})",
+      "oASC.qryLocate({type:'BOX'})",
+      "oASC.qryLocate({name:'ATTiny85'})",
+      "oASC.qryLocate({name:'ATTiny85'\n\t,MFR:'ATTINY85V-10PU'})"
+    ]
+  };
 
 
   // Locate all labels (text strings) on the grid.
@@ -1717,20 +1885,23 @@ this.qryLocate.help =
   
 
 
+    // ---- internal methods that need `this` -----------------------------------
+
+  var self = this;
 
   function __computeNetlistCore(opts)
   {
     opts = opts || {};
     const includeCellSet = !!opts.includeCellSet;
 
-    const overlay = oASC.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
-    const mo = oASC.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set(), footprintSet: new Set() };
+    const overlay = self.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
+    const mo = self.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set(), footprintSet: new Set() };
 
     // For CE detection we want the footprint (includes wildcard cells)
     const compSet = mo.solidSet ?? mo.greenSet ?? mo.footprintSet ?? new Set();
 
     // One source of truth for banned
-    const banned = oASC.computeNetlistBannedSet?.(mo, overlay) ?? new Set();
+    const banned = self.computeNetlistBannedSet?.(mo, overlay) ?? new Set();
 
     function isNetWireCell(r,c)
     {
@@ -1739,37 +1910,37 @@ this.qryLocate.help =
       const ch = ascii?.[r]?.[c];
       if (ch === undefined) return false;
       if (ch === " ") return false;
-      return (glyphToMask.get(ch) ?? 0) !== 0;
+      return (self.glyphToMask.get(ch) ?? 0) !== 0;
     }
 
     function connectedNeighbors(r,c)
     {
       const out = [];
       const ch = ascii[r][c];
-      const m  = glyphToMask.get(ch) ?? 0;
+      const m  = self.glyphToMask.get(ch) ?? 0;
 
       // up
       if ((m & N) && r > 0 && isNetWireCell(r-1,c)) {
-        const m2 = glyphToMask.get(ascii[r-1][c]) ?? 0;
+        const m2 = self.glyphToMask.get(ascii[r-1][c]) ?? 0;
         if (m2 & S) pushUnique(out, r-1, c);
       }
       // down
       if ((m & S) && r < ROWS-1 && isNetWireCell(r+1,c)) {
-        const m2 = glyphToMask.get(ascii[r+1][c]) ?? 0;
+        const m2 = self.glyphToMask.get(ascii[r+1][c]) ?? 0;
         if (m2 & N) pushUnique(out, r+1, c);
       }
 
       // left (with horizontal-only crossing bypass ─│─)
       if ((m & W) && c > 0 && isNetWireCell(r, c-1)) {
         const ch2 = ascii[r][c-1];
-        const m2  = glyphToMask.get(ch2) ?? 0;
+        const m2  = self.glyphToMask.get(ch2) ?? 0;
 
         if (m2 & E) {
           pushUnique(out, r, c-1);
         } else {
           const isVerticalOnly = (m2 & N) && (m2 & S) && !(m2 & E) && !(m2 & W);
           if (isVerticalOnly && c-2 >= 0 && isNetWireCell(r, c-2)) {
-            const m3 = glyphToMask.get(ascii[r][c-2]) ?? 0;
+            const m3 = self.glyphToMask.get(ascii[r][c-2]) ?? 0;
             if (m3 & E) pushUnique(out, r, c-2);
           }
         }
@@ -1778,14 +1949,14 @@ this.qryLocate.help =
       // right (with horizontal-only crossing bypass ─│─)
       if ((m & E) && c < COLS-1 && isNetWireCell(r, c+1)) {
         const ch2 = ascii[r][c+1];
-        const m2  = glyphToMask.get(ch2) ?? 0;
+        const m2  = self.glyphToMask.get(ch2) ?? 0;
 
         if (m2 & W) {
           pushUnique(out, r, c+1);
         } else {
           const isVerticalOnly = (m2 & N) && (m2 & S) && !(m2 & E) && !(m2 & W);
           if (isVerticalOnly && c+2 < COLS && isNetWireCell(r, c+2)) {
-            const m3 = glyphToMask.get(ascii[r][c+2]) ?? 0;
+            const m3 = self.glyphToMask.get(ascii[r][c+2]) ?? 0;
             if (m3 & W) pushUnique(out, r, c+2);
           }
         }
@@ -1810,9 +1981,9 @@ this.qryLocate.help =
       if (!compSet.has(kk)) return;
 
       const chC = ascii?.[compR]?.[compC];
-      if (!chC || chC === " " || chC === WILDCHAR_U) return;
+      if (!chC || chC === " " || chC === this.WILDCHAR_U) return;
 
-      const mC = glyphToMask.get(chC) ?? 0;
+      const mC = self.glyphToMask.get(chC) ?? 0;
       if (!(mC & needBitOnComp)) return;
 
       pushUniqueCR(CE, compC, compR);
@@ -1866,7 +2037,7 @@ this.qryLocate.help =
 
         // CE scan on all nodes
         for (const n of nodes) {
-          const m = glyphToMask.get(ascii[n.r][n.c]) ?? 0;
+          const m = self.glyphToMask.get(ascii[n.r][n.c]) ?? 0;
           if (m & W) tryAddCE(LE, CE, n.r, n.c, n.r, n.c - 1, E);
           if (m & E) tryAddCE(LE, CE, n.r, n.c, n.r, n.c + 1, W);
           if (m & N) tryAddCE(LE, CE, n.r, n.c, n.r - 1, n.c, S);
@@ -1920,7 +2091,7 @@ this.qryLocate.help =
           const ty = String(m.type ?? CATALOG?.[m.catalog_idx]?.type ?? "");
           if (ty !== "Net") continue;
 
-          const labelID = oASC.NetLabelID?.(m.catalog_idx, m.rotation) ?? "";
+          const labelID = self.NetLabelID?.(m.catalog_idx, m.rotation) ?? "";
           if (!labelID) continue;
           touched.add(labelID);
         }
@@ -2141,7 +2312,7 @@ this.qryLocate.help =
               footprintSet.add(k);
 
               // Visual highlight + ban mask exclude wildcard cells
-              if (pc !== WILDCHAR_U) {
+              if (pc !== this.WILDCHAR_U) {
                 greenSet.add(k);
                 solidSet.add(k);
                 matchByCell.set(k, matchId);
@@ -2244,53 +2415,214 @@ this.qryLocate.help =
     return out.join('\n');
   }
 
-
-  this.doUndo = function() 
+  this.stack = function(command)
   {
-    const stroke = undoStack.pop();
-    if (!stroke) return;
-    for (let i = stroke.length - 1; i >= 0; i--) ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
-    redoStack.push(stroke);
+    switch(command)
+    {
+      case "undo":
+        var stroke = undoStack.pop();
+        if (!stroke) return;
+        for (let i = stroke.length - 1; i >= 0; i--) ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
+        redoStack.push(stroke);
 
-    // Invalidate overlays after undo
-    highlightCache = null;
-    matchCache = null;
-    netlistCache = null;
-    hoverNetIndex = -1;
+        // Invalidate overlays after undo
+        highlightCache = null;
+        matchCache = null;
+        netlistCache = null;
+        hoverNetIndex = -1;
 
-    updateUI();
-    this.draw("doUndo");
+        updateUI();
+        this.draw("stack."+command); 
+      break;
+      case "redo":
+        var stroke = redoStack.pop();
+        if (!stroke) return;
+        for (let i = 0; i < stroke.length; i++) ascii[stroke[i].r][stroke[i].c] = stroke[i].next;
+        undoStack.push(stroke);
+
+        // Invalidate overlays after redo
+        highlightCache = null;
+        matchCache = null;
+        netlistCache = null;
+        hoverNetIndex = -1;
+
+        updateUI();
+        this.draw("stack."+command); 
+      break;
+      case "reset":
+        undoStack = [];
+        redoStack = [];
+        updateUI();
+        this.draw("stack."+command); 
+      break;
+      case "get":
+        return {"undoStack":undoStack,"redoStack":redoStack}
+
+    }
   }
-  this.doUndo.help = 
+
+  // ---------------------------------------------------------------------------
+  // getLabel(c,r,<env_retval>)
+  //   - finds nearest label to (c,r)
+  //   - returns {c:<originCol>, r:<row>, str:<labelString>}
+  //   - if env_retval is a string, stores the object to oASC.vars[env_retval]
+  //
+  // setLabel(c,r,label_str)
+  //   - overwrites label at (c,r) (row r, starting at col c)
+  //   - clears remaining chars if new label is shorter
+  //
+  this.getLabel = function(c, r, env_retval)
   {
-    type: "CADScript_CMD",
-    usage: "doUndo()",
-    desc: "Undo last action",
-    examples: ["oASC.doUndo()"]
+    if (r===undefined || c===undefined) return null;
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
+      throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
+
+    if (!this.vars) this.vars = Object.create(null);
+
+    const wc = this.WILDCHAR_U;
+
+    const isLabelChar = (ch) => {
+      if (!ch || ch === " ") return false;
+      if (ch === wc) return true;
+      return /[A-Za-z0-9_\-\.#:/\\\[\]\(\)]/.test(ch);
+    };
+
+    const charAt = (rr, cc) => {
+      if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) return " ";
+      const row = ascii?.[rr];
+      if (!row) return " ";
+      return (row[cc] === undefined) ? " " : row[cc];
+    };
+
+    // Given a cell (rr,cc) that isLabelChar, return the label's origin col and full string on that row.
+    const extractLabelAt = (rr, cc) => {
+      // find left boundary
+      let oc = cc;
+      while (oc - 1 >= 0 && isLabelChar(charAt(rr, oc - 1))) oc--;
+
+      // read right
+      let s = "";
+      let x = oc;
+      while (x < COLS && isLabelChar(charAt(rr, x))) {
+        s += charAt(rr, x);
+        x++;
+      }
+      return { c: oc, r: rr, str: s };
+    };
+
+    // Search expanding radius around (c,r) for any label char; pick nearest by Euclidean distance to origin.
+    let best = null;
+    let bestD2 = Infinity;
+
+    const maxRad = Math.max(ROWS, COLS); // safe upper bound
+    for (let rad = 0; rad <= maxRad; rad++)
+    {
+      let foundThisRing = false;
+
+      // scan square ring (rad) around (c,r)
+      const r0 = r - rad, r1 = r + rad;
+      const c0 = c - rad, c1 = c + rad;
+
+      for (let rr = r0; rr <= r1; rr++)
+      {
+        // only edges (ring), not full square, to keep it reasonable
+        if (rr !== r0 && rr !== r1) {
+          // left edge
+          let cc = c0;
+          if (cc >= 0 && cc < COLS && rr >= 0 && rr < ROWS && isLabelChar(charAt(rr, cc))) {
+            const L = extractLabelAt(rr, cc);
+            const d2 = (L.c - c) * (L.c - c) + (L.r - r) * (L.r - r);
+            if (d2 < bestD2) { best = L; bestD2 = d2; }
+            foundThisRing = true;
+          }
+          // right edge
+          cc = c1;
+          if (cc >= 0 && cc < COLS && rr >= 0 && rr < ROWS && isLabelChar(charAt(rr, cc))) {
+            const L = extractLabelAt(rr, cc);
+            const d2 = (L.c - c) * (L.c - c) + (L.r - r) * (L.r - r);
+            if (d2 < bestD2) { best = L; bestD2 = d2; }
+            foundThisRing = true;
+          }
+          continue;
+        }
+
+        // top/bottom edges: scan full row segment
+        for (let cc = c0; cc <= c1; cc++)
+        {
+          if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+          if (!isLabelChar(charAt(rr, cc))) continue;
+
+          const L = extractLabelAt(rr, cc);
+          const d2 = (L.c - c) * (L.c - c) + (L.r - r) * (L.r - r);
+          if (d2 < bestD2) { best = L; bestD2 = d2; }
+          foundThisRing = true;
+        }
+      }
+
+      // If we found something at this radius, we can stop early because larger radii can't be closer.
+      if (foundThisRing && best) break;
+    }
+
+    // store into env var name if provided (string)
+    if (typeof env_retval === "string" && env_retval.length > 0) {
+      this.vars[env_retval] = best;
+    }
+
+    return best;
   };
 
-  this.doRedo = function() 
-  {
-    const stroke = redoStack.pop();
-    if (!stroke) return;
-    for (let i = 0; i < stroke.length; i++) ascii[stroke[i].r][stroke[i].c] = stroke[i].next;
-    undoStack.push(stroke);
+  this.getLabel.help = {
+    type: "CADScript_FN",
+    usage: "getLabel(c,r,<i>env_retval</i>)",
+    desc: "Find nearest label near (c,r). Returns {c:<originCol>, r:<row>, str:<labelString>} and optionally stores it into oASC.vars[env_retval].",
+    examples: [
+      "oTERM.printJSON(getLabel(10,5,'ret'))",
+      "oTERM.printJSON(oASC.vars.ret)"
+    ]
+  };
 
-    // Invalidate overlays after undo
-    highlightCache = null;
-    matchCache = null;
-    netlistCache = null;
-    hoverNetIndex = -1;
-
-    updateUI();
-    this.draw("doRedo");
-  }
-  this.doRedo.help = 
+  this.setLabel = function(c, r, label_str)
   {
-    type: "CADScript_CMD",
-    usage: "doRedo()",
-    desc: "Redo last undone action",
-    examples: ["oASC.doRedo()"]
+    if (r===undefined || c===undefined) return;
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
+      throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
+
+    const s = String(label_str ?? "");
+
+    const wc = this.WILDCHAR_U;
+    const isLabelChar = (ch) => {
+      if (!ch || ch === " ") return false;
+      if (ch === wc) return true;
+      return /[A-Za-z0-9_\-\.#:/\\\[\]\(\)]/.test(ch);
+    };
+    const charAt = (rr, cc) => {
+      if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) return " ";
+      const row = ascii?.[rr];
+      if (!row) return " ";
+      return (row[cc] === undefined) ? " " : row[cc];
+    };
+
+    // Determine old label length starting at (c,r) so we can clear leftovers if needed.
+    let oldLen = 0;
+    while ((c + oldLen) < COLS && isLabelChar(charAt(r, c + oldLen))) oldLen++;
+
+    // Write new label (single-line). Use putCell to keep your existing stroke/undo behavior.
+    this.putCell(c, r, s);
+
+    // Clear leftover chars if the new label is shorter
+    if (oldLen > s.length) {
+      this.putCell(c + s.length, r, " ".repeat(oldLen - s.length));
+    }
+  };
+
+  this.setLabel.help = {
+    type: "CADScript_FN",
+    usage: "setLabel(c,r,<i>label_str</i>)",
+    desc: "Write label_str at (c,r). If an old label exists starting at (c,r) and is longer, clears the remainder with spaces.",
+    examples: [
+      "setLabel(5,3,'Net_1')",
+      "oTERM.printJSON(getLabel(5,3,'ret'))"
+    ]
   };
 
 
@@ -2328,7 +2660,7 @@ this.qryLocate.help =
     }
     const { snap, snapLine } = getSnapFns(dpr, scale);   // get snap functions
 
-    var { cw, ch } = oASC.getCellSize();
+    var { cw, ch } = this.getCellSize();
 
     // Visible bounds in WORLD coordinates (undo pan/zoom around center)
     const left   = (0 - cx) / scale + cx - panX;
@@ -2395,7 +2727,7 @@ this.qryLocate.help =
       ctx.restore();
     }
 
-    if (schemaHighlightOn && !highlightCache) highlightCache = oASC.computeHighlightOverlay();
+    if (schemaHighlightOn && !highlightCache) highlightCache = this.computeHighlightOverlay();
     const redSet = highlightCache ? highlightCache.redSet : null;
     const insideSet = highlightCache ? highlightCache.insideSet : null;
 
@@ -2404,7 +2736,7 @@ this.qryLocate.help =
     const RED  = "rgba(239,68,68,0.9)";
     const GREEN = "rgba(34,197,94,0.95)";
 
-    if (schemaMatchOn && !matchCache) matchCache = oASC.computeMatchOverlay();
+    if (schemaMatchOn && !matchCache) matchCache = this.computeMatchOverlay();
 
     const greenSet = matchCache ? matchCache.greenSet : null;
     // Draw all chars (skip base rect while moving)
@@ -2448,11 +2780,11 @@ this.qryLocate.help =
 
           // 1) Red: only double-line frame cells of enclosed rectangles
           // 2) Blue: single-line glyphs + crossings, but NOT inside double rectangles
-          if (redSet && redSet.has(k) && (oASC.hasDoubleH(chx) || oASC.hasDoubleV(chx) || chx==="╔"||chx==="╗"||chx==="╚"||chx==="╝"))
+          if (redSet && redSet.has(k) && (this.hasDoubleH(chx) || this.hasDoubleV(chx) || chx==="╔"||chx==="╗"||chx==="╚"||chx==="╝"))
             color = RED;
-          else if (!inside) // single-line wires are: wire glyphs that are neither double nor thick
+          else if (!inside) // single-line wires are: wire glyphs that are neither double nor fat
           {
-            if (oASC.isWireGlyph(chx) && !isDoubleWire(chx) && !isThickWire(chx) && chx !== " ")
+            if (this.isWireGlyph(chx) && !isDoubleWire(chx) && !isFatWire(chx) && chx !== " ")
               color = BLUE;
           }
         }
@@ -2504,14 +2836,14 @@ this.qryLocate.help =
 
     if (pasteDrag) drawPastePreview(cw, ch, snap);
 
-    oASC.drawLinePreview();
+    this.drawLinePreview();
 
     // Line preview overlay
     if (lineDrag)
     {
       const old = ctx.fillStyle;
       ctx.fillStyle = "rgba(59,130,246,0.9)";
-      const path = oASC.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+      const path = this.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
 
       for (const p of path)
       {
@@ -2526,8 +2858,8 @@ this.qryLocate.help =
     {
       const old = ctx.fillStyle;
       ctx.fillStyle = "rgba(59,130,246,0.9)";
-      const style = boxDrag.kind === "double" ? BOX_DOUBLE : boxDrag.kind === "thick" ? BOX_THICK : BOX_SINGLE;
-      const path = oASC.buildBoxPath(boxDrag.start, boxDrag.cur, style);
+      const style = boxDrag.kind === "double" ? this.BOX_DOUBLE : boxDrag.kind === "fat" ? this.BOX_FAT : this.BOX_SINGLE;
+      const path = this.buildBoxPath(boxDrag.start, boxDrag.cur, style);
 
       for (const p of path)
       {
