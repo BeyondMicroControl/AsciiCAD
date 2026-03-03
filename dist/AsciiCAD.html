@@ -5725,14 +5725,19 @@ function CMD()
       return true;
     }
 
-    const raw = String(line || "").trim();
+    const raw = String(line ?? "").trim();
 
-    if (/^cadscript\b/i.test(raw)) {
-      // Re-entrancy guard prevents ping-pong between oCMD.run and __cliHandleTerminal
+      // Option A: __cliHandleTerminal is the sole CADScript handler
+      if (/^cadscript\b/i.test(raw))
+      {
+      // prevent ping-pong recursion: oCMD.run -> __cliHandleTerminal -> oCMD.run -> ...
       if (this._inCliDispatch) return true;
 
       this._inCliDispatch = true;
       try {
+        if (typeof window.__cliHandleTerminal === "function") {
+          return window.__cliHandleTerminal(raw);
+        }
         if (typeof __cliHandleTerminal === "function") {
           return __cliHandleTerminal(raw);
         }
@@ -9430,6 +9435,11 @@ document.addEventListener('mouseup', stopResize);
 // MOVE TERMINAL HANDLER TO oCMD (also rename it to HandleCommandLine, eventually merge it together with onInput ?)
 function __cliHandleTerminal(line) 
 {
+  line = String(line ?? "");
+
+  // normalize CADScript keyword case (so CADSCript / cadscript / etc. all work)
+  line = line.replace(/^\s*cadscript\b/i, "CADScript");
+
   if(bDebug) oTERM.output("<a href=\"tools/CMD_tool.html?d="+encodeURIComponent(line)+"\" target=\"CMD_tool\">visual debug</a>");  // for debugging purposes
   
   // DIRECTLY PARSE CADScript
@@ -9454,7 +9464,7 @@ function __cliHandleTerminal(line)
 
 
   var script_node = plan.plan.groups[0].pipeline[0];
-  if(script_node.token == "CADScript")                    // CADScript launcher
+  if (script_node.token == "CADScript")                    // CADScript launcher
   {
     const names = Object.keys(oASC);
     const values = Object.values(oASC);
