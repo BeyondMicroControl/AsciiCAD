@@ -1743,14 +1743,19 @@ function CMD()
       return true;
     }
 
-    const raw = String(line || "").trim();
+    const raw = String(line ?? "").trim();
 
-    if (/^cadscript\b/i.test(raw)) {
-      // Re-entrancy guard prevents ping-pong between oCMD.run and __cliHandleTerminal
+      // Option A: __cliHandleTerminal is the sole CADScript handler
+      if (/^cadscript\b/i.test(raw))
+      {
+      // prevent ping-pong recursion: oCMD.run -> __cliHandleTerminal -> oCMD.run -> ...
       if (this._inCliDispatch) return true;
 
       this._inCliDispatch = true;
       try {
+        if (typeof window.__cliHandleTerminal === "function") {
+          return window.__cliHandleTerminal(raw);
+        }
         if (typeof __cliHandleTerminal === "function") {
           return __cliHandleTerminal(raw);
         }
