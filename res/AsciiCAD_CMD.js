@@ -1754,10 +1754,10 @@ function CMD()
       this._inCliDispatch = true;
       try {
         if (typeof window.__cliHandleTerminal === "function") {
-          return window.__cliHandleTerminal(raw);
+          return window.__cliHandleTerminal(raw, { source: "internal" });
         }
         if (typeof __cliHandleTerminal === "function") {
-          return __cliHandleTerminal(raw);
+          return __cliHandleTerminal(raw, { source: "internal" });
         }
         oTERM.output("[ERROR] __cliHandleTerminal not available");
         return true;

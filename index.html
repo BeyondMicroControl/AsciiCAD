@@ -968,29 +968,25 @@ document.addEventListener('mouseup', stopResize);
 
 
 // MOVE TERMINAL HANDLER TO oCMD (also rename it to HandleCommandLine, eventually merge it together with onInput ?)
-function __cliHandleTerminal(line) 
+function __cliHandleTerminal(line,ctx) 
 {
+  ctx = ctx || {};
   line = String(line ?? "");
 
-  // normalize CADScript keyword case (so CADSCript / cadscript / etc. all work)
+  // normalize CADScript keyword case
   line = line.replace(/^\s*cadscript\b/i, "CADScript");
 
-  if(bDebug) oTERM.output("<a href=\"tools/CMD_tool.html?d="+encodeURIComponent(line)+"\" target=\"CMD_tool\">visual debug</a>");  // for debugging purposes
-  
-  // DIRECTLY PARSE CADScript
-  if(oTERM._o.shell.prompt=="CADScript")
+  // Only treat prompt="CADScript" as “direct JS body mode” for interactive input.
+  // Internal command-lines (triggered by oCMD.run from a worker) must bypass this.
+  const promptMode = String(oTERM._o.shell.prompt || "");
+  const isInternal = (ctx.source === "internal");
+
+  if (promptMode === "CADScript" && !isInternal)
   {
-    var code = line;
-
-    code = code.replace(/^\s*CADScript\b\s*/i, "");
-    code = code.replace(/\}\s*\s*$/, "}"); // collapse a possible double-close at end
-
-    // SEND A JOB TO THE CMD WORKER
+    var code = line.replace(/CADScript(.+)/g,"$1");
     oCMD.runExternalScript(code)
       .then(() => { oASC.draw("runExternalScript"); })
-      .catch((err) => { oTERM.output("[ERROR] worker thread failed:<br><small>"+JSON.stringify(err)+"</small>");
-      })
-
+      .catch((err) => { oTERM.output("[ERROR] worker thread failed:<br><small>"+JSON.stringify(err)+"</small>"); });
     return true;
   }
 
