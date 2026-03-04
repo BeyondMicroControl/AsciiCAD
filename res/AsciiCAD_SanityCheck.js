@@ -389,10 +389,6 @@ function runWorkerThreadSmokeTests()
       console.log("Worker thread smoke tests done.");
     })
     .then(function(){
-    // cleanup
-    return oCMD.runExternalScript("oASC.resetUndo();");
-    })
-    .then(function(){
       console.log("-6-");
       exp = "TEST";
       // set environment variable
@@ -406,13 +402,18 @@ function runWorkerThreadSmokeTests()
     })
     .then(function(){
       var got = oTERM._o.env.cpyVar;
-      console.log(JSON.stringify(oTERM._o.env));
       assertEq("get environment variable oTERM.setenv(\"cpyVar\",oTERM.getenv(\"myvar\"))", got, exp);
-    
-    return;
+
+
+    console.log("-7-");
+    return oCMD.runExternalScript(oASC.putCell.help.unitTests.join(";"));
     })
-
-
+    .then(function(){
+    return oCMD.runExternalScript(oASC.cat.help.unitTests.join(";"));
+    })
+    .then(function(){
+    return oCMD.runExternalScript("oASC.stack('reset')");   // reset undo/redo buffer
+    })    
     .then(function() { worker?.terminate?.(); })
     .then(function()
     {
