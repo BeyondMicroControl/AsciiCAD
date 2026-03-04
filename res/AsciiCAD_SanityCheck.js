@@ -35,7 +35,7 @@ if (typeof bDebug === "undefined" || !bDebug) {
     } catch {}
   }
 
-  ["log", "warn", "error"].forEach(type => {
+  ["log", "warn", "error", "assert"].forEach(type => {
     const orig = console[type];
     console[type] = (...args) => {
       forward(type, args);
@@ -66,7 +66,8 @@ function textFromGrid(h, w) {
   return out;
 }
 
-function assertEq(name, got, exp) {
+function assertEq(name, got, exp) 
+{
   if (got !== exp) {
     console.error("TEST FAILED:", name);
     console.error("GOT:\n" + got.split("\n").map(l => JSON.stringify(l)).join("\n"));
@@ -137,7 +138,8 @@ function setSmallGridFromLines(lines) {
   }
 }
 
-function getSmallGridText(h, w) {
+function getSmallGridText(w,h) 
+{
   let s = "";
   for (let r = 0; r < h; r++) {
     let line = "";
@@ -147,106 +149,22 @@ function getSmallGridText(h, w) {
   return s;
 }
 
-function assertGrid(name, got, exp) {
-  console.assert(got === exp, name + "\nGOT:\n" + got + "\nEXP:\n" + exp);
+function assertGrid(name, got, exp) 
+{
+  if (got !== exp) {
+    console.error("TEST FAILED:", name);
+    console.error("GOT:\n" + got.split("\n").map(l => JSON.stringify(l)).join("\n"));
+    console.error("EXP:\n" + exp.split("\n").map(l => JSON.stringify(l)).join("\n"));
+  }
+  console.assert(got === exp, name + "\nGOT:\n" + got + "EXP:\n" + exp);
 }
 
 
 
 // TEST DATA
 
-function runJunctionTests() {
-  // Keep tests small: use top-left 5x5 of your big grid
-  const H = 5, W = 5;
-
-  // --- 1) single + single => ┼
-  gridFromText(
-    "  │  \n" +
-    "  │  \n" +
-    "─────\n" +
-    "  │  \n" +
-    "  │  \n"
-  );
-  // draw single horizontal across the middle again (idempotent)
-  applyHorizontalLine(2, 0, 4, "single", true);
-  assertEq("single×single => ┼", textFromGrid(H, W),
-    "  │  \n" +
-    "  │  \n" +
-    "──┼──\n" +
-    "  │  \n" +
-    "  │  \n"
-  );
-
-  // --- 2) double + double => ╬
-  gridFromText(
-    "  ║  \n" +
-    "  ║  \n" +
-    "═════\n" +
-    "  ║  \n" +
-    "  ║  \n"
-  );
-  applyHorizontalLine(2, 0, 4, "double", true);
-  assertEq("double×double => ╬", textFromGrid(H, W),
-    "  ║  \n" +
-    "  ║  \n" +
-    "══╬══\n" +
-    "  ║  \n" +
-    "  ║  \n"
-  );
-
-  // --- 3) double vertical + single horizontal => ╫
-  gridFromText(
-    "  ║  \n" +
-    "  ║  \n" +
-    "─────\n" +
-    "  ║  \n" +
-    "  ║  \n"
-  );
-  applyHorizontalLine(2, 0, 4, "single", true);
-  assertEq("double vert × single horz => ╫", textFromGrid(H, W),
-    "  ║  \n" +
-    "  ║  \n" +
-    "──╫──\n" +
-    "  ║  \n" +
-    "  ║  \n"
-  );
-
-  // --- 4) single vertical + double horizontal => ╪
-  gridFromText(
-    "  │  \n" +
-    "  │  \n" +
-    "═════\n" +
-    "  │  \n" +
-    "  │  \n"
-  );
-  applyHorizontalLine(2, 0, 4, "double", true);
-  assertEq("single vert × double horz => ╪", textFromGrid(H, W),
-    "  │  \n" +
-    "  │  \n" +
-    "══╪══\n" +
-    "  │  \n" +
-    "  │  \n"
-  );
-
-  // --- 5) Your provided case: two single verticals crossed by double horizontal
-  gridFromText(
-    " ││  \n" +
-    " ││  \n" +
-    " ││  \n"
-  );
-  applyHorizontalLine(1, 0, 3, "double", true);
-  assertEq("two single verticals crossed by double horizontal", textFromGrid(3, 4),
-    " ││ \n" +
-    "═╪╪═\n" +
-    " ││ \n"
-  );
-
-  console.log("Junction tests done.");
-}
-
-
-
-function runMixedJunctionTests() {
+function runMixedJunctionTests() 
+{
   // Use a 5x5 window in the real grid
   const H=5, W=5;
 
@@ -260,7 +178,7 @@ function runMixedJunctionTests() {
   ]);
   // normalize center
   oASC.recomputeWireCell(2,2);
-  assertGrid("single×single => ┼", getSmallGridText(H,W),
+  assertGrid("single×single => ┼", getSmallGridText(W,H),
     "  │  \n  │  \n──┼──\n  │  \n  │  \n"
   );
 
@@ -273,7 +191,7 @@ function runMixedJunctionTests() {
     "  ║  ",
   ]);
   oASC.recomputeWireCell(2,2);
-  assertGrid("double×double => ╬", getSmallGridText(H,W),
+  assertGrid("double×double => ╬", getSmallGridText(W,H),
     "  ║  \n  ║  \n══╬══\n  ║  \n  ║  \n"
   );
 
@@ -286,7 +204,7 @@ function runMixedJunctionTests() {
     "  │  ",
   ]);
   oASC.recomputeWireCell(2,2);
-  assertGrid("single vert × double horz => ╪", getSmallGridText(H,W),
+  assertGrid("single vert × double horz => ╪", getSmallGridText(W,H),
     "  │  \n  │  \n══╪══\n  │  \n  │  \n"
   );
 
@@ -299,7 +217,7 @@ function runMixedJunctionTests() {
     "  ║  ",
   ]);
   oASC.recomputeWireCell(2,2);
-  assertGrid("double vert × single horz => ╫", getSmallGridText(H,W),
+  assertGrid("double vert × single horz => ╫", getSmallGridText(W,H),
     "  ║  \n  ║  \n──╫──\n  ║  \n  ║  \n"
   );
 
@@ -314,7 +232,7 @@ function runMixedJunctionTests() {
   // draw the double line into row 1 (like your example), then normalize around
   for (let c=0;c<4;c++) ascii[1][c] = "═";
   for (let c=0;c<4;c++) { oASC.recomputeWireCell(1,c); oASC.recomputeWireCell(0,c); oASC.recomputeWireCell(2,c); }
-  assertGrid("two single verticals crossed by double horiz", getSmallGridText(3,4),
+  assertGrid("two single verticals crossed by double horiz", getSmallGridText(4,3),
     " ││ \n═╪╪═\n ││ \n"
   );
 
@@ -322,7 +240,8 @@ function runMixedJunctionTests() {
 }
 
 
-function testDoubleBusCross() {
+function testDoubleBusCross() 
+{
   setSmallGridFromLines([
     "   ",
     "   ",
@@ -341,7 +260,7 @@ function testDoubleBusCross() {
   const stroke = [];
   oASC.normalizeAffected(affected, stroke);
 
-  const got = getSmallGridText(5,3);
+  const got = getSmallGridText(3,5);
   const exp =
     " ║ \n" +
     " ║ \n" +
@@ -350,7 +269,6 @@ function testDoubleBusCross() {
     " ║ \n";
 
   assertGrid("double bus cross over 2 rows => ╬╬", got, exp);
-  console.log("double bus cross over 2 rows tests done.");
 }
 
 
@@ -382,12 +300,12 @@ function runWorkerThreadSmokeTests()
   
   console.log("-1-");
   // Place 3 pluses using the three supported syntaxes
-  return                     oCMD.runExternalScript("{oASC.freeform(0,0,'+');}")
-    .then(function(){ return oCMD.runExternalScript("freeform(1,0,'+');"); })
-    .then(function(){ return oCMD.runExternalScript("{ freeform(2,0,'+'); oCOM.isDoubleWidthChar('+'); }"); })
+  return                     oCMD.runExternalScript("{oASC.putCell(0,0,'+');}")
+    .then(function(){ return oCMD.runExternalScript("putCell(0,1,'+');"); })
+    .then(function(){ return oCMD.runExternalScript("{ putCell(0,2,'+'); oCOM.isDoubleWidthChar('+'); }"); })
     .then(function(){
-      var got = getSmallGridText(3,1);
-      assertGrid("worker freeform syntaxes => 3 pluses", got, small3x1Plus());
+      var got = getSmallGridText(1,3);
+      assertGrid("worker putCell syntaxes => 3 pluses", got, small3x1Plus());
       console.log("-2-");
     })
     .then(function(){
@@ -396,7 +314,7 @@ function runWorkerThreadSmokeTests()
     })
     .then(function(){
       console.log("-3-");
-      var got2 = getSmallGridText(3,1);
+      var got2 = getSmallGridText(1,3);
       assertGrid("worker undo x3 => cleared", got2, small3x1Spaces());
     })
     .then(function(){
@@ -406,7 +324,7 @@ function runWorkerThreadSmokeTests()
     })
     .then(function(){
       console.log("-5-");
-      var got3 = getSmallGridText(3,1);
+      var got3 = getSmallGridText(1,3);
       assertGrid("worker redo x3 => 3 pluses", got3, small3x1Plus());
       console.log("Worker thread smoke tests done.");
     })
@@ -452,8 +370,6 @@ function runWorkerThreadSmokeTests()
 
   console.assert(!oASC.catalogTypes().includes(""), "catalogTypes contains empty string");
 
-
-  runJunctionTests(); oASC.wipeSelection(' ');
   runMixedJunctionTests(); oASC.wipeSelection(' ');
   testDoubleBusCross(); oASC.wipeSelection(' ');
 

@@ -227,6 +227,7 @@ const line = document.createElement("div");
 line.style.whiteSpace = "pre-wrap";
 line.style.color =
     e.data.type === "error" ? "#f87171" :
+    e.data.type === "assert" ? "#71f871" :
     e.data.type === "warn"  ? "#fde047" : "#e5e7eb";
 
 line.textContent = `[${e.data.type}] ${(e.data.args || []).join(" ")}`;
