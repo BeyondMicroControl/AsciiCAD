@@ -161,6 +161,85 @@ function assertGrid(name, got, exp)
 
 
 
+
+
+
+
+
+
+
+
+
+// HELP SANITY ---------------------------------------------------------------
+function listHelpFns(obj) {
+  const out = [];
+  if (!obj) return out;
+  Object.keys(obj).forEach((k) => {
+    try {
+      const v = obj[k];
+      if (typeof v === "function" && v.help) out.push(k);
+    } catch {}
+  });
+  return out.sort();
+}
+
+function sanityHelpMeta(objName, obj) {
+  const fns = listHelpFns(obj);
+  console.log(`[SANITY] ${objName}: ${fns.length} documented commands (.help)`);
+
+  fns.forEach((name) => {
+    const fn = obj[name];
+
+    if (typeof fn !== "function") {
+      console.error(`[SANITY] ${objName}.${name} is not a function`, fn);
+      return;
+    }
+
+    const h = fn.help;
+    if (!h || typeof h !== "object") {
+      console.error(`[SANITY] ${objName}.${name} missing .help object`, h);
+      return;
+    }
+
+    if (typeof h.usage !== "string" || !h.usage.length) {
+      console.error(`[SANITY] ${objName}.${name} missing help.usage`, h);
+      return;
+    }
+  });
+
+  return fns;
+}
+/*
+// Wait until a global exists (needed for oTERM; it is created later onload)
+function waitForGlobal(name, cb, tries = 200, delayMs = 25) {
+  if (window[name]) return cb(window[name]);
+  if (tries <= 0) {
+    console.warn(`[SANITY] waitForGlobal(${name}) timed out`);
+    return;
+  }
+  setTimeout(() => waitForGlobal(name, cb, tries - 1, delayMs), delayMs);
+}
+*/
+
+// Worker symbol checks (safe for ALL oASC commands: no args required)
+function sanityWorkerSymbolsForASC(fnNames) {
+  let p = Promise.resolve();
+  fnNames.forEach((name) => {
+    p = p.then(() => oCMD.runExternalScript(`typeof ${name} === 'function'`))
+      .then((ret) => {
+        console.assert(ret === true, `[SANITY] worker symbol missing or not function: ${name} (got ${ret})`);
+      })
+      .catch((err) => {
+        console.error(`[SANITY] worker symbol check failed for ${name}`, err);
+      });
+  });
+  return p;
+}
+
+
+
+
+
 // TEST DATA
 
 function runMixedJunctionTests() 
@@ -289,18 +368,16 @@ function runWorkerThreadSmokeTests()
   // Start with a clean area
   oASC.wipeSelection(' ');
 
-  // Authorise terminal access to internal JavaScript objects (by name) 
-
-  // caution: oTERM does not exist yet at this stage (because instantiation has to wait for "onload")
-  oCMD.bind([
-     { name: "oASC", exposeAllNonFunctions:true }
-    ,{ name: "oCMD" }
-    ,{ name: "oCOM" }
-  ]);
-  
-  console.log("-1-");
+ return Promise.resolve()
+      .then(() => {
+        console.log("-0-");
+        console.log("[SANITY] worker symbol checks for oASC ...");
+        return sanityWorkerSymbolsForASC(__help_oASC);
+      })
+     .then(function(){
+     console.log("-1-");
   // Place 3 pluses using the three supported syntaxes
-  return                     oCMD.runExternalScript("{oASC.putCell(0,0,'+');}")
+     oCMD.runExternalScript("{oASC.putCell(0,0,'+');}");})
     .then(function(){ return oCMD.runExternalScript("putCell(0,1,'+');"); })
     .then(function(){ return oCMD.runExternalScript("{ putCell(0,2,'+'); oCOM.isDoubleWidthChar('+'); }"); })
     .then(function(){
@@ -335,11 +412,39 @@ function runWorkerThreadSmokeTests()
     .then(function() { worker?.terminate?.(); });
 }
 
+
 // TEST RUNNER
 
 (function init() 
 {
   if (bDebug != true) return;  // only run assertions if we have a debug flag
+
+  const __help_oASC = sanityHelpMeta("oASC", oASC);
+  const __help_oCMD = sanityHelpMeta("oCMD", oCMD);
+
+
+
+  oTERM = new TERMINAL(
+  {
+    // We handle all input via oTERM.onInput; commands are kept for discoverability.
+    welcome: sbTitle.querySelector("big").textContent + " terminal - type <u>help</u>",
+    prompt: "AsciiCAD",
+    separator: '>',
+  });
+
+  // Authorise terminal access to internal JavaScript objects (by name)
+  // We can authorise by prefix, explicit variable names, or just scope all variables in the object 
+  oCMD.bind([
+    { name: "oASC" ,  exposeAllNonFunctions:true /*constPrefixes: ["BOX_"],*/  /*, explicitKeys: ["BOX_SINGLE","BOX_DOUBLE","BOX_FAT","N","S","E","W"]*/ }
+    ,{ name: "oCMD"  }
+    ,{ name: "oTERM" }
+    ,{ name: "oCOM"  }
+  ]);
+
+
+
+  // oTERM does not exist yet here (created later), so defer
+  sanityHelpMeta("oTERM", oTERM);
 
   stageSize = oASC.computeStageSize();
   stage.style.width = stageSize.w + 'px';
@@ -379,4 +484,5 @@ function runWorkerThreadSmokeTests()
     .catch(function(err){ console.error('Worker smoke tests failed:', err); updateUI(); draw(); });
   })();
 
+  delete oTERM;
 }
