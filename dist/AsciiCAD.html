@@ -1266,13 +1266,13 @@ function ASC()
     examples: ["CADScript {clear();stack(\"undo\")}"]
   };
 
-  this.vars = Object.create(null);
-  this.vars.help = 
+  this.env = Object.create(null);
+  this.env.help = 
   {
     type:  "AsciiCAD_Var",
-    usage: "vars.my_variable = <i>expression<i>;",
-    desc:  "assign a session persistent variable",
-    examples: ["oASC.vars.my_variable = 123","oASC.vars.my_variable = \"ABC\""]
+    usage: "env.my_variable = <i>expression<i>;",
+    desc:  "assign a session persistent environment variable",
+    examples: ["oASC.env.my_variable = 123","oASC.env.my_variable = \"ABC\""]
   };
 
   var undoStack = [];
@@ -3544,7 +3544,7 @@ this.startPasteWithText = function(text)
   // getLabel(c,r,<env_retval>)
   //   - finds nearest label to (c,r)
   //   - returns {c:<originCol>, r:<row>, str:<labelString>}
-  //   - if env_retval is a string, stores the object to oASC.vars[env_retval]
+  //   - if env_retval is a string, stores the object to oASC.env[env_retval]
   //
   // setLabel(c,r,label_str)
   //   - overwrites label at (c,r) (row r, starting at col c)
@@ -3556,7 +3556,7 @@ this.startPasteWithText = function(text)
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
       throw new Error("Position out of bounds. Valid: col[0-" + (COLS - 1) + "], row[0-" + (ROWS - 1) + "]");
 
-    if (!this.vars) this.vars = Object.create(null);
+    if (!this.env) this.env = Object.create(null);
 
     const wc = this.WILDCHAR_U;
 
@@ -3644,7 +3644,7 @@ this.startPasteWithText = function(text)
 
     // store into env var name if provided (string)
     if (typeof env_retval === "string" && env_retval.length > 0) {
-      this.vars[env_retval] = best;
+      this.env[env_retval] = best;
     }
 
     return best;
@@ -3653,10 +3653,10 @@ this.startPasteWithText = function(text)
   this.getLabel.help = {
     type: "CADScript_FN",
     usage: "getLabel(c,r,<i>env_retval</i>)",
-    desc: "Find nearest label near (c,r). Returns {c:<originCol>, r:<row>, str:<labelString>} and optionally stores it into oASC.vars[env_retval].",
+    desc: "Find nearest label near (c,r). Returns {c:<originCol>, r:<row>, str:<labelString>} and optionally stores it into oASC.env[env_retval].",
     examples: [
       "oTERM.printJSON(getLabel(10,5,'ret'))",
-      "oTERM.printJSON(oASC.vars.ret)"
+      "oTERM.printJSON(oASC.env.ret)"
     ]
   };
 
@@ -5567,7 +5567,7 @@ function CMD()
       "  if (msg.type === 'ret') {",
       "    const p = pending.get(msg.id);",
       "    if (!p) return;",
-      "    log('RET start', msg.result);",
+      "    log('RET start', JSON.stringify(msg));",
       "    pending.delete(msg.id);",
       "    msg.ok ? p.resolve(msg.result) : p.reject(new Error(msg.error));",
       "    return;",
