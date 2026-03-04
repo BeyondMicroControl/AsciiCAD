@@ -96,6 +96,7 @@ function TERMINAL(props)
   this._o.historyCursor = this._o.history.length;
 
   this._o.shell = { prompt: prompt, separator: separator };
+  this._o.promptStack = []; // stack of previous {prompt,separator} shells
 
   this._o.state = {
     prompt: false, // prompt mode = next ENTER answers a question
@@ -307,48 +308,40 @@ function TERMINAL(props)
     examples: ["oTERM.idle(); <i>long process</i> oTERM.idle();"]    
   }
 
-  this.prompt = function (varName, question, prefill, overwriteMode)
+  this.pInput = function (varName, question, prefill, overwriteMode)
   {
     const key = String(varName || "").trim();
     if (!key) throw new Error("prompt(varName,question): varName is required");
 
-    this._o.state.prompt = true;
-    this._o.state.overwrite = !!overwriteMode;   // <-- add this
+    // push current prompt and show the question as the new prompt
+    this.pushPrompt(String(question ?? key), { separator: this._o.shell.separator, render: true });
 
-    // IMPORTANT: use `self` (captured TERMINAL instance), not `this`, inside callback
+    this._o.state.prompt = true;
+    this._o.state.overwrite = !!overwriteMode;
+
     const self = this;
-    this.onAskCallback = function(ans)
-    {
-      this._o.env[key] = ans;
+    this.onAskCallback = function(ans) {
+      self._o.env[key] = ans;
     };
 
-    this._o.DOM.prompt.innerHTML = String(question ?? key) + this._o.shell.separator;
-
-    // --- overwrite-style behavior when prefill is present ---
-    if (prefill !== undefined && prefill !== null && String(prefill).length > 0)
-    {
-      resetCommand(prefill);
-      // overwrite-mode UX: caret starts at the left
-      if (this._o.state.overwrite) {
-        const input = this._o.DOM.input;
-        input.focus();
-        try { input.setSelectionRange(0, 0); } catch(_) {}
-      }
+    if (prefill !== undefined && prefill !== null) {
+      resetCommand(String(prefill));
       this._o.DOM.command.classList.add("input");
       this._o.DOM.input.focus();
-    }
-    else
-    {
+      if (this._o.state.overwrite) {
+        try { this._o.DOM.input.setSelectionRange(0,0); } catch(_) {}
+      }
+    } else {
       this._o.DOM.input.focus();
     }
   };
-  this.prompt.help = {
+  this.promptInput.help = {
     type: "TERMINAL_Fn",
-    usage: "prompt(<i>varName</i>,<i>question</i>,<i>prefill</i>,<i>overwriteMode</i>)",
+    usage: "pInput(<i>varName</i>,<i>question</i>,<i>prefill</i>,<i>overwriteMode</i>)",
     desc: "Prompt user and store answer in oTERM.env[varName]. overwriteMode=true enables terminal-like overwrite editing.",
     examples: [
-      "oTERM.prompt(\"label\",\"Enter\",\"1234\",false)",
-      "oTERM.prompt(\"label\",\"Enter\",\"1234\",true)"
+      "oTERM.pInput(\"label\",\"Enter\",\"1234\",false)",
+      "oTERM.pInput(\"label\",\"Enter\",\"1234\",true)"
     ]
   };
 
@@ -449,16 +442,74 @@ function TERMINAL(props)
     examples: ["oTERM.printJSON({so:true})"]    
   }
 
-  this.setPrompt = function (newPrompt) 
+  this.pushPrompt = function(newPrompt, opts)
+  {
+    opts = opts || {};
+    const render = (opts.render !== false);
+    const sep = (opts.separator !== undefined) ? String(opts.separator) : this._o.shell.separator;
+
+    if (!opts.replace)
+      this._o.promptStack.push({ prompt: this._o.shell.prompt, separator: this._o.shell.separator });
+
+    this._o.shell = { prompt: String(newPrompt ?? ""), separator: sep };
+    this._o.state.idle = false;
+    this._o.DOM.command.classList.remove("idle");
+
+    if (render) {
+      this._o.DOM.prompt.innerHTML = this._o.shell.prompt + this._o.shell.separator;
+      this._o.DOM.input.focus();
+    }
+  }
+  this.pushPrompt.help = 
+  {
+    type: "TERMINAL_Fn",
+    usage: "pushPrompt(<i>str</i>,<i>opts</i>)",
+    desc: "",
+    examples: ["oTERM.pushPrompt(\"CADScript\")"]    
+  }
+
+  this.popPrompt = function(opts)
+  {
+    opts = opts || {};
+    const render = (opts.render !== false);
+
+    if (!this._o.promptStack || this._o.promptStack.length === 0) {
+      if (render) {
+        this._o.DOM.command.classList.remove("idle");
+        this._o.DOM.prompt.innerHTML = this._o.shell.prompt + this._o.shell.separator;
+        this._o.DOM.input.focus();
+      }
+      return null;
+    }
+
+    const prev = this._o.promptStack.pop();
+    this._o.shell = { prompt: prev.prompt, separator: prev.separator };
+    this._o.state.idle = false;
+    this._o.DOM.command.classList.remove("idle");
+
+    if (render) {
+      this._o.DOM.prompt.innerHTML = this._o.shell.prompt + this._o.shell.separator;
+      this._o.DOM.input.focus();
+    }
+    return prev;
+  }
+  this.popPrompt.help = 
+  {
+    type: "TERMINAL_Fn",
+    usage: "popPrompt(<i>opts</i>)",
+    desc: "",
+    examples: ["oTERM.popPrompt()"]    
+  }
+
+  this.setPrompt = function (newPrompt)
   {
     if (newPrompt === undefined) newPrompt = this._o.shell.prompt;
 
-    this._o.shell = { prompt: newPrompt, separator: this._o.shell.separator };
-    this._o.state.idle = false;
+    // setPrompt is a hard switch: clear any stacked prompts
+    this._o.promptStack = [];
 
-    this._o.DOM.command.classList.remove("idle");
-    this._o.DOM.prompt.innerHTML = String(newPrompt) + this._o.shell.separator;
-    this._o.DOM.input.focus();
+    // replace current prompt (no push)
+    this.pushPrompt(newPrompt, { replace: true, render: true });
   };
   this.setPrompt.help = 
   {
@@ -1752,17 +1803,16 @@ function CMD()
       if (this._inCliDispatch) return true;
 
       this._inCliDispatch = true;
+
+      if (oTERM && typeof oTERM.pushPrompt === "function")
+        oTERM.pushPrompt("AsciiCAD", { render: false });
+
       try {
-        if (typeof window.__cliHandleTerminal === "function") {
-          return window.__cliHandleTerminal(raw, { source: "internal" });
-        }
-        if (typeof __cliHandleTerminal === "function") {
-          return __cliHandleTerminal(raw, { source: "internal" });
-        }
-        oTERM.output("[ERROR] __cliHandleTerminal not available");
-        return true;
-      } finally {
-        this._inCliDispatch = false;
+        return __cliHandleTerminal(raw);
+      }
+      finally {
+        if (oTERM && typeof oTERM.popPrompt === "function")
+          oTERM.popPrompt({ render: false });
       }
     }
 
