@@ -1956,9 +1956,28 @@ function CMD()
     // Start capturing Terminal command lines (after user pushed 'enter')
     oTERM.onInput((command, parameters, rawLine) => 
     {
-      const line =  oCOM.normaliseQuotes(rawLine || "").trim();
+      let line = oCOM.normaliseQuotes(rawLine || "").trim();
       if (!line) { oTERM.output("&nbsp;"); return true; }
-      return __cliHandleTerminal(line);  // TODO MOVE __cliHandleTerminal somewhere here instead of index.html ?
+
+      // If the user switched prompt to CADScript, interpret input as CADScript by default
+      const prompt = String(oTERM._o.shell?.prompt || "").trim().toLowerCase();
+
+      if (prompt === "cadscript")
+      {
+        // in CADScript prompt mode:
+        if (!/^cadscript\b/i.test(line)) {
+          if (/^\{/.test(line)) {
+            // user already typed "{ ... }"
+            line = "CADScript " + line;
+          } else if (/^-\w+/.test(line)) {
+            line = "CADScript " + line;
+          } else {
+            line = "CADScript {" + line + "}";
+          }
+        }
+      }
+
+      return __cliHandleTerminal(line);
     });
   }
 
