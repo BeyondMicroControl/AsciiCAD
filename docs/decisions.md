@@ -1011,15 +1011,15 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [x] 9. Netlist builder: report netlist in JSON format in Terminal, color nets onmouseover and identify real-time the net number in button sidebar (canvas card). v1.15
 - [ ] 10. Conceptualise bridges (connectors)
 - [x] 11. CADScript { oTERM.printJSON( oASC.qryLocate(_regexp_) ); }  (also fixing function call precedence with await)
-- [ ] 12. CADScript {oASC.putCell(0,0,"TEST\nABCD")}
+- [x] 12. CADScript {oASC.putCell(0,0,"TEST\nABCD")}
 - [x] 13. CADScript {oTERM.print(getCell(2,2,2))}
 - [x] 14. CADScript {oTERM.setenv("cell",getCell(0,2,3,E)); oTERM.print(oTERM.getenv("cell"))}
 - [x] 15. abort pasteDrag when user is pressing the 'esc' key
-- [ ] 16. Extend oASC.cat() parameter to prefill wildcard characters in labels
+- [x] 16. Extend oASC.cat() parameter to prefill wildcard characters in labels
          example:   cat(0,0,0,'ATTiny85_MCU_ATTINY85V-10PU'); (getLabel(0,0,"label>>","loc>>")) oTERM.prompt("?",">>label","####",true); (setLabel("label",">>loc"))
 - [x] 17. oTERM.input() -> demonstrate how to process user input
 - [x] 18. oTERM.pushPrompt() / oTERM.pushPrompt() -> True nested prompt behavior
-- [ ] 19. Write a gentle sanityCheck for each CADScript command
+- [x] 19. Write a gentle sanityCheck for each CADScript command
 - [x] 20. Replace doUndo, doRedo, resetUndo and getUndoRedo by stack(<arg>)  - "undo", "redo" , "reset", "get"
 ---
 
