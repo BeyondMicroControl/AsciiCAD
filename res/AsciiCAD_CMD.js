@@ -1585,7 +1585,7 @@ function CMD()
       "  if (msg.type === 'ret') {",
       "    const p = pending.get(msg.id);",
       "    if (!p) return;",
-      "    log('RET start', msg.result);",
+      "    log('RET start', JSON.stringify(msg));",
       "    pending.delete(msg.id);",
       "    msg.ok ? p.resolve(msg.result) : p.reject(new Error(msg.error));",
       "    return;",

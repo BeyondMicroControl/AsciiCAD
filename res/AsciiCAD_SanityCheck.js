@@ -382,9 +382,9 @@ function runWorkerThreadSmokeTests()
   
   console.log("-1-");
   // Place 3 pluses using the three supported syntaxes
-  return oCMD.runExternalScript("{oASC.freeform(0,0,'+');}")
+  return                     oCMD.runExternalScript("{oASC.freeform(0,0,'+');}")
     .then(function(){ return oCMD.runExternalScript("freeform(1,0,'+');"); })
-    .then(function(){ return oCMD.runExternalScript("{ freeform(2,0,'+'); oCOM.isDoubleWidthChar('+'); }"); })   // oCOM.isDoubleWidthChar('+')
+    .then(function(){ return oCMD.runExternalScript("{ freeform(2,0,'+'); oCOM.isDoubleWidthChar('+'); }"); })
     .then(function(){
       var got = getSmallGridText(3,1);
       assertGrid("worker freeform syntaxes => 3 pluses", got, small3x1Plus());
@@ -392,7 +392,7 @@ function runWorkerThreadSmokeTests()
     })
     .then(function(){
       // Undo 3 times (all 3 pluses should disappear)
-      return oCMD.runExternalScript("oASC.doUndo();oASC.doUndo();oASC.doUndo();");
+      return oCMD.runExternalScript("oASC.stack('undo');oASC.stack('undo');oASC.stack('undo');");
     })
     .then(function(){
       console.log("-3-");
@@ -402,7 +402,7 @@ function runWorkerThreadSmokeTests()
     .then(function(){
       console.log("-4-");
       // Redo 3 times (all 3 pluses should reappear)
-      return oCMD.runExternalScript("oASC.doRedo();oASC.doRedo();oASC.doRedo();");
+      return oCMD.runExternalScript("oASC.stack('redo');oASC.stack('redo');oASC.stack('redo');");
     })
     .then(function(){
       console.log("-5-");
