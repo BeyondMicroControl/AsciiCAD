@@ -966,10 +966,24 @@ document.addEventListener('mouseup', stopResize);
 //      |_____|  '.__.'[___]   [___||__||__][___][___||__]\'-;__/[___] 
 //  
 
+window.DEBUG_CLI = true;
+window.__dbg = function(tag, obj) {
+  if (!window.DEBUG_CLI) return;
+  try {
+    console.log("[DBG]", tag, obj);
+  } catch(_) {}
+};
 
 // MOVE TERMINAL HANDLER TO oCMD (also rename it to HandleCommandLine, eventually merge it together with onInput ?)
 function __cliHandleTerminal(line,ctx) 
 {
+  window.__dbg("cli:enter", {
+    line,
+    ctx,
+    prompt: oTERM?._o?.shell?.prompt,
+    stack: oTERM?._o?.promptStack?.length
+  });
+
   ctx = ctx || {};
   line = String(line ?? "");
 
@@ -980,9 +994,29 @@ function __cliHandleTerminal(line,ctx)
   // Internal command-lines (triggered by oCMD.run from a worker) must bypass this.
   const promptMode = String(oTERM._o.shell.prompt || "");
 
+
+    window.__dbg("cli:promptModeCheck", {
+      prompt: promptMode,
+      willCadscriptPromptBranch: (promptMode === "CADScript"),
+      line
+    });
+
   if (promptMode === "CADScript")
   {
+    window.__dbg("cli:CADScriptPromptBranch", {
+      line,
+      codeAfterStrip: line.replace(/^\s*CADScript\b\s*/i, "")
+    });
+
     var code = line.replace(/^\s*CADScript\b\s*/i, "");
+
+      window.__dbg?.("runExternalScript", {
+        codePreview: String(code).slice(0, 120),
+        len: String(code).length,
+        prompt: oTERM?._o?.shell?.prompt
+      });
+
+
     oCMD.runExternalScript(code)
       .then(() => { oASC.draw("runExternalScript"); })
       .catch((err) => { oTERM.output("[ERROR] worker thread failed:<br><small>"+JSON.stringify(err)+"</small>"); });
@@ -995,6 +1029,13 @@ function __cliHandleTerminal(line,ctx)
 
   const plan = oCMD.compile(parsed, { envPairs: parsed.data });
   if (!plan.ok && plan.error) { oTERM.output("[ERROR] "+plan.error); return true; }
+
+    window.__dbg("cli:parsed", {
+      token: script_node?.token,
+      raw: script_node?.raw,
+      options: script_node?.options,
+      argsRaw: script_node?.arguments?.raw
+    });
 
 
   var script_node = plan.plan.groups[0].pipeline[0];
@@ -1054,7 +1095,8 @@ function __cliHandleTerminal(line,ctx)
     // puts "oTERM" in arguments.raw.
     var helpTarget = null;
 
-    if (helpOpt) {
+    if (helpOpt) 
+    {
       if (typeof helpOpt.value === "string") {
         helpTarget = helpOpt.value;
       } else if (helpOpt.value === true) {
@@ -1068,6 +1110,12 @@ function __cliHandleTerminal(line,ctx)
     // Render help once (order-independent)
     if (helpOpt)
     {
+        window.__dbg("cli:helpPrinted", {
+          varsOnly: helpVarsOnly,
+          target: helpTarget,
+          prompt: oTERM?._o?.shell?.prompt
+        });
+
       // --- This is your existing "case h" body, but reading helpOpt and helpVarsOnly ---
       if (!helpTarget)
       {
@@ -1145,6 +1193,16 @@ function __cliHandleTerminal(line,ctx)
     }
 
     let code = String(script_node.arguments.raw || "");
+
+    window.__dbg("cli:AsciiCADPromptBranch", {
+      code
+    });
+
+    window.__dbg?.("runExternalScript", {
+      codePreview: String(code).slice(0, 120),
+      len: String(code).length,
+      prompt: oTERM?._o?.shell?.prompt
+    });
 
     // SEND A JOB TO THE CMD WORKER
     oCMD.runExternalScript(code)

@@ -335,7 +335,7 @@ function TERMINAL(props)
       this._o.DOM.input.focus();
     }
   };
-  this.promptInput.help = {
+  this.pInput.help = {
     type: "TERMINAL_Fn",
     usage: "pInput(<i>varName</i>,<i>question</i>,<i>prefill</i>,<i>overwriteMode</i>)",
     desc: "Prompt user and store answer in oTERM.env[varName]. overwriteMode=true enables terminal-like overwrite editing.",
@@ -448,6 +448,13 @@ function TERMINAL(props)
     const render = (opts.render !== false);
     const sep = (opts.separator !== undefined) ? String(opts.separator) : this._o.shell.separator;
 
+    window.__dbg?.("pushPrompt:before", {
+      cur: this._o.shell?.prompt,
+      stack: this._o.promptStack?.length,
+      newPrompt,
+      opts
+    });
+
     if (!opts.replace)
       this._o.promptStack.push({ prompt: this._o.shell.prompt, separator: this._o.shell.separator });
 
@@ -459,6 +466,11 @@ function TERMINAL(props)
       this._o.DOM.prompt.innerHTML = this._o.shell.prompt + this._o.shell.separator;
       this._o.DOM.input.focus();
     }
+
+    window.__dbg?.("pushPrompt:after", {
+      cur: this._o.shell?.prompt,
+      stack: this._o.promptStack?.length
+    });
   }
   this.pushPrompt.help = 
   {
@@ -472,6 +484,12 @@ function TERMINAL(props)
   {
     opts = opts || {};
     const render = (opts.render !== false);
+
+    window.__dbg?.("popPrompt:before", {
+      cur: this._o.shell?.prompt,
+      stack: this._o.promptStack?.length,
+      opts
+    });
 
     if (!this._o.promptStack || this._o.promptStack.length === 0) {
       if (render) {
@@ -491,6 +509,13 @@ function TERMINAL(props)
       this._o.DOM.prompt.innerHTML = this._o.shell.prompt + this._o.shell.separator;
       this._o.DOM.input.focus();
     }
+
+    window.__dbg?.("popPrompt:after", {
+      cur: this._o.shell?.prompt,
+      stack: this._o.promptStack?.length,
+      popped: prev
+    });
+
     return prev;
   }
   this.popPrompt.help = 
@@ -1787,7 +1812,14 @@ function CMD()
   this.run = function(line)
   {
     // TERMINAL COMMAND HANDLER
-    
+   
+    window.__dbg?.("oCMD.run:enter", {
+      line,
+      prompt: oTERM?._o?.shell?.prompt,
+      stack: oTERM?._o?.promptStack?.length,
+      inCliDispatch: this._inCliDispatch
+    });
+
     const m = line.match(/^([A-Za-z_]\w*)\s*(.*)$/);
     if (!m) {
       oTERM.output("[ERROR] Invalid command");
@@ -1835,6 +1867,13 @@ function CMD()
       const brace = t.indexOf("{");
       if (brace >= 0) {
         const code = t.slice(brace);         // "{...}"
+
+        window.__dbg?.("(inside oCMD.run) runExternalScript", {
+          codePreview: String(code).slice(0, 120),
+          len: String(code).length,
+          prompt: oTERM?._o?.shell?.prompt
+        });
+
         this.runExternalScript(code)
           .then(() => { if (typeof oASC?.draw === "function") oASC.draw("runExternalScript"); })
           .catch((err) => { oTERM.output("[ERROR] worker thread failed:<br><small>"+JSON.stringify(err)+"</small>"); });
@@ -1910,7 +1949,8 @@ function CMD()
     }
 
     oTERM.output("[ERROR] Unknown command. Type <u>help</u>");
-      return true;
+    window.__dbg?.("oCMD.run:return", { line, ret });
+    return true;
   }
   this.run.help =   
   {
