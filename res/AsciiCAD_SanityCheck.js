@@ -406,13 +406,16 @@ function runWorkerThreadSmokeTests()
 
 
     console.log("-7-");
-    return oCMD.runExternalScript(oASC.putCell.help.unitTests.join(";"));
+    return oCMD.runExternalScript(oASC.putCell.help.unitTests.join(";"));   // UNIT test
     })
     .then(function(){
-    return oCMD.runExternalScript(oASC.cat.help.unitTests.join(";"));
+    return oCMD.runExternalScript(oASC.cat.help.unitTests.join(";"));       // UNIT test
     })
     .then(function(){
-    return oCMD.runExternalScript("oASC.stack('reset')");   // reset undo/redo buffer
+    return oCMD.runExternalScript(oASC.box.help.unitTests.join(";"));       // UNIT test
+    }) 
+    .then(function(){
+    return oCMD.runExternalScript("oASC.stack('reset')");                   // reset undo/redo buffer
     })    
     .then(function() { worker?.terminate?.(); })
     .then(function()
