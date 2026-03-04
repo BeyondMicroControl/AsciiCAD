@@ -199,6 +199,22 @@ function ASC()
   var undoStack = [];
   var redoStack = [];
 
+  this.assert = function(name,got,exp)
+  {
+    if(typeof(got)=="boolean")
+    {
+      if(got==exp)
+        console.assert("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:\"" + got + "\" EXP:\"" + exp + "\"");
+      else
+        console.error("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:\"" + got + "\" EXP:\"" + exp + "\"");
+    }
+
+    if(got==exp)
+      console.assert("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:\""+got.replace(/\n/g,"↵") + "\" EXP:\"" + exp.replace(/\n/g,"↵")+"\"");
+    else
+       console.error("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:\""+got.replace(/\n/g,"↵") + "\" EXP:\"" + exp.replace(/\n/g,"↵")+"\"");
+  }
+
   // Stage sizing: ensure integer cell sizes (avoid remainder pixels -> spacing artifacts)
   this.computeStageSize = function() 
   {
@@ -338,16 +354,8 @@ function ASC()
     examples: ["oASC.putCell(0,0,\"ABC\\nDEF\\nGHI\")"],
     unitTests:
     ["oASC.putCell(0,0,\"ABC\\nDEF\\nGHI\");"
-    ,"oASC.assertGrid('putCell(0,0,\"ABC\\nDEF\\nGHI\")',oASC.getCell(0,0,3,S),'A\\nD\\nG');"
+    ,"oASC.assert('putCell(0,0,\"ABC\\nDEF\\nGHI\")',oASC.getCell(0,0,3,S),'A\\nD\\nG');"
     ,"oASC.clear()"]
-  }
-
-  this.assertGrid = function(name,got,exp)
-  {
-    if(got==exp)
-      console.assert("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:\""+got.replace(/\n/g,"↵") + "\" EXP:\"" + exp.replace(/\n/g,"↵")+"\"");
-    else
-      console.error("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:\""+got.replace(/\n/g,"↵") + "\" EXP:\"" + exp.replace(/\n/g,"↵")+"\"");
   }
 
   this.getCell = function(c, r, len, dir)
@@ -454,7 +462,7 @@ function ASC()
     examples: ["oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")"],
     unitTests:
     ["oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")",
-     "oASC.assertGrid('oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")',oASC.getCell(0,0,3,E),'╔══');",
+     "oASC.assert('oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")',oASC.getCell(0,0,3,E),'╔══');",
      "oASC.clear()"
     ]
   }
@@ -843,10 +851,13 @@ function ASC()
     type: "CADScript_Fn",
     usage: "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)",
     desc: "Draw a box in line style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
-    examples: ["oASC.box(1,0,3,2,BOX_SINGLE)","oASC.box(1,0,3,2,BOX_FAT)","oASC.box(1,0,3,2,BOX_DOUBLE)"]
+    examples:  ["oASC.box(1,0,3,2,BOX_SINGLE)","oASC.box(1,0,3,2,BOX_FAT)","oASC.box(1,0,3,2,BOX_DOUBLE)"],
+    unitTests: [
+    "oASC.box(0,0,2,2,BOX_SINGLE);oASC.box(3,0,5,2,BOX_FAT);oASC.box(6,0,8,2,BOX_DOUBLE);",
+     "oASC.assert('box',oASC.getCell(0,0,9,E),'┌─┐┏━┓╔═╗');",
+     "oASC.assert('oASC.isValidDoubleBox(0,6,2,8)',oASC.isValidDoubleBox(0,6,2,8),true);",
+     "oASC.clear()"]
   }
-  
-  "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)";
 
   this.clear = function () 
   {
