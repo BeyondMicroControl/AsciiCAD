@@ -233,8 +233,9 @@ CADScript {oTERM.print(vars.STR)}             // returns "KLM"
 #### CADScript input prompt
 
 ```text
-CADScript {oTERM.prompt("label","label","####",true)}
-CADScript { oTERM.print(oTERM.getenv('label')) }
+CADScript { oTERM.pushPrompt("CADScript") }   // enter CADScript mode
+oTERM.input("label","label?","###Ω",true);    // capture user input in environment variable "label"
+oTERM.print(oTERM.getenv("label"));           // print the content of environment variable
 ```
 
 #### Exit back to the UI
