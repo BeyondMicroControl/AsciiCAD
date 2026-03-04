@@ -5938,9 +5938,28 @@ function CMD()
     // Start capturing Terminal command lines (after user pushed 'enter')
     oTERM.onInput((command, parameters, rawLine) => 
     {
-      const line =  oCOM.normaliseQuotes(rawLine || "").trim();
+      let line = oCOM.normaliseQuotes(rawLine || "").trim();
       if (!line) { oTERM.output("&nbsp;"); return true; }
-      return __cliHandleTerminal(line);  // TODO MOVE __cliHandleTerminal somewhere here instead of index.html ?
+
+      // If the user switched prompt to CADScript, interpret input as CADScript by default
+      const prompt = String(oTERM._o.shell?.prompt || "").trim().toLowerCase();
+
+      if (prompt === "cadscript")
+      {
+        // in CADScript prompt mode:
+        if (!/^cadscript\b/i.test(line)) {
+          if (/^\{/.test(line)) {
+            // user already typed "{ ... }"
+            line = "CADScript " + line;
+          } else if (/^-\w+/.test(line)) {
+            line = "CADScript " + line;
+          } else {
+            line = "CADScript {" + line + "}";
+          }
+        }
+      }
+
+      return __cliHandleTerminal(line);
     });
   }
 
@@ -9445,7 +9464,11 @@ function __cliHandleTerminal(line)
   // DIRECTLY PARSE CADScript
   if(oTERM._o.shell.prompt=="CADScript")
   {
-      var code = "{"+line+"}";
+    var code = line;
+
+    code = code.replace(/^\s*CADScript\b\s*/i, "");
+    code = code.replace(/\}\s*\s*$/, "}"); // collapse a possible double-close at end
+
     // SEND A JOB TO THE CMD WORKER
     oCMD.runExternalScript(code)
       .then(() => { oASC.draw("runExternalScript"); })
@@ -9609,8 +9632,8 @@ function __cliHandleTerminal(line)
       }
       return true;
     }
-    // ... fall through to worker execution if no helpOpt
-    var code = script_node.arguments.raw;
+
+    let code = String(script_node.arguments.raw || "");
 
     // SEND A JOB TO THE CMD WORKER
     oCMD.runExternalScript(code)
