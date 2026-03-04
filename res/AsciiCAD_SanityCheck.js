@@ -162,16 +162,6 @@ function assertGrid(name, got, exp)
 }
 
 
-
-
-
-
-
-
-
-
-
-
 // HELP SANITY ---------------------------------------------------------------
 function listHelpFns(obj) {
   const out = [];
@@ -185,7 +175,9 @@ function listHelpFns(obj) {
   return out.sort();
 }
 
-function sanityHelpMeta(objName, obj) {
+// SANITY CHECK ON HELP OBJECTS
+function sanityHelpMeta(objName, obj) 
+{
   const fns = listHelpFns(obj);
   console.assert(`${objName}: ${fns.length} documented commands (.help)`);
 
@@ -211,17 +203,6 @@ function sanityHelpMeta(objName, obj) {
 
   return fns;
 }
-/*
-// Wait until a global exists (needed for oTERM; it is created later onload)
-function waitForGlobal(name, cb, tries = 200, delayMs = 25) {
-  if (window[name]) return cb(window[name]);
-  if (tries <= 0) {
-    console.warn(`[SANITY] waitForGlobal(${name}) timed out`);
-    return;
-  }
-  setTimeout(() => waitForGlobal(name, cb, tries - 1, delayMs), delayMs);
-}
-*/
 
 // Worker symbol checks (safe for ALL oASC commands: no args required)
 function sanityWorkerSymbolsForASC(fnNames) {
@@ -367,9 +348,9 @@ function small3x1Spaces()
 
 function runWorkerThreadSmokeTests()
 {
-
   // Start with a clean area
   oASC.wipeSelection(' ');
+  var exp = "";
 
  return Promise.resolve()
      .then(() => {
@@ -408,9 +389,30 @@ function runWorkerThreadSmokeTests()
       console.log("Worker thread smoke tests done.");
     })
     .then(function(){
-      // cleanup
+    // cleanup
     return oCMD.runExternalScript("oASC.resetUndo();");
     })
+    .then(function(){
+      console.log("-6-");
+      exp = "TEST";
+      // set environment variable
+    return oCMD.runExternalScript("oTERM.setenv(\"myVar\",\""+exp +"\")");
+    })
+    .then(function(){
+      var got = oTERM._o.env.myVar;
+      assertEq("set environment variable oTERM.setenv(\"myVar\",\""+exp +"\")", got, exp);
+      // get environment variable
+    return oCMD.runExternalScript("{ oTERM.setenv(\"cpyVar\",oTERM.getenv(\"myVar\"))}");
+    })
+    .then(function(){
+      var got = oTERM._o.env.cpyVar;
+      console.log(JSON.stringify(oTERM._o.env));
+      assertEq("get environment variable oTERM.setenv(\"cpyVar\",oTERM.getenv(\"myvar\"))", got, exp);
+    
+    return;
+    })
+
+
     .then(function() { worker?.terminate?.(); })
     .then(function()
     {
