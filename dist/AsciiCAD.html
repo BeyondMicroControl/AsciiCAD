@@ -1414,7 +1414,19 @@ function ASC()
     type: "CADScript_FN",
     usage: "putCell(<i>c</i>,<i>r</i>,<i>string</i>)",
     desc: "",
-    examples: ["oASC.putCell(0,0,\"ABC\\nDEF\\nGHI\")"]
+    examples: ["oASC.putCell(0,0,\"ABC\\nDEF\\nGHI\")"],
+    unitTests:
+    ["oASC.putCell(0,0,\"ABC\\nDEF\\nGHI\");"
+    ,"oASC.assertGrid('putCell(0,0,\"ABC\\nDEF\\nGHI\")',oASC.getCell(0,0,3,S),'A\\nD\\nG');"
+    ,"oASC.clear()"]
+  }
+
+  this.assertGrid = function(name,got,exp)
+  {
+    if(got==exp)
+      console.assert("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:\""+got.replace(/\n/g,"↵") + "\" EXP:\"" + exp.replace(/\n/g,"↵")+"\"");
+    else
+      console.error("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:\""+got.replace(/\n/g,"↵") + "\" EXP:\"" + exp.replace(/\n/g,"↵")+"\"");
   }
 
   this.getCell = function(c, r, len, dir)
@@ -1518,7 +1530,12 @@ function ASC()
     type: "CADScript_CMD",
     usage: "cat(<i>c</i>,<i>r</i>,<i>angle</i>,<i>uid</i>)",
     desc: "",
-    examples: ["oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")"]
+    examples: ["oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")"],
+    unitTests:
+    ["oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")",
+     "oASC.assertGrid('oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")',oASC.getCell(0,0,3,E),'╔══');",
+     "oASC.clear()"
+    ]
   }
 
   this.lcat = function() 
