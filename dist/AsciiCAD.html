@@ -4319,7 +4319,7 @@ function TERMINAL(props)
   };
   this.pInput.help = {
     type: "TERMINAL_Fn",
-    usage: "pInput(<i>varName</i>,<i>question</i>,<i>prefill</i>,<i>overwriteMode</i>)",
+    usage: "pInput(<i>varName</i>,<i>question</i>\n,<i>prefill</i>,<i>overwriteMode</i>)",
     desc: "Prompt user and store answer in oTERM.env[varName]. overwriteMode=true enables terminal-like overwrite editing.",
     examples: [
       "oTERM.pInput(\"label\",\"Enter\",\"1234\",false)",
@@ -5810,26 +5810,28 @@ function CMD()
 
     const raw = String(line ?? "").trim();
 
-      // Option A: __cliHandleTerminal is the sole CADScript handler
-      if (/^cadscript\b/i.test(raw))
-      {
-      // prevent ping-pong recursion: oCMD.run -> __cliHandleTerminal -> oCMD.run -> ...
-      if (this._inCliDispatch) return true;
+    if (/^cadscript\b/i.test(raw)) {
+      if (this._inCliDispatch) {
+        window.__dbg?.("oCMD.run:cadscriptSkip", { line: raw, inCliDispatch: this._inCliDispatch });
+        return true;
+      }
 
       this._inCliDispatch = true;
+      window.__dbg?.("oCMD.run:cadscriptEnter", { line: raw });
 
       if (oTERM && typeof oTERM.pushPrompt === "function")
         oTERM.pushPrompt("AsciiCAD", { render: false });
 
       try {
         return __cliHandleTerminal(raw);
-      }
-      finally {
+      } finally {
         if (oTERM && typeof oTERM.popPrompt === "function")
           oTERM.popPrompt({ render: false });
+
+        this._inCliDispatch = false;   // ✅ critical fix
+        window.__dbg?.("oCMD.run:cadscriptExit", { line: raw, inCliDispatch: this._inCliDispatch });
       }
     }
-
     const cmd = m[1].toLowerCase();
     const rest = (m[2] || "").trim();
 
