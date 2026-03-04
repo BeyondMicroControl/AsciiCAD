@@ -227,9 +227,11 @@ function TERMINAL(props)
     if (self._o.state.prompt)
     {
       self._o.state.prompt = false;
-      self._o.state.overwrite = false;  // <-- step 4: reset overwrite mode after answering
+      self._o.state.overwrite = false;
       self.onAskCallback(commandLine);
-      self.setPrompt(); // restore normal prompt
+
+      self.popPrompt();          // ✅ restore previous prompt from stack
+
       resetCommand();
       return;
     }
@@ -308,10 +310,10 @@ function TERMINAL(props)
     examples: ["oTERM.idle(); <i>long process</i> oTERM.idle();"]    
   }
 
-  this.pInput = function (varName, question, prefill, overwriteMode)
+  this.input = function (varName, question, prefill, overwriteMode)
   {
     const key = String(varName || "").trim();
-    if (!key) throw new Error("prompt(varName,question): varName is required");
+    if (!key) throw new Error("input(varName,question,\nprefill,overwriteMode): varName is required");
 
     // push current prompt and show the question as the new prompt
     this.pushPrompt(String(question ?? key), { separator: this._o.shell.separator, render: true });
@@ -335,13 +337,13 @@ function TERMINAL(props)
       this._o.DOM.input.focus();
     }
   };
-  this.pInput.help = {
+  this.input.help = {
     type: "TERMINAL_Fn",
-    usage: "pInput(<i>varName</i>,<i>question</i>\n,<i>prefill</i>,<i>overwriteMode</i>)",
+    usage: "input(<i>varName</i>,<i>question</i>\n,<i>prefill</i>,<i>overwriteMode</i>)",
     desc: "Prompt user and store answer in oTERM.env[varName]. overwriteMode=true enables terminal-like overwrite editing.",
     examples: [
-      "oTERM.pInput(\"label\",\"Enter\",\"1234\",false)",
-      "oTERM.pInput(\"label\",\"Enter\",\"1234\",true)"
+      "oTERM.input(\"label\",\"Enter\",\"1234\",false)",
+      "oTERM.input(\"label\",\"Enter\",\"1234\",true)"
     ]
   };
 
