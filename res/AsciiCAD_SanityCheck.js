@@ -415,6 +415,9 @@ function runWorkerThreadSmokeTests()
     return oCMD.runExternalScript(oASC.box.help.unitTests.join(";"));       // UNIT test
     }) 
     .then(function(){
+    return oCMD.runExternalScript(oASC.putLine.help.unitTests.join(";"));   // UNIT test
+    }) 
+    .then(function(){
     return oCMD.runExternalScript("oASC.stack('reset')");                   // reset undo/redo buffer
     })    
     .then(function() { worker?.terminate?.(); })
