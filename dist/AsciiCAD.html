@@ -1649,7 +1649,6 @@ function ASC()
 
   this.buildOrthogonalPath = function(start, end, start_vleg, kind)
   {
-
     var cornerChar = function(r0, c0, r1, c1, v_leg, chset)  // private helper for buildOrthogonalPath
     {
       if ( (c1 > c0) &&  (r1 > r0)) return v_leg?chset.bl:chset.tr;  // left + down  | up + right
@@ -1657,9 +1656,9 @@ function ASC()
       if (!(c1 > c0) &&  (r1 > r0)) return v_leg?chset.br:chset.tl;  // right + down | down + right
       return v_leg?chset.tr:chset.bl;                                // right + up   | down + left
     }
-
-    const chset = kind === "double" ? this.BOX_DOUBLE : (kind === "fat" ? this.BOX_FAT : this.BOX_SINGLE);
-
+    const chset = kind === "double" ? this.BOX_DOUBLE 
+               : (kind === "fat"    ? this.BOX_FAT 
+               : (kind === "single" ? this.BOX_SINGLE : kind));
     const r0 = start.r, c0 = start.c;
     const r1 = end.r, c1 = end.c;
     const out = [];
@@ -1667,7 +1666,8 @@ function ASC()
     // Same cell → nothing
     if (r0 === r1 && c0 === c1) return out;
 
-    if (start_vleg) {
+    if (start_vleg) 
+    {
       // ===== Vertical then Horizontal =====
 
       // 1) Vertical segment at column c0
@@ -1764,32 +1764,39 @@ function ASC()
     return out;
   }
 
-  // TODO: unused, check why
   // INFO: likely replaced by commitLineWithOptionalMerge()
-  this.commitLine = function()
+  this.putLine = function(lineDrag)
   {
     if (!lineDrag) return;
-
-    const path = this.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
-
+    const path = this.buildOrthogonalPath(lineDrag.from,lineDrag.to,lineDrag.flip,lineDrag.kind);
     const stroke = [];
-    for (const p of path) {
+    for (const p of path) 
+    {
       if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-
       const prev = ascii[p.r][p.c];
       const next = p.ch;
-
-      if (prev !== next) {
+      if (prev !== next)
+      {
         stroke.push({ r: p.r, c: p.c, prev, next });
         ascii[p.r][p.c] = next;
       }
     }
-
     lineDrag = null;
     this.pushStrokeIfNonEmpty(stroke);
-    this.draw("commitLine");
+    this.draw("putLine");
   }
-
+  this.putLine.help =
+  {
+    type: "CADScript_Fn",
+    usage: "putLine({from:{r:0,c:0},\nto:{r:0,c:0},flip:,kind})",
+    desc: "Draw line in style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
+    examples:  ["CADScript {oASC.putLine({from:{r:0,c:0},\nto:{r:5,c:5},flip:true,kind:BOX_SINGLE})}"],
+    unitTests: [
+     "oASC.putLine({from:{r:1,c:1},to:{r:0,c:0},flip:true,kind:BOX_SINGLE})",
+     "oASC.assert('putLine',oASC.getCell(0,0,2,E),'─┐');",
+     "oASC.clear()"
+    ]
+  }
 
   this.commitLineWithOptionalMerge = function(mergeEnabled, lineKind)
   {
