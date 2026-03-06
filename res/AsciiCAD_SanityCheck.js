@@ -418,6 +418,22 @@ function runWorkerThreadSmokeTests()
     return oCMD.runExternalScript(oASC.putLine.help.unitTests.join(";"));   // UNIT test
     }) 
     .then(function(){
+
+        oASC.debug_merge = true;
+        oASC.putLine({from:{c:3,r:0},to:{c:3,r:4},kind:oASC.BOX_SINGLE,flip:true});
+        oASC.putLine({from:{c:0,r:1},to:{c:4,r:1},kind:oASC.BOX_SINGLE,flip:true});
+        oASC.putLine({from:{c:0,r:2},to:{c:3,r:2},kind:oASC.BOX_SINGLE,flip:true});
+        oASC.putLine({from:{c:0,r:3},to:{c:2,r:3},kind:oASC.BOX_SINGLE,flip:true});
+        //oASC.putLine({from:{c:5,r:5},to:{c:0,r:0},kind:oASC.BOX_DOUBLE,flip:false});
+        //oASC.putLine({from:{c:0,r:0},to:{c:5,r:5},kind:oASC.BOX_DOUBLE,flip:false});
+        oASC.debug_merge = false;
+
+        var s = "ABC\nDEF\nGHI"
+        console.log("\n"+s+"\n\n"+oASC.rotate(s,oASC.N,oASC.S));
+        oASC.clear();
+    return
+    }) 
+    .then(function(){
     return oCMD.runExternalScript("oASC.stack('reset')");                   // reset undo/redo buffer
     })    
     .then(function() { worker?.terminate?.(); })
