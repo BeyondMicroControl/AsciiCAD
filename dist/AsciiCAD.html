@@ -1768,7 +1768,9 @@ function ASC()
   this.putLine = function(lineDrag)
   {
     if (!lineDrag) return;
-    const path = this.buildOrthogonalPath(lineDrag.from,lineDrag.to,lineDrag.flip,lineDrag.kind);
+    const Lpath = this.buildOrthogonalPath(lineDrag.from,lineDrag.to,lineDrag.flip,lineDrag.kind);
+    const path = this.solveIntersect(Lpath);
+
     const stroke = [];
     for (const p of path) 
     {
@@ -1797,6 +1799,52 @@ function ASC()
      "oASC.clear()"
     ]
   }
+
+  this.solveIntersect = function(path)
+  {
+    var outPath = {};
+
+    //this.N = 0b0001, this.E = 0b0010, this.S = 0b0100, this.W = 0b1000;
+    outPath[i] = path[0];
+    var _pre = path[0]; 
+    for (var i=1;i<path.length;i++)
+    {
+      bFirst = i==0, bLast = i==path.length-1, _cur = path[i];
+      var dr  = _cur.r - _pre.r
+      var dc  = _cur.c - _pre.c;
+      var dir = 1 << (dr-dc+dc*dc+1);
+      
+      var cellP = oASC.getCell(_cur.c,_cur.r,2,N|S|E|W ^ dir);
+      var dirS = ["","N","E","","S","","","","W"];
+      console.log(JSON.stringify(path[i]) + " "+dirS[dir]+" >> "+JSON.stringify(cellP).replace(/\\n/g,"↵")   );
+      
+      _pre = _cur;
+      outPath[i] = path[i];
+    }
+    return path;
+  }
+
+  this.rotate = function(str,dir1,dir2)
+  {
+    if      (dir1     == dir2)                       return str;
+    else if((dir2>>1) == dir1 || (dir1>>3) == dir2 ) return r90(str)
+    else if((dir1>>1) == dir2 || (dir2>>3) == dir1 ) return r90( r180(str) )
+    else if((dir1>>2) == dir2 || (dir2>>2) == dir1 ) return r180(str);
+    function r90(str)
+    {
+      var rows = str.split("\n").map(function(line) { return line.split("") });
+      for (var c = 0, h = rows.length, w = rows[0].length , out = []; c < w; c++)
+      {
+        for (var r = h - 1, line = ""; r >= 0; r--) line += rows[r][c];
+        out.push(line);
+      }
+      return out.join("\n");
+    }
+    function r180(str) { return str.split("").reverse().join("") }
+  }
+
+ 
+
 
   this.commitLineWithOptionalMerge = function(mergeEnabled, lineKind)
   {
