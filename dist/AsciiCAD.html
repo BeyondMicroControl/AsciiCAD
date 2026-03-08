@@ -1108,81 +1108,338 @@ function ASC()
   this.N = 0b0001, this.E = 0b0010, this.S = 0b0100, this.W = 0b1000;
   const N = this.N, E = this.E, S = this.S, W = this.W;
 
-  // Only "light" box drawing for now (keeps it simple & readable)
-  this.glyphToMask = new Map([
-  [" ", 0],
+this._glyphMaskTable = 
+{
+  " ": 0,
 
   // half
-  ["╵",N],["╷",S],
-  ['╴',E],['╶',W],
+  "╵": N, "╷": S,
+  "╴": E, "╶": W,
 
   // single
-  ["─", E|W], ["│", N|S],
-  ["┌", E|S], ["┐", W|S], ["└", E|N], ["┘", W|N],
-  ["├", N|E|S], ["┤", N|W|S],
-  ["┬", E|S|W], ["┴", E|N|W],
-  ["┼", N|E|S|W],
+  "─": E|W, "│": N|S,
+  "┌": E|S, "┐": W|S, "└": E|N, "┘": W|N,
+  "├": N|E|S, "┤": N|W|S,
+  "┬": E|S|W, "┴": E|N|W,
+  "┼": N|E|S|W,
 
   // fat
-  ["━", E|W], ["┃", N|S],
-  ["┏", E|S], ["┓", W|S], ["┗", E|N], ["┛", W|N],
-  ["┣", N|E|S], ["┫", N|W|S],
-  ["┳", E|S|W], ["┻", E|N|W],
-  ["╋", N|E|S|W],
+  "━": E|W, "┃": N|S,
+  "┏": E|S, "┓": W|S, "┗": E|N, "┛": W|N,
+  "┣": N|E|S, "┫": N|W|S,
+  "┳": E|S|W, "┻": E|N|W,
+  "╋": N|E|S|W,
 
   // double
-  ["═", E|W], ["║", N|S],
-  ["╔", E|S], ["╗", W|S], ["╚", E|N], ["╝", W|N],
-  ["╠", N|E|S], ["╣", N|W|S],
-  ["╦", E|S|W], ["╩", E|N|W],
-  ["╬", N|E|S|W],
+  "═": E|W, "║": N|S,
+  "╔": E|S, "╗": W|S, "╚": E|N, "╝": W|N,
+  "╠": N|E|S, "╣": N|W|S,
+  "╦": E|S|W, "╩": E|N|W,
+  "╬": N|E|S|W,
 
   // mixed crosses single/double
-  ["╪", N|E|S|W],["╫", N|E|S|W],
+  "╪": N|E|S|W, "╫": N|E|S|W,
 
   // mixed crosses single/fat
-  ["┿", N|E|S|W],["╂", N|E|S|W],
-  /*
-  ["┽", N|E|S|W],["┾", N|E|S|W],["╀", N|E|S|W],["╁", N|E|S|W],["╃", N|E|S|W],["╄", N|E|S|W],
-  ["╅", N|E|S|W],["╆", N|E|S|W],["╇", N|E|S|W],["╈", N|E|S|W],["╉", N|E|S|W],["╊", N|E|S|W],
-  */
+  "┿": N|E|S|W, "╂": N|E|S|W,
+
   // mixed tees single/double
-  ["╤", E|S|W],["╥", E|S|W],["╧", E|N|W],["╨", E|N|W],["╞", N|E|S],["╟", N|E|S],["╡", N|W|S],["╢", N|W|S],
+  "╤": E|S|W, "╥": E|S|W, "╧": E|N|W, "╨": E|N|W,
+  "╞": N|E|S, "╟": N|E|S, "╡": N|W|S, "╢": N|W|S,
 
   // mixed tees single/fat
-  ["┯", E|S|W],["┰", E|S|W],["┷", E|N|W],["┸", E|N|W],["┝", N|E|S],["┠", N|E|S],["┥", N|W|S],["┨", N|W|S],
+  "┯": E|S|W, "┰": E|S|W, "┷": E|N|W, "┸": E|N|W,
+  "┝": N|E|S, "┠": N|E|S, "┥": N|W|S, "┨": N|W|S,
 
   // mixed corners single/double
-  ["╒", E|S],["╓", E|S],["╕", W|S],["╖", W|S],["╘", E|N],["╙", E|N],["╛", W|N],["╜", W|N],
+  "╒": E|S, "╓": E|S, "╕": W|S, "╖": W|S,
+  "╘": E|N, "╙": E|N, "╛": W|N, "╜": W|N,
 
   // mixed corners single/fat
-  ["┍", E|S],["┎", E|S],["┑", W|S],["┒", W|S],["┕", E|N],["┖", E|N],["┙", W|N],["┚", W|N]
-  ]);
+  "┍": E|S, "┎": E|S, "┑": W|S, "┒": W|S,
+  "┕": E|N, "┖": E|N, "┙": W|N, "┚": W|N
+}
 
 
-/*
-  this.maskToGlyph = new Map([
-  [0, ' '],
+this.glyphToMask = function(ch) 
+{
+  const k = String(ch ?? "");
+  const v = this._glyphMaskTable[k];
+  return (v === undefined) ? 0 : (v & 0xF);
+}
+this.glyphToMask.help = 
+{
+  type: "CADScript_FN",
+  usage: "glyphMask(<i>ch</i>)",
+  desc: "Return 4-bit wire direction mask for a glyph (N|E|S|W). Unknown glyph returns 0.",
+  examples: ["printJSON(glyphMask('┼'))", "printJSON(glyphMask('╵'))"]
+};
 
-  [N,'╵'],[S,'╷'],
-  [E,'╴'],[W,'╶'],
+this.glyphTo3Mask = function(g)
+{
+  if (!g) return 0;
 
-  [E | W, '─'],
-  [N | S, '│'],
+  const pack = (thin, fat, doub) => (thin & 0xF) | ((fat & 0xF) << 4) | ((doub & 0xF) | (doub & 0xF) << 4);
 
-  [E | S, '┌'],
-  [W | S, '┐'],
-  [E | N, '└'],
-  [W | N, '┘'],
+  // --- Pure style tables (compact + readable) ---
+  // thin (single/light)
+  const THIN_SET   = "─│┌┐└┘├┤┬┴┼╴╵╶╷";
+  // fat (single/heavy)
+  const FAT_SET    = "━┃┏┓┗┛┣┫┳┻╋╸╹╺╻";
+  // double (encode as both nibbles: thin + fat in same directions)
+  const DOUBLE_SET = "═║╔╗╚╝╠╣╦╩╬";
 
-  [N | E | S, '├'],
-  [N | W | S, '┤'],
-  [E | S | W, '┬'],
-  [E | N | W, '┴'],
+  // --- Mixed light/heavy tables (few glyphs; explicit split) ---
+  // Convention: each entry assigns which directions are thin vs fat.
+  // You can expand this map if you decide to support more mixed glyphs later.
+  const MIX = 
+  {
+    // light/heavy stubs
+    "╼": { thin: W,     fat: E },
+    "╾": { thin: E,     fat: W },
+    "╽": { thin: N,     fat: S },
+    "╿": { thin: S,     fat: N },
 
-  [N | E | S | W, '┼'],
-  ]);
-*/
+    // mixed corners (light+heavy)
+    "┍": { thin: S,     fat: E },
+    "┎": { thin: E,     fat: S },
+    "┑": { thin: S,     fat: W },
+    "┒": { thin: W,     fat: S },
+    "┕": { thin: N,     fat: E },
+    "┖": { thin: E,     fat: N },
+    "┙": { thin: N,     fat: W },
+    "┚": { thin: W,     fat: N },
+
+    // mixed crossings
+    '┽': { thin: N|E|S, fat: W },
+    '╀': { thin: E|S|W, fat: N },
+    '┾': { thin: S|W|N, fat: E },
+    '╁': { thin: W|N|E, fat: S },
+
+    '┿': { thin: N|S,   fat: E|W },
+    '╃': { thin: E|S,   fat: W|N },
+    '╄': { thin: S|W,   fat: N|E },
+    '╆': { thin: W|N,   fat: E|S },
+    '╅': { thin: N|E,   fat: S|W },
+
+    '╊': { thin: W,     fat: N|E|S },
+    '╈': { thin: N,     fat: E|S|W },
+    '╉': { thin: E,     fat: S|W|N },
+    '╇': { thin: S,     fat: W|N|E },
+
+     // mixed t-shape
+    '┞': { thin: E|S,   fat: N },
+    '┝': { thin: N|S,   fat: E },
+    '┟': { thin: N|E,   fat: S },
+    '┢': { thin: N,     fat: E|S },
+    '┠': { thin: E,     fat: N|S },
+    '┡': { thin: S,     fat: N|E },
+   
+    '┥': { thin: N|S,   fat: W },
+    '┦': { thin: W|S,   fat: N },
+    '┧': { thin: W|N,   fat: S },
+    '┨': { thin: W,     fat: N|S },
+    '┪': { thin: N,     fat: W|S },
+    '┩': { thin: S,     fat: W|N },
+    
+    '┭': { thin: E|S,   fat: W },
+    '┮': { thin: S|W,   fat: E },
+    '┰': { thin: W|E,   fat: S },
+    '┲': { thin: W,     fat: E|S },
+    '┱': { thin: E,     fat: S|W },
+    '┯': { thin: S,     fat: W|E },
+
+    // mixed corners (light+double)
+    '╜': { thin: W,     doub: N },
+    '╖': { thin: W,     doub: S },
+    '╛': { thin: N,     doub: W },
+    '╘': { thin: N,     doub: E },
+    '╙': { thin: E,     doub: N },
+    '╓': { thin: E,     doub: S },
+    '╕': { thin: S,     doub: W },
+    '╒': { thin: S,     doub: E },
+
+    // mixed t-shape (light+double)
+    '╢': { thin: W,     doub: N|S },
+    '╧': { thin: N,     doub: W|E },
+    '╟': { thin: E,     doub: N|S },
+    '╤': { thin: S,     doub: W|E },
+    '╡': { thin: N|S,   doub: W },
+    '╨': { thin: W|E,   doub: N },
+    '╞': { thin: N|S,   doub: E },
+    '╥': { thin: W|E,   doub: S },
+
+    // mixed crossings (light+double)
+    '╪': { thin: N|S,   doub: W|E },
+    '╫': { thin: W|E,   doub: N|S }
+  };
+
+  // 1) Mixed glyphs
+  if (MIX[g]) return pack(MIX[g].thin, MIX[g].fat, MIX[g].doub);
+
+  // 2) Pure style sets using glyphToMask direction mapping
+  const m = (self.glyphToMask ? (self.glyphToMask(g) & 0xF) : 0);
+
+  if (THIN_SET.indexOf(g)   >= 0) return pack(m, 0);
+  if (FAT_SET.indexOf(g)    >= 0) return pack(0, m);
+  if (DOUBLE_SET.indexOf(g) >= 0) return pack(m, m);
+
+  // 3) Fallback: if glyphToMask knows it, treat as thin by default
+  return pack(m, 0);
+}
+this.glyphTo3Mask.help =   
+{
+    type: "CADScript_FN",
+    usage: "glyphTo3Mask(<i>glyph</i>)",
+    desc:
+      "Translate a wire glyph into an 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). " +
+      "Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.",
+    examples: [
+      "oTERM.printJSON(oASC.glyphTo3Mask('╇'))",
+      "oTERM.printJSON(oASC.glyphTo3Mask('╧'))",
+    ],
+    uintTests: [
+      "oASC.assert('oASC.glyphTo3Mask(\\'┼\\')', oASC.glyphTo3Mask('┼') , N|E|S|W)",
+      "oASC.assert('oASC.glyphTo3Mask(\\'╇\\')', oASC.glyphTo3Mask('╇') , (S) | (W|N|E)<<4 )",
+      "oASC.assert('oASC.glyphTo3Mask(\\'╧\\')', oASC.glyphTo3Mask('╧') , (N|E|W) | (W|E)<<4 )"
+    ]
+  }
+
+
+  // Build once (place near glyphTo3Mask definition)
+  this._mask3ToGlyph = null;
+
+  this._buildMask3ToGlyph = function()
+  {
+    const pack = (thin, fat, doub) => {
+      const t = ((thin || 0) & 0xF) | ((doub || 0) & 0xF);
+      const f = ((fat  || 0) & 0xF) | ((doub || 0) & 0xF);
+      return (t & 0xF) | ((f & 0xF) << 4);
+    };
+
+    const THIN_SET   = "─│┌┐└┘├┤┬┴┼╴╵╶╷";
+    const FAT_SET    = "━┃┏┓┗┛┣┫┳┻╋╸╹╺╻";
+    const DOUBLE_SET = "═║╔╗╚╝╠╣╦╩╬";
+
+    const MIX = {
+      "╼": { thin: W,     fat: E },
+      "╾": { thin: E,     fat: W },
+      "╽": { thin: N,     fat: S },
+      "╿": { thin: S,     fat: N },
+
+      "┍": { thin: S,     fat: E },
+      "┎": { thin: E,     fat: S },
+      "┑": { thin: S,     fat: W },
+      "┒": { thin: W,     fat: S },
+      "┕": { thin: N,     fat: E },
+      "┖": { thin: E,     fat: N },
+      "┙": { thin: N,     fat: W },
+      "┚": { thin: W,     fat: N },
+
+      "┽": { thin: N|E|S, fat: W },
+      "╀": { thin: E|S|W, fat: N },
+      "┾": { thin: S|W|N, fat: E },
+      "╁": { thin: W|N|E, fat: S },
+
+      "┿": { thin: N|S,   fat: E|W },
+      "╃": { thin: E|S,   fat: W|N },
+      "╄": { thin: S|W,   fat: N|E },
+      "╆": { thin: W|N,   fat: E|S },
+      "╅": { thin: N|E,   fat: S|W },
+
+      "╊": { thin: W,     fat: N|E|S },
+      "╈": { thin: N,     fat: E|S|W },
+      "╉": { thin: E,     fat: S|W|N },
+      "╇": { thin: S,     fat: W|N|E },
+
+      "┞": { thin: E|S,   fat: N },
+      "┝": { thin: N|S,   fat: E },
+      "┟": { thin: N|E,   fat: S },
+      "┢": { thin: N,     fat: E|S },
+      "┠": { thin: E,     fat: N|S },
+      "┡": { thin: S,     fat: N|E },
+
+      "┥": { thin: N|S,   fat: W },
+      "┦": { thin: W|S,   fat: N },
+      "┧": { thin: W|N,   fat: S },
+      "┨": { thin: W,     fat: N|S },
+      "┪": { thin: N,     fat: W|S },
+      "┩": { thin: S,     fat: W|N },
+
+      "┭": { thin: E|S,   fat: W },
+      "┮": { thin: S|W,   fat: E },
+      "┰": { thin: W|E,   fat: S },
+      "┲": { thin: W,     fat: E|S },
+      "┱": { thin: E,     fat: S|W },
+      "┯": { thin: S,     fat: W|E },
+
+      "╜": { thin: W,     doub: N },
+      "╖": { thin: W,     doub: S },
+      "╛": { thin: N,     doub: W },
+      "╘": { thin: N,     doub: E },
+      "╙": { thin: E,     doub: N },
+      "╓": { thin: E,     doub: S },
+      "╕": { thin: S,     doub: W },
+      "╒": { thin: S,     doub: E },
+
+      "╢": { thin: W,     doub: N|S },
+      "╧": { thin: N,     doub: W|E },
+      "╟": { thin: E,     doub: N|S },
+      "╤": { thin: S,     doub: W|E },
+      "╡": { thin: N|S,   doub: W },
+      "╨": { thin: W|E,   doub: N },
+      "╞": { thin: N|S,   doub: E },
+      "╥": { thin: W|E,   doub: S },
+
+      "╪": { thin: N|S,   doub: W|E },
+      "╫": { thin: W|E,   doub: N|S }
+    };
+
+    // direction lookup (support both styles if you still have a function glyphToMask)
+    const dirMask = (ch) => {
+      const gm = this.glyphToMask;
+      if (!gm) return 0;
+      if (typeof gm.get === "function") return (gm.get(ch) || 0) & 0xF;
+      if (typeof gm === "function") return (gm(ch) || 0) & 0xF;
+      return 0;
+    };
+
+    const rev = Object.create(null);
+
+    // helper: prefer more “specific” glyphs if collisions occur (MIX first, then DOUBLE, FAT, THIN)
+    const setRev = (mask, glyph) => { if (rev[mask] === undefined) rev[mask] = glyph; };
+
+    // 1) MIX first (most specific)
+    for (const glyph in MIX) {
+      const e = MIX[glyph];
+      const mask = pack(e.thin, e.fat, e.doub);
+      setRev(mask, glyph);
+    }
+
+    // 2) pure double, fat, thin
+    for (const ch of DOUBLE_SET) setRev(pack(0,0, dirMask(ch)), ch);      // both nibbles
+    for (const ch of FAT_SET)    setRev(pack(0, dirMask(ch), 0), ch);     // fat nibble only
+    for (const ch of THIN_SET)   setRev(pack(dirMask(ch), 0, 0), ch);     // thin nibble only
+
+    this._mask3ToGlyph = rev;
+  };
+
+  this.Mask3ToGlyph = function(m)
+  {
+    if (!this._mask3ToGlyph) this._buildMask3ToGlyph();
+
+    const v = (Number(m) || 0) & 0xFF;
+    return this._mask3ToGlyph[v] ?? " ";
+  };
+  this.Mask3ToGlyph.help = {
+    type: "CADScript_FN",
+    usage: "Mask3ToGlyph(<i>m</i>)",
+    desc: "Reverse of glyphTo3Mask: map extended 8-bit mask (fat<<4 | thin) back to a wire glyph. Returns ' ' if unknown.",
+    examples: [
+      "oTERM.print(Mask3ToGlyph((N|E|S|W)<<4))",              // ╋
+      "oTERM.print(Mask3ToGlyph((N|E|S|W) | ((N|E|S|W)<<4)))" // ╬
+    ]
+  };
 
 
   this.maskToSingle = new Map([
@@ -1215,7 +1472,7 @@ function ASC()
   ]);
 
   this.BOX_SINGLE = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
-  this.BOX_FAT =  { h:'━', v:'┃', tl:'┏', tr:'┓', bl:'┗', br:'┛' };
+  this.BOX_FAT =    { h:'━', v:'┃', tl:'┏', tr:'┓', bl:'┗', br:'┛' };
   this.BOX_DOUBLE = { h:'═', v:'║', tl:'╔', tr:'╗', bl:'╚', br:'╝' };
 
   const DOUBLE_H = new Set(["═","╦","╩","╤","╧","╬","╪"]);
@@ -1223,13 +1480,11 @@ function ASC()
 
   function isFatWire(ch) {
   return ch === "━" || ch === "┃" || ch === "┏" || ch === "┓" || ch === "┗" || ch === "┛" ||
-          ch === "┣" || ch === "┫" || ch === "┳" || ch === "┻" || ch === "╋";
-  }
+         ch === "┣" || ch === "┫" || ch === "┳" || ch === "┻" || ch === "╋"; }
 
   function isDoubleWire(ch) {
   return ch === "═" || ch === "║" || ch === "╔" || ch === "╗" || ch === "╚" || ch === "╝" ||
-          ch === "╠" || ch === "╣" || ch === "╦" || ch === "╩" || ch === "╬";
-  }
+         ch === "╠" || ch === "╣" || ch === "╦" || ch === "╩" || ch === "╬"; }
 
   // ===== Match overlay (catalog pattern matching) =====
   // Wildcards:
@@ -1242,7 +1497,6 @@ function ASC()
   const WILD_D_SET = new Set(Array.from(WILDCARD_D));
   const WILD_S_SET = new Set(Array.from(WILDCARD_S));
   const WILD_U_SET = new Set(Array.from(WILDCARD_U));
-
 
   function keyRC(r, c) { return r + "," + c; }
 
@@ -1280,12 +1534,12 @@ function ASC()
 
   this.assert = function(name,got,exp)
   {
-    if(typeof(got)=="boolean")
+    if(typeof(got)=="boolean" || typeof(got)=="number" || typeof(got)=="undefined")
     {
       if(got==exp)
-        console.assert("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:\"" + got + "\" EXP:\"" + exp + "\"");
+        console.assert("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:" + got + " EXP:" + exp );
       else
-        console.error("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:\"" + got + "\" EXP:\"" + exp + "\"");
+        console.error("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:" + got + " EXP:" + exp );
     }
 
     if(got==exp)
@@ -1551,14 +1805,10 @@ function ASC()
 
     // TODO : list catalog items
     const items = (typeof CATALOG !== "undefined") ? CATALOG : [];
-    var tokenlist = [];
 
-    for (let i = 0; i < items.length; i++) 
-    {
-      const it = items[i];
-      const itUID = it.name + "_" + it.type + "_" + it.MFR;
-      tokenlist.push(itUID);
-    }
+    for (let i = 0, tokenlist = []; i < items.length; i++) 
+      tokenlist.push(this.itemUID(items[i]));
+
     tokenlist.sort();
     oTERM.output(oCOM.escapeHTML( "CATALOG ITEMS:\n\n"+tokenlist.join("\n") ));
   }
@@ -1754,7 +2004,7 @@ function ASC()
       if (typeof this.WILDCHAR_U !== "undefined" && ch === this.WILDCHAR_U) continue;
 
       // Drop wire glyphs (box drawing chars) so rotation/protrusions don't affect LabelID.
-      if ((this.glyphToMask.get(ch) ?? 0) !== 0) continue;
+      if ((this.glyphToMask(ch) ?? 0) !== 0) continue;
 
       out += ch;
     }
@@ -1770,7 +2020,6 @@ function ASC()
     if (!lineDrag) return;
     const Lpath = this.buildOrthogonalPath(lineDrag.from,lineDrag.to,lineDrag.flip,lineDrag.kind);
     const path = this.solveIntersect(Lpath);
-
     const stroke = [];
     for (const p of path) 
     {
@@ -1800,25 +2049,77 @@ function ASC()
     ]
   }
 
+  this.maskToString = function(num)
+  {
+    var s = [];
+    var dirS = ["N","E","S","W"];
+    for(var i=0;i<4;i++)
+          if(((num>>i) & 1) == 1) s[s.length] = dirS[i];
+    return s.join("|");
+  }
+
   this.solveIntersect = function(path)
   {
     var outPath = {};
 
     //this.N = 0b0001, this.E = 0b0010, this.S = 0b0100, this.W = 0b1000;
     outPath[i] = path[0];
-    var _pre = path[0]; 
-    for (var i=1;i<path.length;i++)
+    var _pre = path[0];
+    var _cur, dir;
+    
+    for (var i=0;i<path.length;i++)
     {
-      bFirst = i==0, bLast = i==path.length-1, _cur = path[i];
-      var dr  = _cur.r - _pre.r
-      var dc  = _cur.c - _pre.c;
-      var dir = 1 << (dr-dc+dc*dc+1);
-      
-      var cellP = oASC.getCell(_cur.c,_cur.r,2,N|S|E|W ^ dir);
-      var dirS = ["","N","E","","S","","","","W"];
-      console.log(JSON.stringify(path[i]) + " "+dirS[dir]+" >> "+JSON.stringify(cellP).replace(/\\n/g,"↵")   );
-      
-      _pre = _cur;
+      bFirst = i==0, bLast = i==(path.length-1); 
+      if(!bLast)
+      {
+        _cur = path[i+1];
+        var dr  = _cur.r - _pre.r
+        var dc  = _cur.c - _pre.c;
+        dir = 1 << (dr-dc+dc*dc+1);
+      }
+
+      var cellD = (N|S|E|W) ^ dir
+      var cellP = oASC.getCell(_cur.c,_cur.r,2,cellD);
+
+      if((dir & (E | W)) != 0)
+      {
+        var s = this.rotate(cellP,dir,E).replace(/ /g,".");
+        //var s = cellP.replace(/ /g,".");
+        console.log("Solve:"+JSON.stringify(path[i])+" cellD:"+this.maskToString(cellD)+" dir:"+this.maskToString(dir)+"\n"+s+" "+s.charAt(5) );
+
+        if(bFirst)
+        {
+          var watchCell = s.charAt(3);
+          if(this.glyphTo3Mask(watchCell) == (N|S) || this.glyphTo3Mask(watchCell) == ((N|S) << 4) )
+          {
+            // TODO: use bit arithmetic and Mask3ToGlyph() to generalise solution
+            if(isDoubleWire(path[i].ch))       path[i].ch = (dir & W) != 0 ? "╡" : "╞";
+            else if(isFatWire(path[i].ch))     path[i].ch = (dir & W) != 0 ? "┥" : "┝";
+            else                               path[i].ch = (dir & W) != 0 ? "┤" : "├";
+          }
+        }
+        else if(!bFirst && !bLast)
+        {
+          var watchCell = s.charAt(3);
+          if(this.glyphTo3Mask(watchCell) == (N|S) || this.glyphTo3Mask(watchCell) == ((N|S) << 4) ) 
+          {
+            path[i].ch = watchCell;  // when horizontal goes through a straigt line => override '-' (on path) by '|' (on grid)
+          }
+        }
+        else // Last
+        {
+          // TODO: use bit arithmetic and Mask3ToGlyph() to generalise solution
+          var watchCell = s.charAt(4);
+          if(this.glyphTo3Mask(watchCell) == (N|S) || this.glyphTo3Mask(watchCell) == ((N|S) << 4) ) 
+          {
+            if(isDoubleWire(path[i].ch))       path[i].ch = (dir & E) != 0 ? "╡" : "╞";
+            else if(isFatWire(path[i].ch))     path[i].ch = (dir & E) != 0 ? "┥" : "┝";
+            else                               path[i].ch = (dir & E) != 0 ? "┤" : "├";
+          }
+        }
+
+        _pre = _cur;
+      }
       outPath[i] = path[i];
     }
     return path;
@@ -1842,9 +2143,6 @@ function ASC()
     }
     function r180(str) { return str.split("").reverse().join("") }
   }
-
- 
-
 
   this.commitLineWithOptionalMerge = function(mergeEnabled, lineKind)
   {
@@ -2128,7 +2426,17 @@ function ASC()
     this.pushStrokeIfNonEmpty(stroke);
   }
 
-  this.isWireGlyph = function(ch) { return this.glyphToMask.has(ch); }
+  this.isWireGlyph = function(ch) {
+    const k = String(ch ?? "");
+    return this._glyphMaskTable[k] !== undefined && k !== " ";
+  };
+  // or: return this.glyphMask(ch) !== 0;
+  this.isWireGlyph.help = {
+    type: "CADScript_FN",
+    usage: "isWireGlyph(<i>ch</i>)",
+    desc: "True if ch is a known wire glyph in the glyph mask table.",
+    examples: ["oTERM.printJSON(isWireGlyph('┼'))", "oTERM.printJSON(isWireGlyph('A'))"]
+  };
 
 
   this.isVisiblyRenderable = function(ch, font = "16px monospace") 
@@ -2155,8 +2463,8 @@ function ASC()
 
   this.mergedWireGlyph = function(prevCh, nextCh, lineKind /* "single"|"double","fat" */)
   {
-    const pm = this.glyphToMask.get(prevCh) ?? 0;
-    const nm = this.glyphToMask.get(nextCh) ?? 0;
+    const pm = this.glyphToMask(prevCh) ?? 0;
+    const nm = this.glyphToMask(nextCh) ?? 0;
     const m  = pm | nm;
 
     // double wins:
@@ -2207,28 +2515,28 @@ function ASC()
       // UP contributes N if it connects DOWN (S)
       if (r > 0) {
         const up = ascii[r - 1][c];
-        const um = this.glyphToMask.get(up) ?? 0;
+        const um = this.glyphToMask(up) ?? 0;
         if (um & S) { m |= N; if (isDoubleWire(up)) vDouble = true; else if (isFatWire(up)) vFat = true; }
       }
 
       // DOWN contributes S if it connects UP (N)
       if (r < ROWS - 1) {
         const dn = ascii[r + 1][c];
-        const dm = this.glyphToMask.get(dn) ?? 0;
+        const dm = this.glyphToMask(dn) ?? 0;
         if (dm & N) { m |= S; if (isDoubleWire(dn)) vDouble = true; else if (isFatWire(dn)) vFat = true; }
       }
 
       // LEFT contributes W if it connects RIGHT (E)
       if (c > 0) {
         const lt = ascii[r][c - 1];
-        const lm = this.glyphToMask.get(lt) ?? 0;
+        const lm = this.glyphToMask(lt) ?? 0;
         if (lm & E) { m |= W; if (isDoubleWire(lt)) hDouble = true; else if (isFatWire(lt)) hFat = true; }
       }
 
       // RIGHT contributes E if it connects LEFT (W)
       if (c < COLS - 1) {
         const rt = ascii[r][c + 1];
-        const rm = this.glyphToMask.get(rt) ?? 0;
+        const rm = this.glyphToMask(rt) ?? 0;
         if (rm & W) { m |= E; if (isDoubleWire(rt)) hDouble = true; else if (isFatWire(rt)) hFat = true; }
       }
 
@@ -2703,14 +3011,16 @@ this.startPasteWithText = function(text)
     return patCh === gridCh;
   }
 
+  this.itemUID = function(it)
+  {
+    return it.name + "_" + it.type + "_" + it.MFR;
+  }
+
   this.findCatalogItemByUID = function(uid) 
   {
     const items = (typeof CATALOG !== "undefined") ? CATALOG : [];
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i];
-      const itUID = it.name + "_" + it.type + "_" + it.MFR;
-      if (itUID === uid) return it;
-    }
+    for (let i = 0; i < items.length; i++)
+      if (this.itemUID(items[i]) === uid) return it;
     return null;
   }
 
@@ -3072,37 +3382,37 @@ this.startPasteWithText = function(text)
       const ch = ascii?.[r]?.[c];
       if (ch === undefined) return false;
       if (ch === " ") return false;
-      return (self.glyphToMask.get(ch) ?? 0) !== 0;
+      return (self.glyphToMask(ch) ?? 0) !== 0;
     }
 
     function connectedNeighbors(r,c)
     {
       const out = [];
       const ch = ascii[r][c];
-      const m  = self.glyphToMask.get(ch) ?? 0;
+      const m  = self.glyphToMask(ch) ?? 0;
 
       // up
       if ((m & N) && r > 0 && isNetWireCell(r-1,c)) {
-        const m2 = self.glyphToMask.get(ascii[r-1][c]) ?? 0;
+        const m2 = self.glyphToMask(ascii[r-1][c]) ?? 0;
         if (m2 & S) pushUnique(out, r-1, c);
       }
       // down
       if ((m & S) && r < ROWS-1 && isNetWireCell(r+1,c)) {
-        const m2 = self.glyphToMask.get(ascii[r+1][c]) ?? 0;
+        const m2 = self.glyphToMask(ascii[r+1][c]) ?? 0;
         if (m2 & N) pushUnique(out, r+1, c);
       }
 
       // left (with horizontal-only crossing bypass ─│─)
       if ((m & W) && c > 0 && isNetWireCell(r, c-1)) {
         const ch2 = ascii[r][c-1];
-        const m2  = self.glyphToMask.get(ch2) ?? 0;
+        const m2  = self.glyphToMask(ch2) ?? 0;
 
         if (m2 & E) {
           pushUnique(out, r, c-1);
         } else {
           const isVerticalOnly = (m2 & N) && (m2 & S) && !(m2 & E) && !(m2 & W);
           if (isVerticalOnly && c-2 >= 0 && isNetWireCell(r, c-2)) {
-            const m3 = self.glyphToMask.get(ascii[r][c-2]) ?? 0;
+            const m3 = self.glyphToMask(ascii[r][c-2]) ?? 0;
             if (m3 & E) pushUnique(out, r, c-2);
           }
         }
@@ -3111,14 +3421,14 @@ this.startPasteWithText = function(text)
       // right (with horizontal-only crossing bypass ─│─)
       if ((m & E) && c < COLS-1 && isNetWireCell(r, c+1)) {
         const ch2 = ascii[r][c+1];
-        const m2  = self.glyphToMask.get(ch2) ?? 0;
+        const m2  = self.glyphToMask(ch2) ?? 0;
 
         if (m2 & W) {
           pushUnique(out, r, c+1);
         } else {
           const isVerticalOnly = (m2 & N) && (m2 & S) && !(m2 & E) && !(m2 & W);
           if (isVerticalOnly && c+2 < COLS && isNetWireCell(r, c+2)) {
-            const m3 = self.glyphToMask.get(ascii[r][c+2]) ?? 0;
+            const m3 = self.glyphToMask(ascii[r][c+2]) ?? 0;
             if (m3 & W) pushUnique(out, r, c+2);
           }
         }
@@ -3145,7 +3455,7 @@ this.startPasteWithText = function(text)
       const chC = ascii?.[compR]?.[compC];
       if (!chC || chC === " " || chC === this.WILDCHAR_U) return;
 
-      const mC = self.glyphToMask.get(chC) ?? 0;
+      const mC = self.glyphToMask(chC) ?? 0;
       if (!(mC & needBitOnComp)) return;
 
       pushUniqueCR(CE, compC, compR);
@@ -3199,7 +3509,7 @@ this.startPasteWithText = function(text)
 
         // CE scan on all nodes
         for (const n of nodes) {
-          const m = self.glyphToMask.get(ascii[n.r][n.c]) ?? 0;
+          const m = self.glyphToMask(ascii[n.r][n.c]) ?? 0;
           if (m & W) tryAddCE(LE, CE, n.r, n.c, n.r, n.c - 1, E);
           if (m & E) tryAddCE(LE, CE, n.r, n.c, n.r, n.c + 1, W);
           if (m & N) tryAddCE(LE, CE, n.r, n.c, n.r - 1, n.c, S);
@@ -8732,7 +9042,8 @@ const PICKER_TABS =
             <button id="openCatalog" class="btn">Catalog</button>
             <button id="eraser" class="btn">Space</button>
           </div>
-          <div class="tiny muted" id="currentOp" style="margin-top:10px;">Current: place '+'</div>
+          <div id="currentOp" class="tiny muted"    style="margin-top:10px;float:left">Current: </div>
+          <div id="copyGlyphBtn" class="tiny muted" style="margin-top:10px;" data-hint="Copy glyph character"></div>
         </div>
 
         <div class="card">
@@ -8878,6 +9189,8 @@ const flipPanBtn =  document.getElementById("flipPan");
 const cliTerminal = document.getElementById("cliTerminal");
 const resizeHandleCLI = document.getElementById("resizeHandleCLI");
 
+const copyGlyphBtn =  document.getElementById("copyGlyphBtn");
+
 const button_list = document.querySelectorAll("button[id^=\"mode\"]");
 const mode_el = Object.fromEntries( Array.from(button_list).map(btn => [btn.id, btn]) );
 
@@ -8953,10 +9266,8 @@ let netlistDebugCESet = null;   // Set of "r,c" keys for CE cells
 // Current hovered net index (or -1 if none)
 let hoverNetIndex = -1;
 
-
 let isDrawing = false;
 let lastCellKey = null;
-
 
 let selection = null;  // {r0,r1,c0,c1}
 let selectDrag = null; // {start,current}
@@ -8979,10 +9290,6 @@ let catalogTab = "All";
 //    ███████ █████   ██      ██████  █████   ██████  ███████ 
 //    ██   ██ ██      ██      ██      ██      ██   ██      ██ 
 //    ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
-
-
-
-
 
 
 
@@ -9179,9 +9486,6 @@ function renderCatalogGrid()
 
 
 
-
-
-
 //    ██    ██ ██     ██   ██  █████  ███    ██ ██████  ██      ███████ ██████  ███████ 
 //    ██    ██ ██     ██   ██ ██   ██ ████   ██ ██   ██ ██      ██      ██   ██ ██      
 //    ██    ██ ██     ███████ ███████ ██ ██  ██ ██   ██ ██      █████   ██████  ███████ 
@@ -9199,6 +9503,7 @@ for(var i in mode_el)
       updateUI(); oASC.draw("init");
   });
 }
+updateOpLine("modeFreeform",{type:"place",ch:'+'})
 
 function setMode(mode)
 {
@@ -9212,12 +9517,14 @@ function updateOpLine(mode,item)
 {
   if(mode === "modeFreeform")
   {
-      currentOpLine.textContent = item.type === "place" ? ("Current: place ' " + item.ch + " '" ) : "Current: space";
+      currentOpLine.textContent = "Current: "
       selectedCharEl.textContent = item.type === "place" ? item.ch : "(space)";
+      copyGlyphBtn.textContent = item.type === "place" ? ("'"+item.ch+"'") : "(space)";
   }
   if(mode == "catalog")
   {
-      currentOpLine.textContent =  item.type+": "+item.name;
+      currentOpLine.textContent =  "";
+      copyGlyphBtn.textContent = oASC.itemUID(item);
       // leave selectedCharEl untouched: make sure to remember selected char after dropping catalog item in grid
   }
 }
@@ -10115,6 +10422,17 @@ if(oCOM.URL.filename == "AsciiCAD.html")
 
 
 // Picker/catalog
+
+document.getElementById("copyGlyphBtn").addEventListener("click", async function () {
+  const text = this.textContent.trim();
+  try {
+    await navigator.clipboard.writeText(text);
+    console.log("Copied:", text);
+  } catch (err) {
+    console.error("Clipboard copy failed:", err);
+  }
+});
+
 pickerBackdrop.addEventListener("click", closePicker);
 pickerClose.addEventListener("click", closePicker);
 catalogBackdrop.addEventListener("click", closeCatalog);
