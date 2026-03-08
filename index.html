@@ -71,7 +71,8 @@
             <button id="openCatalog" class="btn">Catalog</button>
             <button id="eraser" class="btn">Space</button>
           </div>
-          <div class="tiny muted" id="currentOp" style="margin-top:10px;">Current: place '+'</div>
+          <div id="currentOp" class="tiny muted"    style="margin-top:10px;float:left">Current: </div>
+          <div id="copyGlyphBtn" class="tiny muted" style="margin-top:10px;" data-hint="Copy glyph character"></div>
         </div>
 
         <div class="card">
@@ -217,6 +218,8 @@ const flipPanBtn =  document.getElementById("flipPan");
 const cliTerminal = document.getElementById("cliTerminal");
 const resizeHandleCLI = document.getElementById("resizeHandleCLI");
 
+const copyGlyphBtn =  document.getElementById("copyGlyphBtn");
+
 const button_list = document.querySelectorAll("button[id^=\"mode\"]");
 const mode_el = Object.fromEntries( Array.from(button_list).map(btn => [btn.id, btn]) );
 
@@ -292,10 +295,8 @@ let netlistDebugCESet = null;   // Set of "r,c" keys for CE cells
 // Current hovered net index (or -1 if none)
 let hoverNetIndex = -1;
 
-
 let isDrawing = false;
 let lastCellKey = null;
-
 
 let selection = null;  // {r0,r1,c0,c1}
 let selectDrag = null; // {start,current}
@@ -318,10 +319,6 @@ let catalogTab = "All";
 //    ███████ █████   ██      ██████  █████   ██████  ███████ 
 //    ██   ██ ██      ██      ██      ██      ██   ██      ██ 
 //    ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
-
-
-
-
 
 
 
@@ -518,9 +515,6 @@ function renderCatalogGrid()
 
 
 
-
-
-
 //    ██    ██ ██     ██   ██  █████  ███    ██ ██████  ██      ███████ ██████  ███████ 
 //    ██    ██ ██     ██   ██ ██   ██ ████   ██ ██   ██ ██      ██      ██   ██ ██      
 //    ██    ██ ██     ███████ ███████ ██ ██  ██ ██   ██ ██      █████   ██████  ███████ 
@@ -538,6 +532,7 @@ for(var i in mode_el)
       updateUI(); oASC.draw("init");
   });
 }
+updateOpLine("modeFreeform",{type:"place",ch:'+'})
 
 function setMode(mode)
 {
@@ -551,12 +546,14 @@ function updateOpLine(mode,item)
 {
   if(mode === "modeFreeform")
   {
-      currentOpLine.textContent = item.type === "place" ? ("Current: place ' " + item.ch + " '" ) : "Current: space";
+      currentOpLine.textContent = "Current: "
       selectedCharEl.textContent = item.type === "place" ? item.ch : "(space)";
+      copyGlyphBtn.textContent = item.type === "place" ? ("'"+item.ch+"'") : "(space)";
   }
   if(mode == "catalog")
   {
-      currentOpLine.textContent =  item.type+": "+item.name;
+      currentOpLine.textContent =  "";
+      copyGlyphBtn.textContent = oASC.itemUID(item);
       // leave selectedCharEl untouched: make sure to remember selected char after dropping catalog item in grid
   }
 }
@@ -1454,6 +1451,17 @@ if(oCOM.URL.filename == "AsciiCAD.html")
 
 
 // Picker/catalog
+
+document.getElementById("copyGlyphBtn").addEventListener("click", async function () {
+  const text = this.textContent.trim();
+  try {
+    await navigator.clipboard.writeText(text);
+    console.log("Copied:", text);
+  } catch (err) {
+    console.error("Clipboard copy failed:", err);
+  }
+});
+
 pickerBackdrop.addEventListener("click", closePicker);
 pickerClose.addEventListener("click", closePicker);
 catalogBackdrop.addEventListener("click", closeCatalog);

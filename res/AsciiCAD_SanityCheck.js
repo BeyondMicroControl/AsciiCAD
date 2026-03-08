@@ -346,6 +346,27 @@ function small3x1Spaces()
   return " \n \n \n";
 }
 
+function lineSEQ(o)
+{
+  var co;
+  o.rc++; co = 1;
+
+  oASC.putLine({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.putLine({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.putLine({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.putLine({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.putLine({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+
+  o.rc++; co = 1; 
+
+  oASC.putLine({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.putLine({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.putLine({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.putLine({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.putLine({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  return o.rc;
+}
+
 function runWorkerThreadSmokeTests()
 {
   // Start with a clean area
@@ -418,18 +439,33 @@ function runWorkerThreadSmokeTests()
     return oCMD.runExternalScript(oASC.putLine.help.unitTests.join(";"));   // UNIT test
     }) 
     .then(function(){
+    return oCMD.runExternalScript(oASC.glyphTo3Mask.help.uintTests.join(";"));   // UNIT test
+    })
+    .then(function(){
+        //oASC.debug_merge = true;
+        var rc = 0, cc = 4;
+        oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_SINGLE,flip:true});
 
-        oASC.debug_merge = true;
-        oASC.putLine({from:{c:3,r:0},to:{c:3,r:4},kind:oASC.BOX_SINGLE,flip:true});
-        oASC.putLine({from:{c:0,r:1},to:{c:4,r:1},kind:oASC.BOX_SINGLE,flip:true});
-        oASC.putLine({from:{c:0,r:2},to:{c:3,r:2},kind:oASC.BOX_SINGLE,flip:true});
-        oASC.putLine({from:{c:0,r:3},to:{c:2,r:3},kind:oASC.BOX_SINGLE,flip:true});
-        //oASC.putLine({from:{c:5,r:5},to:{c:0,r:0},kind:oASC.BOX_DOUBLE,flip:false});
-        //oASC.putLine({from:{c:0,r:0},to:{c:5,r:5},kind:oASC.BOX_DOUBLE,flip:false});
-        oASC.debug_merge = false;
+        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
+        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
+        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
 
-        var s = "ABC\nDEF\nGHI"
-        console.log("\n"+s+"\n\n"+oASC.rotate(s,oASC.N,oASC.S));
+        var rc = 0, cc = 24;
+        oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_FAT,flip:true});
+        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
+        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
+        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+
+
+        var rc = 0, cc = 44;
+        oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_DOUBLE,flip:true});
+        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
+        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
+        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+
+        //oASC.debug_merge = false;
+        //var s = "ABC\nDEF\nGHI"
+        //console.log("\n"+s+"\n\n"+oASC.rotate(s,oASC.N,oASC.S));
         oASC.clear();
     return
     }) 
@@ -440,6 +476,7 @@ function runWorkerThreadSmokeTests()
     .then(function()
     {
       delete oTERM;
+      op = { type: "place", ch: '+' };
     });
 }
 
@@ -463,7 +500,7 @@ function runWorkerThreadSmokeTests()
   // Authorise terminal access to internal JavaScript objects (by name)
   // We can authorise by prefix, explicit variable names, or just scope all variables in the object 
   oCMD.bind([
-    { name: "oASC" ,  exposeAllNonFunctions:true /*constPrefixes: ["BOX_"],*/  /*, explicitKeys: ["BOX_SINGLE","BOX_DOUBLE","BOX_FAT","N","S","E","W"]*/ }
+     { name: "oASC" ,  exposeAllNonFunctions:true /*constPrefixes: ["BOX_"],*/  /*, explicitKeys: ["BOX_SINGLE","BOX_DOUBLE","BOX_FAT","N","S","E","W"]*/ }
     ,{ name: "oCMD"  }
     ,{ name: "oTERM" }
     ,{ name: "oCOM"  }
