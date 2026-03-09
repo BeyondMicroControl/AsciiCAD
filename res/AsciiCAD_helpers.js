@@ -2440,14 +2440,38 @@ this.startPasteWithText = function(text)
   }
 
 
-
   // Netlist extraction: follow connected wire glyphs outside double-box boundaries.
   // Returns [{ LE:[{c,r},...], LJ:[{c,r},...]} ...]
-  this.computeNetlistLines = function() {
+  this.computeNetlist = function()
+  {
     const nets = __computeNetlistCore({ includeCellSet: false });
     return nets.map(n => ({ LE: n.LE, LJ: n.LJ, CE: n.CE }));
+  }
+  this.computeNetlist.help =
+  {
+    type: "CADScript_FN",
+    usage: "computeNetlist()",
+    desc: "Compute netlist including Line Ends (LE) and Component Ends (CE)",
+    examples: [
+      "oTERM.printJSON(oASC.computeNetlist())"
+    ],
+    unitTests:[
+      "oASC.clear();",
+      "oASC.putCell(0,0,\""
++"     ⎽⎽⎽⎽⎽\\n"
++"  ┌─[  11Ω]───◠◠◠◠─┐\\n"
++"  │  ⎺⎺⎺⎺⎺         │\\n"
++"╭─╵─╮              │\\n"
++"( ~ )              │\\n"
++"╰─╷─╯              │\\n"
++"  │   [103]        │\\n"
++"  ├────┨┠─────(A)──┘\\n"
++"  ╧\");",
+      "oASC.assert(\"oASC.computeNetlist()\",true,oASC.computeNetlist()[0]);",
+      //"Object.keys(oASC.computeNetlist()).length"
+      //"oASC.stack(\"undo\");"
+    ]
   };
-
 
   this.computeNetlistNets = function() {
     const nets = __computeNetlistCore({ includeCellSet: true });
@@ -2459,8 +2483,8 @@ this.startPasteWithText = function(text)
   {
     if (window.oTERM && typeof oTERM.output === "function") 
     {
-      const lines = (typeof this.computeNetlistLines === "function")
-        ? this.computeNetlistLines()
+      const lines = (typeof this.computeNetlist === "function")
+        ? this.computeNetlist()
         : [];
 
       const pretty = JSON.stringify(lines, null, 2)
