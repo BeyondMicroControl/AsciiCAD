@@ -1135,9 +1135,6 @@ function ASC()
     ascii[cell.r][cell.c] = next;
   }  
 
-  this.hasDoubleH = function(ch) { return this.hasDoubleH(ch); }
-  this.hasDoubleV = function(ch) { return this.hasDoubleV(ch); }
-
   // “double box” check: ╔══╗ / ║  ║ / ╚══╝ ... and intersected with single lines
   this.isValidDoubleBox = function(r0, c0, r1, c1) 
   {
