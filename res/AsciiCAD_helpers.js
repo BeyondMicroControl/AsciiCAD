@@ -33,11 +33,6 @@ function ASC()
   // Shared codec for glyphToMask3 <-> Mask3ToGlyph (no glyphToMask dependency)
   // ------------------------------------------------------------
 
-  // Pure style sets
-  const GL3_THIN_SET   = "─│┌┐└┘├┤┬┴┼╴╵╶╷";
-  const GL3_FAT_SET    = "━┃┏┓┗┛┣┫┳┻╋╸╹╺╻";
-  const GL3_DOUBLE_SET = "═║╔╗╚╝╠╣╦╩╬";
-
   // Mixed table (thin/fat/doub split)
   const GL3_MIX = {
     // light/heavy stubs
@@ -214,80 +209,6 @@ function getGlyph3Codec(self)
     const FAT_SET    = "━┃┏┓┗┛┣┫┳┻╋╸╹╺╻";
     const DOUBLE_SET = "═║╔╗╚╝╠╣╦╩╬";
 
-    const MIX = {
-      "╼": { thin: W,     fat: E },
-      "╾": { thin: E,     fat: W },
-      "╽": { thin: N,     fat: S },
-      "╿": { thin: S,     fat: N },
-
-      "┍": { thin: S,     fat: E },
-      "┎": { thin: E,     fat: S },
-      "┑": { thin: S,     fat: W },
-      "┒": { thin: W,     fat: S },
-      "┕": { thin: N,     fat: E },
-      "┖": { thin: E,     fat: N },
-      "┙": { thin: N,     fat: W },
-      "┚": { thin: W,     fat: N },
-
-      "┽": { thin: N|E|S, fat: W },
-      "╀": { thin: E|S|W, fat: N },
-      "┾": { thin: S|W|N, fat: E },
-      "╁": { thin: W|N|E, fat: S },
-
-      "┿": { thin: N|S,   fat: E|W },
-      "╃": { thin: E|S,   fat: W|N },
-      "╄": { thin: S|W,   fat: N|E },
-      "╆": { thin: W|N,   fat: E|S },
-      "╅": { thin: N|E,   fat: S|W },
-
-      "╊": { thin: W,     fat: N|E|S },
-      "╈": { thin: N,     fat: E|S|W },
-      "╉": { thin: E,     fat: S|W|N },
-      "╇": { thin: S,     fat: W|N|E },
-
-      "┞": { thin: E|S,   fat: N },
-      "┝": { thin: N|S,   fat: E },
-      "┟": { thin: N|E,   fat: S },
-      "┢": { thin: N,     fat: E|S },
-      "┠": { thin: E,     fat: N|S },
-      "┡": { thin: S,     fat: N|E },
-
-      "┥": { thin: N|S,   fat: W },
-      "┦": { thin: W|S,   fat: N },
-      "┧": { thin: W|N,   fat: S },
-      "┨": { thin: W,     fat: N|S },
-      "┪": { thin: N,     fat: W|S },
-      "┩": { thin: S,     fat: W|N },
-
-      "┭": { thin: E|S,   fat: W },
-      "┮": { thin: S|W,   fat: E },
-      "┰": { thin: W|E,   fat: S },
-      "┲": { thin: W,     fat: E|S },
-      "┱": { thin: E,     fat: S|W },
-      "┯": { thin: S,     fat: W|E },
-
-      "╜": { thin: W,     doub: N },
-      "╖": { thin: W,     doub: S },
-      "╛": { thin: N,     doub: W },
-      "╘": { thin: N,     doub: E },
-      "╙": { thin: E,     doub: N },
-      "╓": { thin: E,     doub: S },
-      "╕": { thin: S,     doub: W },
-      "╒": { thin: S,     doub: E },
-
-      "╢": { thin: W,     doub: N|S },
-      "╧": { thin: N,     doub: W|E },
-      "╟": { thin: E,     doub: N|S },
-      "╤": { thin: S,     doub: W|E },
-      "╡": { thin: N|S,   doub: W },
-      "╨": { thin: W|E,   doub: N },
-      "╞": { thin: N|S,   doub: E },
-      "╥": { thin: W|E,   doub: S },
-
-      "╪": { thin: N|S,   doub: W|E },
-      "╫": { thin: W|E,   doub: N|S }
-    };
-
     const g2m = Object.create(null);   // glyph -> mask3
     const m2g = Object.create(null);   // mask3 -> glyph
 
@@ -298,8 +219,8 @@ function getGlyph3Codec(self)
     };
 
     // 1) Mixed glyphs first (more specific)
-    for (const glyph in MIX) {
-      const e = MIX[glyph];
+    for (const glyph in GL3_MIX) {
+      const e = GL3_MIX[glyph];
       put(glyph, pack3(e.thin, e.fat, e.doub));
     }
 
@@ -308,7 +229,7 @@ function getGlyph3Codec(self)
     for (const glyph of FAT_SET)    put(glyph, pack3(0, self.dirMask3(glyph), 0));
     for (const glyph of THIN_SET)   put(glyph, pack3(self.dirMask3(glyph), 0, 0));
 
-    __glyph3Codec = { pack3, THIN_SET, FAT_SET, DOUBLE_SET, MIX, g2m, m2g };
+    __glyph3Codec = { pack3, THIN_SET, FAT_SET, DOUBLE_SET, GL3_MIX, g2m, m2g };
   }
 
   return __glyph3Codec;
@@ -376,51 +297,51 @@ function getGlyph3Codec(self)
   }
 
 
+  // 4-bit -> glyph (thin/fat/double) via Mask3ToGlyph (8-bit)
+  this.maskToSingle = function(m4){ return this.Mask3ToGlyph((Number(m4)||0) & 0xF) }
+  this.maskToFat = function(m4){ return this.Mask3ToGlyph(((Number(m4)||0) & 0xF) << 4) }
+  this.maskToDouble = function(m4){ const m = (Number(m4)||0) & 0xF; return this.Mask3ToGlyph(m | (m << 4)) }
 
+  const BOX_CONTOUR = { h:E|W, v:N|S, tl:E|S, tr:W|S, bl:E|N, br:W|N };
 
-  this.maskToSingle = new Map([
-  [0," "],
-  [N,'╵'],[S,'╷'],
-  [E,'╴'],[W,'╶'],
-  [E|W,"─"], [N|S,"│"],
-  [E|S,"┌"], [W|S,"┐"], [E|N,"└"], [W|N,"┘"],
-  [N|E|S,"├"], [N|W|S,"┤"],
-  [E|S|W,"┬"], [E|N|W,"┴"],
-  [N|E|S|W,"┼"],
-  ]);
+  function buildBox(maskTo){
+    return {
+      h:  maskTo(BOX_CONTOUR.h),
+      v:  maskTo(BOX_CONTOUR.v),
+      tl: maskTo(BOX_CONTOUR.tl),
+      tr: maskTo(BOX_CONTOUR.tr),
+      bl: maskTo(BOX_CONTOUR.bl),
+      br: maskTo(BOX_CONTOUR.br),
+    };
+  }
 
-  this.maskToFat = new Map([
-  [0," "],
-  [E|W,"━"], [N|S,"┃"],
-  [E|S,"┏"], [W|S,"┓"], [E|N,"┗"], [W|N,"┛"],
-  [N|E|S,"┣"], [N|W|S,"┫"],
-  [E|S|W,"┳"], [E|N|W,"┻"],
-  [N|E|S|W,"╋"],
-  ]);
+  this.BOX_SINGLE = buildBox(this.maskToSingle.bind(this));
+  this.BOX_FAT    = buildBox(this.maskToFat.bind(this));
+  this.BOX_DOUBLE = buildBox(this.maskToDouble.bind(this));
 
-  this.maskToDouble = new Map([
-  [0," "],
-  [E|W,"═"], [N|S,"║"],
-  [E|S,"╔"], [W|S,"╗"], [E|N,"╚"], [W|N,"╝"],
-  [N|E|S,"╠"], [N|W|S,"╣"],
-  [E|S|W,"╦"], [E|N|W,"╩"],
-  [N|E|S|W,"╬"],
-  ]);
+  this.hasDoubleH = function(ch){
+    const m = this.glyphToMask3(ch) & 0xFF;
+    const lo = m & 0xF, hi = (m >> 4) & 0xF;
+    return ((lo & (E|W)) !== 0) && ((hi & (E|W)) !== 0);
+  };
 
-  this.BOX_SINGLE = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
-  this.BOX_FAT =    { h:'━', v:'┃', tl:'┏', tr:'┓', bl:'┗', br:'┛' };
-  this.BOX_DOUBLE = { h:'═', v:'║', tl:'╔', tr:'╗', bl:'╚', br:'╝' };
+  this.hasDoubleV = function(ch){
+    const m = this.glyphToMask3(ch) & 0xFF;
+    const lo = m & 0xF, hi = (m >> 4) & 0xF;
+    return ((lo & (N|S)) !== 0) && ((hi & (N|S)) !== 0);
+  };
 
-  const DOUBLE_H = new Set(["═","╦","╩","╤","╧","╬","╪"]);
-  const DOUBLE_V = new Set(["║","╠","╣","╟","╢","╬","╫"]);
+  this.isFatWire = function(ch){
+    const m = this.glyphToMask3(ch) & 0xFF;
+    const lo = m & 0xF, hi = (m >> 4) & 0xF;
+    return (hi !== 0) && (lo === 0);
+  };
 
-  function isFatWire(ch) {
-  return ch === "━" || ch === "┃" || ch === "┏" || ch === "┓" || ch === "┗" || ch === "┛" ||
-         ch === "┣" || ch === "┫" || ch === "┳" || ch === "┻" || ch === "╋"; }
-
-  function isDoubleWire(ch) {
-  return ch === "═" || ch === "║" || ch === "╔" || ch === "╗" || ch === "╚" || ch === "╝" ||
-         ch === "╠" || ch === "╣" || ch === "╦" || ch === "╩" || ch === "╬"; }
+  this.isDoubleWire = function(ch){
+    const m = this.glyphToMask3(ch) & 0xFF;
+    const lo = m & 0xF, hi = (m >> 4) & 0xF;
+    return (lo !== 0) && (lo === hi);
+  };
 
   // ===== Match overlay (catalog pattern matching) =====
   // Wildcards:
@@ -1029,8 +950,8 @@ function getGlyph3Codec(self)
           if(this.glyphToMask3(watchCell) == (N|S) || this.glyphToMask3(watchCell) == ((N|S) << 4) )
           {
             // TODO: use bit arithmetic and Mask3ToGlyph() to generalise solution
-            if(isDoubleWire(path[i].ch))       path[i].ch = (dir & W) != 0 ? "╡" : "╞";
-            else if(isFatWire(path[i].ch))     path[i].ch = (dir & W) != 0 ? "┥" : "┝";
+            if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & W) != 0 ? "╡" : "╞";
+            else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & W) != 0 ? "┥" : "┝";
             else                               path[i].ch = (dir & W) != 0 ? "┤" : "├";
           }
         }
@@ -1048,8 +969,8 @@ function getGlyph3Codec(self)
           var watchCell = s.charAt(4);
           if(this.glyphToMask3(watchCell) == (N|S) || this.glyphToMask3(watchCell) == ((N|S) << 4) ) 
           {
-            if(isDoubleWire(path[i].ch))       path[i].ch = (dir & E) != 0 ? "╡" : "╞";
-            else if(isFatWire(path[i].ch))     path[i].ch = (dir & E) != 0 ? "┥" : "┝";
+            if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & E) != 0 ? "╡" : "╞";
+            else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & E) != 0 ? "┥" : "┝";
             else                               path[i].ch = (dir & E) != 0 ? "┤" : "├";
           }
         }
@@ -1123,8 +1044,8 @@ function getGlyph3Codec(self)
 
         if (prevIsWire && nextIsWire) {
           // If styles differ and prev is not blank, keep prev style here.
-          const prevStyle = isDoubleWire(prev) ? "double" : isFatWire(prev) ? "fat" : (prev === " " ? null : "single");
-          const nextStyle = isDoubleWire(next) ? "double" : isFatWire(next) ? "fat" : (next === " " ? null : "single");
+          const prevStyle = this.isDoubleWire(prev) ? "double" : this.isFatWire(prev) ? "fat" : (prev === " " ? null : "single");
+          const nextStyle = this.isDoubleWire(next) ? "double" : this.isFatWire(next) ? "fat" : (next === " " ? null : "single");
 
           if (prev !== " " && prevStyle && nextStyle && prevStyle !== nextStyle) {
             // leave it for recompute to resolve as mixed junction; don't upgrade
@@ -1261,8 +1182,8 @@ function getGlyph3Codec(self)
     ascii[cell.r][cell.c] = next;
   }  
 
-  this.hasDoubleH = function(ch) { return DOUBLE_H.has(ch); }
-  this.hasDoubleV = function(ch) { return DOUBLE_V.has(ch); }
+  this.hasDoubleH = function(ch) { return this.hasDoubleH(ch); }
+  this.hasDoubleV = function(ch) { return this.hasDoubleV(ch); }
 
   // “double box” check: ╔══╗ / ║  ║ / ╚══╝ ... and intersected with single lines
   this.isValidDoubleBox = function(r0, c0, r1, c1) 
@@ -1404,10 +1325,10 @@ function getGlyph3Codec(self)
     const m  = pm | nm;
 
     // double wins:
-    const wantDouble = (lineKind === "double") || isDoubleWire(prevCh) || isDoubleWire(nextCh);
-    const wantFat  = (lineKind === "fat")  || isFatWire(prevCh)  || isFatWire(nextCh);
+    const wantDouble = (lineKind === "double") || this.isDoubleWire(prevCh) || this.isDoubleWire(nextCh);
+    const wantFat  = (lineKind === "fat")  || this.isFatWire(prevCh)  || this.isFatWire(nextCh);
 
-    const out = wantDouble ? this.maskToDouble.get(m) : wantFat ? this.maskToFat.get(m) : this.maskToSingle.get(m);
+    const out = wantDouble ? this.maskToDouble(m) : wantFat ? this.maskToFat(m) : this.maskToSingle(m);
     return out ?? nextCh;
   }
 
@@ -1452,28 +1373,28 @@ function getGlyph3Codec(self)
       if (r > 0) {
         const up = ascii[r - 1][c];
         const um = this.glyphToMask(up) ?? 0;
-        if (um & S) { m |= N; if (isDoubleWire(up)) vDouble = true; else if (isFatWire(up)) vFat = true; }
+        if (um & S) { m |= N; if (this.isDoubleWire(up)) vDouble = true; else if (this.isFatWire(up)) vFat = true; }
       }
 
       // DOWN contributes S if it connects UP (N)
       if (r < ROWS - 1) {
         const dn = ascii[r + 1][c];
         const dm = this.glyphToMask(dn) ?? 0;
-        if (dm & N) { m |= S; if (isDoubleWire(dn)) vDouble = true; else if (isFatWire(dn)) vFat = true; }
+        if (dm & N) { m |= S; if (this.isDoubleWire(dn)) vDouble = true; else if (this.isFatWire(dn)) vFat = true; }
       }
 
       // LEFT contributes W if it connects RIGHT (E)
       if (c > 0) {
         const lt = ascii[r][c - 1];
         const lm = this.glyphToMask(lt) ?? 0;
-        if (lm & E) { m |= W; if (isDoubleWire(lt)) hDouble = true; else if (isFatWire(lt)) hFat = true; }
+        if (lm & E) { m |= W; if (this.isDoubleWire(lt)) hDouble = true; else if (this.isFatWire(lt)) hFat = true; }
       }
 
       // RIGHT contributes E if it connects LEFT (W)
       if (c < COLS - 1) {
         const rt = ascii[r][c + 1];
         const rm = this.glyphToMask(rt) ?? 0;
-        if (rm & W) { m |= E; if (isDoubleWire(rt)) hDouble = true; else if (isFatWire(rt)) hFat = true; }
+        if (rm & W) { m |= E; if (this.isDoubleWire(rt)) hDouble = true; else if (this.isFatWire(rt)) hFat = true; }
       }
 
     if (m === 0) { ascii[r][c] = " "; return " "; }
@@ -3192,7 +3113,7 @@ this.startPasteWithText = function(text)
             color = RED;
           else if (!inside) // single-line wires are: wire glyphs that are neither double nor fat
           {
-            if (this.isWireGlyph(chx) && !isDoubleWire(chx) && !isFatWire(chx) && chx !== " ")
+            if (this.isWireGlyph(chx) && !this.isDoubleWire(chx) && !this.isFatWire(chx) && chx !== " ")
               color = BLUE;
           }
         }
