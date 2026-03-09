@@ -448,11 +448,13 @@ function runWorkerThreadSmokeTests()
         
   
     return
-    })  
+    })
+    .then(function(){
+    return oCMD.runExternalScript(oASC.computeNetlist.help.unitTests.join(";"));   // UNIT test
+    }) 
     .then(function() { worker?.terminate?.(); })
     .then(function()
     {
-      delete oTERM;
       op = { type: "place", ch: '+' };
       //oCMD.runExternalScript("oASC.stack('reset')");
     });
