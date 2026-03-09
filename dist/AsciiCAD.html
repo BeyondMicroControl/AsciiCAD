@@ -1278,48 +1278,141 @@ function ASC()
   };
 
 
-  let __mask3ToGlyphCache = null;
 
-  function buildMask3ToGlyph(self) 
+
+// ------------------------------------------------------------
+// One builder for BOTH glyph->mask3 and mask3->glyph
+// ------------------------------------------------------------
+let __glyph3Codec = null;
+
+
+function getGlyph3Codec(self)
+{
+  if (!__glyph3Codec) // cache is absent? => build it
   {
-    const rev = Object.create(null);
-    const setIfEmpty = (m, ch) => { if (rev[m] === undefined) rev[m] = ch; };
-
-    // Prefer MIX glyphs first (more specific)
-    for (const ch in GL3_MIX) {
-      const e = GL3_MIX[ch];
-      setIfEmpty(pack3(e.thin, e.fat, e.doub), ch);
+    // packing: low nibble thin, high nibble fat; doub sets both
+    function pack3(thin, fat, doub) {
+      const t = ((thin || 0) | (doub || 0)) & 0xF;
+      const f = ((fat  || 0) | (doub || 0)) & 0xF;
+      return (t | (f << 4)) & 0xFF;
     }
 
-    // Pure sets derived from direction masks
-    for (const ch of GL3_DOUBLE_SET) setIfEmpty(pack3(0, 0, self.dirMask3(ch)), ch);
-    for (const ch of GL3_FAT_SET)    setIfEmpty(pack3(0, self.dirMask3(ch), 0), ch);
-    for (const ch of GL3_THIN_SET)   setIfEmpty(pack3(self.dirMask3(ch), 0, 0), ch);
+    const THIN_SET   = "─│┌┐└┘├┤┬┴┼╴╵╶╷";
+    const FAT_SET    = "━┃┏┓┗┛┣┫┳┻╋╸╹╺╻";
+    const DOUBLE_SET = "═║╔╗╚╝╠╣╦╩╬";
 
-    return rev;
+    const MIX = {
+      "╼": { thin: W,     fat: E },
+      "╾": { thin: E,     fat: W },
+      "╽": { thin: N,     fat: S },
+      "╿": { thin: S,     fat: N },
+
+      "┍": { thin: S,     fat: E },
+      "┎": { thin: E,     fat: S },
+      "┑": { thin: S,     fat: W },
+      "┒": { thin: W,     fat: S },
+      "┕": { thin: N,     fat: E },
+      "┖": { thin: E,     fat: N },
+      "┙": { thin: N,     fat: W },
+      "┚": { thin: W,     fat: N },
+
+      "┽": { thin: N|E|S, fat: W },
+      "╀": { thin: E|S|W, fat: N },
+      "┾": { thin: S|W|N, fat: E },
+      "╁": { thin: W|N|E, fat: S },
+
+      "┿": { thin: N|S,   fat: E|W },
+      "╃": { thin: E|S,   fat: W|N },
+      "╄": { thin: S|W,   fat: N|E },
+      "╆": { thin: W|N,   fat: E|S },
+      "╅": { thin: N|E,   fat: S|W },
+
+      "╊": { thin: W,     fat: N|E|S },
+      "╈": { thin: N,     fat: E|S|W },
+      "╉": { thin: E,     fat: S|W|N },
+      "╇": { thin: S,     fat: W|N|E },
+
+      "┞": { thin: E|S,   fat: N },
+      "┝": { thin: N|S,   fat: E },
+      "┟": { thin: N|E,   fat: S },
+      "┢": { thin: N,     fat: E|S },
+      "┠": { thin: E,     fat: N|S },
+      "┡": { thin: S,     fat: N|E },
+
+      "┥": { thin: N|S,   fat: W },
+      "┦": { thin: W|S,   fat: N },
+      "┧": { thin: W|N,   fat: S },
+      "┨": { thin: W,     fat: N|S },
+      "┪": { thin: N,     fat: W|S },
+      "┩": { thin: S,     fat: W|N },
+
+      "┭": { thin: E|S,   fat: W },
+      "┮": { thin: S|W,   fat: E },
+      "┰": { thin: W|E,   fat: S },
+      "┲": { thin: W,     fat: E|S },
+      "┱": { thin: E,     fat: S|W },
+      "┯": { thin: S,     fat: W|E },
+
+      "╜": { thin: W,     doub: N },
+      "╖": { thin: W,     doub: S },
+      "╛": { thin: N,     doub: W },
+      "╘": { thin: N,     doub: E },
+      "╙": { thin: E,     doub: N },
+      "╓": { thin: E,     doub: S },
+      "╕": { thin: S,     doub: W },
+      "╒": { thin: S,     doub: E },
+
+      "╢": { thin: W,     doub: N|S },
+      "╧": { thin: N,     doub: W|E },
+      "╟": { thin: E,     doub: N|S },
+      "╤": { thin: S,     doub: W|E },
+      "╡": { thin: N|S,   doub: W },
+      "╨": { thin: W|E,   doub: N },
+      "╞": { thin: N|S,   doub: E },
+      "╥": { thin: W|E,   doub: S },
+
+      "╪": { thin: N|S,   doub: W|E },
+      "╫": { thin: W|E,   doub: N|S }
+    };
+
+    const g2m = Object.create(null);   // glyph -> mask3
+    const m2g = Object.create(null);   // mask3 -> glyph
+
+    // helper: insert both directions; prefer first writer for m2g unless overwritten explicitly
+    const put = (glyph, mask3) => {
+      g2m[glyph] = mask3;
+      if (m2g[mask3] === undefined) m2g[mask3] = glyph;
+    };
+
+    // 1) Mixed glyphs first (more specific)
+    for (const glyph in MIX) {
+      const e = MIX[glyph];
+      put(glyph, pack3(e.thin, e.fat, e.doub));
+    }
+
+    // 2) Pure sets derived from dirMask3
+    for (const glyph of DOUBLE_SET) put(glyph, pack3(0, 0, self.dirMask3(glyph)));
+    for (const glyph of FAT_SET)    put(glyph, pack3(0, self.dirMask3(glyph), 0));
+    for (const glyph of THIN_SET)   put(glyph, pack3(self.dirMask3(glyph), 0, 0));
+
+    __glyph3Codec = { pack3, THIN_SET, FAT_SET, DOUBLE_SET, MIX, g2m, m2g };
   }
 
-  function getMask3ToGlyph(self) 
-  {
-    if (!__mask3ToGlyphCache) __mask3ToGlyphCache = buildMask3ToGlyph(self);
-    return __mask3ToGlyphCache;
-  }
+  return __glyph3Codec;
+}
 
+
+
+
+// ------------------------------------------------------------
+// Public APIs using the shared codec
+// ------------------------------------------------------------
   this.glyphToMask3 = function(g)
   {
     if (!g) return 0;
-
-    const e = GL3_MIX[g];
-    if (e) return pack3(e.thin, e.fat, e.doub);
-
-    const m = this.dirMask3(g);
-
-    if (GL3_THIN_SET.indexOf(g)   >= 0) return pack3(m, 0, 0);
-    if (GL3_FAT_SET.indexOf(g)    >= 0) return pack3(0, m, 0);
-    if (GL3_DOUBLE_SET.indexOf(g) >= 0) return pack3(0, 0, m);
-
-    return pack3(m, 0, 0);
-  };
+    const codec = getGlyph3Codec(this);
+    return codec.g2m[g] ?? codec.pack3(this.dirMask3(g), 0, 0);
+  }
   this.glyphToMask3.help =   
   {
     type: "CADScript_FN",
@@ -1342,8 +1435,9 @@ function ASC()
   this.Mask3ToGlyph = function(m)
   {
     const v = (Number(m) || 0) & 0xFF;
-    return getMask3ToGlyph(this)[v] ?? " ";
-  };
+    const codec = getGlyph3Codec(this);
+    return codec.m2g[v] ?? " ";
+  }
   this.Mask3ToGlyph.help = {
     type: "CADScript_FN",
     usage: "Mask3ToGlyph(<i>m</i>)",
@@ -1354,13 +1448,11 @@ function ASC()
     ]
   };
 
-
-
   this.glyphToMask = function(ch) 
   {
     const k = String(ch ?? "");
     const v = this.glyphToMask3(k);
-    return (v === undefined) ? 0 : ((v | v>>4) & 0xF);
+    return (v === undefined) ? 0 : ((v | v>>4) & 0xF);  // suprapose high bits with lower
   }
   this.glyphToMask.help = 
   {
@@ -1368,7 +1460,7 @@ function ASC()
     usage: "glyphMask(<i>ch</i>)",
     desc: "Return 4-bit wire direction mask for a glyph (N|E|S|W). Unknown glyph returns 0.",
     examples: ["printJSON(glyphMask('┼'))", "printJSON(glyphMask('╵'))"]
-  };
+  }
 
 
 
@@ -2951,7 +3043,7 @@ this.startPasteWithText = function(text)
   {
     const items = (typeof CATALOG !== "undefined") ? CATALOG : [];
     for (let i = 0; i < items.length; i++)
-      if (this.itemUID(items[i]) === uid) return it;
+      if (this.itemUID(items[i]) === uid) return items[i];
     return null;
   }
 
