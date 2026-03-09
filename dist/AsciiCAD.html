@@ -1197,14 +1197,6 @@ function ASC()
     "╫": { thin: W|E,   doub: N|S }
   };
 
-  // Pack rule: low nibble thin, high nibble fat; "doub" sets both.
-  function pack3(thin, fat, doub) 
-  {
-    const t = ((thin || 0) | (doub || 0)) & 0xF;
-    const f = ((fat  || 0) | (doub || 0)) & 0xF;
-    return (t | (f << 4)) & 0xFF;
-  }
-
   // Direction table (glyph -> 4-bit N/E/S/W), independent of glyphToMask
   const GL3_DIR = Object.create(null);
 
