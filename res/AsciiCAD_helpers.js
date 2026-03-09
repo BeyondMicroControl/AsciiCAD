@@ -33,6 +33,71 @@ function ASC()
   // Shared codec for glyphToMask3 <-> Mask3ToGlyph (no glyphToMask dependency)
   // ------------------------------------------------------------
 
+ 
+
+
+  // ------------------------------------------------------------
+  // One builder for BOTH glyph->mask3 and mask3->glyph
+  // ------------------------------------------------------------
+  let __glyph3Codec = null;
+
+
+  function getGlyph3Codec(self)
+  {
+    // cache is absent? => build it
+    if (__glyph3Codec) return __glyph3Codec;
+
+    // ---- build codec (single source of truth) ----
+    const g2m = Object.create(null); // glyph -> mask3
+    const m2g = Object.create(null); // mask3 -> glyph
+
+    const put = (glyph, mask3) => {
+      g2m[glyph] = mask3;
+      if (m2g[mask3] === undefined) m2g[mask3] = glyph;
+    };
+
+    // Pure style sets (single source of truth)
+    const GL3_THIN_SET   = "─│┌┐└┘├┤┬┴┼╴╵╶╷";
+    const GL3_FAT_SET    = "━┃┏┓┗┛┣┫┳┻╋╸╹╺╻";
+    const GL3_DOUBLE_SET = "═║╔╗╚╝╠╣╦╩╬";
+
+    // local direction-only mapping for pure sets (NO dirMask3 dependency)
+    const dir4 = (g) => {
+      const D = {
+        "─":E|W,"━":E|W,"═":E|W,
+        "│":N|S,"┃":N|S,"║":N|S,
+        "┌":E|S,"┏":E|S,"╔":E|S,
+        "┐":W|S,"┓":W|S,"╗":W|S,
+        "└":E|N,"┗":E|N,"╚":E|N,
+        "┘":W|N,"┛":W|N,"╝":W|N,
+        "├":N|E|S,"┣":N|E|S,"╠":N|E|S,
+        "┤":N|W|S,"┫":N|W|S,"╣":N|W|S,
+        "┬":E|S|W,"┳":E|S|W,"╦":E|S|W,
+        "┴":E|N|W,"┻":E|N|W,"╩":E|N|W,
+        "┼":N|E|S|W,"╋":N|E|S|W,"╬":N|E|S|W,
+
+        "╴":E,"╶":W,"╵":N,"╷":S,
+        "╸":E,"╺":W,"╹":N,"╻":S
+      };
+      return (D[g] ?? 0) & 0xF;
+    };
+
+    // 1) MIX first (more specific)
+    for (const glyph in GL3_MIX) {
+      const e = GL3_MIX[glyph];
+      put(glyph, pack3(e.thin, e.fat, e.doub));
+    }
+
+    // 2) Pure sets
+    for (const glyph of GL3_DOUBLE_SET) put(glyph, pack3(0, 0, dir4(glyph)));
+    for (const glyph of GL3_FAT_SET)    put(glyph, pack3(0, dir4(glyph), 0));
+    for (const glyph of GL3_THIN_SET)   put(glyph, pack3(dir4(glyph), 0, 0));
+
+    __glyph3Codec = { g2m, m2g };
+    return __glyph3Codec;
+  }
+
+
   // Mixed table (thin/fat/doub split)
   const GL3_MIX = {
     // light/heavy stubs
@@ -113,127 +178,33 @@ function ASC()
     "╫": { thin: W|E,   doub: N|S }
   };
 
-  // Direction table (glyph -> 4-bit N/E/S/W), independent of glyphToMask
-  const GL3_DIR = Object.create(null);
+  // Pack rule: low nibble thin, high nibble fat; "doub" sets both.
+  function pack3(thin, fat, doub) {
+    const t = ((thin || 0) | (doub || 0)) & 0xF;
+    const f = ((fat  || 0) | (doub || 0)) & 0xF;
+    return (t | (f << 4)) & 0xFF;
+  }
 
-  // Fill the direction table for all pure-set glyphs.
-  // IMPORTANT: these are direction-only; thickness is handled elsewhere.
-  function initGL3_DIR(){
-    // helper to add many glyphs with same mask
-    const add = (chars, mask) => { for (const ch of chars) GL3_DIR[ch] = mask; };
 
-    // half stubs (direction-only)
-    GL3_DIR["╵"] = N; GL3_DIR["╷"] = S;
-    GL3_DIR["╴"] = E; GL3_DIR["╶"] = W;
-    GL3_DIR["╹"] = N; GL3_DIR["╻"] = S;
-    GL3_DIR["╸"] = E; GL3_DIR["╺"] = W;
-
-    // straight
-    add("─━═", E|W);
-    add("│┃║", N|S);
-
-    // corners (NW/NE/SW/SE)
-    add("┌┏╔", E|S);
-    add("┐┓╗", W|S);
-    add("└┗╚", E|N);
-    add("┘┛╝", W|N);
-
-    // tees left/right/up/down and crossings (thin/fat/double all share direction set)
-    add("├┣╠", N|E|S);
-    add("┤┫╣", N|W|S);
-    add("┬┳╦", E|S|W);
-    add("┴┻╩", E|N|W);
-    add("┼╋╬", N|E|S|W);
-
-    // single/double mixed glyphs that are direction-only in your usage
-    add("╪╫┿╂", N|E|S|W);
-
-    // mixed tees/corners you listed at direction-only level (if you use them anywhere else)
-    add("╤╥", E|S|W);
-    add("╧╨", E|N|W);
-    add("╞╟", N|E|S);
-    add("╡╢", N|W|S);
-    add("┯┰", E|S|W);
-    add("┷┸", E|N|W);
-    add("┝┠", N|E|S);
-    add("┥┨", N|W|S);
-    add("┍┎", E|S);
-    add("┑┒", W|S);
-    add("┕┖", E|N);
-    add("┙┚", W|N);
-
-    // If you want, you can also seed directions from MIX entries automatically:
-    for (const ch in GL3_MIX) {
-      const e = GL3_MIX[ch];
-      GL3_DIR[ch] = ((e.thin || 0) | (e.fat || 0) | (e.doub || 0)) & 0xF;
-    }
-  };
-
-  initGL3_DIR();    // auto-provision cache
-
+ 
 
   this.dirMask3 = function(ch) 
   {
-    const k = String(ch ?? "");
-    const v = GL3_DIR[k];
-    return (v === undefined) ? 0 : (v & 0xF);
-  };
-  this.dirMask3.help = {
+    const codec = getGlyph3Codec(this);
+    const m8 = codec.g2m[String(ch ?? "")] ?? 0;
+    return ((m8 & 0xF) | ((m8 >> 4) & 0xF)) & 0xF;
+  }
+  this.dirMask3.help = 
+  {
     type: "CADScript_FN",
     usage: "dirMask3(<i>ch</i>)",
     desc: "Return 4-bit direction mask (N|E|S|W) for supported wire glyphs, independent of glyphToMask.",
     examples: ["printJSON(dirMask3('┼'))", "printJSON(dirMask3('╵'))"]
-  };
-
-
-
-
-// ------------------------------------------------------------
-// One builder for BOTH glyph->mask3 and mask3->glyph
-// ------------------------------------------------------------
-let __glyph3Codec = null;
-
-
-function getGlyph3Codec(self)
-{
-  if (!__glyph3Codec) // cache is absent? => build it
-  {
-    // packing: low nibble thin, high nibble fat; doub sets both
-    function pack3(thin, fat, doub) {
-      const t = ((thin || 0) | (doub || 0)) & 0xF;
-      const f = ((fat  || 0) | (doub || 0)) & 0xF;
-      return (t | (f << 4)) & 0xFF;
-    }
-
-    const THIN_SET   = "─│┌┐└┘├┤┬┴┼╴╵╶╷";
-    const FAT_SET    = "━┃┏┓┗┛┣┫┳┻╋╸╹╺╻";
-    const DOUBLE_SET = "═║╔╗╚╝╠╣╦╩╬";
-
-    const g2m = Object.create(null);   // glyph -> mask3
-    const m2g = Object.create(null);   // mask3 -> glyph
-
-    // helper: insert both directions; prefer first writer for m2g unless overwritten explicitly
-    const put = (glyph, mask3) => {
-      g2m[glyph] = mask3;
-      if (m2g[mask3] === undefined) m2g[mask3] = glyph;
-    };
-
-    // 1) Mixed glyphs first (more specific)
-    for (const glyph in GL3_MIX) {
-      const e = GL3_MIX[glyph];
-      put(glyph, pack3(e.thin, e.fat, e.doub));
-    }
-
-    // 2) Pure sets derived from dirMask3
-    for (const glyph of DOUBLE_SET) put(glyph, pack3(0, 0, self.dirMask3(glyph)));
-    for (const glyph of FAT_SET)    put(glyph, pack3(0, self.dirMask3(glyph), 0));
-    for (const glyph of THIN_SET)   put(glyph, pack3(self.dirMask3(glyph), 0, 0));
-
-    __glyph3Codec = { pack3, THIN_SET, FAT_SET, DOUBLE_SET, GL3_MIX, g2m, m2g };
   }
 
-  return __glyph3Codec;
-}
+
+
+
 
 
 
@@ -241,12 +212,13 @@ function getGlyph3Codec(self)
 // ------------------------------------------------------------
 // Public APIs using the shared codec
 // ------------------------------------------------------------
-  this.glyphToMask3 = function(g)
-  {
+
+  this.glyphToMask3 = function(g) {
     if (!g) return 0;
     const codec = getGlyph3Codec(this);
-    return codec.g2m[g] ?? codec.pack3(this.dirMask3(g), 0, 0);
-  }
+    return codec.g2m[g] ?? pack3(this.dirMask3(g), 0, 0);
+  };
+
   this.glyphToMask3.help =   
   {
     type: "CADScript_FN",
@@ -265,9 +237,7 @@ function getGlyph3Codec(self)
     ]
   }
 
-
-  this.Mask3ToGlyph = function(m)
-  {
+  this.Mask3ToGlyph = function(m) {
     const v = (Number(m) || 0) & 0xFF;
     const codec = getGlyph3Codec(this);
     return codec.m2g[v] ?? " ";
