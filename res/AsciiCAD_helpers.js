@@ -30,13 +30,6 @@ function ASC()
   const N = this.N, E = this.E, S = this.S, W = this.W;
 
   // ------------------------------------------------------------
-  // Shared codec for glyphToMask3 <-> Mask3ToGlyph (no glyphToMask dependency)
-  // ------------------------------------------------------------
-
- 
-
-
-  // ------------------------------------------------------------
   // One builder for BOTH glyph->mask3 and mask3->glyph
   // ------------------------------------------------------------
   let __glyph3Codec = null;
@@ -185,30 +178,6 @@ function ASC()
     return (t | (f << 4)) & 0xFF;
   }
 
-
- 
-
-  this.dirMask3 = function(ch) 
-  {
-    const codec = getGlyph3Codec(this);
-    const m8 = codec.g2m[String(ch ?? "")] ?? 0;
-    return ((m8 & 0xF) | ((m8 >> 4) & 0xF)) & 0xF;
-  }
-  this.dirMask3.help = 
-  {
-    type: "CADScript_FN",
-    usage: "dirMask3(<i>ch</i>)",
-    desc: "Return 4-bit direction mask (N|E|S|W) for supported wire glyphs, independent of glyphToMask.",
-    examples: ["printJSON(dirMask3('┼'))", "printJSON(dirMask3('╵'))"]
-  }
-
-
-
-
-
-
-
-
 // ------------------------------------------------------------
 // Public APIs using the shared codec
 // ------------------------------------------------------------
@@ -266,6 +235,19 @@ function ASC()
     examples: ["printJSON(glyphMask('┼'))", "printJSON(glyphMask('╵'))"]
   }
 
+  this.dirMask3 = function(ch) 
+  {
+    const codec = getGlyph3Codec(this);
+    const m8 = codec.g2m[String(ch ?? "")] ?? 0;
+    return ((m8 & 0xF) | ((m8 >> 4) & 0xF)) & 0xF;
+  }
+  this.dirMask3.help = 
+  {
+    type: "CADScript_FN",
+    usage: "dirMask3(<i>ch</i>)",
+    desc: "Return 4-bit direction mask (N|E|S|W) for supported wire glyphs, independent of glyphToMask.",
+    examples: ["printJSON(dirMask3('┼'))", "printJSON(dirMask3('╵'))"]
+  }
 
   // 4-bit -> glyph (thin/fat/double) via Mask3ToGlyph (8-bit)
   this.maskToSingle = function(m4){ return this.Mask3ToGlyph((Number(m4)||0) & 0xF) }
