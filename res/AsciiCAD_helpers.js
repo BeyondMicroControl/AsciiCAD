@@ -183,7 +183,8 @@ function ASC()
 // Public APIs using the shared codec
 // ------------------------------------------------------------
 
-  this.glyphToMask3 = function(g) {
+  this.glyphToMask3 = function(g) 
+  {
     if (!g) return 0;
     const codec = getGlyph3Codec();
     return codec.g2m[g] ?? pack3(this.dirMask3(g), 0, 0);

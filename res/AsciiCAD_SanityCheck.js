@@ -406,9 +406,12 @@ function runWorkerThreadSmokeTests()
     .then(function(){
     return oCMD.runExternalScript(oASC.putLine.help.unitTests.join(";"));   // UNIT test
     }) 
-    //.then(function(){
-    //return oCMD.runExternalScript(oASC.glyphToMask3.help.uintTests.join(";"));   // UNIT test
-    //})
+    .then(function(){
+    return oCMD.runExternalScript(oASC.glyphToMask3.help.unitTests.join(";"));   // UNIT test
+    })
+    .then(function(){
+    return oCMD.runExternalScript(oASC.computeNetlist.help.unitTests.join(";"));   // UNIT test
+    }) 
     .then(function(){
         //oASC.debug_merge = true;
 
@@ -449,9 +452,6 @@ function runWorkerThreadSmokeTests()
   
     return
     })
-    .then(function(){
-    return oCMD.runExternalScript(oASC.computeNetlist.help.unitTests.join(";"));   // UNIT test
-    }) 
     .then(function() { worker?.terminate?.(); })
     .then(function()
     {

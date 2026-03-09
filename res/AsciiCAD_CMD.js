@@ -1643,8 +1643,6 @@ function CMD()
       "};"
     ].join("\n");
 
-console.log(src);
-
     var blob = new Blob([src], { type: "application/javascript" });
     return new Worker(URL.createObjectURL(blob));
   };
