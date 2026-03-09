@@ -1402,49 +1402,6 @@ function CMD()
       "  });",
       "}",
 
-
-
-      //"function formatForOutput(v) {",
-      //"  // already HTML/string: keep as-is",
-      //"  if (typeof v === \"string\") return v;",
-
-      //"  // null/undefined",
-      //"  if (v == null) return String(v); // \"null\" / \"undefined\"",
-
-      //"  // Error objects",
-      //"  if (v instanceof Error) {",
-      //"    const msg = v.stack || v.message || String(v);",
-      //"    return \"<pre>\" + escapeHtml(msg) + \"</pre>\";",
-      //"  }",
-
-      //"  // Try JSON pretty print for objects/arrays",
-      //"  if (typeof v === \"object\") {",
-      //"    try {",
-      //"      return \"<pre>\" + escapeHtml(JSON.stringify(v, null, 2)) + \"</pre>\";",
-      //"    } catch (e) {",
-      //"      // circular or non-serializable",
-      //"      return \"<pre>\" + escapeHtml(String(v)) + \"</pre>\";",
-      //"    }",
-      //"  }",
-
-      //"  // numbers, booleans, symbols, functions",
-      //"  return \"<pre>\" + escapeHtml(String(v)) + \"</pre>\";",
-      //"}",
-
-      //"function escapeHtml(s) {",
-      //"  return String(s).replace(/[&<>\"']/g, (ch) => {",
-      //"    switch (ch) {",
-      //"      case \"&\": return \"&amp;\";",
-      //"      case \"<\": return \"&lt;\";",
-      //"      case \">\": return \"&gt;\";",
-      //"      case '\"': return \"&quot;\";",
-      //"      case \"'\": return \"&#39;\";",
-      //"      default: return ch;",
-      //"    }",
-      //"  });",
-      //"}",
-
-
       "function makeContainerProxy(objName) {",
       "  const target = Object.create(null);",
       "  return new Proxy(target, {",
@@ -1468,8 +1425,11 @@ function CMD()
       "    }",
       "  });",
       "}",
+      
 
       "",
+
+      /*
       "function buildScope(defaultObj, scopeObj) {",
       "  DEFAULT_OBJ = defaultObj || DEFAULT_OBJ;",
       "",
@@ -1481,13 +1441,18 @@ function CMD()
       "  for (const a in ALIAS) { const n = ALIAS[a]; if (api[n]) api[a] = api[n]; }",
       "",
       "  return new Proxy(api, {",
-      "    has() { return true; },",
+      "    has(target, prop) {",
+      "      if (prop in globalThis) return false;",
+      "      if (prop === 'Object') return false;",
+      "      return true;",
+      "    },",
       "    get(target, prop) {",
       "      if (prop === Symbol.unscopables) return undefined;",
       "      if (prop in target) return target[prop];",
       "",
       "      // bare constants resolve against the *default* container only",
       "      const p = String(prop);",
+      "      if (prop in globalThis) return globalThis[prop];",
       "      const b = DEFAULT_OBJ ? BINDINGS[DEFAULT_OBJ] : null;",
       "      if (b && b.consts && (p in b.consts)) return b.consts[p];",
       "",
@@ -1498,6 +1463,7 @@ function CMD()
       "      if (p === 'String') return String;",
       "      if (p === 'await$') return await$;",
       "      if (p === 'print$') return print$;",
+      "      if (p === 'Object') return Object;",
       "",
       "      // Do not allow confusing container names like ASC (use oASC. or unqualified calls)",
       "      if (p === 'ASC') { throw new ReferenceError('Unknown container: ASC (use oASC. or unqualified calls)'); }",
@@ -1513,6 +1479,69 @@ function CMD()
       "  });",
       "}",
       "",
+      */
+
+      
+      "function buildScope(defaultObj, scopeObj) {",
+      "  DEFAULT_OBJ = defaultObj || DEFAULT_OBJ;",
+
+      "  // Base API objects (oASC, oCOM, ...)",
+      "  const api = Object.create(null);",
+      "  const allowed = Array.isArray(scopeObj) ? scopeObj.map(String) : Object.keys(BINDINGS);",
+      "  if (DEFAULT_OBJ && allowed.indexOf(DEFAULT_OBJ) < 0) allowed.push(DEFAULT_OBJ);",
+
+      "  for (let i = 0; i < allowed.length; i++) {",
+      "    const name = allowed[i];",
+      "    if (name in BINDINGS) api[name] = makeContainerProxy(name);",
+      "  }",
+      "  for (const a in ALIAS) {",
+      "    const n = ALIAS[a];",
+      "    if (api[n]) api[a] = api[n];",
+      "  }",
+
+      "  // Explicit safe builtins",
+      "  api.Object = Object;",
+      "  api.Array = Array;",
+      "  api.JSON = JSON;",
+      "  api.Math = Math;",
+      "  api.Number = Number;",
+      "  api.String = String;",
+      "  api.Boolean = Boolean;",
+      "  api.RegExp = RegExp;",
+      "  api.Date = Date;",
+      "  api.Promise = Promise;",
+      "  api.Map = Map;",
+      "  api.Set = Set;",
+      "  api.await$ = await$;",
+      "  api.print$ = print$;",
+
+      "  return new Proxy(api, {",
+      "    has(target, prop) {",
+      "      if (prop === Symbol.unscopables) return false;",
+      "      return true;",
+      "    },",
+      "    get(target, prop) {",
+      "      if (prop === Symbol.unscopables) return undefined;",
+      "      if (prop in target) return target[prop];",
+
+      "      // bare constants resolve against the default container only",
+      "      const p = String(prop);",
+      "      const b = DEFAULT_OBJ ? BINDINGS[DEFAULT_OBJ] : null;",
+      "      if (b && b.consts && (p in b.consts)) return b.consts[p];",
+
+      "      if (p === \"ASC\") {",
+      "        throw new ReferenceError(\"Unknown container: ASC (use oASC. or unqualified calls)\");",
+      "      }",
+
+      "      if (/^[A-Z][A-Z0-9_]*$/.test(p) && (!b || !b.consts || !(p in b.consts))) {",
+      "        throw new ReferenceError(\"Unknown constant: \" + p);",
+      "      }",
+
+      "      // unqualified calls route to the default container",
+      "      return (...args) => callMainSeq(DEFAULT_OBJ, p, args);",
+      "    }",
+      "  });",
+      "}",
 
       "function escapeHTML_local(str) {",
       "  return String(str)",
@@ -1613,6 +1642,8 @@ function CMD()
       "  }",
       "};"
     ].join("\n");
+
+console.log(src);
 
     var blob = new Blob([src], { type: "application/javascript" });
     return new Worker(URL.createObjectURL(blob));

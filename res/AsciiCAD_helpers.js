@@ -2458,18 +2458,17 @@ this.startPasteWithText = function(text)
     unitTests:[
       "oASC.clear();",
       "oASC.putCell(0,0,\""
-+"     ⎽⎽⎽⎽⎽\\n"
-+"  ┌─[  11Ω]───◠◠◠◠─┐\\n"
-+"  │  ⎺⎺⎺⎺⎺         │\\n"
-+"╭─╵─╮              │\\n"
-+"( ~ )              │\\n"
-+"╰─╷─╯              │\\n"
-+"  │   [103]        │\\n"
-+"  ├────┨┠─────(A)──┘\\n"
-+"  ╧\");",
-      "oASC.assert(\"oASC.computeNetlist()\",true,oASC.computeNetlist()[0]);",
-      //"Object.keys(oASC.computeNetlist()).length"
-      //"oASC.stack(\"undo\");"
+      +"     ⎽⎽⎽⎽⎽\\n"
+      +"  ┌─[  11Ω]───◠◠◠◠─┐\\n"
+      +"  │  ⎺⎺⎺⎺⎺         │\\n"
+      +"╭─╵─╮              │\\n"
+      +"( ~ )              │\\n"
+      +"╰─╷─╯              │\\n"
+      +"  │   [103]        │\\n"
+      +"  ├────┨┠─────(A)──┘\\n"
+      +"  ╧\");",
+      "oASC.assert(\"oASC.computeNetlist()\",oASC.computeNetlist().length,5);",
+      "oASC.stack(\"undo\");"
     ]
   };
 
