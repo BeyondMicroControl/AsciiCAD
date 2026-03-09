@@ -831,7 +831,7 @@ function ASC()
     return out;
   }
 
-  // INFO: likely replaced by commitLineWithOptionalMerge()
+  // INFO: commitLineWithOptionalMerge() is buggy, therefore we need to get putLine perfect.
   this.putLine = function(lineDrag)
   {
     if (!lineDrag) return;
@@ -910,9 +910,26 @@ function ASC()
           if(this.glyphToMask3(watchCell) == (N|S) || this.glyphToMask3(watchCell) == ((N|S) << 4) )
           {
             // TODO: use bit arithmetic and Mask3ToGlyph() to generalise solution
-            if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & W) != 0 ? "╡" : "╞";
-            else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & W) != 0 ? "┥" : "┝";
-            else                               path[i].ch = (dir & W) != 0 ? "┤" : "├";
+
+            if(this.isDoubleWire(watchCell))
+            {
+              if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & W) != 0 ? "╣" : "╠";
+              else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & W) != 0 ? "╢" : "╟";
+              else                                    path[i].ch = (dir & W) != 0 ? "╢" : "╟";
+            }
+            else if(this.isFatWire(watchCell))
+            {
+              if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & W) != 0 ? "┫" : "┣";
+              else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & W) != 0 ? "┫" : "┣";
+              else                                    path[i].ch = (dir & W) != 0 ? "┨" : "┠";
+            }
+            else // watchCell is a single wire
+            {
+              if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & W) != 0 ? "╡" : "╞";
+              else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & W) != 0 ? "┥" : "┝";
+              else                                    path[i].ch = (dir & W) != 0 ? "┤" : "├";
+            }
+
           }
         }
         else if(!bFirst && !bLast)
@@ -929,9 +946,27 @@ function ASC()
           var watchCell = s.charAt(4);
           if(this.glyphToMask3(watchCell) == (N|S) || this.glyphToMask3(watchCell) == ((N|S) << 4) ) 
           {
-            if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & E) != 0 ? "╡" : "╞";
-            else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & E) != 0 ? "┥" : "┝";
-            else                               path[i].ch = (dir & E) != 0 ? "┤" : "├";
+
+            if(this.isDoubleWire(watchCell))
+            {
+              if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & E) != 0 ? "╣" : "╠";
+              else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & E) != 0 ? "╢" : "╟";
+              else                                    path[i].ch = (dir & E) != 0 ? "╢" : "╟";
+            }
+            else if(this.isFatWire(watchCell))
+            {
+              if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & E) != 0 ? "┫" : "┣";
+              else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & E) != 0 ? "┫" : "┣";
+              else                                    path[i].ch = (dir & E) != 0 ? "┨" : "┠";
+            }
+            else // watchCell is a single wire
+            {
+              if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & E) != 0 ? "╡" : "╞";
+              else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & E) != 0 ? "┥" : "┝";
+              else                                    path[i].ch = (dir & E) != 0 ? "┤" : "├";
+            }
+
+
           }
         }
 

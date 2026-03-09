@@ -415,7 +415,6 @@ function runWorkerThreadSmokeTests()
     .then(function(){
         //oASC.debug_merge = true;
 
-        
         var rc = 0, cc = 4;
         oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_SINGLE,flip:true});
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
@@ -435,8 +434,7 @@ function runWorkerThreadSmokeTests()
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
 
         //oASC.debug_merge = false;
-        //var s = "ABC\nDEF\nGHI"
-        //console.log("\n"+s+"\n\n"+oASC.rotate(s,oASC.N,oASC.S));
+
 
         var n = 1+3*20 +1+3*20 +1+3*20 - 2
         oASC.stack("undo100");
@@ -447,7 +445,7 @@ function runWorkerThreadSmokeTests()
         oASC.stack("undo20");
         n -= 80;
         for(var i=0;i<n;i++) oASC.stack("undo");
-        
+       
   
     return
     })
