@@ -446,7 +446,6 @@ function runWorkerThreadSmokeTests()
         oASC.stack("undo20");
         oASC.stack("undo20");
         n -= 80;
-
         for(var i=0;i<n;i++) oASC.stack("undo");
         
   
