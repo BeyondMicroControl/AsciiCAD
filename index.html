@@ -289,7 +289,7 @@ let netTraceOn = false;
 // - nets: array of { cells:Set<string>, LE:[{c,r}], LJ:[{c,r}] }
 // - cellToNet: Map<"r,c", netIndex>
 let netlistCache = null;
-let netlistDebugLines = null;   // array from computeNetlistLines()
+let netlistDebugLines = null;   // array from computeNetlist()
 let netlistDebugCESet = null;   // Set of "r,c" keys for CE cells
 
 // Current hovered net index (or -1 if none)
@@ -688,9 +688,9 @@ function __refreshNetlistDebugCE()
   netlistDebugCESet = null;
 
   if (!bDebug || !netTraceOn) return;
-  if (typeof oASC.computeNetlistLines !== "function") return;
+  if (typeof oASC.computeNetlist !== "function") return;
 
-  const lines = oASC.computeNetlistLines();
+  const lines = oASC.computeNetlist();
   const s = new Set();
 
   for (const ln of (lines || []))
