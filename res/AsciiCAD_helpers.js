@@ -351,8 +351,14 @@ function ASC()
       else
         console.error("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:" + got + " EXP:" + exp );
     }
-
-    if(got==exp)
+    else if(typeof(got)=="object")
+    {
+      if(JSON.stringify(got)==JSON.stringify(exp))
+        console.assert("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:" + JSON.stringify(got) + " EXP:" + JSON.stringify(exp) );
+      else
+        console.error("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:" + JSON.stringify(got) + " EXP:" + JSON.stringify(exp) );      
+    }
+    else if(got==exp)
       console.assert("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:\""+got.replace(/\n/g,"↵") + "\" EXP:\"" + exp.replace(/\n/g,"↵")+"\"");
     else
        console.error("[UnitTest] "+name.replace(/\n/g,"↵"),"| GOT:\""+got.replace(/\n/g,"↵") + "\" EXP:\"" + exp.replace(/\n/g,"↵")+"\"");
@@ -2467,7 +2473,9 @@ this.startPasteWithText = function(text)
       +"  │   [103]        │\\n"
       +"  ├────┨┠─────(A)──┘\\n"
       +"  ╧\");",
-      "oASC.assert(\"oASC.computeNetlist()\",oASC.computeNetlist().length,5);",
+      "oASC.assert(\"oASC.computeNetlist()\",oASC.computeNetlist(),"
+      +"[{\"LE\":[{\"c\":2,\"r\":2},{\"c\":3,\"r\":1}],\"LJ\":[],\"CE\":[{\"c\":2,\"r\":3}]},{\"LE\":[{\"c\":11,\"r\":1},{\"c\":12,\"r\":1}],\"LJ\":[],\"CE\":[{\"c\":13,\"r\":1}]},{\"LE\":[{\"c\":19,\"r\":1},{\"c\":18,\"r\":7}],\"LJ\":[],\"CE\":[{\"c\":18,\"r\":1},{\"c\":17,\"r\":7}]},{\"LE\":[{\"c\":2,\"r\":6},{\"c\":5,\"r\":7},{\"c\":2,\"r\":7}],\"LJ\":[],\"CE\":[{\"c\":2,\"r\":5},{\"c\":2,\"r\":8},{\"c\":6,\"r\":7}]},{\"LE\":[{\"c\":10,\"r\":7},{\"c\":12,\"r\":7}],\"LJ\":[],\"CE\":[{\"c\":9,\"r\":7},{\"c\":13,\"r\":7}]}]"
+      +");",
       "oASC.stack(\"undo\");"
     ]
   };
