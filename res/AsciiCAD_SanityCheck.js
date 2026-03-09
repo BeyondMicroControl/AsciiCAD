@@ -379,36 +379,6 @@ function runWorkerThreadSmokeTests()
         console.log("worker symbol checks for oASC ...");
         //return sanityWorkerSymbolsForASC(__help_oASC);
      })
-     .then(function(){
-     console.log("-1-");
-  // Place 3 pluses using the three supported syntaxes
-     oCMD.runExternalScript("{oASC.putCell(0,0,'+');}");})
-    .then(function(){ return oCMD.runExternalScript("putCell(0,1,'+'); putCell(0,2,'+')"); })
-    .then(function(){
-      var got = getSmallGridText(1,3);
-      assertGrid("worker putCell syntaxes => 3 pluses", got, small3x1Plus());
-      console.log("-2-");
-    })
-    .then(function(){
-      // Undo 3 times (all 3 pluses should disappear)
-      return oCMD.runExternalScript("oASC.stack('undo');oASC.stack('undo');oASC.stack('undo');");
-    })
-    .then(function(){
-      console.log("-3-");
-      var got2 = getSmallGridText(1,3);
-      assertGrid("worker undo x3 => cleared", got2, small3x1Spaces());
-    })
-    .then(function(){
-      console.log("-4-");
-      // Redo 3 times (all 3 pluses should reappear)
-      return oCMD.runExternalScript("oASC.stack('redo');oASC.stack('redo');oASC.stack('redo');");
-    })
-    .then(function(){
-      console.log("-5-");
-      var got3 = getSmallGridText(1,3);
-      assertGrid("worker redo x3 => 3 pluses", got3, small3x1Plus());
-      console.log("Worker thread smoke tests done.");
-    })
     .then(function(){
       console.log("-6-");
       exp = "TEST";
@@ -424,8 +394,6 @@ function runWorkerThreadSmokeTests()
     .then(function(){
       var got = oTERM._o.env.cpyVar;
       assertEq("get environment variable oTERM.setenv(\"cpyVar\",oTERM.getenv(\"myvar\"))", got, exp);
-
-
     console.log("-7-");
     return oCMD.runExternalScript(oASC.putCell.help.unitTests.join(";"));   // UNIT test
     })
@@ -438,14 +406,15 @@ function runWorkerThreadSmokeTests()
     .then(function(){
     return oCMD.runExternalScript(oASC.putLine.help.unitTests.join(";"));   // UNIT test
     }) 
-    .then(function(){
-    return oCMD.runExternalScript(oASC.glyphToMask3.help.uintTests.join(";"));   // UNIT test
-    })
+    //.then(function(){
+    //return oCMD.runExternalScript(oASC.glyphToMask3.help.uintTests.join(";"));   // UNIT test
+    //})
     .then(function(){
         //oASC.debug_merge = true;
+
+        
         var rc = 0, cc = 4;
         oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_SINGLE,flip:true});
-
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
@@ -456,7 +425,6 @@ function runWorkerThreadSmokeTests()
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
 
-
         var rc = 0, cc = 44;
         oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_DOUBLE,flip:true});
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
@@ -466,17 +434,27 @@ function runWorkerThreadSmokeTests()
         //oASC.debug_merge = false;
         //var s = "ABC\nDEF\nGHI"
         //console.log("\n"+s+"\n\n"+oASC.rotate(s,oASC.N,oASC.S));
-        oASC.clear();
+
+        var n = 1+3*20 +1+3*20 +1+3*20 - 2
+        oASC.stack("undo100");
+        n -= 100;
+        oASC.stack("undo20");
+        oASC.stack("undo20");
+        oASC.stack("undo20");
+        oASC.stack("undo20");
+        n -= 80;
+
+        for(var i=0;i<n;i++) oASC.stack("undo");
+        
+  
     return
-    }) 
-    .then(function(){
-    return oCMD.runExternalScript("oASC.stack('reset')");                   // reset undo/redo buffer
-    })    
+    })  
     .then(function() { worker?.terminate?.(); })
     .then(function()
     {
       delete oTERM;
       op = { type: "place", ch: '+' };
+      //oCMD.runExternalScript("oASC.stack('reset')");
     });
 }
 

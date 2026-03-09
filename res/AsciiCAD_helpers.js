@@ -35,7 +35,7 @@ function ASC()
   let __glyph3Codec = null;
 
 
-  function getGlyph3Codec(self)
+  function getGlyph3Codec()
   {
     // cache is absent? => build it
     if (__glyph3Codec) return __glyph3Codec;
@@ -44,7 +44,8 @@ function ASC()
     const g2m = Object.create(null); // glyph -> mask3
     const m2g = Object.create(null); // mask3 -> glyph
 
-    const put = (glyph, mask3) => {
+    const put = (glyph, mask3) => 
+    {
       g2m[glyph] = mask3;
       if (m2g[mask3] === undefined) m2g[mask3] = glyph;
     };
@@ -184,7 +185,7 @@ function ASC()
 
   this.glyphToMask3 = function(g) {
     if (!g) return 0;
-    const codec = getGlyph3Codec(this);
+    const codec = getGlyph3Codec();
     return codec.g2m[g] ?? pack3(this.dirMask3(g), 0, 0);
   };
 
@@ -199,7 +200,7 @@ function ASC()
       "oTERM.printJSON(oASC.glyphToMask3('╇'))",
       "oTERM.printJSON(oASC.glyphToMask3('╧'))",
     ],
-    uintTests: [
+    unitTests: [
       "oASC.assert('oASC.glyphToMask3(\\'┼\\')', oASC.glyphToMask3('┼') , N|E|S|W)",
       "oASC.assert('oASC.glyphToMask3(\\'╇\\')', oASC.glyphToMask3('╇') , (S) | (W|N|E)<<4 )",
       "oASC.assert('oASC.glyphToMask3(\\'╧\\')', oASC.glyphToMask3('╧') , (N|E|W) | (W|E)<<4 )"
@@ -208,7 +209,7 @@ function ASC()
 
   this.Mask3ToGlyph = function(m) {
     const v = (Number(m) || 0) & 0xFF;
-    const codec = getGlyph3Codec(this);
+    const codec = getGlyph3Codec();
     return codec.m2g[v] ?? " ";
   }
   this.Mask3ToGlyph.help = {
@@ -237,7 +238,7 @@ function ASC()
 
   this.dirMask3 = function(ch) 
   {
-    const codec = getGlyph3Codec(this);
+    const codec = getGlyph3Codec();
     const m8 = codec.g2m[String(ch ?? "")] ?? 0;
     return ((m8 & 0xF) | ((m8 >> 4) & 0xF)) & 0xF;
   }
@@ -495,9 +496,9 @@ function ASC()
     desc: "",
     examples: ["oASC.putCell(0,0,\"ABC\\nDEF\\nGHI\")"],
     unitTests:
-    ["oASC.putCell(0,0,\"ABC\\nDEF\\nGHI\");"
-    ,"oASC.assert('putCell(0,0,\"ABC\\nDEF\\nGHI\")',oASC.getCell(0,0,3,S),'A\\nD\\nG');"
-    ,"oASC.clear()"]
+    ["oASC.putCell(0,0,\"ABC\\nDEF\\nGHI\");",
+     "oASC.assert('putCell(0,0,\"ABC\\nDEF\\nGHI\")',oASC.getCell(0,0,3,S),'A\\nD\\nG');",
+     "oASC.stack(\"undo\")"]
   }
 
   this.getCell = function(c, r, len, dir)
@@ -605,7 +606,7 @@ function ASC()
     unitTests:
     ["oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")",
      "oASC.assert('oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")',oASC.getCell(0,0,3,E),'╔══');",
-     "oASC.clear()"
+     "oASC.stack(\"undo\")"
     ]
   }
 
@@ -854,7 +855,7 @@ function ASC()
     unitTests: [
      "oASC.putLine({from:{r:1,c:1},to:{r:0,c:0},flip:true,kind:BOX_SINGLE})",
      "oASC.assert('putLine',oASC.getCell(0,0,2,E),'─┐');",
-     "oASC.clear()"
+     "oASC.stack(\"undo\")"
     ]
   }
 
@@ -1097,7 +1098,7 @@ function ASC()
     "oASC.box(0,0,2,2,BOX_SINGLE);oASC.box(3,0,5,2,BOX_FAT);oASC.box(6,0,8,2,BOX_DOUBLE);",
      "oASC.assert('box',oASC.getCell(0,0,9,E),'┌─┐┏━┓╔═╗');",
      "oASC.assert('oASC.isValidDoubleBox(0,6,2,8)',oASC.isValidDoubleBox(0,6,2,8),true);",
-     "oASC.clear()"]
+     "oASC.stack(\"undo\");oASC.stack(\"undo\");oASC.stack(\"undo\");"]
   }
 
   this.clear = function () 
@@ -2700,19 +2701,28 @@ this.startPasteWithText = function(text)
   {
     switch(command)
     {
+      case "undo100": 
+        if(multi===undefined) var multi = 100;
+      case "undo20": 
+        if(multi===undefined) var multi = 20;
       case "undo":
-        var stroke = undoStack.pop();
-        if (!stroke) return;
-        for (let i = stroke.length - 1; i >= 0; i--) ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
-        redoStack.push(stroke);
+        if(multi===undefined) var multi = 1;
 
-        // Invalidate overlays after undo
-        highlightCache = null;
-        matchCache = null;
-        netlistCache = null;
-        hoverNetIndex = -1;
+        for(var i=0;i<multi;i++)
+        {
+          var stroke = undoStack.pop();
+          if (!stroke) return;
+          for (let i = stroke.length - 1; i >= 0; i--) ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
+          redoStack.push(stroke);
 
-        updateUI();
+          // Invalidate overlays after undo
+          highlightCache = null;
+          matchCache = null;
+          netlistCache = null;
+          hoverNetIndex = -1;
+
+          updateUI();
+        }
         this.draw("stack."+command); 
       break;
       case "redo":
