@@ -466,7 +466,7 @@ function runWorkerThreadSmokeTests()
         //oASC.debug_merge = false;
         //var s = "ABC\nDEF\nGHI"
         //console.log("\n"+s+"\n\n"+oASC.rotate(s,oASC.N,oASC.S));
-        //oASC.clear();
+        oASC.clear();
     return
     }) 
     .then(function(){
