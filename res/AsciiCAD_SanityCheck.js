@@ -439,7 +439,7 @@ function runWorkerThreadSmokeTests()
     return oCMD.runExternalScript(oASC.putLine.help.unitTests.join(";"));   // UNIT test
     }) 
     .then(function(){
-    return oCMD.runExternalScript(oASC.glyphTo3Mask.help.uintTests.join(";"));   // UNIT test
+    return oCMD.runExternalScript(oASC.glyphToMask3.help.uintTests.join(";"));   // UNIT test
     })
     .then(function(){
         //oASC.debug_merge = true;

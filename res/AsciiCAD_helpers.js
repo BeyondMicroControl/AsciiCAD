@@ -29,92 +29,17 @@ function ASC()
   this.N = 0b0001, this.E = 0b0010, this.S = 0b0100, this.W = 0b1000;
   const N = this.N, E = this.E, S = this.S, W = this.W;
 
-this._glyphMaskTable = 
-{
-  " ": 0,
+  // ------------------------------------------------------------
+  // Shared codec for glyphToMask3 <-> Mask3ToGlyph (no glyphToMask dependency)
+  // ------------------------------------------------------------
 
-  // half
-  "╵": N, "╷": S,
-  "╴": E, "╶": W,
+  // Pure style sets
+  const GL3_THIN_SET   = "─│┌┐└┘├┤┬┴┼╴╵╶╷";
+  const GL3_FAT_SET    = "━┃┏┓┗┛┣┫┳┻╋╸╹╺╻";
+  const GL3_DOUBLE_SET = "═║╔╗╚╝╠╣╦╩╬";
 
-  // single
-  "─": E|W, "│": N|S,
-  "┌": E|S, "┐": W|S, "└": E|N, "┘": W|N,
-  "├": N|E|S, "┤": N|W|S,
-  "┬": E|S|W, "┴": E|N|W,
-  "┼": N|E|S|W,
-
-  // fat
-  "━": E|W, "┃": N|S,
-  "┏": E|S, "┓": W|S, "┗": E|N, "┛": W|N,
-  "┣": N|E|S, "┫": N|W|S,
-  "┳": E|S|W, "┻": E|N|W,
-  "╋": N|E|S|W,
-
-  // double
-  "═": E|W, "║": N|S,
-  "╔": E|S, "╗": W|S, "╚": E|N, "╝": W|N,
-  "╠": N|E|S, "╣": N|W|S,
-  "╦": E|S|W, "╩": E|N|W,
-  "╬": N|E|S|W,
-
-  // mixed crosses single/double
-  "╪": N|E|S|W, "╫": N|E|S|W,
-
-  // mixed crosses single/fat
-  "┿": N|E|S|W, "╂": N|E|S|W,
-
-  // mixed tees single/double
-  "╤": E|S|W, "╥": E|S|W, "╧": E|N|W, "╨": E|N|W,
-  "╞": N|E|S, "╟": N|E|S, "╡": N|W|S, "╢": N|W|S,
-
-  // mixed tees single/fat
-  "┯": E|S|W, "┰": E|S|W, "┷": E|N|W, "┸": E|N|W,
-  "┝": N|E|S, "┠": N|E|S, "┥": N|W|S, "┨": N|W|S,
-
-  // mixed corners single/double
-  "╒": E|S, "╓": E|S, "╕": W|S, "╖": W|S,
-  "╘": E|N, "╙": E|N, "╛": W|N, "╜": W|N,
-
-  // mixed corners single/fat
-  "┍": E|S, "┎": E|S, "┑": W|S, "┒": W|S,
-  "┕": E|N, "┖": E|N, "┙": W|N, "┚": W|N
-}
-
-
-this.glyphToMask = function(ch) 
-{
-  const k = String(ch ?? "");
-  const v = this._glyphMaskTable[k];
-  return (v === undefined) ? 0 : (v & 0xF);
-}
-this.glyphToMask.help = 
-{
-  type: "CADScript_FN",
-  usage: "glyphMask(<i>ch</i>)",
-  desc: "Return 4-bit wire direction mask for a glyph (N|E|S|W). Unknown glyph returns 0.",
-  examples: ["printJSON(glyphMask('┼'))", "printJSON(glyphMask('╵'))"]
-};
-
-this.glyphTo3Mask = function(g)
-{
-  if (!g) return 0;
-
-  const pack = (thin, fat, doub) => (thin & 0xF) | ((fat & 0xF) << 4) | ((doub & 0xF) | (doub & 0xF) << 4);
-
-  // --- Pure style tables (compact + readable) ---
-  // thin (single/light)
-  const THIN_SET   = "─│┌┐└┘├┤┬┴┼╴╵╶╷";
-  // fat (single/heavy)
-  const FAT_SET    = "━┃┏┓┗┛┣┫┳┻╋╸╹╺╻";
-  // double (encode as both nibbles: thin + fat in same directions)
-  const DOUBLE_SET = "═║╔╗╚╝╠╣╦╩╬";
-
-  // --- Mixed light/heavy tables (few glyphs; explicit split) ---
-  // Convention: each entry assigns which directions are thin vs fat.
-  // You can expand this map if you decide to support more mixed glyphs later.
-  const MIX = 
-  {
+  // Mixed table (thin/fat/doub split)
+  const GL3_MIX = {
     // light/heavy stubs
     "╼": { thin: W,     fat: E },
     "╾": { thin: E,     fat: W },
@@ -132,235 +57,241 @@ this.glyphTo3Mask = function(g)
     "┚": { thin: W,     fat: N },
 
     // mixed crossings
-    '┽': { thin: N|E|S, fat: W },
-    '╀': { thin: E|S|W, fat: N },
-    '┾': { thin: S|W|N, fat: E },
-    '╁': { thin: W|N|E, fat: S },
+    "┽": { thin: N|E|S, fat: W },
+    "╀": { thin: E|S|W, fat: N },
+    "┾": { thin: S|W|N, fat: E },
+    "╁": { thin: W|N|E, fat: S },
 
-    '┿': { thin: N|S,   fat: E|W },
-    '╃': { thin: E|S,   fat: W|N },
-    '╄': { thin: S|W,   fat: N|E },
-    '╆': { thin: W|N,   fat: E|S },
-    '╅': { thin: N|E,   fat: S|W },
+    "┿": { thin: N|S,   fat: E|W },
+    "╃": { thin: E|S,   fat: W|N },
+    "╄": { thin: S|W,   fat: N|E },
+    "╆": { thin: W|N,   fat: E|S },
+    "╅": { thin: N|E,   fat: S|W },
 
-    '╊': { thin: W,     fat: N|E|S },
-    '╈': { thin: N,     fat: E|S|W },
-    '╉': { thin: E,     fat: S|W|N },
-    '╇': { thin: S,     fat: W|N|E },
+    "╊": { thin: W,     fat: N|E|S },
+    "╈": { thin: N,     fat: E|S|W },
+    "╉": { thin: E,     fat: S|W|N },
+    "╇": { thin: S,     fat: W|N|E },
 
-     // mixed t-shape
-    '┞': { thin: E|S,   fat: N },
-    '┝': { thin: N|S,   fat: E },
-    '┟': { thin: N|E,   fat: S },
-    '┢': { thin: N,     fat: E|S },
-    '┠': { thin: E,     fat: N|S },
-    '┡': { thin: S,     fat: N|E },
-   
-    '┥': { thin: N|S,   fat: W },
-    '┦': { thin: W|S,   fat: N },
-    '┧': { thin: W|N,   fat: S },
-    '┨': { thin: W,     fat: N|S },
-    '┪': { thin: N,     fat: W|S },
-    '┩': { thin: S,     fat: W|N },
-    
-    '┭': { thin: E|S,   fat: W },
-    '┮': { thin: S|W,   fat: E },
-    '┰': { thin: W|E,   fat: S },
-    '┲': { thin: W,     fat: E|S },
-    '┱': { thin: E,     fat: S|W },
-    '┯': { thin: S,     fat: W|E },
+    // mixed tees
+    "┞": { thin: E|S,   fat: N },
+    "┝": { thin: N|S,   fat: E },
+    "┟": { thin: N|E,   fat: S },
+    "┢": { thin: N,     fat: E|S },
+    "┠": { thin: E,     fat: N|S },
+    "┡": { thin: S,     fat: N|E },
 
-    // mixed corners (light+double)
-    '╜': { thin: W,     doub: N },
-    '╖': { thin: W,     doub: S },
-    '╛': { thin: N,     doub: W },
-    '╘': { thin: N,     doub: E },
-    '╙': { thin: E,     doub: N },
-    '╓': { thin: E,     doub: S },
-    '╕': { thin: S,     doub: W },
-    '╒': { thin: S,     doub: E },
+    "┥": { thin: N|S,   fat: W },
+    "┦": { thin: W|S,   fat: N },
+    "┧": { thin: W|N,   fat: S },
+    "┨": { thin: W,     fat: N|S },
+    "┪": { thin: N,     fat: W|S },
+    "┩": { thin: S,     fat: W|N },
 
-    // mixed t-shape (light+double)
-    '╢': { thin: W,     doub: N|S },
-    '╧': { thin: N,     doub: W|E },
-    '╟': { thin: E,     doub: N|S },
-    '╤': { thin: S,     doub: W|E },
-    '╡': { thin: N|S,   doub: W },
-    '╨': { thin: W|E,   doub: N },
-    '╞': { thin: N|S,   doub: E },
-    '╥': { thin: W|E,   doub: S },
+    "┭": { thin: E|S,   fat: W },
+    "┮": { thin: S|W,   fat: E },
+    "┰": { thin: W|E,   fat: S },
+    "┲": { thin: W,     fat: E|S },
+    "┱": { thin: E,     fat: S|W },
+    "┯": { thin: S,     fat: W|E },
 
-    // mixed crossings (light+double)
-    '╪': { thin: N|S,   doub: W|E },
-    '╫': { thin: W|E,   doub: N|S }
+    // light+double (doub sets both nibbles for those dirs)
+    "╜": { thin: W,     doub: N },
+    "╖": { thin: W,     doub: S },
+    "╛": { thin: N,     doub: W },
+    "╘": { thin: N,     doub: E },
+    "╙": { thin: E,     doub: N },
+    "╓": { thin: E,     doub: S },
+    "╕": { thin: S,     doub: W },
+    "╒": { thin: S,     doub: E },
+
+    "╢": { thin: W,     doub: N|S },
+    "╧": { thin: N,     doub: W|E },
+    "╟": { thin: E,     doub: N|S },
+    "╤": { thin: S,     doub: W|E },
+    "╡": { thin: N|S,   doub: W },
+    "╨": { thin: W|E,   doub: N },
+    "╞": { thin: N|S,   doub: E },
+    "╥": { thin: W|E,   doub: S },
+
+    "╪": { thin: N|S,   doub: W|E },
+    "╫": { thin: W|E,   doub: N|S }
   };
 
-  // 1) Mixed glyphs
-  if (MIX[g]) return pack(MIX[g].thin, MIX[g].fat, MIX[g].doub);
+  // Pack rule: low nibble thin, high nibble fat; "doub" sets both.
+  function pack3(thin, fat, doub) 
+  {
+    const t = ((thin || 0) | (doub || 0)) & 0xF;
+    const f = ((fat  || 0) | (doub || 0)) & 0xF;
+    return (t | (f << 4)) & 0xFF;
+  }
 
-  // 2) Pure style sets using glyphToMask direction mapping
-  const m = (self.glyphToMask ? (self.glyphToMask(g) & 0xF) : 0);
+  // Direction table (glyph -> 4-bit N/E/S/W), independent of glyphToMask
+  const GL3_DIR = Object.create(null);
 
-  if (THIN_SET.indexOf(g)   >= 0) return pack(m, 0);
-  if (FAT_SET.indexOf(g)    >= 0) return pack(0, m);
-  if (DOUBLE_SET.indexOf(g) >= 0) return pack(m, m);
+  // Fill the direction table for all pure-set glyphs.
+  // IMPORTANT: these are direction-only; thickness is handled elsewhere.
+  function initGL3_DIR(){
+    // helper to add many glyphs with same mask
+    const add = (chars, mask) => { for (const ch of chars) GL3_DIR[ch] = mask; };
 
-  // 3) Fallback: if glyphToMask knows it, treat as thin by default
-  return pack(m, 0);
-}
-this.glyphTo3Mask.help =   
-{
+    // half stubs (direction-only)
+    GL3_DIR["╵"] = N; GL3_DIR["╷"] = S;
+    GL3_DIR["╴"] = E; GL3_DIR["╶"] = W;
+    GL3_DIR["╹"] = N; GL3_DIR["╻"] = S;
+    GL3_DIR["╸"] = E; GL3_DIR["╺"] = W;
+
+    // straight
+    add("─━═", E|W);
+    add("│┃║", N|S);
+
+    // corners (NW/NE/SW/SE)
+    add("┌┏╔", E|S);
+    add("┐┓╗", W|S);
+    add("└┗╚", E|N);
+    add("┘┛╝", W|N);
+
+    // tees left/right/up/down and crossings (thin/fat/double all share direction set)
+    add("├┣╠", N|E|S);
+    add("┤┫╣", N|W|S);
+    add("┬┳╦", E|S|W);
+    add("┴┻╩", E|N|W);
+    add("┼╋╬", N|E|S|W);
+
+    // single/double mixed glyphs that are direction-only in your usage
+    add("╪╫┿╂", N|E|S|W);
+
+    // mixed tees/corners you listed at direction-only level (if you use them anywhere else)
+    add("╤╥", E|S|W);
+    add("╧╨", E|N|W);
+    add("╞╟", N|E|S);
+    add("╡╢", N|W|S);
+    add("┯┰", E|S|W);
+    add("┷┸", E|N|W);
+    add("┝┠", N|E|S);
+    add("┥┨", N|W|S);
+    add("┍┎", E|S);
+    add("┑┒", W|S);
+    add("┕┖", E|N);
+    add("┙┚", W|N);
+
+    // If you want, you can also seed directions from MIX entries automatically:
+    for (const ch in GL3_MIX) {
+      const e = GL3_MIX[ch];
+      GL3_DIR[ch] = ((e.thin || 0) | (e.fat || 0) | (e.doub || 0)) & 0xF;
+    }
+  };
+
+  initGL3_DIR();    // auto-provision cache
+
+
+  this.dirMask3 = function(ch) 
+  {
+    const k = String(ch ?? "");
+    const v = GL3_DIR[k];
+    return (v === undefined) ? 0 : (v & 0xF);
+  };
+  this.dirMask3.help = {
     type: "CADScript_FN",
-    usage: "glyphTo3Mask(<i>glyph</i>)",
+    usage: "dirMask3(<i>ch</i>)",
+    desc: "Return 4-bit direction mask (N|E|S|W) for supported wire glyphs, independent of glyphToMask.",
+    examples: ["printJSON(dirMask3('┼'))", "printJSON(dirMask3('╵'))"]
+  };
+
+
+  let __mask3ToGlyphCache = null;
+
+  function buildMask3ToGlyph(self) 
+  {
+    const rev = Object.create(null);
+    const setIfEmpty = (m, ch) => { if (rev[m] === undefined) rev[m] = ch; };
+
+    // Prefer MIX glyphs first (more specific)
+    for (const ch in GL3_MIX) {
+      const e = GL3_MIX[ch];
+      setIfEmpty(pack3(e.thin, e.fat, e.doub), ch);
+    }
+
+    // Pure sets derived from direction masks
+    for (const ch of GL3_DOUBLE_SET) setIfEmpty(pack3(0, 0, self.dirMask3(ch)), ch);
+    for (const ch of GL3_FAT_SET)    setIfEmpty(pack3(0, self.dirMask3(ch), 0), ch);
+    for (const ch of GL3_THIN_SET)   setIfEmpty(pack3(self.dirMask3(ch), 0, 0), ch);
+
+    return rev;
+  }
+
+  function getMask3ToGlyph(self) 
+  {
+    if (!__mask3ToGlyphCache) __mask3ToGlyphCache = buildMask3ToGlyph(self);
+    return __mask3ToGlyphCache;
+  }
+
+  this.glyphToMask3 = function(g)
+  {
+    if (!g) return 0;
+
+    const e = GL3_MIX[g];
+    if (e) return pack3(e.thin, e.fat, e.doub);
+
+    const m = this.dirMask3(g);
+
+    if (GL3_THIN_SET.indexOf(g)   >= 0) return pack3(m, 0, 0);
+    if (GL3_FAT_SET.indexOf(g)    >= 0) return pack3(0, m, 0);
+    if (GL3_DOUBLE_SET.indexOf(g) >= 0) return pack3(0, 0, m);
+
+    return pack3(m, 0, 0);
+  };
+  this.glyphToMask3.help =   
+  {
+    type: "CADScript_FN",
+    usage: "glyphToMask3(<i>glyph</i>)",
     desc:
       "Translate a wire glyph into an 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). " +
       "Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.",
     examples: [
-      "oTERM.printJSON(oASC.glyphTo3Mask('╇'))",
-      "oTERM.printJSON(oASC.glyphTo3Mask('╧'))",
+      "oTERM.printJSON(oASC.glyphToMask3('╇'))",
+      "oTERM.printJSON(oASC.glyphToMask3('╧'))",
     ],
     uintTests: [
-      "oASC.assert('oASC.glyphTo3Mask(\\'┼\\')', oASC.glyphTo3Mask('┼') , N|E|S|W)",
-      "oASC.assert('oASC.glyphTo3Mask(\\'╇\\')', oASC.glyphTo3Mask('╇') , (S) | (W|N|E)<<4 )",
-      "oASC.assert('oASC.glyphTo3Mask(\\'╧\\')', oASC.glyphTo3Mask('╧') , (N|E|W) | (W|E)<<4 )"
+      "oASC.assert('oASC.glyphToMask3(\\'┼\\')', oASC.glyphToMask3('┼') , N|E|S|W)",
+      "oASC.assert('oASC.glyphToMask3(\\'╇\\')', oASC.glyphToMask3('╇') , (S) | (W|N|E)<<4 )",
+      "oASC.assert('oASC.glyphToMask3(\\'╧\\')', oASC.glyphToMask3('╧') , (N|E|W) | (W|E)<<4 )"
     ]
   }
 
 
-  // Build once (place near glyphTo3Mask definition)
-  this._mask3ToGlyph = null;
-
-  this._buildMask3ToGlyph = function()
-  {
-    const pack = (thin, fat, doub) => {
-      const t = ((thin || 0) & 0xF) | ((doub || 0) & 0xF);
-      const f = ((fat  || 0) & 0xF) | ((doub || 0) & 0xF);
-      return (t & 0xF) | ((f & 0xF) << 4);
-    };
-
-    const THIN_SET   = "─│┌┐└┘├┤┬┴┼╴╵╶╷";
-    const FAT_SET    = "━┃┏┓┗┛┣┫┳┻╋╸╹╺╻";
-    const DOUBLE_SET = "═║╔╗╚╝╠╣╦╩╬";
-
-    const MIX = {
-      "╼": { thin: W,     fat: E },
-      "╾": { thin: E,     fat: W },
-      "╽": { thin: N,     fat: S },
-      "╿": { thin: S,     fat: N },
-
-      "┍": { thin: S,     fat: E },
-      "┎": { thin: E,     fat: S },
-      "┑": { thin: S,     fat: W },
-      "┒": { thin: W,     fat: S },
-      "┕": { thin: N,     fat: E },
-      "┖": { thin: E,     fat: N },
-      "┙": { thin: N,     fat: W },
-      "┚": { thin: W,     fat: N },
-
-      "┽": { thin: N|E|S, fat: W },
-      "╀": { thin: E|S|W, fat: N },
-      "┾": { thin: S|W|N, fat: E },
-      "╁": { thin: W|N|E, fat: S },
-
-      "┿": { thin: N|S,   fat: E|W },
-      "╃": { thin: E|S,   fat: W|N },
-      "╄": { thin: S|W,   fat: N|E },
-      "╆": { thin: W|N,   fat: E|S },
-      "╅": { thin: N|E,   fat: S|W },
-
-      "╊": { thin: W,     fat: N|E|S },
-      "╈": { thin: N,     fat: E|S|W },
-      "╉": { thin: E,     fat: S|W|N },
-      "╇": { thin: S,     fat: W|N|E },
-
-      "┞": { thin: E|S,   fat: N },
-      "┝": { thin: N|S,   fat: E },
-      "┟": { thin: N|E,   fat: S },
-      "┢": { thin: N,     fat: E|S },
-      "┠": { thin: E,     fat: N|S },
-      "┡": { thin: S,     fat: N|E },
-
-      "┥": { thin: N|S,   fat: W },
-      "┦": { thin: W|S,   fat: N },
-      "┧": { thin: W|N,   fat: S },
-      "┨": { thin: W,     fat: N|S },
-      "┪": { thin: N,     fat: W|S },
-      "┩": { thin: S,     fat: W|N },
-
-      "┭": { thin: E|S,   fat: W },
-      "┮": { thin: S|W,   fat: E },
-      "┰": { thin: W|E,   fat: S },
-      "┲": { thin: W,     fat: E|S },
-      "┱": { thin: E,     fat: S|W },
-      "┯": { thin: S,     fat: W|E },
-
-      "╜": { thin: W,     doub: N },
-      "╖": { thin: W,     doub: S },
-      "╛": { thin: N,     doub: W },
-      "╘": { thin: N,     doub: E },
-      "╙": { thin: E,     doub: N },
-      "╓": { thin: E,     doub: S },
-      "╕": { thin: S,     doub: W },
-      "╒": { thin: S,     doub: E },
-
-      "╢": { thin: W,     doub: N|S },
-      "╧": { thin: N,     doub: W|E },
-      "╟": { thin: E,     doub: N|S },
-      "╤": { thin: S,     doub: W|E },
-      "╡": { thin: N|S,   doub: W },
-      "╨": { thin: W|E,   doub: N },
-      "╞": { thin: N|S,   doub: E },
-      "╥": { thin: W|E,   doub: S },
-
-      "╪": { thin: N|S,   doub: W|E },
-      "╫": { thin: W|E,   doub: N|S }
-    };
-
-    // direction lookup (support both styles if you still have a function glyphToMask)
-    const dirMask = (ch) => {
-      const gm = this.glyphToMask;
-      if (!gm) return 0;
-      if (typeof gm.get === "function") return (gm.get(ch) || 0) & 0xF;
-      if (typeof gm === "function") return (gm(ch) || 0) & 0xF;
-      return 0;
-    };
-
-    const rev = Object.create(null);
-
-    // helper: prefer more “specific” glyphs if collisions occur (MIX first, then DOUBLE, FAT, THIN)
-    const setRev = (mask, glyph) => { if (rev[mask] === undefined) rev[mask] = glyph; };
-
-    // 1) MIX first (most specific)
-    for (const glyph in MIX) {
-      const e = MIX[glyph];
-      const mask = pack(e.thin, e.fat, e.doub);
-      setRev(mask, glyph);
-    }
-
-    // 2) pure double, fat, thin
-    for (const ch of DOUBLE_SET) setRev(pack(0,0, dirMask(ch)), ch);      // both nibbles
-    for (const ch of FAT_SET)    setRev(pack(0, dirMask(ch), 0), ch);     // fat nibble only
-    for (const ch of THIN_SET)   setRev(pack(dirMask(ch), 0, 0), ch);     // thin nibble only
-
-    this._mask3ToGlyph = rev;
-  };
-
   this.Mask3ToGlyph = function(m)
   {
-    if (!this._mask3ToGlyph) this._buildMask3ToGlyph();
-
     const v = (Number(m) || 0) & 0xFF;
-    return this._mask3ToGlyph[v] ?? " ";
+    return getMask3ToGlyph(this)[v] ?? " ";
   };
   this.Mask3ToGlyph.help = {
     type: "CADScript_FN",
     usage: "Mask3ToGlyph(<i>m</i>)",
-    desc: "Reverse of glyphTo3Mask: map extended 8-bit mask (fat<<4 | thin) back to a wire glyph. Returns ' ' if unknown.",
+    desc: "Reverse of glyphToMask3: map extended 8-bit mask (fat<<4 | thin) back to a wire glyph. Returns ' ' if unknown.",
     examples: [
       "oTERM.print(Mask3ToGlyph((N|E|S|W)<<4))",              // ╋
       "oTERM.print(Mask3ToGlyph((N|E|S|W) | ((N|E|S|W)<<4)))" // ╬
     ]
   };
+
+
+
+  this.glyphToMask = function(ch) 
+  {
+    const k = String(ch ?? "");
+    const v = this.glyphToMask3(k);
+    return (v === undefined) ? 0 : ((v | v>>4) & 0xF);
+  }
+  this.glyphToMask.help = 
+  {
+    type: "CADScript_FN",
+    usage: "glyphMask(<i>ch</i>)",
+    desc: "Return 4-bit wire direction mask for a glyph (N|E|S|W). Unknown glyph returns 0.",
+    examples: ["printJSON(glyphMask('┼'))", "printJSON(glyphMask('╵'))"]
+  };
+
+
 
 
   this.maskToSingle = new Map([
@@ -1011,7 +942,7 @@ this.glyphTo3Mask.help =
         if(bFirst)
         {
           var watchCell = s.charAt(3);
-          if(this.glyphTo3Mask(watchCell) == (N|S) || this.glyphTo3Mask(watchCell) == ((N|S) << 4) )
+          if(this.glyphToMask3(watchCell) == (N|S) || this.glyphToMask3(watchCell) == ((N|S) << 4) )
           {
             // TODO: use bit arithmetic and Mask3ToGlyph() to generalise solution
             if(isDoubleWire(path[i].ch))       path[i].ch = (dir & W) != 0 ? "╡" : "╞";
@@ -1022,7 +953,7 @@ this.glyphTo3Mask.help =
         else if(!bFirst && !bLast)
         {
           var watchCell = s.charAt(3);
-          if(this.glyphTo3Mask(watchCell) == (N|S) || this.glyphTo3Mask(watchCell) == ((N|S) << 4) ) 
+          if(this.glyphToMask3(watchCell) == (N|S) || this.glyphToMask3(watchCell) == ((N|S) << 4) ) 
           {
             path[i].ch = watchCell;  // when horizontal goes through a straigt line => override '-' (on path) by '|' (on grid)
           }
@@ -1031,7 +962,7 @@ this.glyphTo3Mask.help =
         {
           // TODO: use bit arithmetic and Mask3ToGlyph() to generalise solution
           var watchCell = s.charAt(4);
-          if(this.glyphTo3Mask(watchCell) == (N|S) || this.glyphTo3Mask(watchCell) == ((N|S) << 4) ) 
+          if(this.glyphToMask3(watchCell) == (N|S) || this.glyphToMask3(watchCell) == ((N|S) << 4) ) 
           {
             if(isDoubleWire(path[i].ch))       path[i].ch = (dir & E) != 0 ? "╡" : "╞";
             else if(isFatWire(path[i].ch))     path[i].ch = (dir & E) != 0 ? "┥" : "┝";
@@ -1349,7 +1280,7 @@ this.glyphTo3Mask.help =
 
   this.isWireGlyph = function(ch) {
     const k = String(ch ?? "");
-    return this._glyphMaskTable[k] !== undefined && k !== " ";
+    return this.glyphToMask3(k) !== undefined && k !== " ";
   };
   // or: return this.glyphMask(ch) !== 0;
   this.isWireGlyph.help = {
