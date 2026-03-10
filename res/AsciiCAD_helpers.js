@@ -49,18 +49,18 @@ function ASC()
     {
       g2m[glyph] = mask3;
       if (m2g[mask3] === undefined) m2g[mask3] = glyph;
-    };
+    }
 
     const alias = (glyph, mask3) =>   // fallback glyph: forward only
     {
       g2m[glyph] = mask3;        
-    };
+    }
 
     const standIn = (mask3, glyph) => // stand-in glyph: reverse-only
     {
       //if (m2gStandIn[mask3] === undefined) 
         m2gStandIn[mask3] = glyph;
-    };
+    }
 
     // Pure style sets (single source of truth)
     const GL3_THIN_SET   = "─│┌┐└┘├┤┬┴┼╴╵╶╷";
@@ -83,9 +83,9 @@ function ASC()
         "┼":N|E|S|W,"╋":N|E|S|W,"╬":N|E|S|W,
         "╴":E,"╶":W,"╵":N,"╷":S,
         "╸":E,"╺":W,"╹":N,"╻":S
-      };
+      }
       return (D[g] ?? 0) & 0xF;
-    };
+    }
 
     // 1) MIX first (more specific)
     for (const glyph in GL3_MIX) {
@@ -105,13 +105,14 @@ function ASC()
 
     // 3) stand-in sets
 
-    standIn(pack3(0, N|S, E), "┣");
-    standIn(pack3(0, N|S, W), "┫");
+    standIn(pack3(0, N|S, E), '┣');
+    standIn(pack3(0, N|S, W), '┫');
+    standIn(pack3(0, W, N|S), '╢');
+    standIn(pack3(0, E, N|S), '╟');
 
     __glyph3Codec = { g2m, m2g, m2gStandIn };
     return __glyph3Codec;
   }
-
 
   // Mixed table (thin/fat/doub split)
   const GL3_MIX = {
@@ -191,10 +192,11 @@ function ASC()
 
     "╪": { thin: N|S,   doub: W|E },
     "╫": { thin: W|E,   doub: N|S }
-  };
+  }
 
   // Pack rule: low nibble thin, high nibble fat; "doub" sets both.
-  function pack3(thin, fat, doub) {
+  function pack3(thin, fat, doub) 
+  {
     const t = ((thin || 0) | (doub || 0)) & 0xF;
     const f = ((fat  || 0) | (doub || 0)) & 0xF;
     return (t | (f << 4)) & 0xFF;
@@ -209,15 +211,15 @@ function ASC()
     if (!g) return 0;
     const codec = getGlyph3Codec();
     return codec.g2m[g] ?? pack3(this.dirMask3(g), 0, 0);
-  };
-
+  }
   this.glyphToMask3.help =   
   {
     type: "CADScript_FN",
     usage: "glyphToMask3(<i>glyph</i>)",
     desc:
       "Translate a wire glyph into an 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). " +
-      "Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.",
+      "Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.  " +
+      "Alias glyphs are alternative glyphs for the same (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.",
     examples: [
       "oTERM.printJSON(oASC.glyphToMask3('╇'))",
       "oTERM.printJSON(oASC.glyphToMask3('╧'))",
@@ -231,7 +233,8 @@ function ASC()
     ]
   }
 
-  this.mask3ToGlyph = function(m) {
+  this.mask3ToGlyph = function(m) 
+  {
     const v = (Number(m) || 0) & 0xFF;
     const codec = getGlyph3Codec();
     return codec.m2g[v] ?? codec.m2gStandIn[v] ?? " ";
@@ -239,7 +242,9 @@ function ASC()
   this.mask3ToGlyph.help = {
     type: "CADScript_FN",
     usage: "mask3ToGlyph(<i>m</i>)",
-    desc: "Reverse of glyphToMask3: map extended 8-bit mask (fat<<4 | thin) back to a wire glyph. Returns ' ' if unknown.",
+    desc: "Reverse of glyphToMask3: map extended 8-bit mask (fat<<4 | thin) back to a wire glyph. Returns ' ' if unknown. " +
+    "Stand-in mappings are required when e.g. a fat wire glyph for '╞' does not exist, so when E|(N|S|E)<<4 is requested, a close-enough stand-in glyph like '┣' or '╞' will be returned (better than nothing). " +
+    "By policy, stand-in glyphs must prioritise correct rendering of single and fat wires over double wires, because double wires are primarily used for drawing boxes not lines.",
     examples: [
       "oTERM.print(mask3ToGlyph((N|E|S|W)<<4))",              // ╋
       "oTERM.print(mask3ToGlyph((N|E|S|W) | ((N|E|S|W)<<4)))" // ╬
@@ -249,7 +254,7 @@ function ASC()
       "oASC.assert('oASC.mask3ToGlyph(S|(W|N|E)<<4)', oASC.mask3ToGlyph(S|(W|N|E)<<4)  ,'╇');",    // canonical mapping (no fall-back present)
       "oASC.assert('oASC.mask3ToGlyph(E|(N|S|E)<<4)', oASC.mask3ToGlyph(E | (N|S|E)<<4),'┣');"     // stand-in mapping (no canonical mapping present)
     ]
-  };
+  }
 
   this.glyphToMask = function(ch) 
   {
@@ -261,7 +266,8 @@ function ASC()
   {
     type: "CADScript_FN",
     usage: "glyphMask(<i>ch</i>)",
-    desc: "Return 4-bit wire direction mask for a glyph (N|E|S|W). Unknown glyph returns 0.",
+    desc: "Return 4-bit wire direction mask for a glyph (N|E|S|W). Unknown glyph returns 0. "+
+    "Stand-in glyphs fullfil a inexistent (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.",
     examples: ["printJSON(glyphMask('┼'))", "printJSON(glyphMask('╵'))"]
   }
 
@@ -279,12 +285,60 @@ function ASC()
     examples: ["printJSON(dirMask3('┼'))", "printJSON(dirMask3('╵'))"]
   }
 
+  this.rotateMask3 = function(m)
+  {
+    const v = (Number(m) || 0) & 0xFF;
+    const lo = v & 0xF;         // thin
+    const hi = (v >> 4) & 0xF;  // fat
+    const rot4 = (x) => (((x << 1) | (x >> 3)) & 0xF);
+    return rot4(lo) | (rot4(hi) << 4);
+  }
+
+  this.rotateMask3.help = {
+    type: "CADScript_FN",
+    usage: "rotateMask(<i>m</i>)",
+    desc: "Rotate an 8-bit wire mask 90 degrees clockwise. Low nibble (thin) and high nibble (fat) are rotated independently.",
+    examples: [
+      "oTERM.printJSON(rotateMask(glyphToMask3('╆')))",
+      "oTERM.print(Mask3ToGlyph(rotateMask(glyphToMask3('╆'))))"
+    ]
+  }
+
+  this.mirrorMask3 = function(m, bVertAxis)
+  {
+    const v  = (Number(m) || 0) & 0xFF;
+    const lo = v & 0xF;
+    const hi = (v >> 4) & 0xF;
+
+    let lo2, hi2;
+
+    if (bVertAxis) {
+      lo2 = (lo & N) | (lo & E) << 2 | (lo & S) | (lo & W) >> 2;
+      hi2 = (hi & N) | (hi & E) << 2 | (hi & S) | (hi & W) >> 2;
+    } else {
+      lo2 = (lo & N) << 2 | (lo & E) | (lo & S) >> 2 | (lo & W);
+      hi2 = (hi & N) << 2 | (hi & E) | (hi & S) >> 2 | (hi & W);
+    }
+
+    return lo2 | (hi2 << 4);
+  }
+  this.mirrorMask3.help = 
+  {
+    type: "CADScript_FN",
+    usage: "mirrorMask(<i>m</i>,<i>bVertAxis</i>)",
+    desc: "Mirror an 8-bit wire mask. bVertAxis=true mirrors around vertical axis (E<->W). bVertAxis=false mirrors around horizontal axis (N<->S). Thin and fat nibbles are mirrored independently.",
+    examples: [
+      "oTERM.print(Mask3ToGlyph(mirrorMask(glyphToMask3('╆'), true)))",
+      "oTERM.print(Mask3ToGlyph(mirrorMask(glyphToMask3('╆'), false)))"
+    ]
+  }
+
   // 4-bit -> glyph (thin/fat/double) via mask3ToGlyph (8-bit)
   this.maskToSingle = function(m4){ return this.mask3ToGlyph((Number(m4)||0) & 0xF) }
   this.maskToFat = function(m4){ return this.mask3ToGlyph(((Number(m4)||0) & 0xF) << 4) }
   this.maskToDouble = function(m4){ const m = (Number(m4)||0) & 0xF; return this.mask3ToGlyph(m | (m << 4)) }
 
-  const BOX_CONTOUR = { h:E|W, v:N|S, tl:E|S, tr:W|S, bl:E|N, br:W|N };
+  const BOX_CONTOUR = { h:E|W, v:N|S, tl:E|S, tr:W|S, bl:E|N, br:W|N }
 
   function buildBox(maskTo){
     return {
@@ -294,7 +348,7 @@ function ASC()
       tr: maskTo(BOX_CONTOUR.tr),
       bl: maskTo(BOX_CONTOUR.bl),
       br: maskTo(BOX_CONTOUR.br),
-    };
+    }
   }
 
   this.BOX_SINGLE = buildBox(this.maskToSingle.bind(this));
@@ -305,25 +359,25 @@ function ASC()
     const m = this.glyphToMask3(ch) & 0xFF;
     const lo = m & 0xF, hi = (m >> 4) & 0xF;
     return ((lo & (E|W)) !== 0) && ((hi & (E|W)) !== 0);
-  };
+  }
 
   this.hasDoubleV = function(ch){
     const m = this.glyphToMask3(ch) & 0xFF;
     const lo = m & 0xF, hi = (m >> 4) & 0xF;
     return ((lo & (N|S)) !== 0) && ((hi & (N|S)) !== 0);
-  };
+  }
 
   this.isFatWire = function(ch){
     const m = this.glyphToMask3(ch) & 0xFF;
     const lo = m & 0xF, hi = (m >> 4) & 0xF;
     return (hi !== 0) && (lo === 0);
-  };
+  }
 
   this.isDoubleWire = function(ch){
     const m = this.glyphToMask3(ch) & 0xFF;
     const lo = m & 0xF, hi = (m >> 4) & 0xF;
     return (lo !== 0) && (lo === hi);
-  };
+  }
 
   // ===== Match overlay (catalog pattern matching) =====
   // Wildcards:
@@ -357,7 +411,7 @@ function ASC()
     usage: "CADScript {<i>expression</i>}",
     desc:  "Run a CADScript expression",
     examples: ["CADScript {clear();stack(\"undo\")}"]
-  };
+  }
 
   this.env = Object.create(null);
   this.env.help = 
@@ -366,7 +420,7 @@ function ASC()
     usage: "env.my_variable = <i>expression<i>;",
     desc:  "assign a session persistent environment variable",
     examples: ["oASC.env.my_variable = 123","oASC.env.my_variable = \"ABC\""]
-  };
+  }
 
   var undoStack = [];
   var redoStack = [];
@@ -401,7 +455,7 @@ function ASC()
       let h = Math.max(1, Math.floor(r.height));
       if (w >= COLS) w = Math.floor(w / COLS) * COLS;
       if (h >= ROWS) h = Math.floor(h / ROWS) * ROWS;
-      return { w: Math.max(1, w), h: Math.max(1, h) };
+      return { w: Math.max(1, w), h: Math.max(1, h) }
   }
 
   this.syncCanvasBufferToStage =  function() 
@@ -412,7 +466,7 @@ function ASC()
       if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   }
 
-  this.getCellSize = function() { return { cw: baseCellW, ch: baseCellH }; }
+  this.getCellSize = function() { return { cw: baseCellW, ch: baseCellH } }
 
   // Resize observer (debounced via rAF)
   this.scheduleResize = function() 
@@ -440,12 +494,12 @@ function ASC()
     const cx = stageSize.w / 2;
     const cy = stageSize.h / 2;
 
-    const { cw, ch } = this.getCellSize?.() ?? { cw: 0, ch: 0 };
+    const { cw, ch } = this.getCellSize?.() ?? { cw: 0, ch: 0 }
     const c = Math.floor( oCOM.PanZoomSize(px,cx,scale,panX,cw) );
     const r = Math.floor( oCOM.PanZoomSize(py,cy,scale,panY,ch) );
 
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
-    return { r, c };
+    return { r, c }
   }
 
   this.expandWideCharsForGrid = function(text) 
@@ -517,7 +571,7 @@ function ASC()
     {
       op.ch    = str.charAt(i);  if(op.ch=="\n") { dx=-1; r++; continue; }
       op.type  = "place";
-      var cell = {"r":r,"c":c+dx};
+      var cell = {"r":r,"c":c+dx}
       if(cell.c < COLS)
         this.applyOpAtCell(cell,op);                   // display character on grid & push coordinate to currentStroke
     }
@@ -550,7 +604,7 @@ function ASC()
       const row = ascii?.[rr];
       if (!row) return " ";
       return (row[cc] === undefined) ? " " : row[cc];
-    };
+    }
 
     // dir is a bitmask; omitted => all directions
     const fullMask = (N|E|S|W);
@@ -573,7 +627,7 @@ function ASC()
       lines.push(line);              // IMPORTANT: do NOT trim here
     }
     return lines.join("\n");         // IMPORTANT: do NOT sanitize here
-  };
+  }
 
   this.getCell.help = 
   {
@@ -590,7 +644,7 @@ function ASC()
       "oTERM.print(getCell(1,1,2,W|N|S))",
       "oTERM.print(getCell(0,0,2,N|W|E|S))"
     ]
-  };
+  }
 
 
   // subsection catalog items
@@ -630,7 +684,7 @@ function ASC()
     // FIX #2: ensure paste anchor is the requested cell
     const cell = { r, c };
     this.commitPasteAt(cell);
-  };
+  }
 
   this.cat.help = 
   {
@@ -681,7 +735,7 @@ function ASC()
       merge: !oDown,         // 'o' held => override (no merge)
       start: { r: cell.r, c: cell.c },
       cur:   { r: cell.r, c: cell.c }
-    };
+    }
 
     this.draw("beginLine");
   }
@@ -899,71 +953,68 @@ function ASC()
     var s = [];
     var dirS = ["N","E","S","W"];
     for(var i=0;i<4;i++)
-          if(((num>>i) & 1) == 1) s[s.length] = dirS[i];
+      if(((num>>i) & 1) == 1) s[s.length] = dirS[i];
+
+    if((num>>4 & 16)!=0)
+    {
+      s[s.length-1] += "(";
+      for(var i=4;i<8;i++)
+        if(((num>>i) & 1) == 1) s[s.length] = dirS[i];
+      s[s.length-1] += ")<<4";
+    }                                                                                                                                                                                                       
     return s.join("|");
   }
 
   this.solveIntersect = function(path)
   {
     var outPath = {};
-
     //this.N = 0b0001, this.E = 0b0010, this.S = 0b0100, this.W = 0b1000;
     outPath[i] = path[0];
     var _pre = path[0];
-    var _cur, dir;
+    var _cur, pathDir, pathMask3;
     
     for (var i=0;i<path.length;i++)
     {
       bFirst = i==0, bLast = i==(path.length-1); 
+      var Hfilter = E | E<<4 | W | W<<4;
+      var Vfilter = N | N<<4 | S | S<<4;
+
       if(!bLast)
       {
         _cur = path[i+1];
-        var dr  = _cur.r - _pre.r
-        var dc  = _cur.c - _pre.c;
-        dir = 1 << (dr-dc+dc*dc+1);
+        var dr    = _cur.r - _pre.r
+        var dc    = _cur.c - _pre.c;
+        pathDir   = 1 << (dr-dc+dc*dc+1);        // get path direction
+        var t     = this.glyphToMask3(_cur.ch);
+        pathMask3 = ((t&0b1111)>0?pathDir:0) | ((t&0b11110000)>0?pathDir:0)<<4;
+        //console.log(">> pathDir=0b"+pathDir.toString(2)+" _cur='"+_cur.ch+"' t=0b"+t.toString(2));
       }
 
-      var cellD = (N|S|E|W) ^ dir
+      var cellD = (N|S|E|W) ^ pathDir;
       var cellP = oASC.getCell(_cur.c,_cur.r,2,cellD);
 
-      if((dir & (E | W)) != 0)
+      if((pathDir & Hfilter) != 0)
       {
-        var s = this.rotate(cellP,dir,E).replace(/ /g,".");
+        var s = this.rotate(cellP,pathDir,E).replace(/ /g,".");
         //var s = cellP.replace(/ /g,".");
-        console.log("Solve:"+JSON.stringify(path[i])+" cellD:"+this.maskToString(cellD)+" dir:"+this.maskToString(dir)+"\n"+s+" "+s.charAt(5) );
+        console.log("Solve:"+JSON.stringify(path[i])+" cellD:"+this.maskToString(cellD)+" pathDir:"+this.maskToString(pathDir)+"\n"+s+" "+s.charAt(5) );
 
         if(bFirst)
         {
           var watchCell = s.charAt(3);
-          if(this.glyphToMask3(watchCell) == (N|S) || this.glyphToMask3(watchCell) == ((N|S) << 4) )
+          var watchCell_dir = this.glyphToMask3(watchCell);
+          if((watchCell_dir & Vfilter) != 0)
           {
-            // TODO: use bit arithmetic and mask3ToGlyph() to generalise solution
-
-            if(this.isDoubleWire(watchCell))
-            {
-              if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & W) != 0 ? "╣" : "╠";
-              else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & W) != 0 ? "╢" : "╟";
-              else                                    path[i].ch = (dir & W) != 0 ? "╢" : "╟";
-            }
-            else if(this.isFatWire(watchCell))
-            {
-              if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & W) != 0 ? "┫" : "┣";
-              else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & W) != 0 ? "┫" : "┣";
-              else                                    path[i].ch = (dir & W) != 0 ? "┨" : "┠";
-            }
-            else // watchCell is a single wire
-            {
-              if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & W) != 0 ? "╡" : "╞";
-              else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & W) != 0 ? "┥" : "┝";
-              else                                    path[i].ch = (dir & W) != 0 ? "┤" : "├";
-            }
-
+            res_dir = watchCell_dir | pathMask3;
+            //this.putCell(path[i].c+6,path[i].r,this.maskToString(res_dir)+"*");
+            path[i].ch = this.mask3ToGlyph(res_dir);
+            //this.putCell(path[i].c+6,path[i].r,"*");
           }
         }
         else if(!bFirst && !bLast)
         {
           var watchCell = s.charAt(3);
-          if(this.glyphToMask3(watchCell) == (N|S) || this.glyphToMask3(watchCell) == ((N|S) << 4) ) 
+          if((this.glyphToMask3(watchCell) & Vfilter) != 0) 
           {
             path[i].ch = watchCell;  // when horizontal goes through a straigt line => override '-' (on path) by '|' (on grid)
           }
@@ -972,29 +1023,13 @@ function ASC()
         {
           // TODO: use bit arithmetic and mask3ToGlyph() to generalise solution
           var watchCell = s.charAt(4);
-          if(this.glyphToMask3(watchCell) == (N|S) || this.glyphToMask3(watchCell) == ((N|S) << 4) ) 
+          var watchCell_dir = this.glyphToMask3(watchCell);
+          if((watchCell_dir & Vfilter) != 0) 
           {
-
-            if(this.isDoubleWire(watchCell))
-            {
-              if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & E) != 0 ? "╣" : "╠";
-              else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & E) != 0 ? "╢" : "╟";
-              else                                    path[i].ch = (dir & E) != 0 ? "╢" : "╟";
-            }
-            else if(this.isFatWire(watchCell))
-            {
-              if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & E) != 0 ? "┫" : "┣";
-              else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & E) != 0 ? "┫" : "┣";
-              else                                    path[i].ch = (dir & E) != 0 ? "┨" : "┠";
-            }
-            else // watchCell is a single wire
-            {
-              if(this.isDoubleWire(path[i].ch))       path[i].ch = (dir & E) != 0 ? "╡" : "╞";
-              else if(this.isFatWire(path[i].ch))     path[i].ch = (dir & E) != 0 ? "┥" : "┝";
-              else                                    path[i].ch = (dir & E) != 0 ? "┤" : "├";
-            }
-
-
+            res_dir = watchCell_dir | this.mirrorMask3(pathMask3 & Hfilter,true);
+            //this.putCell(path[i].c+6,path[i].r,this.maskToString(res_dir)+"*");
+            path[i].ch = this.mask3ToGlyph(res_dir);
+            //this.putCell(path[i].c+6,path[i].r,"*");
           }
         }
 
@@ -1183,7 +1218,7 @@ function ASC()
           const op   = {"ch":' ',"type":"place"};
           this.applyOpAtCell?.( cell , op ) ?? {};           // display character on grid & build undo buffer
         }
-      };
+      }
     this.pushStrokeIfNonEmpty?.(this._currentStroke) ?? {};   // commit undo buffer 
   }
   this.clear.help = 
@@ -1192,7 +1227,7 @@ function ASC()
     usage: "clear()",
     desc: "Clears the grid and pushes a single undo stroke.",
     examples: ["oASC.clear()"]
-  };
+  }
 
   // TODO: describe what it does, and check if this can be used as generic function or it should be a private function
   // INFO: currently only used in beginFreeform(), moveFreeform(), endFreeform()
@@ -1306,14 +1341,14 @@ function ASC()
   this.isWireGlyph = function(ch) {
     const k = String(ch ?? "");
     return this.glyphToMask3(k) !== undefined && k !== " ";
-  };
+  }
   // or: return this.glyphMask(ch) !== 0;
   this.isWireGlyph.help = {
     type: "CADScript_FN",
     usage: "isWireGlyph(<i>ch</i>)",
     desc: "True if ch is a known wire glyph in the glyph mask table.",
     examples: ["oTERM.printJSON(isWireGlyph('┼'))", "oTERM.printJSON(isWireGlyph('A'))"]
-  };
+  }
 
 
   this.isVisiblyRenderable = function(ch, font = "16px monospace") 
@@ -1550,7 +1585,7 @@ function ASC()
           baseRect: selection,
           snapshot: snapshotRect(selection),
           action: (tool === "modeCopy") ? "copy" : "move",
-        };
+        }
 
         this.draw("beginSelect (begin moveDrag)");
         return;
@@ -1729,7 +1764,7 @@ function ASC()
     this.pushStrokeIfNonEmpty(stroke);
     updateUI();
     this.draw("commitPasteAt(anchor)");
-  };
+  }
 
 
   this.cancelPaste = function() 
@@ -1805,7 +1840,7 @@ this.startPasteWithText = function(text)
     anchorOffset: { r: offR, c: offC },
 
     transparentSpaces: true,
-  };
+  }
 
   setMode("modeSelect");
   selection = null;
@@ -2080,7 +2115,7 @@ this.startPasteWithText = function(text)
           rotation: m.rotation,
           tl: { r: m.r0, c: m.c0 },
           br: { r: m.r1, c: m.c1 },
-        };
+        }
         if (accept(hit)) out.push(hit);
       }
     }
@@ -2106,7 +2141,7 @@ this.startPasteWithText = function(text)
     }
 
     return out;
-  };
+  }
 
   this.qryLocate.help =
   {
@@ -2119,7 +2154,7 @@ this.startPasteWithText = function(text)
       "oASC.qryLocate({name:'ATTiny85'})",
       "oASC.qryLocate({name:'ATTiny85'\n\t,MFR:'ATTINY85V-10PU'})"
     ]
-  };
+  }
 
 
   // Locate all labels (text strings) on the grid.
@@ -2178,7 +2213,7 @@ this.startPasteWithText = function(text)
     }
 
     return out;
-  };
+  }
 
 
 
@@ -2229,7 +2264,7 @@ this.startPasteWithText = function(text)
         }
       }
     }
-    return { redSet, insideSet };
+    return { redSet, insideSet }
   }
   
 
@@ -2413,11 +2448,11 @@ this.startPasteWithText = function(text)
       const find = (x) => {
         while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; }
         return x;
-      };
+      }
       const union = (a, b) => {
         a = find(a); b = find(b);
         if (a !== b) parent[b] = a;
-      };
+      }
 
       // labelID -> [netIdx,...]
       const labelToNets = new Map();
@@ -2542,12 +2577,12 @@ this.startPasteWithText = function(text)
       //"oASC.assert(\"oASC.computeNetlist()\",oASC.computeNetlist(),[{\"LE\":[{\"c\":2,\"r\":2},{\"c\":3,\"r\":1}],\"LJ\":[],\"CE\":[{\"c\":2,\"r\":3}]},{\"LE\":[{\"c\":11,\"r\":1},{\"c\":12,\"r\":1}],\"LJ\":[],\"CE\":[{\"c\":13,\"r\":1}]},{\"LE\":[{\"c\":19,\"r\":1},{\"c\":18,\"r\":7}],\"LJ\":[],\"CE\":[{\"c\":18,\"r\":1},{\"c\":17,\"r\":7}]},{\"LE\":[{\"c\":2,\"r\":6},{\"c\":5,\"r\":7},{\"c\":2,\"r\":7}],\"LJ\":[],\"CE\":[{\"c\":2,\"r\":5},{\"c\":2,\"r\":8},{\"c\":6,\"r\":7}]},{\"LE\":[{\"c\":10,\"r\":7},{\"c\":12,\"r\":7}],\"LJ\":[],\"CE\":[{\"c\":9,\"r\":7},{\"c\":13,\"r\":7}]}]);",
       "oASC.stack(\"undo\");"
     ]
-  };
+  }
 
   this.computeNetlistNets = function() {
     const nets = __computeNetlistCore({ includeCellSet: true });
     return nets.map(n => ({ cells: n.cellSet, LE: n.LE, LJ: n.LJ, CE: n.CE, CO: n.CE }));
-  };
+  }
   
 
   this.printNetlist = function()
@@ -2579,7 +2614,7 @@ this.startPasteWithText = function(text)
     usage: "printNetlist()",
     desc: "Extract connected wire lines (endpoints + junctions), excluding valid double-box boundaries/interiors.",
     examples: ["oASC.printNetlist()"]
-  };
+  }
 
 
   function pushUnique(out, r, c)
@@ -2697,7 +2732,7 @@ this.startPasteWithText = function(text)
       }
     }
 
-    return { greenSet, rects, solidSet, footprintSet, matches, matchByCell };
+    return { greenSet, rects, solidSet, footprintSet, matches, matchByCell }
   }
 
 
@@ -2868,14 +2903,14 @@ this.startPasteWithText = function(text)
       if (!ch || ch === " ") return false;
       if (ch === wc) return true;
       return /[A-Za-z0-9_\-\.#:/\\\[\]\(\)]/.test(ch);
-    };
+    }
 
     const charAt = (rr, cc) => {
       if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) return " ";
       const row = ascii?.[rr];
       if (!row) return " ";
       return (row[cc] === undefined) ? " " : row[cc];
-    };
+    }
 
     // Given a cell (rr,cc) that isLabelChar, return the label's origin col and full string on that row.
     const extractLabelAt = (rr, cc) => {
@@ -2891,7 +2926,7 @@ this.startPasteWithText = function(text)
         x++;
       }
       return { c: oc, r: rr, str: s };
-    };
+    }
 
     // Search expanding radius around (c,r) for any label char; pick nearest by Euclidean distance to origin.
     let best = null;
@@ -2952,7 +2987,7 @@ this.startPasteWithText = function(text)
     }
 
     return best;
-  };
+  }
 
   this.getLabel.help = {
     type: "CADScript_FN",
@@ -2962,7 +2997,7 @@ this.startPasteWithText = function(text)
       "oTERM.printJSON(getLabel(10,5,'ret'))",
       "oTERM.printJSON(oASC.env.ret)"
     ]
-  };
+  }
 
   this.setLabel = function(c, r, label_str)
   {
@@ -2977,13 +3012,13 @@ this.startPasteWithText = function(text)
       if (!ch || ch === " ") return false;
       if (ch === wc) return true;
       return /[A-Za-z0-9_\-\.#:/\\\[\]\(\)]/.test(ch);
-    };
+    }
     const charAt = (rr, cc) => {
       if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) return " ";
       const row = ascii?.[rr];
       if (!row) return " ";
       return (row[cc] === undefined) ? " " : row[cc];
-    };
+    }
 
     // Determine old label length starting at (c,r) so we can clear leftovers if needed.
     let oldLen = 0;
@@ -2996,7 +3031,7 @@ this.startPasteWithText = function(text)
     if (oldLen > s.length) {
       this.putCell(c + s.length, r, " ".repeat(oldLen - s.length));
     }
-  };
+  }
 
   this.setLabel.help = {
     type: "CADScript_FN",
@@ -3006,7 +3041,7 @@ this.startPasteWithText = function(text)
       "setLabel(5,3,'Net_1')",
       "oTERM.printJSON(getLabel(5,3,'ret'))"
     ]
-  };
+  }
 
 
   this.draw = function( str_reason ) 

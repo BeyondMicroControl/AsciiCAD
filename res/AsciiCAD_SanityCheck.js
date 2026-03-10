@@ -424,17 +424,58 @@ function runWorkerThreadSmokeTests()
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
 
-        var rc = 0, cc = 24;
+        var rc = 0, cc = 14;
         oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_FAT,flip:true});
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
 
-        var rc = 0, cc = 44;
+        var rc = 0, cc = 24;
         oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_DOUBLE,flip:true});
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
         rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+
+var ar = [
+"    │         ┃         ║           ",
+"    │───▶     ┃───▶     ║───▶       ",
+"    ├── ▶     ┠── ▶     ╟── ▶       ",
+"   ─│─  ▶    ─┃─  ▶    ─║─  ▶       ",
+"  ──┤   ▶   ──┨   ▶   ──╢   ▶       ",
+" ───│   ▶  ───┃   ▶  ───║   ▶       ",
+"    │         ┃         ║           ",
+"◀   │───  ◀   ┃───  ◀   ║───        ",
+"◀   ├──   ◀   ┠──   ◀   ╟──         ",
+"◀  ─│─    ◀  ─┃─    ◀  ─║─          ",
+"◀ ──┤     ◀ ──┨     ◀ ──╢           ",
+"◀───│     ◀───┃     ◀───║           ",
+"    │         ┃         ║           ",
+"    │━━━▶     ┃━━━▶     ║━━━▶       ",
+"    ┝━━ ▶     ┣━━ ▶     ╟━━ ▶       ",
+"   ━│━  ▶    ━┃━  ▶    ━║━  ▶       ",
+"  ━━┥   ▶   ━━┫   ▶   ━━╢   ▶       ",
+" ━━━│   ▶  ━━━┃   ▶  ━━━║   ▶       ",
+"    │         ┃         ║           ",
+"◀   │━━━  ◀   ┃━━━  ◀   ║━━━        ",
+"◀   ┝━━   ◀   ┣━━   ◀   ╟━━         ",
+"◀  ━│━    ◀  ━┃━    ◀  ━║━          ",
+"◀ ━━┥     ◀ ━━┫     ◀ ━━╢           ",
+"◀━━━│     ◀━━━┃     ◀━━━║           ",
+"    │         ┃         ║           ",
+"    │═══▶     ┃═══▶     ║═══▶       ",
+"    ╞══ ▶     ┣══ ▶     ╠══ ▶       ",
+"   ═│═  ▶    ═┃═  ▶    ═║═  ▶       ",
+"  ══╡   ▶   ══┫   ▶   ══╣   ▶       ",
+" ═══│   ▶  ═══┃   ▶  ═══║   ▶       ",
+"    │         ┃         ║           ",
+"◀   │═══  ◀   ┃═══  ◀   ║═══        ",
+"◀   ╞══   ◀   ┣══   ◀   ╠══         ",
+"◀  ═│═    ◀  ═┃═    ◀  ═║═          ",
+"◀ ══╡     ◀ ══┫     ◀ ══╣           ",
+"◀═══│     ◀═══┃     ◀═══║           "
+]
+
+oASC.assert("combined horizontal crossing", oASC.getCell(0,0,36,oASC.E|oASC.S) ,ar.join("\n"));
 
         //oASC.debug_merge = false;
 
@@ -448,7 +489,7 @@ function runWorkerThreadSmokeTests()
         oASC.stack("undo20");
         n -= 80;
         for(var i=0;i<n;i++) oASC.stack("undo");
-  
+
   
     return
     })
