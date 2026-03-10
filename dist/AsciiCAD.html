@@ -1120,13 +1120,25 @@ function ASC()
     if (__glyph3Codec) return __glyph3Codec;
 
     // ---- build codec (single source of truth) ----
-    const g2m = Object.create(null); // glyph -> mask3
-    const m2g = Object.create(null); // mask3 -> glyph
+    const g2m = Object.create(null);         // glyph -> mask3
+    const m2g = Object.create(null);         // mask3 -> glyph
+    const m2gStandIn = Object.create(null);  // mask3 -> stand-in glyph
 
-    const put = (glyph, mask3) => 
+    const put = (glyph, mask3) =>    // canonical glyph: forward + reverse
     {
       g2m[glyph] = mask3;
       if (m2g[mask3] === undefined) m2g[mask3] = glyph;
+    };
+
+    const alias = (glyph, mask3) =>   // fallback glyph: forward only
+    {
+      g2m[glyph] = mask3;        
+    };
+
+    const standIn = (mask3, glyph) => // stand-in glyph: reverse-only
+    {
+      //if (m2gStandIn[mask3] === undefined) 
+        m2gStandIn[mask3] = glyph;
     };
 
     // Pure style sets (single source of truth)
@@ -1148,7 +1160,6 @@ function ASC()
         "┬":E|S|W,"┳":E|S|W,"╦":E|S|W,
         "┴":E|N|W,"┻":E|N|W,"╩":E|N|W,
         "┼":N|E|S|W,"╋":N|E|S|W,"╬":N|E|S|W,
-
         "╴":E,"╶":W,"╵":N,"╷":S,
         "╸":E,"╺":W,"╹":N,"╻":S
       };
@@ -1166,7 +1177,17 @@ function ASC()
     for (const glyph of GL3_FAT_SET)    put(glyph, pack3(0, dir4(glyph), 0));
     for (const glyph of GL3_THIN_SET)   put(glyph, pack3(dir4(glyph), 0, 0));
 
-    __glyph3Codec = { g2m, m2g };
+    // 3) alternative sets
+    alias("+", pack3(N|E|S|W, 0, 0));
+    alias("-", pack3(E|W, 0, 0));
+    alias("|", pack3(N|S, 0, 0));
+
+    // 3) stand-in sets
+
+    standIn(pack3(0, N|S, E), "┣");
+    standIn(pack3(0, N|S, W), "┫");
+
+    __glyph3Codec = { g2m, m2g, m2gStandIn };
     return __glyph3Codec;
   }
 
@@ -1281,24 +1302,31 @@ function ASC()
       "oTERM.printJSON(oASC.glyphToMask3('╧'))",
     ],
     unitTests: [
-      "oASC.assert('oASC.glyphToMask3(\\'┼\\')', oASC.glyphToMask3('┼') , N|E|S|W)",
-      "oASC.assert('oASC.glyphToMask3(\\'╇\\')', oASC.glyphToMask3('╇') , (S) | (W|N|E)<<4 )",
-      "oASC.assert('oASC.glyphToMask3(\\'╧\\')', oASC.glyphToMask3('╧') , (N|E|W) | (W|E)<<4 )"
+      "oASC.assert('oASC.glyphToMask3(\\'┼\\')', oASC.glyphToMask3('┼') , N|E|S|W)",              // unitype-glyph canonical mapping (ignoring alias)
+      "oASC.assert('oASC.glyphToMask3(\\'+\\')', oASC.glyphToMask3('+') , N|E|S|W)",              // unitype-glyph alias mapping
+      "oASC.assert('oASC.glyphToMask3(\\'╇\\')', oASC.glyphToMask3('╇') , (S) | (W|N|E)<<4 )",    // mixed-glyph canonical mapping
+      "oASC.assert('oASC.glyphToMask3(\\'╧\\')', oASC.glyphToMask3('╧') , (N|E|W) | (W|E)<<4 )",  // mixed-glyph canonical mapping (no stand-in)
+      "oASC.assert('oASC.glyphToMask3(\\'┣\\')', oASC.glyphToMask3('┣') , (N|E|S)<<4 )"           // canonical mapping (ignoring stand-in)
     ]
   }
 
-  this.Mask3ToGlyph = function(m) {
+  this.mask3ToGlyph = function(m) {
     const v = (Number(m) || 0) & 0xFF;
     const codec = getGlyph3Codec();
-    return codec.m2g[v] ?? " ";
+    return codec.m2g[v] ?? codec.m2gStandIn[v] ?? " ";
   }
-  this.Mask3ToGlyph.help = {
+  this.mask3ToGlyph.help = {
     type: "CADScript_FN",
-    usage: "Mask3ToGlyph(<i>m</i>)",
+    usage: "mask3ToGlyph(<i>m</i>)",
     desc: "Reverse of glyphToMask3: map extended 8-bit mask (fat<<4 | thin) back to a wire glyph. Returns ' ' if unknown.",
     examples: [
-      "oTERM.print(Mask3ToGlyph((N|E|S|W)<<4))",              // ╋
-      "oTERM.print(Mask3ToGlyph((N|E|S|W) | ((N|E|S|W)<<4)))" // ╬
+      "oTERM.print(mask3ToGlyph((N|E|S|W)<<4))",              // ╋
+      "oTERM.print(mask3ToGlyph((N|E|S|W) | ((N|E|S|W)<<4)))" // ╬
+    ],
+    unitTests: [
+      "oASC.assert('oASC.mask3ToGlyph( N|E|S|W )'   , oASC.mask3ToGlyph( N|E|S|W )     ,'┼');",    // canonical mapping (ignoring fall-back)
+      "oASC.assert('oASC.mask3ToGlyph(S|(W|N|E)<<4)', oASC.mask3ToGlyph(S|(W|N|E)<<4)  ,'╇');",    // canonical mapping (no fall-back present)
+      "oASC.assert('oASC.mask3ToGlyph(E|(N|S|E)<<4)', oASC.mask3ToGlyph(E | (N|S|E)<<4),'┣');"     // stand-in mapping (no canonical mapping present)
     ]
   };
 
@@ -1330,10 +1358,10 @@ function ASC()
     examples: ["printJSON(dirMask3('┼'))", "printJSON(dirMask3('╵'))"]
   }
 
-  // 4-bit -> glyph (thin/fat/double) via Mask3ToGlyph (8-bit)
-  this.maskToSingle = function(m4){ return this.Mask3ToGlyph((Number(m4)||0) & 0xF) }
-  this.maskToFat = function(m4){ return this.Mask3ToGlyph(((Number(m4)||0) & 0xF) << 4) }
-  this.maskToDouble = function(m4){ const m = (Number(m4)||0) & 0xF; return this.Mask3ToGlyph(m | (m << 4)) }
+  // 4-bit -> glyph (thin/fat/double) via mask3ToGlyph (8-bit)
+  this.maskToSingle = function(m4){ return this.mask3ToGlyph((Number(m4)||0) & 0xF) }
+  this.maskToFat = function(m4){ return this.mask3ToGlyph(((Number(m4)||0) & 0xF) << 4) }
+  this.maskToDouble = function(m4){ const m = (Number(m4)||0) & 0xF; return this.mask3ToGlyph(m | (m << 4)) }
 
   const BOX_CONTOUR = { h:E|W, v:N|S, tl:E|S, tr:W|S, bl:E|N, br:W|N };
 
@@ -1988,7 +2016,7 @@ function ASC()
           var watchCell = s.charAt(3);
           if(this.glyphToMask3(watchCell) == (N|S) || this.glyphToMask3(watchCell) == ((N|S) << 4) )
           {
-            // TODO: use bit arithmetic and Mask3ToGlyph() to generalise solution
+            // TODO: use bit arithmetic and mask3ToGlyph() to generalise solution
 
             if(this.isDoubleWire(watchCell))
             {
@@ -2021,7 +2049,7 @@ function ASC()
         }
         else // Last
         {
-          // TODO: use bit arithmetic and Mask3ToGlyph() to generalise solution
+          // TODO: use bit arithmetic and mask3ToGlyph() to generalise solution
           var watchCell = s.charAt(4);
           if(this.glyphToMask3(watchCell) == (N|S) || this.glyphToMask3(watchCell) == ((N|S) << 4) ) 
           {
