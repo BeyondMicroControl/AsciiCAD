@@ -410,6 +410,9 @@ function runWorkerThreadSmokeTests()
     return oCMD.runExternalScript(oASC.glyphToMask3.help.unitTests.join(";"));   // UNIT test
     })
     .then(function(){
+    return oCMD.runExternalScript(oASC.mask3ToGlyph.help.unitTests.join(";"));   // UNIT test
+    })
+    .then(function(){
     return oCMD.runExternalScript(oASC.computeNetlist.help.unitTests.join(";"));   // UNIT test
     }) 
     .then(function(){
@@ -445,7 +448,7 @@ function runWorkerThreadSmokeTests()
         oASC.stack("undo20");
         n -= 80;
         for(var i=0;i<n;i++) oASC.stack("undo");
-       
+  
   
     return
     })
