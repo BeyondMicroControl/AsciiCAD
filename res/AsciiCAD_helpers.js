@@ -972,11 +972,11 @@ function ASC()
     var _pre = path[0];
     var _cur, pathDir,pathType, pathMask3;
     
-    for (var i=0;i<path.length;i++)
+    for (var i=0;i<path.length;i++) // iterate through the entire path of an orthogonal line
     {
       bFirst = i==0, bLast = i==(path.length-1); 
-      var Hfilter = E | E<<4 | W | W<<4;
-      var Vfilter = N | N<<4 | S | S<<4;
+      var Hfilter = E | E<<4 | W | W<<4;  // horizontal filter
+      var Vfilter = N | N<<4 | S | S<<4;  // vertical filter
 
       if(!bLast)  // determine path direction by comparing the position of the next step
       {
@@ -991,9 +991,9 @@ function ASC()
 
       if((pathDir & Hfilter) != 0)    // line travels horizontally
       {
-        var cellD = (N|S|E|W) ^ pathDir;
-        var cellP = oASC.getCell(_cur.c,_cur.r,2,cellD);
-        var watchMatrix = this.rotate(cellP,pathDir,E);
+        var cellD = (N|S|E|W) ^ pathDir;                  // defines direction where to look 
+        var cellP = oASC.getCell(_cur.c,_cur.r,2,cellD);  // grab ascii matrix (straight)
+        var watchMatrix = this.rotate(cellP,pathDir,E);   // align the ascii matrix into the direction of the path
         //console.log("Solve:"+JSON.stringify(path[i])+" cellD:"+this.maskToString(cellD)+" pathDir:"+this.maskToString(pathDir)+"\n"+watchMatrix.replace(/ /g,".")+" "+watchMatrix.charAt(5) );
 
         if(bFirst)
@@ -1029,7 +1029,7 @@ function ASC()
           }
         }
       }
-      
+
       _pre = _cur;
       outPath[i] = path[i];
     }
