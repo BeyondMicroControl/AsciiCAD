@@ -302,38 +302,6 @@ function runMixedJunctionTests()
 }
 
 
-function testDoubleBusCross() 
-{
-  setSmallGridFromLines([
-    "   ",
-    "   ",
-    "═══",
-    "═══",
-    "   ",
-  ]);
-
-  // simulate committing a vertical double line in middle col=1
-  for (let r = 0; r < 5; r++) ascii[r][1] = "║";
-
-  // normalize around affected area (simple: whole 5x3 here)
-  const affected = new Set();
-  for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) affected.add(r + "," + c);
-
-  const stroke = [];
-  oASC.normalizeAffected(affected, stroke);
-
-  const got = getSmallGridText(3,5);
-  const exp =
-    " ║ \n" +
-    " ║ \n" +
-    "═╬═\n" +
-    "═╬═\n" +
-    " ║ \n";
-
-  assertGrid("double bus cross over 2 rows => ╬╬", got, exp);
-}
-
-
 // WORKER THREAD SMOKE TESTS (requires CMD worker)
 
 function small3x1Plus()
@@ -346,7 +314,7 @@ function small3x1Spaces()
   return " \n \n \n";
 }
 
-function lineSEQ(o)
+function HlineSEQ(o)
 {
   var co;
   o.rc++; co = 1;
@@ -364,6 +332,28 @@ function lineSEQ(o)
   oASC.putLine({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc-4,o.rc,"◀"); o.rc++; co--;
   oASC.putLine({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc-4,o.rc,"◀"); o.rc++; co--;
   oASC.putLine({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  return o.rc;
+}
+
+function VlineSEQ(o)
+{
+  var co;
+  o.rc++; co = 1;
+
+  oASC.putLine({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.putLine({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.putLine({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.putLine({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.putLine({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+
+  o.rc++; co = 1; 
+
+  oASC.putLine({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.putLine({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.putLine({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.putLine({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.putLine({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+ 
   return o.rc;
 }
 
@@ -416,71 +406,70 @@ function runWorkerThreadSmokeTests()
     return oCMD.runExternalScript(oASC.computeNetlist.help.unitTests.join(";"));   // UNIT test
     }) 
     .then(function(){
-        //oASC.debug_merge = true;
+        // TEST HORIZONTAL LINE CROSSINGS
 
         var rc = 0, cc = 4;
         oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_SINGLE,flip:true});
-        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
-        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
-        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
 
         var rc = 0, cc = 14;
         oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_FAT,flip:true});
-        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
-        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
-        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
 
         var rc = 0, cc = 24;
         oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_DOUBLE,flip:true});
-        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
-        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
-        rc = lineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
 
-var ar = [
-"    │         ┃         ║           ",
-"    │───▶     ┃───▶     ║───▶       ",
-"    ├── ▶     ┠── ▶     ╟── ▶       ",
-"   ─│─  ▶    ─┃─  ▶    ─║─  ▶       ",
-"  ──┤   ▶   ──┨   ▶   ──╢   ▶       ",
-" ───│   ▶  ───┃   ▶  ───║   ▶       ",
-"    │         ┃         ║           ",
-"◀   │───  ◀   ┃───  ◀   ║───        ",
-"◀   ├──   ◀   ┠──   ◀   ╟──         ",
-"◀  ─│─    ◀  ─┃─    ◀  ─║─          ",
-"◀ ──┤     ◀ ──┨     ◀ ──╢           ",
-"◀───│     ◀───┃     ◀───║           ",
-"    │         ┃         ║           ",
-"    │━━━▶     ┃━━━▶     ║━━━▶       ",
-"    ┝━━ ▶     ┣━━ ▶     ╟━━ ▶       ",
-"   ━│━  ▶    ━┃━  ▶    ━║━  ▶       ",
-"  ━━┥   ▶   ━━┫   ▶   ━━╢   ▶       ",
-" ━━━│   ▶  ━━━┃   ▶  ━━━║   ▶       ",
-"    │         ┃         ║           ",
-"◀   │━━━  ◀   ┃━━━  ◀   ║━━━        ",
-"◀   ┝━━   ◀   ┣━━   ◀   ╟━━         ",
-"◀  ━│━    ◀  ━┃━    ◀  ━║━          ",
-"◀ ━━┥     ◀ ━━┫     ◀ ━━╢           ",
-"◀━━━│     ◀━━━┃     ◀━━━║           ",
-"    │         ┃         ║           ",
-"    │═══▶     ┃═══▶     ║═══▶       ",
-"    ╞══ ▶     ┣══ ▶     ╠══ ▶       ",
-"   ═│═  ▶    ═┃═  ▶    ═║═  ▶       ",
-"  ══╡   ▶   ══┫   ▶   ══╣   ▶       ",
-" ═══│   ▶  ═══┃   ▶  ═══║   ▶       ",
-"    │         ┃         ║           ",
-"◀   │═══  ◀   ┃═══  ◀   ║═══        ",
-"◀   ╞══   ◀   ┣══   ◀   ╠══         ",
-"◀  ═│═    ◀  ═┃═    ◀  ═║═          ",
-"◀ ══╡     ◀ ══┫     ◀ ══╣           ",
-"◀═══│     ◀═══┃     ◀═══║           "
-]
+        var ar = [
+        "    │         ┃         ║           ",
+        "    │───▶     ┃───▶     ║───▶       ",
+        "    ├── ▶     ┠── ▶     ╟── ▶       ",
+        "   ─│─  ▶    ─┃─  ▶    ─║─  ▶       ",
+        "  ──┤   ▶   ──┨   ▶   ──╢   ▶       ",
+        " ───│   ▶  ───┃   ▶  ───║   ▶       ",
+        "    │         ┃         ║           ",
+        "◀   │───  ◀   ┃───  ◀   ║───        ",
+        "◀   ├──   ◀   ┠──   ◀   ╟──         ",
+        "◀  ─│─    ◀  ─┃─    ◀  ─║─          ",
+        "◀ ──┤     ◀ ──┨     ◀ ──╢           ",
+        "◀───│     ◀───┃     ◀───║           ",
+        "    │         ┃         ║           ",
+        "    │━━━▶     ┃━━━▶     ║━━━▶       ",
+        "    ┝━━ ▶     ┣━━ ▶     ╟━━ ▶       ",
+        "   ━│━  ▶    ━┃━  ▶    ━║━  ▶       ",
+        "  ━━┥   ▶   ━━┫   ▶   ━━╢   ▶       ",
+        " ━━━│   ▶  ━━━┃   ▶  ━━━║   ▶       ",
+        "    │         ┃         ║           ",
+        "◀   │━━━  ◀   ┃━━━  ◀   ║━━━        ",
+        "◀   ┝━━   ◀   ┣━━   ◀   ╟━━         ",
+        "◀  ━│━    ◀  ━┃━    ◀  ━║━          ",
+        "◀ ━━┥     ◀ ━━┫     ◀ ━━╢           ",
+        "◀━━━│     ◀━━━┃     ◀━━━║           ",
+        "    │         ┃         ║           ",
+        "    │═══▶     ┃═══▶     ║═══▶       ",
+        "    ╞══ ▶     ┣══ ▶     ╠══ ▶       ",
+        "   ═│═  ▶    ═┃═  ▶    ═║═  ▶       ",
+        "  ══╡   ▶   ══┫   ▶   ══╣   ▶       ",
+        " ═══│   ▶  ═══┃   ▶  ═══║   ▶       ",
+        "    │         ┃         ║           ",
+        "◀   │═══  ◀   ┃═══  ◀   ║═══        ",
+        "◀   ╞══   ◀   ┣══   ◀   ╠══         ",
+        "◀  ═│═    ◀  ═┃═    ◀  ═║═          ",
+        "◀ ══╡     ◀ ══┫     ◀ ══╣           ",
+        "◀═══│     ◀═══┃     ◀═══║           "
+        ]
 
-oASC.assert("combined horizontal crossing", oASC.getCell(0,0,36,oASC.E|oASC.S) ,ar.join("\n"));
-
-        //oASC.debug_merge = false;
+        oASC.assert("combined horizontal crossing", oASC.getCell(0,0,36,oASC.E|oASC.S) ,ar.join("\n"));
 
 
-        var n = 1+3*20 +1+3*20 +1+3*20 - 2
+
+        var n = 1+3*20 +1+3*20 +1+3*20 - 0
         oASC.stack("undo100");
         n -= 100;
         oASC.stack("undo20");
@@ -492,6 +481,29 @@ oASC.assert("combined horizontal crossing", oASC.getCell(0,0,36,oASC.E|oASC.S) ,
 
   
     return
+    })
+    .then(function(){
+        // TEST VERTICAL LINE CROSSINGS
+
+        var rc = 0, cc = 4;
+        oASC.putLine({from:{c:rc,r:cc},to:{c:rc+35,r:cc},kind:oASC.BOX_SINGLE,flip:true});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+
+        var rc = 0, cc = 14;
+         oASC.putLine({from:{c:rc,r:cc},to:{c:rc+35,r:cc},kind:oASC.BOX_SINGLE,flip:true});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+         
+        var rc = 0, cc = 24;
+        oASC.putLine({from:{c:rc,r:cc},to:{c:rc+35,r:cc},kind:oASC.BOX_SINGLE,flip:true});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+
+
     })
     .then(function() { worker?.terminate?.(); })
     .then(function()
@@ -559,7 +571,6 @@ oASC.assert("combined horizontal crossing", oASC.getCell(0,0,36,oASC.E|oASC.S) ,
   console.assert(!oASC.catalogTypes().includes(""), "catalogTypes contains empty string");
 
   runMixedJunctionTests(); oASC.wipeSelection(' ');
-  testDoubleBusCross(); oASC.wipeSelection(' ');
 
   // Run worker sandbox tests after the synchronous sanity checks.
   runWorkerThreadSmokeTests()

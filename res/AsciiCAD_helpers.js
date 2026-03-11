@@ -968,10 +968,9 @@ function ASC()
   this.solveIntersect = function(path)
   {
     var outPath = {};
-    //this.N = 0b0001, this.E = 0b0010, this.S = 0b0100, this.W = 0b1000;
     outPath[i] = path[0];
     var _pre = path[0];
-    var _cur, pathDir, pathMask3;
+    var _cur, pathDir,pathType, pathMask3;
     
     for (var i=0;i<path.length;i++)
     {
@@ -979,29 +978,27 @@ function ASC()
       var Hfilter = E | E<<4 | W | W<<4;
       var Vfilter = N | N<<4 | S | S<<4;
 
-      if(!bLast)
+      if(!bLast)  // determine path direction by comparing the position of the next step
       {
         _cur = path[i+1];
         var dr    = _cur.r - _pre.r
         var dc    = _cur.c - _pre.c;
-        pathDir   = 1 << (dr-dc+dc*dc+1);        // get path direction
-        var t     = this.glyphToMask3(_cur.ch);
-        pathMask3 = ((t&0b1111)>0?pathDir:0) | ((t&0b11110000)>0?pathDir:0)<<4;
+        pathDir   = 1 << (dr-dc+dc*dc+1);           // get path direction
+        pathType     = this.glyphToMask3(_cur.ch);  // get path wire type
+        pathMask3 = ((pathType&0b1111)>0?pathDir:0) | ((pathType&0b11110000)>0?pathDir:0)<<4;
         //console.log(">> pathDir=0b"+pathDir.toString(2)+" _cur='"+_cur.ch+"' t=0b"+t.toString(2));
       }
 
-      var cellD = (N|S|E|W) ^ pathDir;
-      var cellP = oASC.getCell(_cur.c,_cur.r,2,cellD);
-
-      if((pathDir & Hfilter) != 0)
+      if((pathDir & Hfilter) != 0)    // line travels horizontally
       {
-        var s = this.rotate(cellP,pathDir,E).replace(/ /g,".");
-        //var s = cellP.replace(/ /g,".");
-        console.log("Solve:"+JSON.stringify(path[i])+" cellD:"+this.maskToString(cellD)+" pathDir:"+this.maskToString(pathDir)+"\n"+s+" "+s.charAt(5) );
+        var cellD = (N|S|E|W) ^ pathDir;
+        var cellP = oASC.getCell(_cur.c,_cur.r,2,cellD);
+        var watchMatrix = this.rotate(cellP,pathDir,E);
+        //console.log("Solve:"+JSON.stringify(path[i])+" cellD:"+this.maskToString(cellD)+" pathDir:"+this.maskToString(pathDir)+"\n"+watchMatrix.replace(/ /g,".")+" "+watchMatrix.charAt(5) );
 
         if(bFirst)
         {
-          var watchCell = s.charAt(3);
+          var watchCell     = watchMatrix.charAt(3);
           var watchCell_dir = this.glyphToMask3(watchCell);
           if((watchCell_dir & Vfilter) != 0)
           {
@@ -1013,16 +1010,15 @@ function ASC()
         }
         else if(!bFirst && !bLast)
         {
-          var watchCell = s.charAt(3);
+          var watchCell = watchMatrix.charAt(3);
           if((this.glyphToMask3(watchCell) & Vfilter) != 0) 
           {
             path[i].ch = watchCell;  // when horizontal goes through a straigt line => override '-' (on path) by '|' (on grid)
           }
         }
-        else // Last
+        else if(bLast)
         {
-          // TODO: use bit arithmetic and mask3ToGlyph() to generalise solution
-          var watchCell = s.charAt(4);
+          var watchCell = watchMatrix.charAt(4);
           var watchCell_dir = this.glyphToMask3(watchCell);
           if((watchCell_dir & Vfilter) != 0) 
           {
@@ -1032,9 +1028,9 @@ function ASC()
             //this.putCell(path[i].c+6,path[i].r,"*");
           }
         }
-
-        _pre = _cur;
       }
+      
+      _pre = _cur;
       outPath[i] = path[i];
     }
     return path;
