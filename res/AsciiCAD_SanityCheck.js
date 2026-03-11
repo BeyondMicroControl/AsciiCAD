@@ -492,16 +492,67 @@ function runWorkerThreadSmokeTests()
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
 
         var rc = 0, cc = 14;
-         oASC.putLine({from:{c:rc,r:cc},to:{c:rc+35,r:cc},kind:oASC.BOX_SINGLE,flip:true});
+         oASC.putLine({from:{c:rc,r:cc},to:{c:rc+35,r:cc},kind:oASC.BOX_FAT,flip:true});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
          
         var rc = 0, cc = 24;
-        oASC.putLine({from:{c:rc,r:cc},to:{c:rc+35,r:cc},kind:oASC.BOX_SINGLE,flip:true});
+        oASC.putLine({from:{c:rc,r:cc},to:{c:rc+35,r:cc},kind:oASC.BOX_DOUBLE,flip:true});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+
+        var ar = [
+        "       ▲▲▲▲▲       ▲▲▲▲▲       ▲▲▲▲▲",
+        "     │     │     ┃     ┃     ║     ║",
+        "    ││    ││    ┃┃    ┃┃    ║║    ║║",
+        "   │││   │││   ┃┃┃   ┃┃┃   ║║║   ║║║",
+        "──┬│┴───┬│┴───┰┃┸───┰┃┸───╥║╨───╥║╨─",
+        " │││   │││   ┃┃┃   ┃┃┃   ║║║   ║║║  ",
+        " ││    ││    ┃┃    ┃┃    ║║    ║║   ",
+        " │     │     ┃     ┃     ║     ║    ",
+        " ▼▼▼▼▼       ▼▼▼▼▼       ▼▼▼▼▼      ",
+        "                                    ",
+        "       ▲▲▲▲▲       ▲▲▲▲▲       ▲▲▲▲▲",
+        "     │     │     ┃     ┃     ║     ║",
+        "    ││    ││    ┃┃    ┃┃    ║║    ║║",
+        "   │││   │││   ┃┃┃   ┃┃┃   ║║║   ║║║",
+        "━━┯│┷━━━┯│┷━━━┳┃┻━━━┳┃┻━━━┳║┻━━━┳║┻━",
+        " │││   │││   ┃┃┃   ┃┃┃   ║║║   ║║║  ",
+        " ││    ││    ┃┃    ┃┃    ║║    ║║   ",
+        " │     │     ┃     ┃     ║     ║    ",
+        " ▼▼▼▼▼       ▼▼▼▼▼       ▼▼▼▼▼      ",
+        "                                    ",
+        "       ▲▲▲▲▲       ▲▲▲▲▲       ▲▲▲▲▲",
+        "     │     │     ┃     ┃     ║     ║",
+        "    ││    ││    ┃┃    ┃┃    ║║    ║║",
+        "   │││   │││   ┃┃┃   ┃┃┃   ║║║   ║║║",
+        "══╤│╧═══╤│╧═══╤┃╧═══╤┃╧═══╦║╩═══╦║╩═",
+        " │││   │││   ┃┃┃   ┃┃┃   ║║║   ║║║  ",
+        " ││    ││    ┃┃    ┃┃    ║║    ║║   ",
+        " │     │     ┃     ┃     ║     ║    ",
+        " ▼▼▼▼▼       ▼▼▼▼▼       ▼▼▼▼▼      ",
+        "                                    ",
+        "                                    ",
+        "                                    ",
+        "                                    ",
+        "                                    ",
+        "                                    ",
+        "                                    "
+        ]
+
+        oASC.assert("combined vertical crossing", oASC.getCell(0,0,36,oASC.E|oASC.S) ,ar.join("\n"));
+
+        var n = 1+3*20 +1+3*20 +1+3*20 - 0
+        oASC.stack("undo100");
+        n -= 100;
+        oASC.stack("undo20");
+        oASC.stack("undo20");
+        oASC.stack("undo20");
+        oASC.stack("undo20");
+        n -= 80;
+        for(var i=0;i<n;i++) oASC.stack("undo");
 
 
     })
