@@ -1189,6 +1189,11 @@ function ASC()
     standIn(pack3(0, W, N|S), '╢');
     standIn(pack3(0, E, N|S), '╟');
 
+    standIn(pack3(0, E|W, S), '┳');
+    standIn(pack3(0, E|W, N), '┻');
+    standIn(pack3(0, S, E|W), '╤');
+    standIn(pack3(0, N, E|W), '╧');  
+
     __glyph3Codec = { g2m, m2g, m2gStandIn };
     return __glyph3Codec;
   }
@@ -1242,6 +1247,13 @@ function ASC()
     "┨": { thin: W,     fat: N|S },
     "┪": { thin: N,     fat: W|S },
     "┩": { thin: S,     fat: W|N },
+
+    '┶': { thin: W|N,   fat: W },
+    '┸': { thin: W|E,   fat: N },
+    '┵': { thin: N|E,   fat: E },
+    '┺': { thin: W,     fat: N|E },
+    '┷': { thin: N,     fat: W|E },
+    '┹': { thin: E,     fat: W|N },
 
     "┭": { thin: E|S,   fat: W },
     "┮": { thin: S|W,   fat: E },
@@ -2072,8 +2084,8 @@ function ASC()
       {
         var cellD = (N|S|E|W) ^ pathDir;                  // defines direction where to look 
         var cellP = oASC.getCell(_cur.c,_cur.r,2,cellD);  // grab ascii matrix (straight)
-        var watchMatrix = this.rotate(cellP,pathDir,E);   // align the ascii matrix into the direction of the path
-        //console.log("Solve:"+JSON.stringify(path[i])+" cellD:"+this.maskToString(cellD)+" pathDir:"+this.maskToString(pathDir)+"\n"+watchMatrix.replace(/ /g,".")+" "+watchMatrix.charAt(5) );
+        var watchMatrix = this.rotate(cellP,pathDir,E);   // align the ascii matrix
+        //console.log("Solve:"+JSON.stringify(path[i])+" cellD:"+this.maskToString(cellD)+" pathDir:"+this.maskToString(pathDir)+"\n"+watchMatrix.replace(/ /g,".")+" "+watchMatrix.charAt(5) +" MatrixLen="+watchMatrix.length);
 
         if(bFirst)
         {
@@ -2081,10 +2093,8 @@ function ASC()
           var watchCell_dir = this.glyphToMask3(watchCell);
           if((watchCell_dir & Vfilter) != 0)
           {
-            res_dir = watchCell_dir | pathMask3;
-            //this.putCell(path[i].c+6,path[i].r,this.maskToString(res_dir)+"*");
-            path[i].ch = this.mask3ToGlyph(res_dir);
-            //this.putCell(path[i].c+6,path[i].r,"*");
+            res_dir = watchCell_dir | pathMask3;            //this.putCell(path[i].c+6,path[i].r,this.maskToString(res_dir)+"*");
+            path[i].ch = this.mask3ToGlyph(res_dir);        //this.putCell(path[i].c+6,path[i].r,"*");
           }
         }
         else if(!bFirst && !bLast)
@@ -2097,17 +2107,68 @@ function ASC()
         }
         else if(bLast)
         {
+          //console.log("Solve:"+JSON.stringify(path[i])+" cellD:"+this.maskToString(cellD)+" pathDir:"+this.maskToString(pathDir)+"\n"+watchMatrix.replace(/ /g,".")+" "+watchMatrix.charAt(5) +" MatrixLen="+watchMatrix.length);
+
           var watchCell = watchMatrix.charAt(4);
           var watchCell_dir = this.glyphToMask3(watchCell);
           if((watchCell_dir & Vfilter) != 0) 
           {
             res_dir = watchCell_dir | this.mirrorMask3(pathMask3 & Hfilter,true);
             //this.putCell(path[i].c+6,path[i].r,this.maskToString(res_dir)+"*");
+
             path[i].ch = this.mask3ToGlyph(res_dir);
             //this.putCell(path[i].c+6,path[i].r,"*");
           }
         }
       }
+
+      if((pathDir & Vfilter) != 0) // line travels vertically
+      {
+        var cellD = (N|S|E|W) ^ pathDir;                  // defines direction where to look
+        var cellP = oASC.getCell(_cur.c,_cur.r,2,cellD); // grab ascii matrix (straight)
+        var watchMatrix = this.rotate(cellP,pathDir,E);  // align the ascii matrix
+
+        if(bFirst)
+        {
+          var watchCell = watchMatrix.charAt(3);
+          var watchCell_dir = this.glyphToMask3(watchCell);
+          if((watchCell_dir & Hfilter) != 0)      // TODO: merge! (the only difference is filter orientation)
+          {
+            res_dir = watchCell_dir | pathMask3;          //this.putCell(path[i].c,path[i].r+5,res_dir.toString(16) );
+            path[i].ch = this.mask3ToGlyph(res_dir);      //this.putCell(path[i].c,path[i].r+5,"*");
+          }
+        }
+        else if(!bFirst && !bLast)
+        {
+          // do not alter anything (policy on vertical path line crossings)
+        }
+        else if(bLast)
+        {
+          //console.log("Solve:"+JSON.stringify(path[i])+" cellD:"+this.maskToString(cellD)+" pathDir:"+this.maskToString(pathDir)+"\n"+watchMatrix.replace(/ /g,".")+" "+watchMatrix.charAt(5) +" MatrixLen="+watchMatrix.length);
+
+          var watchCell     = watchMatrix.charAt(4);
+          var watchCell_dir = this.glyphToMask3(watchCell);
+        
+          //if(path[i].r == 4) this.putCell(path[i].c,path[i].r+5,watchCell);
+
+          if((watchCell_dir & Hfilter) != 0)
+          {
+            // mirror vertical path segment around horizontal axis (N <-> S)
+            res_dir = watchCell_dir | this.mirrorMask3(pathMask3 & Vfilter,false);
+
+            //this.putCell(path[i].c,path[i].r+5,watchCell_dir.toString(16) );
+            //this.putCell(path[i].c,path[i].r+5,  this.mirrorMask3(pathMask3 & Vfilter,false).toString(16)   );
+            //this.putCell(path[i].c,path[i].r+5,  this.mask3ToGlyph(watchCell_dir)   );
+            //this.putCell(path[i].c,path[i].r+5,  this.mask3ToGlyph(this.mirrorMask3(pathMask3 & Vfilter,false))   );
+            //this.putCell(path[i].c,path[i].r+5,'*' );
+
+            //this.putCell(path[i].c,path[i].r+5,res_dir.toString(16) );
+
+            path[i].ch = this.mask3ToGlyph(res_dir);
+          }
+        }
+      }
+
 
       _pre = _cur;
       outPath[i] = path[i];
