@@ -370,44 +370,45 @@ function runWorkerThreadSmokeTests()
         //return sanityWorkerSymbolsForASC(__help_oASC);
      })
     .then(function(){
-      console.log("-6-");
+      console.log("-1-");
       exp = "TEST";
       // set environment variable
     return oCMD.runExternalScript("oTERM.setenv(\"myVar\",\""+exp +"\")");
     })
     .then(function(){
+      console.log("-2-");
       var got = oTERM._o.env.myVar;
       assertEq("set environment variable oTERM.setenv(\"myVar\",\""+exp +"\")", got, exp);
       // get environment variable
     return oCMD.runExternalScript("{ oTERM.setenv(\"cpyVar\",oTERM.getenv(\"myVar\"))}");
     })
     .then(function(){
+      console.log("-3-");
       var got = oTERM._o.env.cpyVar;
       assertEq("get environment variable oTERM.setenv(\"cpyVar\",oTERM.getenv(\"myvar\"))", got, exp);
-    console.log("-7-");
-    return oCMD.runExternalScript(oASC.putCell.help.unitTests.join(";"));   // UNIT test
+      console.log("-4-");
+    return oCMD.runExternalScript(oASC.putCell.help.unitTests.join(";"));          // UNIT test
     })
     .then(function(){
-    return oCMD.runExternalScript(oASC.cat.help.unitTests.join(";"));       // UNIT test
+    return oCMD.runExternalScript(oASC.cat.help.unitTests.join(";"));              // UNIT test
     })
     .then(function(){
-    return oCMD.runExternalScript(oASC.box.help.unitTests.join(";"));       // UNIT test
+    return oCMD.runExternalScript(oASC.box.help.unitTests.join(";"));              // UNIT test
     }) 
     .then(function(){
-    return oCMD.runExternalScript(oASC.putLine.help.unitTests.join(";"));   // UNIT test
+    return oCMD.runExternalScript(oASC.putLine.help.unitTests.join(";"));          // UNIT test
     }) 
     .then(function(){
-    return oCMD.runExternalScript(oASC.glyphToMask3.help.unitTests.join(";"));   // UNIT test
+    return oCMD.runExternalScript(oASC.glyphToMask3.help.unitTests.join(";"));     // UNIT test
     })
     .then(function(){
-    return oCMD.runExternalScript(oASC.mask3ToGlyph.help.unitTests.join(";"));   // UNIT test
+    return oCMD.runExternalScript(oASC.mask3ToGlyph.help.unitTests.join(";"));     // UNIT test
     })
     .then(function(){
     return oCMD.runExternalScript(oASC.computeNetlist.help.unitTests.join(";"));   // UNIT test
     }) 
     .then(function(){
         // TEST HORIZONTAL LINE CROSSINGS
-
         var rc = 0, cc = 4;
         oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_SINGLE,flip:true});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
@@ -543,6 +544,7 @@ function runWorkerThreadSmokeTests()
         ]
 
         oASC.assert("combined vertical crossing", oASC.getCell(0,0,36,oASC.E|oASC.S) ,ar.join("\n"));
+
 
         var n = 1+3*20 +1+3*20 +1+3*20 - 0
         oASC.stack("undo100");
