@@ -545,7 +545,7 @@ function runWorkerThreadSmokeTests()
 
         oASC.assert("combined vertical crossing", oASC.getCell(0,0,36,oASC.E|oASC.S) ,ar.join("\n"));
 
-
+        
         var n = 1+3*20 +1+3*20 +1+3*20 - 0
         oASC.stack("undo100");
         n -= 100;
@@ -555,7 +555,7 @@ function runWorkerThreadSmokeTests()
         oASC.stack("undo20");
         n -= 80;
         for(var i=0;i<n;i++) oASC.stack("undo");
-
+        
 
     })
     .then(function() { worker?.terminate?.(); })

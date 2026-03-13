@@ -978,17 +978,19 @@ function ASC()
   this.solveIntersect = function(path)
   {
     var outPath = {};
-    outPath[i] = path[0];
-    var _pre = path[0];
-    var _cur, pathDir,pathType, pathMask3;
+    var pathIdx=0
+    outPath[pathIdx] = path[pathIdx];
+
+    var _pre = path[pathIdx];
+    var _cur, pathDir, pathType, pathMask3;
     
-    for (var i=0;i<path.length;i++) // iterate through the entire path of an orthogonal line
+    for (;pathIdx<path.length;pathIdx++) // iterate through the entire path of an orthogonal line
     {
-      bFirst = i==0, bLast = i==(path.length-1); 
+      bFirst = pathIdx==0, bLast = pathIdx==(path.length-1); 
 
       if(!bLast)  // determine path direction by comparing the position of the next step
       {
-        _cur = path[i+1];
+        _cur = path[pathIdx+1];
         var dr    = _cur.r - _pre.r
         var dc    = _cur.c - _pre.c;
         pathDir   = 1 << (dr-dc+dc*dc+1);           // get path direction
@@ -1006,7 +1008,7 @@ function ASC()
       var cellD = (N|S|E|W) ^ pathDir;                  // defines direction where to look 
       var cellP = oASC.getCell(_cur.c,_cur.r,2,cellD);  // grab ascii matrix (straight)
       var watchMatrix = this.rotate(cellP,pathDir,E);   // align the ascii matrix
-      //console.log("Solve:"+JSON.stringify(path[i])+" cellD:"+this.maskToString(cellD)+" pathDir:"+this.maskToString(pathDir)+"\n"+watchMatrix.replace(/ /g,".")+" "+watchMatrix.charAt(5) +" MatrixLen="+watchMatrix.length);
+      //console.log("Solve:"+JSON.stringify(path[pathIdx])+" cellD:"+this.maskToString(cellD)+" pathDir:"+this.maskToString(pathDir)+"\n"+watchMatrix.replace(/ /g,".")+" "+watchMatrix.charAt(5) +" MatrixLen="+watchMatrix.length);
 
       if(bFirst)
       {
@@ -1015,7 +1017,7 @@ function ASC()
         if((watchCell_dir & dirFilter1) != 0)
         {
           res_dir = watchCell_dir | pathMask3;                                        // assemble both elements to form a T-shape start
-          path[i].ch = this.mask3ToGlyph(res_dir);                                    //this.putCell(path[i].c+6,path[i].r,"*");
+          path[pathIdx].ch = this.mask3ToGlyph(res_dir);                              //this.putCell(path[pathIdx].c+6,path[pathIdx].r,"*");
           //console.log("Solve: '"+this.mask3ToGlyph(watchCell_dir)+"' + '"+this.mask3ToGlyph(pathMask3)+"' = '"+this.mask3ToGlyph(res_dir)+"'");
         }
       }
@@ -1024,7 +1026,7 @@ function ASC()
         if(bDir2) continue;
         var watchCell = watchMatrix.charAt(3);
         if((this.glyphToMask3(watchCell) & Vfilter) != 0) 
-          path[i].ch = watchCell;  // when horizontal goes through a straigt line => override '-' (on path) by '|' (on grid)
+          path[pathIdx].ch = watchCell;  // when horizontal goes through a straigt line => override '-' (on path) by '|' (on grid)
       }
       else if(bLast)
       {
@@ -1033,12 +1035,12 @@ function ASC()
         if((watchCell_dir & dirFilter1) != 0) 
         {
           res_dir = watchCell_dir | this.mirrorMask3(pathMask3 & dirFilter2,bDir1);    // assemble both elements to form a T-shape ending
-          path[i].ch = this.mask3ToGlyph(res_dir);                                     //this.putCell(path[i].c+6,path[i].r,"*");
+          path[pathIdx].ch = this.mask3ToGlyph(res_dir);                                     //this.putCell(path[pathIdx].c+6,path[pathIdx].r,"*");
           //console.log("Solve: '"+this.mask3ToGlyph(watchCell_dir)+"' + '"+this.mask3ToGlyph(this.mirrorMask3(pathMask3 & dirFilter2,bDir1))+"' = '"+this.mask3ToGlyph(res_dir)+"'");
         }
       }
       _pre = _cur;
-      outPath[i] = path[i];
+      outPath[pathIdx] = path[pathIdx];
     }
     return path;
   }
@@ -1895,8 +1897,8 @@ this.startPasteWithText = function(text)
   this.findCatalogItemByUID = function(uid) 
   {
     const items = (typeof CATALOG !== "undefined") ? CATALOG : [];
-    for (let i = 0; i < items.length; i++)
-      if (this.itemUID(items[i]) === uid) return items[i];
+    for (let cit = 0; cit < items.length; cit++)
+      if (this.itemUID(items[cit]) === uid) return items[cit];
     return null;
   }
 
@@ -2064,7 +2066,8 @@ this.startPasteWithText = function(text)
 
     if (matches && matches.length) {
       const items = (typeof CATALOG !== "undefined" && Array.isArray(CATALOG)) ? CATALOG : [];
-      for (let i = 0; i < matches.length; i++) {
+      for (let i = 0; i < matches.length; i++) 
+      {
         const m = matches[i];
         const it = items[m.catalog_idx] || {};
         const name = String(m.name ?? it.name ?? "");
