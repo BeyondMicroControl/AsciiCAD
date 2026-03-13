@@ -1850,32 +1850,14 @@ function ASC()
     this.draw("moveLine");
   }
 
-  // TODO: why is endLine() unused ? 
   this.endLine = function()
   {
     if (!lineDrag) return;
 
-    const path = this.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
-    const stroke = [];
-
-    for (const p of path)
-    {
-      if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-
-      const prev = ascii[p.r][p.c];
-      const next = p.ch;
-
-      if (prev !== next) {
-        stroke.push({ r: p.r, c: p.c, prev, next });
-        this.drawCharAtCell(p.r, p.c, next); // commit writes to ascii
-      }
-    }
-
-    if(bDebug) console.log("endLine()");
-    lineDrag = null;
-    this.pushStrokeIfNonEmpty(stroke);
-    this.draw("endLine");
-  }
+    const drag = lineDrag;
+    lineDrag = null;          // clear preview state first
+    this.putLine(drag);       // drag has start/cur/flip/kind, now supported
+  };
 
   // TODO: why is cancelLine() unused ? 
   this.cancelLine = function() 
@@ -2011,13 +1993,23 @@ function ASC()
   }
 
   // INFO: commitLineWithOptionalMerge() is buggy, therefore we need to get putLine perfect.
-  this.putLine = function(lineDrag)
+  this.putLine = function(lineArg)
   {
-    if (!lineDrag) return;
-    const Lpath = this.buildOrthogonalPath(lineDrag.from,lineDrag.to,lineDrag.flip,lineDrag.kind);
+    if (!lineArg) return;
+
+    // Accept both programmatic shape ({from,to,...}) and UI shape ({start,cur,...})
+    const from = lineArg.from ?? lineArg.start;
+    const to   = lineArg.to   ?? lineArg.cur;
+    const flip = !!lineArg.flip;
+    const kind = lineArg.kind;
+
+    if (!from || !to) return;
+
+    const Lpath = this.buildOrthogonalPath(from, to, flip, kind);
     const path = this.solveIntersect(Lpath);
+
     const stroke = [];
-    for (const p of path) 
+    for (const p of path)
     {
       if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
       const prev = ascii[p.r][p.c];
@@ -2028,10 +2020,10 @@ function ASC()
         ascii[p.r][p.c] = next;
       }
     }
-    lineDrag = null;
+
     this.pushStrokeIfNonEmpty(stroke);
     this.draw("putLine");
-  }
+  };
   this.putLine.help =
   {
     type: "CADScript_Fn",
@@ -2154,83 +2146,42 @@ function ASC()
     if (bDebug) console.log("commitLineWithOptionalMerge() lineDrag=", lineDrag);
     if (!lineDrag) return;
 
-    // TODO: check and describe what this function does
-    function addNeighborsToSet(set, r, c) 
-    {
-      set.add(r + "," + c);
-      if (r > 0) set.add((r - 1) + "," + c);
-      if (r < ROWS - 1) set.add((r + 1) + "," + c);
-      if (c > 0) set.add(r + "," + (c - 1));
-      if (c < COLS - 1) set.add(r + "," + (c + 1));
-    }
+    // keep UI state usage exactly as before
+    const rawPath = this.buildOrthogonalPath(
+      lineDrag.start,
+      lineDrag.cur,
+      lineDrag.flip,
+      lineDrag.kind
+    );
 
-    const path = this.buildOrthogonalPath(lineDrag.start, lineDrag.cur, lineDrag.flip, lineDrag.kind);
+    // NEW: solve all intersections here, once
+    const path = this.solveIntersect(rawPath);
 
-    // De-dup: last char wins
     const cellMap = new Map();
     for (const p of path) {
       if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-      cellMap.set(p.r + "," + p.c, p.ch);
+      cellMap.set(p.r + "," + p.c, p.ch);   // last char wins
     }
 
     const stroke = [];
-    const touched = [];
-
-    // PASS 1: write the line characters
     for (const [key, ch] of cellMap) {
       const parts = key.split(",");
       const r = Number(parts[0]);
       const c = Number(parts[1]);
 
       const prev = ascii[r][c];
-      let next = ch;
-
-      // Merge only if both are mergeable (and your this.mergedWireGlyph supports single/double)
-      if (mergeEnabled) {
-        const prevIsWire = (prev === " ") || this.isWireGlyph(prev);
-        const nextIsWire = (next === " ") || this.isWireGlyph(next);
-
-        if (prevIsWire && nextIsWire) {
-          // If styles differ and prev is not blank, keep prev style here.
-          const prevStyle = this.isDoubleWire(prev) ? "double" : this.isFatWire(prev) ? "fat" : (prev === " " ? null : "single");
-          const nextStyle = this.isDoubleWire(next) ? "double" : this.isFatWire(next) ? "fat" : (next === " " ? null : "single");
-
-          if (prev !== " " && prevStyle && nextStyle && prevStyle !== nextStyle) {
-            // leave it for recompute to resolve as mixed junction; don't upgrade
-            next = prev;
-          } else {
-            next = this.mergedWireGlyph(prev, next, lineKind);
-          }
-        }
-      }
-
-      if (prev === " ") next = ch;            // draw into blank
-      else if (!this.isWireGlyph(prev)) next = ch; // overwrite non-wire (optional: you may prefer keep prev)
-      else next = prev;                       // keep existing wire as-is; recompute will place junction
+      const next = ch;
 
       if (prev !== next) {
-      stroke.push({ r, c, prev, next });
-      ascii[r][c] = next;
-      touched.push({ r, c });
-      } else {
-      // even if unchanged, mark touched so recompute can update the crossing cell
-      touched.push({ r, c });
+        stroke.push({ r, c, prev, next });
+        ascii[r][c] = next;
       }
-
-    }
-
-    if (mergeEnabled && touched.length)
-    {
-      const affected = new Set();
-      for (let i = 0; i < touched.length; i++) addNeighborsToSet(affected, touched[i].r, touched[i].c);
-
-      this.normalizeAffected(affected, stroke);
     }
 
     lineDrag = null;
     this.pushStrokeIfNonEmpty(stroke);
-    this.draw("commitLineWithOptionalMerge");
-  }
+    this.draw("commitLineWithOptionalMerge(solveIntersect)");
+  };
 
   // subsection: boxes
 
