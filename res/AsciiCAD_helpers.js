@@ -1064,28 +1064,29 @@ function ASC()
 
   this.commitLineWithOptionalMerge = function(mergeEnabled, lineKind)
   {
-    if (bDebug) console.log("commitLineWithOptionalMerge() lineDrag=", lineDrag);
     if (!lineDrag) return;
+    if (bDebug) console.log("commitLineWithOptionalMerge() lineDrag=", lineDrag);
 
     // keep UI state usage exactly as before
-    const rawPath = this.buildOrthogonalPath(
-      lineDrag.start,
-      lineDrag.cur,
-      lineDrag.flip,
-      lineDrag.kind
-    );
+    const rawPath = this.buildOrthogonalPath( lineDrag.start, lineDrag.cur, lineDrag.flip, lineDrag.kind );
+
+    console.log("path");
 
     // NEW: solve all intersections here, once
     const path = this.solveIntersect(rawPath);
 
+    console.log("beyond_path");
+
     const cellMap = new Map();
-    for (const p of path) {
+    for (const p of path) 
+    {
       if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
       cellMap.set(p.r + "," + p.c, p.ch);   // last char wins
     }
 
     const stroke = [];
-    for (const [key, ch] of cellMap) {
+    for (const [key, ch] of cellMap) 
+    {
       const parts = key.split(",");
       const r = Number(parts[0]);
       const c = Number(parts[1]);
@@ -1093,7 +1094,8 @@ function ASC()
       const prev = ascii[r][c];
       const next = ch;
 
-      if (prev !== next) {
+      if (prev !== next) 
+      {
         stroke.push({ r, c, prev, next });
         ascii[r][c] = next;
       }
