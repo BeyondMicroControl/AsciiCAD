@@ -1796,24 +1796,23 @@ function ASC()
     ]
   }
 
-  this.lcat = function() 
+  this.printCat = function() 
   {
 
     // TODO : list catalog items
     const items = (typeof CATALOG !== "undefined") ? CATALOG : [];
-
-    for (let i = 0, tokenlist = []; i < items.length; i++) 
+    var tokenlist = [];
+    for (let i = 0; i < items.length; i++) 
       tokenlist.push(this.itemUID(items[i]));
-
     tokenlist.sort();
     oTERM.output(oCOM.escapeHTML( "CATALOG ITEMS:\n\n"+tokenlist.join("\n") ));
   }
-  this.lcat.help = 
+  this.printCat.help = 
   {
     type: "CADScript_FN",
-    usage: "lcat()",
+    usage: "printCat()",
     desc: "list all catalog item UIDs",
-    examples: ["oASC.lcat()"]
+    examples: ["oASC.printCat()"]
   }
 
 
@@ -6013,21 +6012,19 @@ function CMD()
     }
   }
 
-
-    // TODO : put this inline ?   first make sure CMD commands in the shape of serialised data
+  // TODO : put this inline ?   first make sure CMD commands in the shape of serialised data
   this.CMDHelp = function()
   {
     oTERM.output(
       oCOM.escapeHTML("Terminal commands:\n" +
-        "  <cmd> -h - detailed help\n" +
-        "  CADScript   - run CADScript\n" +
-        "  clear       - clear terminal screen\n" +
-        "  exit        - exit CLI\n"+
-        "  help        - terminal help\n" +
-        "  history     - show command history\n")
+        "  <cmd> -h  - detailed help\n" +
+        "  CADScript - run CADScript\n" +
+        "  clear     - clear terminal screen\n" +
+        "  exit      - exit CLI\n"+
+        "  help      - terminal help\n" +
+        "  history   - show command history\n")
     );
   }
-
 
   this.run = function(line)
   {
