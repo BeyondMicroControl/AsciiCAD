@@ -1009,9 +1009,8 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [x] 7. Extend self-help documentation: display syntax and usage in an Ascii table - AsciiTable() became factually a generic function 
 - [x] 8. One single zone-sensitive pasteSink (instead of 3 confusing event handlers), pasteSink anchor placed in the center and clipped when navigating over the grid edges
 - [x] 9. Netlist builder: report netlist in JSON format in Terminal, color nets onmouseover and identify real-time the net number in button sidebar (canvas card). v1.15
-- [ ] 10. Conceptualise bridges (connectors)
 - [x] 11. CADScript { oTERM.printJSON( oASC.qryLocate(_regexp_) ); }  (also fixing function call precedence with await)
-- [x] 12. CADScript {oASC.putCell(0,0,"TEST\nABCD")}
+- [x] 12. CADScript {oASC.cell(0,0,"TEST\nABCD")}
 - [x] 13. CADScript {oTERM.print(getCell(2,2,2))}
 - [x] 14. CADScript {oTERM.setenv("cell",getCell(0,2,3,E)); oTERM.print(oTERM.getenv("cell"))}
 - [x] 15. abort pasteDrag when user is pressing the 'esc' key
@@ -1021,6 +1020,7 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [x] 18. oTERM.pushPrompt() / oTERM.pushPrompt() -> True nested prompt behavior
 - [x] 19. Write a gentle sanityCheck for each CADScript command
 - [x] 20. Replace doUndo, doRedo, resetUndo and getUndoRedo by stack(<arg>)  - "undo", "redo" , "reset", "get"
+- [x] 21. New line modular path routing algorithm with solveIntersect()
 ---
 
 ## Summary of Key Design Principles
