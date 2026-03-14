@@ -219,10 +219,10 @@ function runWorkerThreadSmokeTests()
     return oCMD.runExternalScript(oASC.line.help.unitTests.join(";"));          // UNIT test
     }) 
     .then(function(){
-    return oCMD.runExternalScript(oASC.glyphToMask3.help.unitTests.join(";"));     // UNIT test
+    return oCMD.runExternalScript(oASC.glyph2mask.help.unitTests.join(";"));     // UNIT test
     })
     .then(function(){
-    return oCMD.runExternalScript(oASC.mask3ToGlyph.help.unitTests.join(";"));     // UNIT test
+    return oCMD.runExternalScript(oASC.mask2glyph.help.unitTests.join(";"));     // UNIT test
     })
     .then(function(){
     return oCMD.runExternalScript(oASC.computeNetlist.help.unitTests.join(";"));   // UNIT test
