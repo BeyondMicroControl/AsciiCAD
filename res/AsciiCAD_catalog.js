@@ -204,14 +204,14 @@ text_data:[
 '║ PA1  PA7  PA6  VCC ║\n' +
 '║ SDA  RX   TX    ●  ║\n' +
 '║                    ║\n' +
-'║   [U# ATTinyX12]   ║\n' +
+'║  [U## ATTinyX12]   ║\n' +
 '║                    ║\n' +
 '║ SCL  UPDI SCK      ║\n' +
 '║ PA2  PA0  PA3  GND ║\n' +
 '╚══╤════╤════╤════╤══╝'
 ,
 '╔════════════════════╗\n' +
-'║   [U# ATTinyX12]   ║\n' +
+'║  [U## ATTinyX12]   ║\n' +
 '║                    ║\n' +
 '╢ PA2 SCL    SDA PA1 ╟\n' +
 '║                    ║\n' +
@@ -227,14 +227,14 @@ text_data:[
 '║ PA1  PA7  PA6  VCC  ║\n' +
 '║ SDA  RX   TX    ●   ║\n' +
 '║                     ║\n' +
-'║   [U# ATTinyX12]    ║\n' +
+'║   [U## ATTinyX12]   ║\n' +
 '║                     ║\n' +
 '║      UPDI SCK       ║\n' +
 '║ PA2  PA0  PA3  GND  ║\n' +
 '╚══╤════╤════╤════╤═══╝'
 ,
 '╔════════════════════╗\n' +
-'║ ●  [U# ATTinyX12]  ║\n' +
+'║ ● [U## ATTinyX12]  ║\n' +
 '║                    ║\n' +
 '╢ VCC            GND ╟\n' +
 '║                    ║\n' +
