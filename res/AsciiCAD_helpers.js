@@ -578,7 +578,7 @@ function ASC()
     this.pushStrokeIfNonEmpty(stroke);
   }
 
-  this.putCell = function(c, r, str) 
+  this.cell = function(c, r, str) 
   {
     if(r===undefined || c===undefined || str===undefined) return;  // safe escape if no arguments provided
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS)
@@ -596,15 +596,15 @@ function ASC()
 
     this.pushStrokeIfNonEmpty(this._currentStroke);     // feed undo buffer
   }
-  this.putCell.help = 
+  this.cell.help = 
   {
     type: "CADScript_FN",
-    usage: "putCell(<i>c</i>,<i>r</i>,<i>string</i>)",
+    usage: "cell(<i>c</i>,<i>r</i>,<i>string</i>)",
     desc: "",
-    examples: ["oASC.putCell(0,0,\"ABC\\nDEF\\nGHI\")"],
+    examples: ["oASC.cell(0,0,\"ABC\\nDEF\\nGHI\")"],
     unitTests:
-    ["oASC.putCell(0,0,\"ABC\\nDEF\\nGHI\");",
-     "oASC.assert('putCell(0,0,\"ABC\\nDEF\\nGHI\")',oASC.getCell(0,0,3,S),'A\\nD\\nG');",
+    ["oASC.cell(0,0,\"ABC\\nDEF\\nGHI\");",
+     "oASC.assert('cell(0,0,\"ABC\\nDEF\\nGHI\")',oASC.getCell(0,0,3,S),'A\\nD\\nG');",
      "oASC.stack(\"undo\")"]
   }
 
@@ -963,7 +963,7 @@ function ASC()
         if((watchCell_dir & dirFilter1) != 0)
         {
           res_dir = watchCell_dir | pathMask3;                                        // assemble both elements to form a T-shape start
-          path[pathIdx].ch = this.mask3ToGlyph(res_dir);                              //this.putCell(path[pathIdx].c+6,path[pathIdx].r,"*");
+          path[pathIdx].ch = this.mask3ToGlyph(res_dir);                              //this.cell(path[pathIdx].c+6,path[pathIdx].r,"*");
           //console.log("Solve: '"+this.mask3ToGlyph(watchCell_dir)+"' + '"+this.mask3ToGlyph(pathMask3)+"' = '"+this.mask3ToGlyph(res_dir)+"'");
         }
       }
@@ -983,7 +983,7 @@ function ASC()
         if((watchCell_dir & dirFilter1) != 0) 
         {
           res_dir = watchCell_dir | this.mirrorMask3(pathMask3 & dirFilter2,bDir1);    // assemble both elements to form a T-shape ending
-          path[pathIdx].ch = this.mask3ToGlyph(res_dir);                                     //this.putCell(path[pathIdx].c+6,path[pathIdx].r,"*");
+          path[pathIdx].ch = this.mask3ToGlyph(res_dir);                                     //this.cell(path[pathIdx].c+6,path[pathIdx].r,"*");
           //console.log("Solve: '"+this.mask3ToGlyph(watchCell_dir)+"' + '"+this.mask3ToGlyph(this.mirrorMask3(pathMask3 & dirFilter2,bDir1))+"' = '"+this.mask3ToGlyph(res_dir)+"'");
         }
       }
@@ -1015,42 +1015,21 @@ function ASC()
   this.commitLine = function()
   {
     if (!lineDrag) return;
-    if (bDebug) console.log("commitLine() lineDrag=", lineDrag);
 
-    const rawPath = this.buildOrthogonalPath( lineDrag.start, lineDrag.cur, lineDrag.flip, lineDrag.kind );
-    const path    = lineDrag.merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
-
-    const cellMap = new Map();
-    for (const p of path) 
-    {
-      if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-      cellMap.set(p.r + "," + p.c, p.ch);   // last char wins
-    }
-
-    const stroke = [];
-    for (const [key, ch] of cellMap) 
-    {
-      const parts = key.split(",");
-      const r = Number(parts[0]);
-      const c = Number(parts[1]);
-
-      const prev = ascii[r][c];
-      const next = ch;
-
-      if (prev !== next) 
-      {
-        stroke.push({ r, c, prev, next });
-        ascii[r][c] = next;
-      }
+    const drag = {
+      start: lineDrag.start,
+      cur:   lineDrag.cur,
+      flip:  lineDrag.flip,
+      kind:  lineDrag.kind,
+      merge: lineDrag.merge
     }
 
     lineDrag = null;
-    this.pushStrokeIfNonEmpty(stroke);
-    this.draw("commitLine(solveIntersect)");
-  };
+    this.line(drag);
+  }
 
 
-  this.putLine = function(lineArg)
+  this.line = function(lineArg)
   {
     if (!lineArg) return;
 
@@ -1080,17 +1059,17 @@ function ASC()
     }
 
     this.pushStrokeIfNonEmpty(stroke);
-    this.draw("putLine");
+    this.draw("line");
   }
-  this.putLine.help =
+  this.line.help =
   {
     type: "CADScript_Fn",
-    usage: "putLine({from:{r:0,c:0},\nto:{r:0,c:0},flip:,kind})",
+    usage: "line({from:{r:0,c:0},\nto:{r:0,c:0},flip:,kind})",
     desc: "Draw line in style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
-    examples:  ["CADScript {oASC.putLine({from:{r:0,c:0},\nto:{r:5,c:5},flip:true,kind:BOX_SINGLE})}"],
+    examples:  ["CADScript {oASC.line({from:{r:0,c:0},\nto:{r:5,c:5},flip:true,kind:BOX_SINGLE})}"],
     unitTests: [
-     "oASC.putLine({from:{r:1,c:1},to:{r:0,c:0},flip:true,kind:BOX_SINGLE})",
-     "oASC.assert('putLine',oASC.getCell(0,0,2,E),'─┐');",
+     "oASC.line({from:{r:1,c:1},to:{r:0,c:0},flip:true,kind:BOX_SINGLE})",
+     "oASC.assert('line',oASC.getCell(0,0,2,E),'─┐');",
      "oASC.stack(\"undo\")"
     ]
   }
@@ -2390,7 +2369,7 @@ this.startPasteWithText = function(text)
     ],
     unitTests:[
       "oASC.clear();",
-      "oASC.putCell(0,0,\""
+      "oASC.cell(0,0,\""
       +"     ⎽⎽⎽⎽⎽\\n"
       +"  ┌─[  11Ω]───◠◠◠◠─┐\\n"
       +"  │  ⎺⎺⎺⎺⎺         │\\n"
@@ -2852,12 +2831,12 @@ this.startPasteWithText = function(text)
     let oldLen = 0;
     while ((c + oldLen) < COLS && isLabelChar(charAt(r, c + oldLen))) oldLen++;
 
-    // Write new label (single-line). Use putCell to keep your existing stroke/undo behavior.
-    this.putCell(c, r, s);
+    // Write new label (single-line). Use cell to keep your existing stroke/undo behavior.
+    this.cell(c, r, s);
 
     // Clear leftover chars if the new label is shorter
     if (oldLen > s.length) {
-      this.putCell(c + s.length, r, " ".repeat(oldLen - s.length));
+      this.cell(c + s.length, r, " ".repeat(oldLen - s.length));
     }
   }
 

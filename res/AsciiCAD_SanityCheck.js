@@ -139,19 +139,19 @@ function HlineSEQ(o)
   var co;
   o.rc++; co = 1;
 
-  oASC.putLine({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc+4,o.rc,"▶"); o.rc++; co--;
-  oASC.putLine({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc+4,o.rc,"▶"); o.rc++; co--;
-  oASC.putLine({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc+4,o.rc,"▶"); o.rc++; co--;
-  oASC.putLine({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc+4,o.rc,"▶"); o.rc++; co--;
-  oASC.putLine({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},kind:o.lkind,flip:true}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
 
   o.rc++; co = 1; 
 
-  oASC.putLine({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc-4,o.rc,"◀"); o.rc++; co--;
-  oASC.putLine({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc-4,o.rc,"◀"); o.rc++; co--;
-  oASC.putLine({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc-4,o.rc,"◀"); o.rc++; co--;
-  oASC.putLine({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc-4,o.rc,"◀"); o.rc++; co--;
-  oASC.putLine({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.putCell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},kind:o.lkind,flip:true}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
   return o.rc;
 }
 
@@ -160,19 +160,19 @@ function VlineSEQ(o)
   var co;
   o.rc++; co = 1;
 
-  oASC.putLine({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.putLine({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.putLine({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.putLine({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.putLine({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},kind:o.lkind,flip:true}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
 
   o.rc++; co = 1; 
 
-  oASC.putLine({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.putLine({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.putLine({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.putLine({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.putLine({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.putCell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},kind:o.lkind,flip:true}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
  
   return o.rc;
 }
@@ -207,7 +207,7 @@ function runWorkerThreadSmokeTests()
       var got = oTERM._o.env.cpyVar;
       assertEq("get environment variable oTERM.setenv(\"cpyVar\",oTERM.getenv(\"myvar\"))", got, exp);
       console.log("-4-");
-    return oCMD.runExternalScript(oASC.putCell.help.unitTests.join(";"));          // UNIT test
+    return oCMD.runExternalScript(oASC.cell.help.unitTests.join(";"));          // UNIT test
     })
     .then(function(){
     return oCMD.runExternalScript(oASC.cat.help.unitTests.join(";"));              // UNIT test
@@ -216,7 +216,7 @@ function runWorkerThreadSmokeTests()
     return oCMD.runExternalScript(oASC.box.help.unitTests.join(";"));              // UNIT test
     }) 
     .then(function(){
-    return oCMD.runExternalScript(oASC.putLine.help.unitTests.join(";"));          // UNIT test
+    return oCMD.runExternalScript(oASC.line.help.unitTests.join(";"));          // UNIT test
     }) 
     .then(function(){
     return oCMD.runExternalScript(oASC.glyphToMask3.help.unitTests.join(";"));     // UNIT test
@@ -230,19 +230,19 @@ function runWorkerThreadSmokeTests()
     .then(function(){
         // TEST HORIZONTAL LINE CROSSINGS
         var rc = 0, cc = 4;
-        oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_SINGLE,flip:true});
+        oASC.line({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_SINGLE,flip:true});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
 
         var rc = 0, cc = 14;
-        oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_FAT,flip:true});
+        oASC.line({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_FAT,flip:true});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
 
         var rc = 0, cc = 24;
-        oASC.putLine({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_DOUBLE,flip:true});
+        oASC.line({from:{c:cc,r:rc},to:{c:cc,r:rc+35},kind:oASC.BOX_DOUBLE,flip:true});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
@@ -307,19 +307,19 @@ function runWorkerThreadSmokeTests()
         // TEST VERTICAL LINE CROSSINGS
 
         var rc = 0, cc = 4;
-        oASC.putLine({from:{c:rc,r:cc},to:{c:rc+35,r:cc},kind:oASC.BOX_SINGLE,flip:true});
+        oASC.line({from:{c:rc,r:cc},to:{c:rc+35,r:cc},kind:oASC.BOX_SINGLE,flip:true});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
 
         var rc = 0, cc = 14;
-         oASC.putLine({from:{c:rc,r:cc},to:{c:rc+35,r:cc},kind:oASC.BOX_FAT,flip:true});
+         oASC.line({from:{c:rc,r:cc},to:{c:rc+35,r:cc},kind:oASC.BOX_FAT,flip:true});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
          
         var rc = 0, cc = 24;
-        oASC.putLine({from:{c:rc,r:cc},to:{c:rc+35,r:cc},kind:oASC.BOX_DOUBLE,flip:true});
+        oASC.line({from:{c:rc,r:cc},to:{c:rc+35,r:cc},kind:oASC.BOX_DOUBLE,flip:true});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});

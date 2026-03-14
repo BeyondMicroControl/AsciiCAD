@@ -1829,9 +1829,18 @@ function hasPreviewDrag()
 
 function commitPreviewDrag()
 {
-  if (lineDrag)
+  if (lineDrag && lineDrag.start && lineDrag.cur)
   {
-    oASC.commitLine();
+    const drag = {
+      start: lineDrag.start,
+      cur:   lineDrag.cur,
+      flip:  lineDrag.flip,
+      kind:  lineDrag.kind,
+      merge: lineDrag.merge
+    };
+
+    lineDrag = null;      // clear preview state first
+    oASC.line(drag);   // generic line commit
     return true;
   }
 
