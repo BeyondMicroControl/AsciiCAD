@@ -207,22 +207,27 @@ function runWorkerThreadSmokeTests()
       var got = oTERM._o.env.cpyVar;
       assertEq("get environment variable oTERM.setenv(\"cpyVar\",oTERM.getenv(\"myvar\"))", got, exp);
       console.log("-4-");
-    return oCMD.runExternalScript(oASC.cell.help.unitTests.join(";"));          // UNIT test
+    return oCMD.runExternalScript(oASC.cell.help.unitTests.join(";"));             // UNIT test
     })
-    .then(function(){
-    return oCMD.runExternalScript(oASC.cat.help.unitTests.join(";"));              // UNIT test
+    .then(function()
+    {
+      return oCMD.runExternalScript(oASC.cat.help.unitTests.join(";"));            // UNIT test
+    })
+    .then(function()
+    {
+      return oCMD.runExternalScript(oASC.qryLocate.help.unitTests.join(";"));      // UNIT test
     })
     .then(function(){
     return oCMD.runExternalScript(oASC.box.help.unitTests.join(";"));              // UNIT test
     }) 
     .then(function(){
-    return oCMD.runExternalScript(oASC.line.help.unitTests.join(";"));          // UNIT test
+    return oCMD.runExternalScript(oASC.line.help.unitTests.join(";"));             // UNIT test
     }) 
     .then(function(){
-    return oCMD.runExternalScript(oASC.glyph2mask.help.unitTests.join(";"));     // UNIT test
+    return oCMD.runExternalScript(oASC.glyph2mask.help.unitTests.join(";"));       // UNIT test
     })
     .then(function(){
-    return oCMD.runExternalScript(oASC.mask2glyph.help.unitTests.join(";"));     // UNIT test
+    return oCMD.runExternalScript(oASC.mask2glyph.help.unitTests.join(";"));       // UNIT test
     })
     .then(function(){
     return oCMD.runExternalScript(oASC.computeNetlist.help.unitTests.join(";"));   // UNIT test
