@@ -218,6 +218,7 @@ AsciiCAD> CADScript {oCMD.run("clear")};
 
 #### Run a query command + JSON printing from CADScript
 ```text
+AsciiCAD> CADScript { oASC.cat(0,0,0,"ATTinyX12_MCU_ATTINY412") }
 AsciiCAD> CADScript { oTERM.printJSON(oASC.qryLocate({type:"M.U"})); }
 ```
 #### Run a query command + JSON printing from CADScript
