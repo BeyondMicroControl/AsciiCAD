@@ -76,92 +76,6 @@ function assertEq(name, got, exp)
   console.assert(got === exp, name);
 }
 
-
-function applyHorizontalLine(r, c0, c1, kind, mergeEnabled) 
-{
-
-  // TODO: check and describe what this function does
-  function addNeighborsToSet(set, r, c) 
-  {
-    set.add(r + "," + c);
-    if (r > 0) set.add((r - 1) + "," + c);
-    if (r < ROWS - 1) set.add((r + 1) + "," + c);
-    if (c > 0) set.add(r + "," + (c - 1));
-    if (c < COLS - 1) set.add(r + "," + (c + 1));
-  }
-
-  const hChar = (kind === "double") ? "═" : "─";
-  const stroke = [];
-  const touched = [];
-
-  const step = c1 >= c0 ? 1 : -1;
-  for (let c = c0; c !== c1 + step; c += step) {
-    const prev = ascii[r][c];
-    let next = hChar;
-
-    if (mergeEnabled) {
-      const prevIsWire = (prev === " ") || oASC.isWireGlyph(prev);
-      const nextIsWire = (next === " ") || oASC.isWireGlyph(next);
-      if (prevIsWire && nextIsWire) next = oASC.mergedWireGlyph(prev, next, kind);
-    }
-
-    if (prev !== next) {
-      stroke.push({ r, c, prev, next });
-      ascii[r][c] = next;
-      touched.push({ r, c });
-    }
-  }
-
-  if (mergeEnabled && touched.length) {
-    const affected = new Set();
-    for (let i = 0; i < touched.length; i++) addNeighborsToSet(affected, touched[i].r, touched[i].c);
-    affected.forEach((key) => {
-      const parts = key.split(",");
-      const rr = Number(parts[0]);
-      const cc = Number(parts[1]);
-      const prev = ascii[rr][cc];
-      const next = oASC.recomputeWireCell(rr, cc);
-      if (prev !== next) {
-        stroke.push({ r: rr, c: cc, prev, next });
-        ascii[rr][cc] = next;
-      }
-    });
-  }
-
-  return stroke; // in case you want to pushStrokeIfNonEmpty in tests
-}
-
-
-function setSmallGridFromLines(lines) {
-  for (let r = 0; r < lines.length; r++) {
-    for (let c = 0; c < lines[r].length; c++) ascii[r][c] = lines[r][c];
-  }
-}
-
-function getSmallGridText(w,h) 
-{
-  let s = "";
-  for (let r = 0; r < h; r++) {
-    let line = "";
-    for (let c = 0; c < w; c++) line += ascii[r][c];
-    s += line + "\n";
-  }
-  return s;
-}
-
-function assertGrid(name, got, exp) 
-{
-  if (got !== exp) {
-    console.error("TEST FAILED:", name);
-    console.error("GOT:\n" + got.split("\n").map(l => JSON.stringify(l)).join("\n"));
-    console.error("EXP:\n" + exp.split("\n").map(l => JSON.stringify(l)).join("\n"));
-  }
-
-  if(got === exp)
-    console.assert(true, name + "\nGOT: \"" + got.replace(/\n/g,"↵") + "\"\nEXP: \"" + exp.replace(/\n/g,"↵") +"\"");
-}
-
-
 // HELP SANITY ---------------------------------------------------------------
 function listHelpFns(obj) {
   const out = [];
@@ -219,100 +133,6 @@ function sanityWorkerSymbolsForASC(fnNames) {
   return p;
 }
 
-
-
-
-
-// TEST DATA
-
-function runMixedJunctionTests() 
-{
-  // Use a 5x5 window in the real grid
-  const H=5, W=5;
-
-  // single×single => ┼
-  setSmallGridFromLines([
-    "  │  ",
-    "  │  ",
-    "─────",
-    "  │  ",
-    "  │  ",
-  ]);
-  // normalize center
-  oASC.recomputeWireCell(2,2);
-  assertGrid("single×single => ┼", getSmallGridText(W,H),
-    "  │  \n  │  \n──┼──\n  │  \n  │  \n"
-  );
-
-  // double×double => ╬
-  setSmallGridFromLines([
-    "  ║  ",
-    "  ║  ",
-    "═════",
-    "  ║  ",
-    "  ║  ",
-  ]);
-  oASC.recomputeWireCell(2,2);
-  assertGrid("double×double => ╬", getSmallGridText(W,H),
-    "  ║  \n  ║  \n══╬══\n  ║  \n  ║  \n"
-  );
-
-  // single vert × double horz => ╪
-  setSmallGridFromLines([
-    "  │  ",
-    "  │  ",
-    "═════",
-    "  │  ",
-    "  │  ",
-  ]);
-  oASC.recomputeWireCell(2,2);
-  assertGrid("single vert × double horz => ╪", getSmallGridText(W,H),
-    "  │  \n  │  \n══╪══\n  │  \n  │  \n"
-  );
-
-  // double vert × single horz => ╫
-  setSmallGridFromLines([
-    "  ║  ",
-    "  ║  ",
-    "─────",
-    "  ║  ",
-    "  ║  ",
-  ]);
-  oASC.recomputeWireCell(2,2);
-  assertGrid("double vert × single horz => ╫", getSmallGridText(W,H),
-    "  ║  \n  ║  \n──╫──\n  ║  \n  ║  \n"
-  );
-
-  // Your example: two single verticals crossed by double horizontal => ╪ ╪
-  setSmallGridFromLines([
-    " ││  ",
-    " ││  ",
-    " ││  ",
-    "     ",
-    "     ",
-  ]);
-  // draw the double line into row 1 (like your example), then normalize around
-  for (let c=0;c<4;c++) ascii[1][c] = "═";
-  for (let c=0;c<4;c++) { oASC.recomputeWireCell(1,c); oASC.recomputeWireCell(0,c); oASC.recomputeWireCell(2,c); }
-  assertGrid("two single verticals crossed by double horiz", getSmallGridText(4,3),
-    " ││ \n═╪╪═\n ││ \n"
-  );
-
-  console.log("Mixed junction tests done.");
-}
-
-
-// WORKER THREAD SMOKE TESTS (requires CMD worker)
-
-function small3x1Plus()
-{
-  return "+\n+\n+\n";
-}
-
-function small3x1Spaces()
-{
-  return " \n \n \n";
-}
 
 function HlineSEQ(o)
 {
@@ -622,8 +442,6 @@ function runWorkerThreadSmokeTests()
   console.assert(!oASC.catalogTypes().includes(null), "catalogTypes contains null");
 
   console.assert(!oASC.catalogTypes().includes(""), "catalogTypes contains empty string");
-
-  runMixedJunctionTests(); oASC.wipeSelection(' ');
 
   // Run worker sandbox tests after the synchronous sanity checks.
   runWorkerThreadSmokeTests()

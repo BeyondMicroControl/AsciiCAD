@@ -927,7 +927,7 @@ function ASC()
     if (!from || !to) return;
 
     const Lpath = this.buildOrthogonalPath(from, to, flip, kind);
-    const path = this.solveIntersect(Lpath);
+    const path  = this.solveIntersect(Lpath);
 
     const stroke = [];
     for (const p of path)
@@ -1023,10 +1023,12 @@ function ASC()
       }
       else if(!bFirst && !bLast)
       {
-        if(bDir2) continue;
-        var watchCell = watchMatrix.charAt(3);
-        if((this.glyphToMask3(watchCell) & Vfilter) != 0) 
-          path[pathIdx].ch = watchCell;  // when horizontal goes through a straigt line => override '-' (on path) by '|' (on grid)
+        if(!bDir2)
+        {
+          var watchCell = watchMatrix.charAt(3);
+          if((this.glyphToMask3(watchCell) & Vfilter) != 0) 
+            path[pathIdx].ch = watchCell;  // when horizontal goes through a straigt line => override '-' (on path) by '|' (on grid)
+        }
       }
       else if(bLast)
       {
@@ -1351,138 +1353,6 @@ function ASC()
 
     const out = wantDouble ? this.maskToDouble(m) : wantFat ? this.maskToFat(m) : this.maskToSingle(m);
     return out ?? nextCh;
-  }
-
-  // TODO: describe what it does, benefits and likely use cases
-  // INFO: only used in commitLineWithOptionalMerge() and SanityCheck.js
-  this.normalizeAffected = function(affected, stroke) 
-  {
-    for (let pass = 0; pass < 2; pass++) {
-      let changed = false;
-      affected.forEach((key) => {
-        const [rs, cs] = key.split(",");
-        const r = Number(rs), c = Number(cs);
-        const prev = ascii[r][c];
-        const next = this.recomputeWireCell(r, c);
-        if (prev !== next) {
-          stroke.push({ r, c, prev, next });
-          ascii[r][c] = next;
-          changed = true;
-        }
-      });
-      if (!changed) break;
-    }
-  }
-  
-  // TODO: describe what it does, benefits and likely use cases
-  // INFO: only used in commitLineWithOptionalMerge() and SanityCheck.js (extensively)
-  this.recomputeWireCell = function(r, c) 
-  {
-    const cur = ascii[r][c];
-
-    // only touch blanks or wires
-    if (cur !== " " && !this.isWireGlyph(cur)) return cur;
-
-    let m = 0;
-    let hDouble = false; // any double on horizontal axis
-    let vDouble = false; // any double on vertical axis
-    let hFat  = false; // any fat on horizontal axis
-    let vFat  = false; // any fat on vertical axis
-
-      // earlier implemented in separate function cellMaskFromNeighbors() and axisStylesFromNeighbors()
-      // UP contributes N if it connects DOWN (S)
-      if (r > 0) {
-        const up = ascii[r - 1][c];
-        const um = this.glyphToMask(up) ?? 0;
-        if (um & S) { m |= N; if (this.isDoubleWire(up)) vDouble = true; else if (this.isFatWire(up)) vFat = true; }
-      }
-
-      // DOWN contributes S if it connects UP (N)
-      if (r < ROWS - 1) {
-        const dn = ascii[r + 1][c];
-        const dm = this.glyphToMask(dn) ?? 0;
-        if (dm & N) { m |= S; if (this.isDoubleWire(dn)) vDouble = true; else if (this.isFatWire(dn)) vFat = true; }
-      }
-
-      // LEFT contributes W if it connects RIGHT (E)
-      if (c > 0) {
-        const lt = ascii[r][c - 1];
-        const lm = this.glyphToMask(lt) ?? 0;
-        if (lm & E) { m |= W; if (this.isDoubleWire(lt)) hDouble = true; else if (this.isFatWire(lt)) hFat = true; }
-      }
-
-      // RIGHT contributes E if it connects LEFT (W)
-      if (c < COLS - 1) {
-        const rt = ascii[r][c + 1];
-        const rm = this.glyphToMask(rt) ?? 0;
-        if (rm & W) { m |= E; if (this.isDoubleWire(rt)) hDouble = true; else if (this.isFatWire(rt)) hFat = true; }
-      }
-
-    if (m === 0) { ascii[r][c] = " "; return " "; }
-
-    // Determine style per axis
-    const hStyle = hDouble ? "double" : (hFat ? "fat" : "single");
-    const vStyle = vDouble ? "double" : (vFat ? "fat" : "single");
-
-    const bothSingle = (hStyle === "single" && vStyle === "single");
-    const bothFat  = (hStyle === "fat"  && vStyle === "fat");
-    const bothDouble = (hStyle === "double" && vStyle === "double");
-
-    function cross() {
-      // same-style crosses
-      if (hStyle === "single" && vStyle === "single") return "┼";
-      if (hStyle === "fat"  && vStyle === "fat")  return "╋";
-      if (hStyle === "double" && vStyle === "double") return "╬";
-
-      // mixed-style crosses
-      // double × single
-      if (hStyle === "double" && vStyle === "single") return "╪";
-      if (hStyle === "single" && vStyle === "double") return "╫";
-
-      // double × fat
-      if (hStyle === "fat"  && vStyle === "double") return "╫";
-      if (hStyle === "double" && vStyle === "fat")  return "╪";
-
-      // fat × single
-      if (hStyle === "fat"  && vStyle === "single") return "┿";
-      if (hStyle === "single" && vStyle === "fat")  return "╂";
-
-      return "┼";
-    }
-
-    function horiz() { return hDouble ? "═" : (hFat ? "━" : "─"); }
-    function vert()  { return vDouble ? "║" : (vFat ? "┃" : "│"); }
-
-    function corner(mask) {
-      if (mask === (E|S)) return bothSingle ? "┌" : bothFat ? "┏" : bothDouble ? "╔" : hDouble ? "╒" : vDouble ? "╓" : hFat ? "┍" : "┎";
-      if (mask === (W|S)) return bothSingle ? "┐" : bothFat ? "┓" : bothDouble ? "╗" : hDouble ? "╕" : vDouble ? "╖" : hFat ? "┑" : "┒";
-      if (mask === (E|N)) return bothSingle ? "└" : bothFat ? "┗" : bothDouble ? "╚" : hDouble ? "╘" : vDouble ? "╙" : hFat ? "┕" : "┖";
-      if (mask === (W|N)) return bothSingle ? "┘" : bothFat ? "┛" : bothDouble ? "╝" : hDouble ? "╛" : vDouble ? "╜" : hFat ? "┙" : "┚";
-      return cur;
-    }
-
-    function tee(mask) {
-      if (mask === (E|S|W)) return bothSingle ? "┬" : bothFat ? "┳" : bothDouble ? "╦" : hDouble ? "╤" : vDouble ? "╥" : hFat ? "┯" : "┰";
-      if (mask === (E|N|W)) return bothSingle ? "┴" : bothFat ? "┻" : bothDouble ? "╩" : hDouble ? "╧" : vDouble ? "╨" : hFat ? "┷" : "┸";
-      if (mask === (N|E|S)) return bothSingle ? "├" : bothFat ? "┣" : bothDouble ? "╠" : hDouble ? "╞" : vDouble ? "╟" : hFat ? "┝" : "┠";
-      if (mask === (N|W|S)) return bothSingle ? "┤" : bothFat ? "┫" : bothDouble ? "╣" : hDouble ? "╡" : vDouble ? "╢" : hFat ? "┥" : "┨";
-      return cur;
-    }
-
-    let next = cur;
-
-    if (m === (E|W)) next = horiz();
-    else if (m === (N|S)) next = vert();
-    else if (m === (N|E|S|W)) next = cross();
-    else if (m === (E|S) || m === (W|S) || m === (E|N) || m === (W|N)) next = corner(m);
-    else if (m === (E|S|W) || m === (E|N|W) || m === (N|E|S) || m === (N|W|S)) next = tee(m);
-    else {
-      // endpoints (N only / S only / etc): DO NOT erase
-      next = cur;
-    }
-
-    ascii[r][c] = next;
-    return next;
   }
 
   // subsection: freetext
