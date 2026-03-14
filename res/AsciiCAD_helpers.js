@@ -717,24 +717,23 @@ function ASC()
     ]
   }
 
-  this.lcat = function() 
+  this.printCat = function() 
   {
 
     // TODO : list catalog items
     const items = (typeof CATALOG !== "undefined") ? CATALOG : [];
-
-    for (let i = 0, tokenlist = []; i < items.length; i++) 
+    var tokenlist = [];
+    for (let i = 0; i < items.length; i++) 
       tokenlist.push(this.itemUID(items[i]));
-
     tokenlist.sort();
     oTERM.output(oCOM.escapeHTML( "CATALOG ITEMS:\n\n"+tokenlist.join("\n") ));
   }
-  this.lcat.help = 
+  this.printCat.help = 
   {
     type: "CADScript_FN",
-    usage: "lcat()",
+    usage: "printCat()",
     desc: "list all catalog item UIDs",
-    examples: ["oASC.lcat()"]
+    examples: ["oASC.printCat()"]
   }
 
 

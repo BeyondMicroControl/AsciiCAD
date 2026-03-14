@@ -1806,21 +1806,19 @@ function CMD()
     }
   }
 
-
-    // TODO : put this inline ?   first make sure CMD commands in the shape of serialised data
+  // TODO : put this inline ?   first make sure CMD commands in the shape of serialised data
   this.CMDHelp = function()
   {
     oTERM.output(
       oCOM.escapeHTML("Terminal commands:\n" +
-        "  <cmd> -h - detailed help\n" +
-        "  CADScript   - run CADScript\n" +
-        "  clear       - clear terminal screen\n" +
-        "  exit        - exit CLI\n"+
-        "  help        - terminal help\n" +
-        "  history     - show command history\n")
+        "  <cmd> -h  - detailed help\n" +
+        "  CADScript - run CADScript\n" +
+        "  clear     - clear terminal screen\n" +
+        "  exit      - exit CLI\n"+
+        "  help      - terminal help\n" +
+        "  history   - show command history\n")
     );
   }
-
 
   this.run = function(line)
   {
