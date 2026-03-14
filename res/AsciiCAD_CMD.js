@@ -307,7 +307,7 @@ function TERMINAL(props)
     type: "TERMINAL_Fn",
     usage: "idle()",
     desc: "toggle the terminal busy (call a second time to reset to available)",
-    examples: ["oTERM.idle(); <i>long process</i> oTERM.idle();"]    
+    examples: ["oTERM.idle();"]    
   }
 
   this.input = function (varName, question, prefill, overwriteMode)
@@ -526,24 +526,6 @@ function TERMINAL(props)
     usage: "popPrompt(<i>opts</i>)",
     desc: "",
     examples: ["oTERM.popPrompt()"]    
-  }
-
-  this.setPrompt = function (newPrompt)
-  {
-    if (newPrompt === undefined) newPrompt = this._o.shell.prompt;
-
-    // setPrompt is a hard switch: clear any stacked prompts
-    this._o.promptStack = [];
-
-    // replace current prompt (no push)
-    this.pushPrompt(newPrompt, { replace: true, render: true });
-  };
-  this.setPrompt.help = 
-  {
-    type: "TERMINAL_Fn",
-    usage: "setPrompt(<i>str</i>)",
-    desc: "",
-    examples: ["oTERM.setPrompt(\"GPT\")"]    
   }
 
   // ---- listeners -----------------------------------------------------------
