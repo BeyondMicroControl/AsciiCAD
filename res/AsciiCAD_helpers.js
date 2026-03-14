@@ -904,7 +904,6 @@ function ASC()
     return out;
   }
 
-
   this.maskToString = function(num)
   {
     var s = [];
