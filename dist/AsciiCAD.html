@@ -1303,60 +1303,60 @@ function ASC()
 // Public APIs using the shared codec
 // ------------------------------------------------------------
 
-  this.glyphToMask3 = function(g) 
+  this.glyph2mask = function(g) 
   {
     if (!g) return 0;
     const codec = getGlyph3Codec();
     return codec.g2m[g] ?? pack3(this.dirMask3(g), 0, 0);
   }
-  this.glyphToMask3.help =   
+  this.glyph2mask.help =   
   {
     type: "CADScript_FN",
-    usage: "glyphToMask3(<i>glyph</i>)",
+    usage: "glyph2mask(<i>glyph</i>)",
     desc:
       "Translate a wire glyph into an 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). " +
       "Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.  " +
       "Alias glyphs are alternative glyphs for the same (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.",
     examples: [
-      "oTERM.printJSON(oASC.glyphToMask3('╇'))",
-      "oTERM.printJSON(oASC.glyphToMask3('╧'))",
+      "oTERM.printJSON(oASC.glyph2mask('╇'))",
+      "oTERM.printJSON(oASC.glyph2mask('╧'))",
     ],
     unitTests: [
-      "oASC.assert('oASC.glyphToMask3(\\'┼\\')', oASC.glyphToMask3('┼') , N|E|S|W)",              // unitype-glyph canonical mapping (ignoring alias)
-      "oASC.assert('oASC.glyphToMask3(\\'+\\')', oASC.glyphToMask3('+') , N|E|S|W)",              // unitype-glyph alias mapping
-      "oASC.assert('oASC.glyphToMask3(\\'╇\\')', oASC.glyphToMask3('╇') , (S) | (W|N|E)<<4 )",    // mixed-glyph canonical mapping
-      "oASC.assert('oASC.glyphToMask3(\\'╧\\')', oASC.glyphToMask3('╧') , (N|E|W) | (W|E)<<4 )",  // mixed-glyph canonical mapping (no stand-in)
-      "oASC.assert('oASC.glyphToMask3(\\'┣\\')', oASC.glyphToMask3('┣') , (N|E|S)<<4 )"           // canonical mapping (ignoring stand-in)
+      "oASC.assert('oASC.glyph2mask(\\'┼\\')', oASC.glyph2mask('┼') , N|E|S|W)",              // unitype-glyph canonical mapping (ignoring alias)
+      "oASC.assert('oASC.glyph2mask(\\'+\\')', oASC.glyph2mask('+') , N|E|S|W)",              // unitype-glyph alias mapping
+      "oASC.assert('oASC.glyph2mask(\\'╇\\')', oASC.glyph2mask('╇') , (S) | (W|N|E)<<4 )",    // mixed-glyph canonical mapping
+      "oASC.assert('oASC.glyph2mask(\\'╧\\')', oASC.glyph2mask('╧') , (N|E|W) | (W|E)<<4 )",  // mixed-glyph canonical mapping (no stand-in)
+      "oASC.assert('oASC.glyph2mask(\\'┣\\')', oASC.glyph2mask('┣') , (N|E|S)<<4 )"           // canonical mapping (ignoring stand-in)
     ]
   }
 
-  this.mask3ToGlyph = function(m) 
+  this.mask2glyph = function(m) 
   {
     const v = (Number(m) || 0) & 0xFF;
     const codec = getGlyph3Codec();
     return codec.m2g[v] ?? codec.m2gStandIn[v] ?? " ";
   }
-  this.mask3ToGlyph.help = {
+  this.mask2glyph.help = {
     type: "CADScript_FN",
-    usage: "mask3ToGlyph(<i>m</i>)",
-    desc: "Reverse of glyphToMask3: map extended 8-bit mask (fat<<4 | thin) back to a wire glyph. Returns ' ' if unknown. " +
+    usage: "mask2glyph(<i>m</i>)",
+    desc: "Reverse of glyph2mask: map extended 8-bit mask (fat<<4 | thin) back to a wire glyph. Returns ' ' if unknown. " +
     "Stand-in mappings are required when e.g. a fat wire glyph for '╞' does not exist, so when E|(N|S|E)<<4 is requested, a close-enough stand-in glyph like '┣' or '╞' will be returned (better than nothing). " +
     "By policy, stand-in glyphs must prioritise correct rendering of single and fat wires over double wires, because double wires are primarily used for drawing boxes not lines.",
     examples: [
-      "oTERM.print(mask3ToGlyph((N|E|S|W)<<4))",              // ╋
-      "oTERM.print(mask3ToGlyph((N|E|S|W) | ((N|E|S|W)<<4)))" // ╬
+      "oTERM.print(mask2glyph(\n(N|E|S|W)<<4))",              // ╋
+      "oTERM.print(mask2glyph(\n(N|E|S|W) | ((N|E|S|W)<<4)))" // ╬
     ],
     unitTests: [
-      "oASC.assert('oASC.mask3ToGlyph( N|E|S|W )'   , oASC.mask3ToGlyph( N|E|S|W )     ,'┼');",    // canonical mapping (ignoring fall-back)
-      "oASC.assert('oASC.mask3ToGlyph(S|(W|N|E)<<4)', oASC.mask3ToGlyph(S|(W|N|E)<<4)  ,'╇');",    // canonical mapping (no fall-back present)
-      "oASC.assert('oASC.mask3ToGlyph(E|(N|S|E)<<4)', oASC.mask3ToGlyph(E | (N|S|E)<<4),'┣');"     // stand-in mapping (no canonical mapping present)
+      "oASC.assert('oASC.mask2glyph( N|E|S|W )'   , oASC.mask2glyph( N|E|S|W )     ,'┼');",    // canonical mapping (ignoring fall-back)
+      "oASC.assert('oASC.mask2glyph(S|(W|N|E)<<4)', oASC.mask2glyph(S|(W|N|E)<<4)  ,'╇');",    // canonical mapping (no fall-back present)
+      "oASC.assert('oASC.mask2glyph(E|(N|S|E)<<4)', oASC.mask2glyph(E | (N|S|E)<<4),'┣');"     // stand-in mapping (no canonical mapping present)
     ]
   }
 
   this.glyphToMask = function(ch) 
   {
     const k = String(ch ?? "");
-    const v = this.glyphToMask3(k);
+    const v = this.glyph2mask(k);
     return (v === undefined) ? 0 : ((v | v>>4) & 0xF);  // suprapose high bits with lower
   }
   this.glyphToMask.help = 
@@ -1396,8 +1396,8 @@ function ASC()
     usage: "rotateMask(<i>m</i>)",
     desc: "Rotate an 8-bit wire mask 90 degrees clockwise. Low nibble (thin) and high nibble (fat) are rotated independently.",
     examples: [
-      "oTERM.printJSON(rotateMask(glyphToMask3('╆')))",
-      "oTERM.print(Mask3ToGlyph(rotateMask(glyphToMask3('╆'))))"
+      "oTERM.printJSON(rotateMask(\nglyph2mask('╆')))",
+      "oTERM.print(mask2glyph(\nrotateMask(glyph2mask('╆'))))"
     ]
   }
 
@@ -1425,15 +1425,15 @@ function ASC()
     usage: "mirrorMask(<i>m</i>,<i>bVertAxis</i>)",
     desc: "Mirror an 8-bit wire mask. bVertAxis=true mirrors around vertical axis (E<->W). bVertAxis=false mirrors around horizontal axis (N<->S). Thin and fat nibbles are mirrored independently.",
     examples: [
-      "oTERM.print(Mask3ToGlyph(mirrorMask(glyphToMask3('╆'), true)))",
-      "oTERM.print(Mask3ToGlyph(mirrorMask(glyphToMask3('╆'), false)))"
+      "oTERM.print(mask2glyph(\nmirrorMask(glyph2mask('╆'), true)))",
+      "oTERM.print(mask2glyph(\nmirrorMask(glyph2mask('╆'), false)))"
     ]
   }
 
-  // 4-bit -> glyph (thin/fat/double) via mask3ToGlyph (8-bit)
-  this.maskToSingle = function(m4){ return this.mask3ToGlyph((Number(m4)||0) & 0xF) }
-  this.maskToFat = function(m4){ return this.mask3ToGlyph(((Number(m4)||0) & 0xF) << 4) }
-  this.maskToDouble = function(m4){ const m = (Number(m4)||0) & 0xF; return this.mask3ToGlyph(m | (m << 4)) }
+  // 4-bit -> glyph (thin/fat/double) via mask2glyph (8-bit)
+  this.maskToSingle = function(m4){ return this.mask2glyph((Number(m4)||0) & 0xF) }
+  this.maskToFat = function(m4){ return this.mask2glyph(((Number(m4)||0) & 0xF) << 4) }
+  this.maskToDouble = function(m4){ const m = (Number(m4)||0) & 0xF; return this.mask2glyph(m | (m << 4)) }
 
   const BOX_CONTOUR = { h:E|W, v:N|S, tl:E|S, tr:W|S, bl:E|N, br:W|N }
 
@@ -1453,25 +1453,25 @@ function ASC()
   this.BOX_DOUBLE = buildBox(this.maskToDouble.bind(this));
 
   this.hasDoubleH = function(ch){
-    const m = this.glyphToMask3(ch) & 0xFF;
+    const m = this.glyph2mask(ch) & 0xFF;
     const lo = m & 0xF, hi = (m >> 4) & 0xF;
     return ((lo & (E|W)) !== 0) && ((hi & (E|W)) !== 0);
   }
 
   this.hasDoubleV = function(ch){
-    const m = this.glyphToMask3(ch) & 0xFF;
+    const m = this.glyph2mask(ch) & 0xFF;
     const lo = m & 0xF, hi = (m >> 4) & 0xF;
     return ((lo & (N|S)) !== 0) && ((hi & (N|S)) !== 0);
   }
 
   this.isFatWire = function(ch){
-    const m = this.glyphToMask3(ch) & 0xFF;
+    const m = this.glyph2mask(ch) & 0xFF;
     const lo = m & 0xF, hi = (m >> 4) & 0xF;
     return (hi !== 0) && (lo === 0);
   }
 
   this.isDoubleWire = function(ch){
-    const m = this.glyphToMask3(ch) & 0xFF;
+    const m = this.glyph2mask(ch) & 0xFF;
     const lo = m & 0xF, hi = (m >> 4) & 0xF;
     return (lo !== 0) && (lo === hi);
   }
@@ -2019,7 +2019,7 @@ function ASC()
         var dr    = _cur.r - _pre.r
         var dc    = _cur.c - _pre.c;
         pathDir   = 1 << (dr-dc+dc*dc+1);           // get path direction
-        pathType  = this.glyphToMask3(_cur.ch);     // get path wire type
+        pathType  = this.glyph2mask(_cur.ch);     // get path wire type
         pathMask3 = ((pathType&0b1111)>0?pathDir:0) | ((pathType&0b11110000)>0?pathDir:0)<<4;
       }
 
@@ -2038,12 +2038,12 @@ function ASC()
       if(bFirst)
       {
         var watchCell     = watchMatrix.charAt(3);
-        var watchCell_dir = this.glyphToMask3(watchCell);
+        var watchCell_dir = this.glyph2mask(watchCell);
         if((watchCell_dir & dirFilter1) != 0)
         {
           res_dir = watchCell_dir | pathMask3;                                        // assemble both elements to form a T-shape start
-          path[pathIdx].ch = this.mask3ToGlyph(res_dir);                              //this.cell(path[pathIdx].c+6,path[pathIdx].r,"*");
-          //console.log("Solve: '"+this.mask3ToGlyph(watchCell_dir)+"' + '"+this.mask3ToGlyph(pathMask3)+"' = '"+this.mask3ToGlyph(res_dir)+"'");
+          path[pathIdx].ch = this.mask2glyph(res_dir);                              //this.cell(path[pathIdx].c+6,path[pathIdx].r,"*");
+          //console.log("Solve: '"+this.mask2glyph(watchCell_dir)+"' + '"+this.mask2glyph(pathMask3)+"' = '"+this.mask2glyph(res_dir)+"'");
         }
       }
       else if(!bFirst && !bLast)
@@ -2051,19 +2051,19 @@ function ASC()
         if(!bDir2)
         {
           var watchCell = watchMatrix.charAt(3);
-          if((this.glyphToMask3(watchCell) & Vfilter) != 0) 
+          if((this.glyph2mask(watchCell) & Vfilter) != 0) 
             path[pathIdx].ch = watchCell;  // when horizontal goes through a straigt line => override '-' (on path) by '|' (on grid)
         }
       }
       else if(bLast)
       {
         var watchCell     = watchMatrix.charAt(4);
-        var watchCell_dir = this.glyphToMask3(watchCell);
+        var watchCell_dir = this.glyph2mask(watchCell);
         if((watchCell_dir & dirFilter1) != 0) 
         {
           res_dir = watchCell_dir | this.mirrorMask3(pathMask3 & dirFilter2,bDir1);    // assemble both elements to form a T-shape ending
-          path[pathIdx].ch = this.mask3ToGlyph(res_dir);                                     //this.cell(path[pathIdx].c+6,path[pathIdx].r,"*");
-          //console.log("Solve: '"+this.mask3ToGlyph(watchCell_dir)+"' + '"+this.mask3ToGlyph(this.mirrorMask3(pathMask3 & dirFilter2,bDir1))+"' = '"+this.mask3ToGlyph(res_dir)+"'");
+          path[pathIdx].ch = this.mask2glyph(res_dir);                                     //this.cell(path[pathIdx].c+6,path[pathIdx].r,"*");
+          //console.log("Solve: '"+this.mask2glyph(watchCell_dir)+"' + '"+this.mask2glyph(this.mirrorMask3(pathMask3 & dirFilter2,bDir1))+"' = '"+this.mask2glyph(res_dir)+"'");
         }
       }
       _pre = _cur;
@@ -2357,7 +2357,7 @@ function ASC()
 
   this.isWireGlyph = function(ch) {
     const k = String(ch ?? "");
-    return this.glyphToMask3(k) !== undefined && k !== " ";
+    return this.glyph2mask(k) !== undefined && k !== " ";
   }
   // or: return this.glyphMask(ch) !== 0;
   this.isWireGlyph.help = {
