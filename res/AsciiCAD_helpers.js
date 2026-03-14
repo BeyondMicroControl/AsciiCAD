@@ -1650,7 +1650,7 @@ this.startPasteWithText = function(text)
     transparentSpaces: true,
   }
 
-  setMode("modeSelect");
+  //setMode("modeSelect");
   selection = null;
   selectDrag = null;
   moveDrag = null;
