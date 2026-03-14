@@ -208,7 +208,7 @@ Prompt: `AsciiCAD>`
 
 #### Place a few characters (CADScript)
 ```text
-AsciiCAD> CADScript {putCell(0,2,'+'); putCell(1,2,'+'); putCell(1,3,'+')};
+AsciiCAD> CADScript {cell(0,2,'+'); cell(1,2,'+'); cell(1,3,'+')};
 ```
 
 #### Run a terminal command from CADScript
@@ -223,11 +223,11 @@ AsciiCAD> CADScript { oTERM.printJSON(oASC.qryLocate({type:"M.U"})); }
 #### Run a query command + JSON printing from CADScript
 
 ```text
-CADScript {putCell(0,0,"ABCDE\nFGHIJ\nKLMNO\nPQRST\nUVWXY")}
+CADScript {cell(0,0,"ABCDE\nFGHIJ\nKLMNO\nPQRST\nUVWXY")}
 CADScript {oTERM.print(getCell(2,2))}         // returns "M"
 CADScript {oTERM.print(getCell(2,2,2))}       // returns "GHI\nLMN\nQRS"
 CADScript {env.STR = getCell(0,2,3,E); }
-CADScript {oTERM.print(env.STR)}              // returns "KLM"
+CADScript {oTERM.print(env.STR)}           // returns "KLM"
 ```
 
 #### CADScript input prompt
