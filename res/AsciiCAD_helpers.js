@@ -711,7 +711,9 @@ function ASC()
     desc: "",
     examples: ["oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")"],
     unitTests:
-    ["oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")",
+    [
+      
+     "oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")",
      "oASC.assert('oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")',oASC.getCell(0,0,3,E),'╔══');",
      "oASC.stack(\"undo\")"
     ]
@@ -1067,6 +1069,7 @@ function ASC()
     desc: "Draw line in style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
     examples:  ["CADScript {oASC.line({from:{r:0,c:0},\nto:{r:5,c:5},flip:true,kind:BOX_SINGLE})}"],
     unitTests: [
+     "oASC.clear()",
      "oASC.line({from:{r:1,c:1},to:{r:0,c:0},flip:true,kind:BOX_SINGLE})",
      "oASC.assert('line',oASC.getCell(0,0,2,E),'─┐');",
      "oASC.stack(\"undo\")"
@@ -1959,6 +1962,12 @@ this.startPasteWithText = function(text)
       "oASC.qryLocate({type:'BOX'})",
       "oASC.qryLocate({name:'ATTiny85'})",
       "oASC.qryLocate({name:'ATTiny85'\n\t,MFR:'ATTINY85V-10PU'})"
+    ],
+    unitTests: [
+     "oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")",
+     "oASC.cell(5,4,\"01\")",
+     "oASC.assert(\"(await oASC.qryLocate({type:'MCU'})).length\",(await oASC.qryLocate({type:'MCU'})).length,1);",
+     "oASC.stack(\"undo\");oASC.stack(\"undo\");"
     ]
   }
 
