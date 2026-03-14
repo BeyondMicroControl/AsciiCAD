@@ -20,19 +20,58 @@ if (typeof bDebug === "undefined" || !bDebug) {
   if (window.__ASCIICAD_LOG_FORWARD__) return;
   window.__ASCIICAD_LOG_FORWARD__ = true;
 
+  // State to keep track of the last message and count for each type
+  const state = {
+    log: { lastMessage: null, count: 0 },
+    warn: { lastMessage: null, count: 0 },
+    error: { lastMessage: null, count: 0 },
+    assert: { lastMessage: null, count: 0 }
+  };
+
+  // Helper function to send a message with its count
+  function sendMessage(type, message, count) {
+    const countStr = count > 1 ? ` [*${count}]` : '';
+    parent.postMessage(
+      {
+        __asciicadLog: true,
+        type,
+        args: [message + countStr]
+      },
+      "*"
+    );
+  }
+
   function forward(type, args) {
     try {
-      parent.postMessage(
-        {
-          __asciicadLog: true,
-          type,
-          args: args.map(a =>
-            typeof a === "object" ? JSON.stringify(a) : String(a)
-          )
-        },
-        "*"
-      );
+      const message = args.map(a =>
+        typeof a === "object" ? JSON.stringify(a) : String(a)
+      ).join(' ');
+
+      const currentState = state[type];
+
+      if (message === currentState.lastMessage) {
+        currentState.count++;
+      } else {
+        // If there was a previous message, send it now with its count
+        if (currentState.lastMessage !== null) {
+          sendMessage(type, currentState.lastMessage, currentState.count);
+        }
+        // Update the state for the current message
+        currentState.lastMessage = message;
+        currentState.count = 1;
+      }
     } catch {}
+  }
+
+  function flushLogs() {
+    for (const type in state) {
+      const currentState = state[type];
+      if (currentState.lastMessage !== null) {
+        sendMessage(type, currentState.lastMessage, currentState.count);
+        currentState.lastMessage = null;
+        currentState.count = 0;
+      }
+    }
   }
 
   ["log", "warn", "error", "assert"].forEach(type => {
@@ -42,7 +81,15 @@ if (typeof bDebug === "undefined" || !bDebug) {
       orig.apply(console, args);
     };
   });
+
+  // Flush logs when the page is unloaded
+  window.addEventListener('beforeunload', flushLogs);
+
+  // Make flushLogs available globally
+  window.flushLogs = flushLogs;
 })();
+
+
 
 
 
@@ -386,7 +433,10 @@ function runWorkerThreadSmokeTests()
     .then(function() { worker?.terminate?.(); })
     .then(function()
     {
+      //tool = "modeFreeform";
       op = { type: "place", ch: '+' };
+      //setMode("modeFreeform");
+      //updateUI();
       //oCMD.runExternalScript("oASC.stack('reset')");
     });
 }
