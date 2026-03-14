@@ -1013,12 +1013,11 @@ function ASC()
     function r180(str) { return str.split("").reverse().join("") }
   }
 
-  this.commitLine = function(merge, lineKind)
+  this.commitLine = function(merge)
   {
     if (!lineDrag) return;
     if (bDebug) console.log("commitLine() lineDrag=", lineDrag);
 
-    console.log("mergeEnabled="+mergeEnabled)
     const rawPath = this.buildOrthogonalPath( lineDrag.start, lineDrag.cur, lineDrag.flip, lineDrag.kind );
     const path    = merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
 
