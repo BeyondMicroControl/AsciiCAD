@@ -523,7 +523,7 @@ function ASC()
   this.expandWideCharsForGrid = function(text) 
   {
     const outLines = [];
-    const lines = oCOM.toLines(text); // your normalizeNewlines + split('\n')
+    const lines = oCOM.toLines(text);
     for (const line of lines)
     {
         let out = "";
@@ -771,15 +771,6 @@ function ASC()
     this.draw("moveLine");
   }
 
-  this.endLine = function()
-  {
-    if (!lineDrag) return;
-
-    const drag = lineDrag;
-    lineDrag = null;          // clear preview state first
-    this.putLine(drag);       // drag has start/cur/flip/kind, now supported
-  };
-
   // TODO: why is cancelLine() unused ? 
   this.cancelLine = function() 
   {
@@ -913,50 +904,6 @@ function ASC()
     return out;
   }
 
-  // INFO: commitLineWithOptionalMerge() is buggy, therefore we need to get putLine perfect.
-  this.putLine = function(lineArg)
-  {
-    if (!lineArg) return;
-
-    // Accept both programmatic shape ({from,to,...}) and UI shape ({start,cur,...})
-    const from = lineArg.from ?? lineArg.start;
-    const to   = lineArg.to   ?? lineArg.cur;
-    const flip = !!lineArg.flip;
-    const kind = lineArg.kind;
-
-    if (!from || !to) return;
-
-    const Lpath = this.buildOrthogonalPath(from, to, flip, kind);
-    const path  = this.solveIntersect(Lpath);
-
-    const stroke = [];
-    for (const p of path)
-    {
-      if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-      const prev = ascii[p.r][p.c];
-      const next = p.ch;
-      if (prev !== next)
-      {
-        stroke.push({ r: p.r, c: p.c, prev, next });
-        ascii[p.r][p.c] = next;
-      }
-    }
-
-    this.pushStrokeIfNonEmpty(stroke);
-    this.draw("putLine");
-  };
-  this.putLine.help =
-  {
-    type: "CADScript_Fn",
-    usage: "putLine({from:{r:0,c:0},\nto:{r:0,c:0},flip:,kind})",
-    desc: "Draw line in style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
-    examples:  ["CADScript {oASC.putLine({from:{r:0,c:0},\nto:{r:5,c:5},flip:true,kind:BOX_SINGLE})}"],
-    unitTests: [
-     "oASC.putLine({from:{r:1,c:1},to:{r:0,c:0},flip:true,kind:BOX_SINGLE})",
-     "oASC.assert('putLine',oASC.getCell(0,0,2,E),'─┐');",
-     "oASC.stack(\"undo\")"
-    ]
-  }
 
   this.maskToString = function(num)
   {
@@ -1066,20 +1013,14 @@ function ASC()
     function r180(str) { return str.split("").reverse().join("") }
   }
 
-  this.commitLineWithOptionalMerge = function(mergeEnabled, lineKind)
+  this.commitLine = function(merge, lineKind)
   {
     if (!lineDrag) return;
-    if (bDebug) console.log("commitLineWithOptionalMerge() lineDrag=", lineDrag);
+    if (bDebug) console.log("commitLine() lineDrag=", lineDrag);
 
-    // keep UI state usage exactly as before
+    console.log("mergeEnabled="+mergeEnabled)
     const rawPath = this.buildOrthogonalPath( lineDrag.start, lineDrag.cur, lineDrag.flip, lineDrag.kind );
-
-    console.log("path");
-
-    // NEW: solve all intersections here, once
-    const path = this.solveIntersect(rawPath);
-
-    console.log("beyond_path");
+    const path    = merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
 
     const cellMap = new Map();
     for (const p of path) 
@@ -1107,8 +1048,54 @@ function ASC()
 
     lineDrag = null;
     this.pushStrokeIfNonEmpty(stroke);
-    this.draw("commitLineWithOptionalMerge(solveIntersect)");
+    this.draw("commitLine(solveIntersect)");
   };
+
+
+  this.putLine = function(lineArg)
+  {
+    if (!lineArg) return;
+
+    // Accept both programmatic shape ({from,to,...}) and UI shape ({start,cur,...})
+    const from  = lineArg.from ?? lineArg.start;
+    const to    = lineArg.to   ?? lineArg.cur;
+    const flip  = !!lineArg.flip;
+    const kind  = lineArg.kind;
+    const merge = lineArg.merge===undefined?true:lineArg.merge;
+
+    if (!from || !to) return;
+
+    const rawPath = this.buildOrthogonalPath(from, to, flip, kind);
+    const path    = merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
+
+    const stroke = [];
+    for (const p of path)
+    {
+      if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+      const prev = ascii[p.r][p.c];
+      const next = p.ch;
+      if (prev !== next)
+      {
+        stroke.push({ r: p.r, c: p.c, prev, next });
+        ascii[p.r][p.c] = next;
+      }
+    }
+
+    this.pushStrokeIfNonEmpty(stroke);
+    this.draw("putLine");
+  }
+  this.putLine.help =
+  {
+    type: "CADScript_Fn",
+    usage: "putLine({from:{r:0,c:0},\nto:{r:0,c:0},flip:,kind})",
+    desc: "Draw line in style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
+    examples:  ["CADScript {oASC.putLine({from:{r:0,c:0},\nto:{r:5,c:5},flip:true,kind:BOX_SINGLE})}"],
+    unitTests: [
+     "oASC.putLine({from:{r:1,c:1},to:{r:0,c:0},flip:true,kind:BOX_SINGLE})",
+     "oASC.assert('putLine',oASC.getCell(0,0,2,E),'─┐');",
+     "oASC.stack(\"undo\")"
+    ]
+  }
 
   // subsection: boxes
 
@@ -1135,6 +1122,12 @@ function ASC()
     this.box( boxDrag.start.c,boxDrag.start.r , boxDrag.cur.c,boxDrag.cur.r , style );
     boxDrag = null;
     this.draw("commitBox");
+  }
+
+  this.cancelBox = function()
+  {
+      boxDrag = null;
+      oASC.draw("cancelBox");
   }
 
   this.box = function(c0,r0,c1,r1, style)

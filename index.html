@@ -1831,7 +1831,7 @@ function commitPreviewDrag()
 {
   if (lineDrag)
   {
-    oASC.commitLineWithOptionalMerge(lineDrag.merge, lineDrag.kind);
+    oASC.commitLine(lineDrag.merge, lineDrag.kind);
     return true;
   }
 
@@ -1926,24 +1926,9 @@ window.addEventListener("keydown", (e) =>
     return; // IMPORTANT: don't fall through to line/box shortcuts
   }
 
-  if (lineDrag)
-  {
-    if (e.key === "Escape")
-    {
-      oASC.cancelLine();
-      return;
-    }
-  }
+  if (lineDrag && e.key === "Escape") { oASC.cancelLine(); return; }
 
-  if (boxDrag)
-  {
-    if (e.key === "Escape")
-    {
-      boxDrag = null;
-      oASC.draw("cancelBox");
-      return;
-    }
-  }
+  if (boxDrag && e.key === "Escape")  { oASC.cancelBox(); return; }
 
   // Rotate catalog paste preview (works in any mode, including Freeform)
   // Only applies when we're in paste preview and the paste came from a catalog item.
