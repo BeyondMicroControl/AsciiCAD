@@ -751,6 +751,7 @@ function ASC()
     lineDrag = {
       kind,
       flip: !shiftDown,      // Shift held => horizontal-first (no vertical leg)
+      inv: true,
       merge: !oDown,         // 'o' held => override (no merge)
       start: { r: cell.r, c: cell.c },
       cur:   { r: cell.r, c: cell.c }
@@ -782,15 +783,31 @@ function ASC()
   this.getCharAtCell  = function(r, c) {  return ascii[r][c] }
   this.drawCharAtCell = function(r, c, ch) { ascii[r][c] = ch; }
 
-  this.drawLinePreview = function() 
+  // this.N = 0b0001, this.E = 0b0010, this.S = 0b0100, this.W = 0b1000;
+  this.dominantDir = function(matrix,vector,kind)
   {
-    if (!lineDrag) return;
-    const path = this.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+    const v = [vector.r<0?-vector.r:0,vector.c>0?vector.c>>1:0,vector.r>0?vector.r:0,vector.c<0?-(vector.c>>1):0];
+    const maskDir  = 1 << v.indexOf( Math.max(...v) );   // dominant direction taken from vector
+    
+    var bInv = (maskDir & (this.E|this.W)) !=0;  // define if starting point must go vertical (true) or horizontal (false)
+    if(matrix[5]=="─") bInv = true;   // override
+    if(matrix[5]=="│") bInv = false;  // override
+
+    //console.log("\n"+matrix.replace(/ /g,"."));
+    //console.log(Math.random(1)+" "+this.maskToString(maskDir)+" '"+matrix[5]+"'" );
+
+    return bInv;
   }
 
   this.buildOrthogonalPath = function(start, end, start_vleg, kind)
   {
-    var cornerChar = function(r0, c0, r1, c1, v_leg, chset)  // private helper for buildOrthogonalPath
+    var watchMatrix = this.getCell(start.c,start.r,2);
+    var vector = {"c":end.c-start.c,"r":end.r-start.r};
+    var bInv = this.dominantDir(watchMatrix,vector,kind);
+    if(bInv) start_vleg = !start_vleg;
+    
+  
+    var cornerChar = function(r0, c0, r1, c1, v_leg, chset)          // private helper for buildOrthogonalPath
     {
       if ( (c1 > c0) &&  (r1 > r0)) return v_leg?chset.bl:chset.tr;  // left + down  | up + right
       if ( (c1 > c0) && !(r1 > r0)) return v_leg?chset.tl:chset.br;  // left + up    | up + left
@@ -924,8 +941,7 @@ function ASC()
 
   this.solveIntersect = function(path)
   {
-    var outPath = {};
-    var pathIdx=0
+    var outPath = {}, pathIdx=0
     outPath[pathIdx] = path[pathIdx];
 
     var _pre = path[pathIdx];
@@ -941,7 +957,7 @@ function ASC()
         var dr    = _cur.r - _pre.r
         var dc    = _cur.c - _pre.c;
         pathDir   = 1 << (dr-dc+dc*dc+1);           // get path direction
-        pathType  = this.glyph2mask(_cur.ch);     // get path wire type
+        pathType  = this.glyph2mask(_cur.ch);       // get path wire type
         pathMask3 = ((pathType&0b1111)>0?pathDir:0) | ((pathType&0b11110000)>0?pathDir:0)<<4;
       }
 
@@ -3069,14 +3085,13 @@ this.startPasteWithText = function(text)
 
     if (pasteDrag) drawPastePreview(cw, ch, snap);
 
-    this.drawLinePreview();
-
-    // Line preview overlay
-    if (lineDrag)
+    if (lineDrag)         // Line preview overlay
     {
       const old = ctx.fillStyle;
       ctx.fillStyle = "rgba(59,130,246,0.9)";
-      const path = this.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+
+      const rawPath = this.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+      const path    = lineDrag.merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
 
       for (const p of path)
       {
