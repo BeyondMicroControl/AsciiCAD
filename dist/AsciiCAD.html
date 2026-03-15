@@ -3744,19 +3744,35 @@ this.startPasteWithText = function(text)
         if(multi===undefined) var multi = 20;
       case "undo":
         if(multi===undefined) var multi = 1;
-
         for(var i=0;i<multi;i++)
         {
           var stroke = undoStack.pop();
           if (!stroke) return;
-          for (let i = stroke.length - 1; i >= 0; i--) ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
+          if(lineDrag && undoStack.length>0)
+          {
+            var _stroke = undoStack[undoStack.length-1];
+            var item    = _stroke[_stroke.length-1]
+            console.log("_stroke="+JSON.stringify(_stroke))
+            console.log("New origin -> c:"+item.c+" r:"+item.r+" next:"+item.next);
+
+            lineDrag.start.c = item.c;
+            lineDrag.start.r = item.r;
+
+          }
+          //console.log("undo: "+JSON.stringify(undoStack).replace(/\},\{/g,"}\n,{"));
+
+          for (let i = stroke.length - 1; i >= 0; i--) 
+            ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
           redoStack.push(stroke);
 
-          // Invalidate overlays after undo
-          highlightCache = null;
-          matchCache = null;
-          netlistCache = null;
-          hoverNetIndex = -1;
+   
+
+
+
+          highlightCache = null;             // Invalidate overlays after undo
+          matchCache     = null;
+          netlistCache   = null;
+          hoverNetIndex  = -1;
 
           updateUI();
         }
