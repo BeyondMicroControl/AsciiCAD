@@ -2678,7 +2678,6 @@ this.startPasteWithText = function(text)
 
             lineDrag.start.c = item.c;
             lineDrag.start.r = item.r;
-
           }
           //console.log("undo: "+JSON.stringify(undoStack).replace(/\},\{/g,"}\n,{"));
 
