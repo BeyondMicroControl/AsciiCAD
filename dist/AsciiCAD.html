@@ -1818,9 +1818,10 @@ function ASC()
   }
 
 
+
   // subsection: lines
 
-  this.beginLine = function(cell,kind) 
+  this.beginLine = function(cell,kind,modifiers) 
   {
     if (!cell) return;
     if(bDebug) console.log("beginLine()")
@@ -1832,6 +1833,7 @@ function ASC()
       flip: !shiftDown,      // Shift held => horizontal-first (no vertical leg)
       inv: true,
       merge: !oDown,         // 'o' held => override (no merge)
+      modifiers: modifiers,         // routing is opt-in; keep legacy orthogonal preview by default
       start: { r: cell.r, c: cell.c },
       cur:   { r: cell.r, c: cell.c }
     }
@@ -2113,15 +2115,28 @@ function ASC()
     if (!lineDrag) return;
 
     const drag = {
-      start: lineDrag.start,
-      cur:   lineDrag.cur,
-      flip:  lineDrag.flip,
-      kind:  lineDrag.kind,
-      merge: lineDrag.merge
+      start:     lineDrag.start,
+      cur:       lineDrag.cur,
+      flip:      lineDrag.flip,
+      kind:      lineDrag.kind,
+      merge:     lineDrag.merge,
+      modifiers: Object.assign({}, lineDrag.modifiers || {})
     }
 
     lineDrag = null;
     this.line(drag);
+  }
+
+  this.buildLinePath = function(from, to, flip, modifiers, kind)
+  {
+    const mods = Object.assign({}, modifiers || {});
+    const startVertical = mods.startVertical !== undefined ? !!mods.startVertical
+                        : mods.flip !== undefined          ? !!mods.flip
+                        : !!flip;
+
+    if (mods.route === true) return this.routePath(from, to, mods, kind);
+
+    return this.buildOrthogonalPath(from, to, startVertical, kind);
   }
 
 
@@ -2130,15 +2145,16 @@ function ASC()
     if (!lineArg) return;
 
     // Accept both programmatic shape ({from,to,...}) and UI shape ({start,cur,...})
-    const from  = lineArg.from ?? lineArg.start;
-    const to    = lineArg.to   ?? lineArg.cur;
-    const flip  = !!lineArg.flip;
-    const kind  = lineArg.kind;
-    const merge = lineArg.merge===undefined?true:lineArg.merge;
+    const from      = lineArg.from ?? lineArg.start;
+    const to        = lineArg.to   ?? lineArg.cur;
+    const flip      = !!lineArg.flip;
+    const modifiers = lineArg.modifiers || {};
+    const kind      = lineArg.kind;
+    const merge     = lineArg.merge===undefined?true:lineArg.merge;
 
     if (!from || !to) return;
 
-    const rawPath = this.buildOrthogonalPath(from, to, flip, kind);
+    const rawPath = this.buildLinePath(from, to, flip, modifiers, kind);
     const path    = merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
 
     const stroke = [];
@@ -2157,6 +2173,10 @@ function ASC()
     this.pushStrokeIfNonEmpty(stroke);
     this.draw("line");
   }
+
+
+// TODO ADD A UNIT TEST ON LINE ROUTING
+
   this.line.help =
   {
     type: "CADScript_Fn",
@@ -2170,6 +2190,342 @@ function ASC()
      "oASC.stack(\"undo\")"
     ]
   }
+
+
+
+  // ------------------------------------------------------------
+  // ROUTER (A* over (r,c,dir))
+  // ------------------------------------------------------------
+
+  this.resolveLineStyle = function(kind)
+  {
+    return kind === "double" ? this.BOX_DOUBLE
+         : kind === "fat"    ? this.BOX_FAT
+         : kind === "single" ? this.BOX_SINGLE
+         : (kind || this.BOX_SINGLE);
+  }
+
+  this.routeLexLess = function(a, b)
+  {
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] < b[i]) return true;
+      if (a[i] > b[i]) return false;
+    }
+    return false;
+  }
+
+  this.routeLexEq = function(a, b)
+  {
+    return !this.routeLexLess(a, b) && !this.routeLexLess(b, a);
+  }
+
+  this.routeAddCost = function(a, b)
+  {
+    const out = new Array(a.length);
+    for (let i = 0; i < a.length; i++) out[i] = a[i] + b[i];
+    return out;
+  }
+
+  this.routeOppositeDir = function(dir)
+  {
+    if (dir === N) return S;
+    if (dir === S) return N;
+    if (dir === E) return W;
+    if (dir === W) return E;
+    return 0;
+  }
+
+  this.routeNormalizeModifiers = function(from, to, modifiers, kind)
+  {
+    let m = (typeof modifiers === "boolean")
+      ? { startVertical: !!modifiers }
+      : Object.assign({}, modifiers || {});
+
+    // compatibility with old "flip" convention
+    if (m.flip !== undefined && m.startVertical === undefined)
+      m.startVertical = !!m.flip;
+
+    m.startVertical = !!m.startVertical;
+    m.leastCorners  = !!m.leastCorners;
+    m.leastBridges  = !!m.leastBridges;
+
+    // preserve old dominantDir influence as a tie-break preference
+    const watchMatrix = this.getCell(from.c, from.r, 2);
+    const vector = { c: to.c - from.c, r: to.r - from.r };
+    if (this.dominantDir(watchMatrix, vector, kind))
+      m.startVertical = !m.startVertical;
+
+    return m;
+  }
+
+  this.routeBuildContext = function(from, to)
+  {
+    const hl = this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
+    const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() };
+    const banned = this.computeNetlistBannedSet?.(mo, hl) ?? new Set();
+
+    return { from, to, hl, mo, banned };
+  }
+
+  this.routeCellKind = function(r, c, ctx)
+  {
+    if (r === ctx.from.r && c === ctx.from.c) return "terminal";
+    if (r === ctx.to.r   && c === ctx.to.c)   return "terminal";
+
+    const k = keyRC(r, c);
+    if (ctx.banned.has(k)) return "blocked";
+
+    const ch = ascii?.[r]?.[c] ?? " ";
+    if (ch === " ") return "free";
+
+    const mask = this.glyphToMask(ch) ?? 0;
+    if (mask === 0) return "blocked";          // labels / text / unknown glyphs
+
+    // Current bridge renderer only really supports single vertical wire
+    // being crossed by a horizontal route:  ─│─
+    if (this.isDoubleWire(ch) || this.isFatWire(ch)) return "blocked";
+
+    const deg =
+      ((mask & N) ? 1 : 0) +
+      ((mask & E) ? 1 : 0) +
+      ((mask & S) ? 1 : 0) +
+      ((mask & W) ? 1 : 0);
+
+    if (deg === 2 && mask === (E|W)) return "wire_h";
+    if (deg === 2 && mask === (N|S)) return "wire_v";
+
+    // stubs, corners, tees, crosses, mixeds => obstacles
+    return "blocked";
+  }
+
+  this.routeStepVerdict = function(nr, nc, dirOut, ctx)
+  {
+    const kind = this.routeCellKind(nr, nc, ctx);
+
+    switch (kind)
+    {
+      case "free":
+      case "terminal":
+        return { allowed: true, bridge: false };
+
+      case "wire_v":
+        // bridge policy supported by current solveIntersect() / rendering
+        if (dirOut === E || dirOut === W)
+          return { allowed: true, bridge: true };
+        return { allowed: false, bridge: false };
+
+      case "wire_h":
+      case "blocked":
+      default:
+        return { allowed: false, bridge: false };
+    }
+  }
+
+  this.routeHeuristic = function(r, c, to)
+  {
+    return [Math.abs(r - to.r) + Math.abs(c - to.c), 0, 0, 0];
+  }
+
+  this.routeMaskToGlyph = function(mask, chset)
+  {
+    switch (mask)
+    {
+      case E:
+      case W:
+      case E|W: return chset.h;
+
+      case N:
+      case S:
+      case N|S: return chset.v;
+
+      case E|S: return chset.tl;
+      case W|S: return chset.tr;
+      case E|N: return chset.bl;
+      case W|N: return chset.br;
+    }
+    return " ";
+  }
+
+  this.routeStatesToPath = function(states, kind)
+  {
+    const chset = this.resolveLineStyle(kind);
+    const out = [];
+
+    if (!states || states.length <= 1) return out;
+
+    for (let i = 0; i < states.length; i++)
+    {
+      const prev = i > 0 ? states[i - 1] : null;
+      const cur  = states[i];
+      const next = i + 1 < states.length ? states[i + 1] : null;
+
+      let mask = 0;
+
+      if (prev) {
+        if (prev.r < cur.r) mask |= N;
+        if (prev.r > cur.r) mask |= S;
+        if (prev.c < cur.c) mask |= W;
+        if (prev.c > cur.c) mask |= E;
+      }
+
+      if (next) {
+        if (next.r < cur.r) mask |= N;
+        if (next.r > cur.r) mask |= S;
+        if (next.c < cur.c) mask |= W;
+        if (next.c > cur.c) mask |= E;
+      }
+
+      if (!mask) continue;
+      out.push({ r: cur.r, c: cur.c, ch: this.routeMaskToGlyph(mask, chset) });
+    }
+
+    return out;
+  }
+
+  this.routePath = function(from, to, modifiers, kind)
+  {
+    if (!from || !to) return [];
+    if (from.r === to.r && from.c === to.c) return [];
+
+    const mods = this.routeNormalizeModifiers(from, to, modifiers, kind);
+    const ctx  = this.routeBuildContext(from, to);
+    const self = this;
+
+    const DIRS = [
+      { dir: N, dr: -1, dc:  0, vertical: true  },
+      { dir: E, dr:  0, dc:  1, vertical: false },
+      { dir: S, dr:  1, dc:  0, vertical: true  },
+      { dir: W, dr:  0, dc: -1, vertical: false }
+    ];
+
+    const stateKey = (r, c, dir) => r + "," + c + "," + dir;
+
+    function heapLess(a, b)
+    {
+      if (self.routeLexLess(a.f, b.f)) return true;
+      if (self.routeLexLess(b.f, a.f)) return false;
+      return self.routeLexLess(a.g, b.g);
+    }
+
+    const open = [];
+
+    function heapPush(node)
+    {
+      open.push(node);
+      let i = open.length - 1;
+      while (i > 0) {
+        const p = (i - 1) >> 1;
+        if (!heapLess(open[i], open[p])) break;
+        const t = open[i]; open[i] = open[p]; open[p] = t;
+        i = p;
+      }
+    }
+
+    function heapPop()
+    {
+      if (open.length === 0) return null;
+      const top = open[0];
+      const last = open.pop();
+      if (open.length > 0) {
+        open[0] = last;
+        let i = 0;
+        for (;;) {
+          let l = i * 2 + 1;
+          let r = l + 1;
+          let m = i;
+          if (l < open.length && heapLess(open[l], open[m])) m = l;
+          if (r < open.length && heapLess(open[r], open[m])) m = r;
+          if (m === i) break;
+          const t = open[i]; open[i] = open[m]; open[m] = t;
+          i = m;
+        }
+      }
+      return top;
+    }
+
+    const gBest     = new Map();
+    const parent    = new Map();
+    const stateByKey= new Map();
+
+    const startKey = stateKey(from.r, from.c, 0);
+    const g0 = [0, 0, 0, 0];
+    const f0 = this.routeAddCost(g0, this.routeHeuristic(from.r, from.c, to));
+
+    gBest.set(startKey, g0);
+    stateByKey.set(startKey, { r: from.r, c: from.c, dir: 0 });
+
+    heapPush({
+      key: startKey,
+      r: from.r,
+      c: from.c,
+      dir: 0,
+      g: g0,
+      f: f0
+    });
+
+    while (open.length)
+    {
+      const cur = heapPop();
+      const best = gBest.get(cur.key);
+      if (!best || !this.routeLexEq(cur.g, best)) continue;
+
+      if (cur.r === to.r && cur.c === to.c)
+      {
+        const states = [];
+        let k = cur.key;
+        while (k) {
+          states.push(stateByKey.get(k));
+          const p = parent.get(k);
+          k = p ? p.prevKey : null;
+        }
+        states.reverse();
+        return this.routeStatesToPath(states, kind);
+      }
+
+      for (const d of DIRS)
+      {
+        if (cur.dir && d.dir === this.routeOppositeDir(cur.dir)) continue;
+
+        const nr = cur.r + d.dr;
+        const nc = cur.c + d.dc;
+
+        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+
+        const verdict = this.routeStepVerdict(nr, nc, d.dir, ctx);
+        if (!verdict.allowed) continue;
+
+        const turn = (cur.dir !== 0 && cur.dir !== d.dir) ? 1 : 0;
+        const firstMovePenalty = (cur.dir === 0)
+          ? ((mods.startVertical && !d.vertical) || (!mods.startVertical && d.vertical) ? 1 : 0)
+          : 0;
+
+        const delta = [
+          1,
+          mods.leastCorners ? turn : 0,
+          mods.leastBridges ? (verdict.bridge ? 1 : 0) : 0,
+          firstMovePenalty
+        ];
+
+        const g2 = this.routeAddCost(cur.g, delta);
+        const k2 = stateKey(nr, nc, d.dir);
+        const old= gBest.get(k2);
+
+        if (!old || this.routeLexLess(g2, old))
+        {
+          gBest.set(k2, g2);
+          parent.set(k2, { prevKey: cur.key });
+          stateByKey.set(k2, { r: nr, c: nc, dir: d.dir });
+
+          const f2 = this.routeAddCost(g2, this.routeHeuristic(nr, nc, to));
+          heapPush({ key: k2, r: nr, c: nc, dir: d.dir, g: g2, f: f2 });
+        }
+      }
+    }
+
+    // fallback: preserve old behaviour when no obstacle-free route exists
+    return this.buildOrthogonalPath(from, to, mods.startVertical, kind);
+  }
+
 
   // subsection: boxes
 
@@ -4184,7 +4540,7 @@ this.startPasteWithText = function(text)
       const old = ctx.fillStyle;
       ctx.fillStyle = "rgba(59,130,246,0.9)";
 
-      const rawPath = this.buildOrthogonalPath(lineDrag.start,lineDrag.cur,lineDrag.flip,lineDrag.kind);
+      const rawPath = this.buildLinePath(lineDrag.start, lineDrag.cur, lineDrag.flip, lineDrag.modifiers, lineDrag.kind);
       const path    = lineDrag.merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
 
       for (const p of path)
@@ -10603,7 +10959,7 @@ canvas.addEventListener("mousedown", (e) =>
 
     if (tool === "modeSLine" || tool === "modeFLine" || tool === "modeDLine")
     {
-
+        // lineDrag is always null here
     }
     else return; // this stops dragging when mousedown during preview
   }
@@ -10632,27 +10988,8 @@ function hasPreviewDrag()
 
 function commitPreviewDrag()
 {
-  if (lineDrag && lineDrag.start && lineDrag.cur)
-  {
-    const drag = {
-      start: lineDrag.start,
-      cur:   lineDrag.cur,
-      flip:  lineDrag.flip,
-      kind:  lineDrag.kind,
-      merge: lineDrag.merge, 
-    };
-
-    lineDrag = null;      // clear preview state first
-    oASC.line(drag);      // generic line commit
-    return true;
-  }
-
-  if (boxDrag)
-  {
-    oASC.commitBox();
-    return true;
-  }
-
+  if (lineDrag) { oASC.commitLine(); return true; }
+  if (boxDrag)  { oASC.commitBox();  return true; }
   return false;
 }
 
