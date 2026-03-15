@@ -1805,7 +1805,7 @@ canvas.addEventListener("mousedown", (e) =>
 
     if (tool === "modeSLine" || tool === "modeFLine" || tool === "modeDLine")
     {
-
+        // lineDrag is always null here
     }
     else return; // this stops dragging when mousedown during preview
   }
@@ -1834,27 +1834,8 @@ function hasPreviewDrag()
 
 function commitPreviewDrag()
 {
-  if (lineDrag && lineDrag.start && lineDrag.cur)
-  {
-    const drag = {
-      start: lineDrag.start,
-      cur:   lineDrag.cur,
-      flip:  lineDrag.flip,
-      kind:  lineDrag.kind,
-      merge: lineDrag.merge, 
-    };
-
-    lineDrag = null;      // clear preview state first
-    oASC.line(drag);      // generic line commit
-    return true;
-  }
-
-  if (boxDrag)
-  {
-    oASC.commitBox();
-    return true;
-  }
-
+  if (lineDrag) { oASC.commitLine(); return true; }
+  if (boxDrag)  { oASC.commitBox();  return true; }
   return false;
 }
 
