@@ -1406,7 +1406,7 @@ for(var uri in oCOM.URL.uri)
   {
     case "bDebug":
       if(bDebug == true) break;   // if bDebug==true was hardcoded, always debug
-      bDebug = oCOM.URL.uri[uri] == "true" ? true : false;
+      bDebug = oCOM.URL.uri[uri] == "false" ? false : true;
       document.getElementById("toolDebug").style.visibility = bDebug==true ? "hidden" : "visible";
     break;
     case "download":

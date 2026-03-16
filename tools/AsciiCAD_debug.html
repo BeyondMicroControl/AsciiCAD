@@ -112,6 +112,10 @@ a:active {
   <body>
     <div class="topbar">
       <button onclick="logPanel.textContent=''">Clear Logs</button>
+      <button onclick="logPanel.textContent='';document.getElementById('app').src='../index.html?bDebug=true'">Full debug</button>
+      <button onclick="logPanel.textContent='';document.getElementById('app').src='../index.html?bDebug=log,warn,error'">Logs debug</button>
+      <button onclick="logPanel.textContent='';document.getElementById('app').src='../index.html?bDebug=warn,error,assert'">Assert debug</button>
+
       <button onclick="document.location='../index.html'" style="filter:grayscale(50%)">exit D&#x1F41E;</span></button>
       <span>
         src: <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/index.html"            target="AsciiCADsrc" rel="noopener">index</a>

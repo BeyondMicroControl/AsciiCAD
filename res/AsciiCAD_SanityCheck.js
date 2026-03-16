@@ -92,6 +92,25 @@ if (typeof bDebug === "undefined" || !bDebug) {
 })();
 */
 
+var DebugFilter = ["log", "warn", "error", "assert"]; // default filter
+oCOM.URL.parse(document.location.toString());
+for(var uri in oCOM.URL.uri)
+{
+  switch(uri)
+  {
+    case "bDebug":
+      var RAWfilter = oCOM.URL.uri[uri].split(",");
+      var filter = [];
+      for(var i=0;i<DebugFilter.length;i++)
+      {
+        if( RAWfilter.includes(DebugFilter[i]) )
+            filter.push(DebugFilter[i]);
+      }
+      if(filter.length>0) DebugFilter = oCOM.URL.uri[uri].split(",");
+    break;
+
+  }  
+}
 
 
 (function () {
@@ -113,7 +132,10 @@ if (typeof bDebug === "undefined" || !bDebug) {
     } catch {}
   }
 
-  ["log", "warn", "error", "assert"].forEach(type => {
+console.log("RERUN "+JSON.stringify(DebugFilter))
+
+  DebugFilter.forEach(type => {
+  //["warn", "error", "assert"].forEach(type => {
     const orig = console[type];
     console[type] = (...args) => {
       forward(type, args);
