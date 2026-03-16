@@ -132,8 +132,6 @@ for(var uri in oCOM.URL.uri)
     } catch {}
   }
 
-console.log("RERUN "+JSON.stringify(DebugFilter))
-
   DebugFilter.forEach(type => {
   //["warn", "error", "assert"].forEach(type => {
     const orig = console[type];
