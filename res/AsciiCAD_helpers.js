@@ -1103,12 +1103,33 @@ function ASC()
     type: "CADScript_Fn",
     usage: "line({from:{r:0,c:0},\nto:{r:0,c:0},flip:,kind})",
     desc: "Draw line in style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
-    examples:  ["CADScript {oASC.line({from:{r:0,c:0},\nto:{r:5,c:5},flip:true,kind:BOX_SINGLE})}"],
+    examples:  [
+      "CADScript {oASC.line({from:{r:0,c:0},\nto:{r:5,c:5},flip:true,kind:BOX_SINGLE})}"
+    ],
     unitTests: [
-     "oASC.clear()",
-     "oASC.line({from:{r:1,c:1},to:{r:0,c:0},flip:true,kind:BOX_SINGLE})",
-     "oASC.assert('line',oASC.getCell(0,0,2,E),'─┐');",
-     "oASC.stack(\"undo\")"
+     "oASC.clear();",
+     "oASC.line({from:{r:1,c:1},to:{r:0,c:0},flip:true,kind:BOX_SINGLE});",
+     "oASC.assert('simple line',oASC.getCell(0,0,2,oASC.E),'─┐');",
+     "oASC.stack(\"undo\");",
+     
+     
+     "oASC.box(3,1,5,3,BOX_DOUBLE);",
+     "oASC.cell(4,4,'*');",
+     "oASC.cell(0,0,'╟\\n╟\\n╟\\n╟\\n╟');",
+     "oASC.cell(8,0,'╢\\n╢\\n╢\\n╢\\n╢');",
+     "oASC.line({from:{c:6,r:0},to:{c:6,r:4},kind:BOX_SINGLE});",
+     "oASC.line({from:{c:2,r:0},to:{c:2,r:3},kind:BOX_SINGLE});",
+     "oASC.line({from:{c:0,r:2},to:{c:8,r:2},modifiers:{route:true,leastCorners:true,leastBridges:true},kind:oASC.BOX_SINGLE});",
+     "oASC.line({from:{c:0,r:3},to:{c:8,r:3},modifiers:{route:true,leastCorners:true,leastBridges:true},kind:oASC.BOX_SINGLE});",
+     "oASC.assert('routed line',oASC.getCell(0,0,9,E|S),'╟┌│───│┐╢\\n╟││╔═╗││╢\\n╟┘│║ ║│└╢\\n╟┐│╚═╝│┌╢\\n╟│  * ││╢\\n └─────┘ \\n         \\n         \\n         ');",
+     "oASC.stack(\"undo5\")",
+     "oASC.stack(\"undo\")",
+     "oASC.stack(\"undo\")",
+     "oASC.stack(\"undo\")",
+     //"throw Error('StopChain');"
+
+
+
     ]
   }
 
@@ -1512,7 +1533,7 @@ function ASC()
     desc: "Draw a box in line style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
     examples:  ["oASC.box(1,0,3,2,BOX_SINGLE)","oASC.box(1,0,3,2,BOX_FAT)","oASC.box(1,0,3,2,BOX_DOUBLE)"],
     unitTests: [
-    "oASC.box(0,0,2,2,BOX_SINGLE);oASC.box(3,0,5,2,BOX_FAT);oASC.box(6,0,8,2,BOX_DOUBLE);",
+     "oASC.box(0,0,2,2,BOX_SINGLE);oASC.box(3,0,5,2,BOX_FAT);oASC.box(6,0,8,2,BOX_DOUBLE);",
      "oASC.assert('box',oASC.getCell(0,0,9,E),'┌─┐┏━┓╔═╗');",
      "oASC.assert('oASC.isValidDoubleBox(0,6,2,8)',oASC.isValidDoubleBox(0,6,2,8),true);",
      "oASC.stack(\"undo\");oASC.stack(\"undo\");oASC.stack(\"undo\");"]
@@ -3019,6 +3040,13 @@ this.startPasteWithText = function(text)
         if(multi===undefined) var multi = 100;
       case "undo20": 
         if(multi===undefined) var multi = 20;
+      case "undo5": 
+        if(multi===undefined) var multi = 5;
+      case "undo_org": 
+        if(multi===undefined)
+        {
+          multi = undoStack.length;
+        }
       case "undo":
         if(multi===undefined) var multi = 1;
         for(var i=0;i<multi;i++)

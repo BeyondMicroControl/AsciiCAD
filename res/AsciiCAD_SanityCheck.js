@@ -15,6 +15,8 @@ if (typeof bDebug === "undefined" || !bDebug) {
 //    ██      ██   ██ ██      ██      ██  ██       ██ 
 //     ██████ ██   ██ ███████  ██████ ██   ██ ███████ 
 
+/*
+// this version buffers duplicate messages, but it's not reporting failed assertions anymore and also does not flush messages at the end
 
 (function () {
   if (window.__ASCIICAD_LOG_FORWARD__) return;
@@ -60,7 +62,7 @@ if (typeof bDebug === "undefined" || !bDebug) {
         currentState.lastMessage = message;
         currentState.count = 1;
       }
-    } catch {}
+    } catch { }
   }
 
   function flushLogs() {
@@ -88,7 +90,38 @@ if (typeof bDebug === "undefined" || !bDebug) {
   // Make flushLogs available globally
   window.flushLogs = flushLogs;
 })();
+*/
 
+
+
+(function () {
+  if (window.__ASCIICAD_LOG_FORWARD__) return;
+  window.__ASCIICAD_LOG_FORWARD__ = true;
+
+  function forward(type, args) {
+    try {
+      parent.postMessage(
+        {
+          __asciicadLog: true,
+          type,
+          args: args.map(a =>
+            typeof a === "object" ? JSON.stringify(a) : String(a)
+          )
+        },
+        "*"
+      );
+    } catch {}
+  }
+
+  ["log", "warn", "error", "assert"].forEach(type => {
+    const orig = console[type];
+    console[type] = (...args) => {
+      forward(type, args);
+      orig.apply(console, args);
+    };
+
+  });
+})();
 
 
 
@@ -351,7 +384,6 @@ function runWorkerThreadSmokeTests()
         oASC.stack("undo20");
         n -= 80;
         for(var i=0;i<n;i++) oASC.stack("undo");
-
   
     return
     })
@@ -415,8 +447,8 @@ function runWorkerThreadSmokeTests()
         "                                    "
         ]
 
-        oASC.assert("combined vertical crossing", oASC.getCell(0,0,36,oASC.E|oASC.S) ,ar.join("\n"));
 
+        oASC.assert("combined vertical crossing", oASC.getCell(0,0,36,oASC.E|oASC.S) ,ar.join("\n"));
         
         var n = 1+3*20 +1+3*20 +1+3*20 - 0
         oASC.stack("undo100");
@@ -430,7 +462,7 @@ function runWorkerThreadSmokeTests()
         
 
     })
-    .then(function() { worker?.terminate?.(); })
+    .then(function() {  worker?.terminate?.(); })
     .then(function()
     {
       //tool = "modeFreeform";
