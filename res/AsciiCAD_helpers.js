@@ -770,7 +770,6 @@ function ASC()
     if (cell.r === lineDrag.cur.r && cell.c === lineDrag.cur.c) return;
     lineDrag.cur = { r: cell.r, c: cell.c };
     // live modifiers during preview
-    //lineDrag.modifiers.kind =  lineConfig(lineRoutes[lineRouteSel])
     lineDrag.modifiers.flip  = !shiftDown;
     lineDrag.modifiers.merge = !oDown;
 
