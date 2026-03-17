@@ -1057,12 +1057,16 @@ function ASC()
     // modifiers.leastBridges
     // modifiers.kind
 
-    console.log("this.buildLinePath("+from+","+to+","+(modifiers===undefined?JSON.stringify(modifiers):"undefined")+")");
-
     const mods = Object.assign({}, modifiers || {});
+    const method = String(mods.routeMethod || mods.routeAlgo || "astar").toLowerCase();
 
-    if (mods.route === true) return this.routePath(from, to, mods);
-    return this.buildOrthogonalPath(from, to, modifiers);
+    if (mods.route === true)
+    {
+      if (method === "mikami") return this.mikamiPath(from, to, mods);
+      return this.routePathAStar(from, to, mods);
+    }
+
+  return this.buildOrthogonalPath(from, to, mods);
   }
 
 
@@ -1148,6 +1152,8 @@ function ASC()
   }
 
 
+  ////////////////////////////////////////////////////
+  // A* routing subsection
 
   // ------------------------------------------------------------
   // ROUTER (A* over (r,c,dir))
@@ -1330,7 +1336,7 @@ function ASC()
     return out;
   }
 
-  this.routePath = function(from, to, modifiers)
+  this.routePathAStar = function(from, to, modifiers)
   {
     if (!from || !to) return [];
     if (from.r === to.r && from.c === to.c) return [];
@@ -1474,6 +1480,212 @@ function ASC()
     // fallback: preserve old behaviour when no obstacle-free route exists
     return this.buildOrthogonalPath(from, to, mods);
   }
+
+
+
+
+
+
+
+
+  ////////////////////////////////////////////////////
+  // mikami routing subsection
+
+
+this.routeMarkKey = function(r, c, axis)
+{
+  return r + "," + c + "," + axis;
+}
+
+this.routeAxisForDir = function(dir)
+{
+  return (dir === E || dir === W) ? "H" : "V";
+}
+
+this.routeScoreMark = function(mark, modifiers)
+{
+  const score = [mark.level];
+  if (modifiers.leastBridges) score.push(mark.bridges);
+  score.push(mark.steps);
+  score.push(mark.firstAxisPenalty || 0);
+  return score;
+}
+
+this.routeAllowedDirs = function(prevAxis, modifiers)
+{
+  const verticalFirst = !!modifiers.startVertical;
+
+  if (prevAxis === "H") return [N, S];
+  if (prevAxis === "V") return [E, W];
+
+  return verticalFirst ? [N, S, E, W] : [E, W, N, S];
+}
+
+this.routeDirVec = function(dir)
+{
+  if (dir === N) return { dr: -1, dc:  0 };
+  if (dir === E) return { dr:  0, dc:  1 };
+  if (dir === S) return { dr:  1, dc:  0 };
+  if (dir === W) return { dr:  0, dc: -1 };
+  return { dr: 0, dc: 0 };
+}
+
+this.routeBacktraceMarksToStates = function(finalMark, markMap)
+{
+  if (!finalMark) return [];
+
+  const marks = [];
+  let cur = finalMark;
+
+  while (cur)
+  {
+    marks.push(cur);
+    cur = cur.parentKey ? (markMap.get(cur.parentKey) || null) : null;
+  }
+
+  marks.reverse();
+  if (marks.length === 0) return [];
+
+  const states = [{ r: marks[0].r, c: marks[0].c }];
+
+  for (let i = 1; i < marks.length; i++)
+  {
+    const a = marks[i - 1];
+    const b = marks[i];
+
+    if (a.r === b.r)
+    {
+      const step = b.c > a.c ? 1 : -1;
+      for (let c = a.c + step; c !== b.c + step; c += step)
+        states.push({ r: a.r, c });
+    }
+    else if (a.c === b.c)
+    {
+      const step = b.r > a.r ? 1 : -1;
+      for (let r = a.r + step; r !== b.r + step; r += step)
+        states.push({ r, c: a.c });
+    }
+  }
+
+  return states;
+}
+
+this.mikamiPath = function(from, to, modifiers)
+{
+  if (!from || !to) return [];
+  if (from.r === to.r && from.c === to.c) return [];
+
+  const mods = this.routeNormalizeModifiers(from, to, modifiers);
+  const ctx  = this.routeBuildContext(from, to);
+
+  const root = {
+    key: this.routeMarkKey(from.r, from.c, "ROOT"),
+    r: from.r,
+    c: from.c,
+    axis: "ROOT",
+    level: 0,
+    steps: 0,
+    bridges: 0,
+    firstAxisPenalty: 0,
+    parentKey: null
+  };
+
+  const marks = new Map();
+  marks.set(root.key, root);
+
+  let frontier = [root];
+
+  while (frontier.length)
+  {
+    const nextFrontier = [];
+    const hits = [];
+
+    for (const base of frontier)
+    {
+      const dirs = this.routeAllowedDirs(base.axis, mods);
+
+      for (const dir of dirs)
+      {
+        const vec = this.routeDirVec(dir);
+        const axis = this.routeAxisForDir(dir);
+
+        let r = base.r;
+        let c = base.c;
+        let segSteps = 0;
+        let segBridges = 0;
+
+        for (;;)
+        {
+          r += vec.dr;
+          c += vec.dc;
+
+          if (r < 0 || r >= ROWS || c < 0 || c >= COLS) break;
+
+          const verdict = this.routeStepVerdict(r, c, dir, ctx);
+          if (!verdict.allowed) break;
+
+          segSteps += 1;
+          if (verdict.bridge) segBridges += 1;
+
+          const key = this.routeMarkKey(r, c, axis);
+          const mark = {
+            key,
+            r,
+            c,
+            axis,
+            level: base.level + 1,
+            steps: base.steps + segSteps,
+            bridges: base.bridges + segBridges,
+            firstAxisPenalty: base.axis === "ROOT"
+              ? ((mods.startVertical && axis !== "V") || (!mods.startVertical && axis !== "H") ? 1 : 0)
+              : (base.firstAxisPenalty || 0),
+            parentKey: base.key
+          };
+
+          const prev = marks.get(key);
+          if (prev && !this.routeLexLess(this.routeScoreMark(mark, mods), this.routeScoreMark(prev, mods)))
+            continue;
+
+          marks.set(key, mark);
+          nextFrontier.push(mark);
+
+          if (r === to.r && c === to.c)
+            hits.push(mark);
+        }
+      }
+    }
+
+    if (hits.length)
+    {
+      let best = hits[0];
+      for (let i = 1; i < hits.length; i++)
+      {
+        if (this.routeLexLess(this.routeScoreMark(hits[i], mods), this.routeScoreMark(best, mods)))
+          best = hits[i];
+      }
+
+      const states = this.routeBacktraceMarksToStates(best, marks);
+      return this.routeStatesToPath(states, mods);
+    }
+
+    frontier = nextFrontier;
+  }
+
+  // Conservative fallback preserves the previous behavior when no obstacle-avoiding route exists.
+  return this.buildOrthogonalPath(from, to, mods);
+}
+
+  ///////////////////////////////////////////////////////
+
+
+  // dispatcher
+  this.routePath = function(from, to, modifiers)
+  {
+    const method = String(modifiers?.routeMethod || modifiers?.routeAlgo || "astar").toLowerCase();
+    if (method === "mikami") return this.mikamiPath(from, to, modifiers || {});
+    return this.routePathAStar(from, to, modifiers || {});
+  }
+
 
 
   // subsection: boxes

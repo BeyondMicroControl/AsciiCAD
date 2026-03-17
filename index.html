@@ -294,7 +294,7 @@ let lineStyles = ["single","fat","double"];
 let lineStyleSym = ["│","▌","││"];
 let lineStyleSel = 0;
 
-let lineRoutes = ["MultiLine","A*Span","A*Corner","A*Bridge"];
+let lineRoutes = ["MultiLine","Mikami","MikamiBridge","A*Span","A*Corner","A*Bridge"];
 let lineRouteSel = 0;
 
 let schemaHighlightOn = false;
@@ -1862,26 +1862,53 @@ function lineConfig(name)  // translate UI naming into modifiers
           : (lineStyle === "fat"    ? oASC.BOX_FAT 
           : (lineStyle === "single" ? oASC.BOX_SINGLE : oASC.BOX_SINGLE));
 
-  switch(name)   // cases correspond to lineRoutes = ["MultiLine","A*Span","A*Corner","A*Bridge"];
+  // cases correspond to lineRoutes = ["MultiLine","A*Span","A*Corner","A*Bridge"];
+  switch(name)
   {
-    case "MultiLine":   obj.route = false;
+    case "MultiLine":
+      obj.route = false;
     break;
-    case "A*Span":      obj.route = true;
-                        obj.leastCorners = false;     
-                        obj.leastBridges = false;
+
+    case "Mikami":
+      obj.route = true;
+      obj.routeMethod = "mikami";
+      obj.leastCorners = true;   // informational only; Mikami already minimizes bends
+      obj.leastBridges = false;
     break;
-    case "A*Corner":    obj.route = true;
-                        obj.leastCorners = true;     
-                        obj.leastBridges = false;
+
+    case "MikamiBridge":
+      obj.route = true;
+      obj.routeMethod = "mikami";
+      obj.leastCorners = true;
+      obj.leastBridges = true;
     break;
-    case "A*Bridge":    obj.route = true;
-                        obj.leastCorners = true;     
-                        obj.leastBridges = true;
+
+    case "A*Span":
+      obj.route = true;
+      obj.routeMethod = "astar";
+      obj.leastCorners = false;
+      obj.leastBridges = false;
+    break;
+
+    case "A*Corner":
+      obj.route = true;
+      obj.routeMethod = "astar";
+      obj.leastCorners = true;
+      obj.leastBridges = false;
+    break;
+
+    case "A*Bridge":
+      obj.route = true;
+      obj.routeMethod = "astar";
+      obj.leastCorners = true;
+      obj.leastBridges = true;
     break;
   }
+
   console.log("lineModeSelector: "+JSON.stringify(obj));
   return obj;
 }
+
 
 
 
@@ -1939,7 +1966,7 @@ window.addEventListener("keydown", (e) =>
   if (String(e.key || "").toLowerCase() === "o") oDown = true;
   if (lineDrag && (e.key === "Shift" || String(e.key || "").toLowerCase() === "o"))
   {
-    lineDrag.modifiers.kind = lineConfig(lineRoutes[lineRouteSel]);
+    Object.assign(lineDrag.modifiers, lineConfig(lineRoutes[lineRouteSel]));
     lineDrag.modifiers.flip = !shiftDown;
     lineDrag.modifiers.merge = !oDown;
 
@@ -2018,13 +2045,13 @@ window.addEventListener("keyup", (e) =>
   if (textDrag) return;
   if (e.key === "Shift") shiftDown = false;
   if (String(e.key || "").toLowerCase() === "o") oDown = false;
-  if (lineDrag) 
+  if (lineDrag)
   {
-    lineDrag.modifiers.kind = lineConfig(lineRoutes[lineRouteSel])
+    Object.assign(lineDrag.modifiers, lineConfig(lineRoutes[lineRouteSel]));
     lineDrag.modifiers.flip = !shiftDown;
     lineDrag.modifiers.merge = !oDown;
 
-    if (bDebug) console.log("KEYUP: lineFlip=" + lineDrag.flip + " lineMerge=" + lineDrag.merge);
+    if (bDebug) console.log("KEYUP: lineFlip=" + lineDrag.modifiers.flip + " lineMerge=" + lineDrag.modifiers.merge);
     oASC.draw("onkeyup");
   }
 });
