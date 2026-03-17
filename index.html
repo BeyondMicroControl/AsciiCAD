@@ -1862,7 +1862,7 @@ function lineConfig(name)  // translate UI naming into modifiers
           : (lineStyle === "fat"    ? oASC.BOX_FAT 
           : (lineStyle === "single" ? oASC.BOX_SINGLE : oASC.BOX_SINGLE));
 
-  switch(name)
+  switch(name)   // cases correspond to lineRoutes = ["MultiLine","A*Span","A*Corner","A*Bridge"];
   {
     case "MultiLine":   obj.route = false;
     break;
