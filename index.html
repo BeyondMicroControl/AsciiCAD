@@ -36,29 +36,39 @@
         <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.17</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
+
         <div class="card">
           <h3>Canvas</h3>
-          <div id="cellsLine">Cells: —</div>
-          <div id="zoomLine">Zoom: 100%</div>
+          <!-- <div id="cellsLine">Cells: —</div> -->
+          <div class="tiny muted" id="zoomLine">Zoom: 100%</div>
           <div class="tiny muted" id="coordLine">Cell: —</div>
-        <div class="tiny muted" id="panLine" style="float:left">Pan: x 0.00, y 0.00</div>&nbsp;<button id="flipPan" class="btn" style="height:17px;width:20px;padding-top:0px;padding-left:4px;margin-top:0px" data-hint="Reverse Pan direction">⬌</button>
-        <div class="tiny muted" id="netLine">Net: —</div>
+          <div class="tiny muted" id="panLine" style="float:left">Pan: x 0.00, y 0.00</div>&nbsp;<button id="flipPan" class="btn" style="height:17px;width:20px;padding-top:0px;padding-left:4px;margin-top:0px" data-hint="Reverse Pan direction">⬌</button>
+          <div class="tiny muted" id="netLine">Net: —</div>
+        </div>
+
+        <div class="card">
+          <h3>Edit</h3>
+          <div class="row">
+            <button id="modeSelect" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag to select. Drag inside selection to move.">Mov</button>
+            <button id="modeCopy" class="btn" data-hint="Drag to select. Drag inside selection to copy (source remains).">Cpy</button>
+            <button id="modeBlank" class="btn" data-hint="Drag to select. Release to blank the selected area.">Blnk</button>
+            <!--
+             <button id="modeRotate" class="btn" data-hint="Drag to select. Use 'r' to rotate 90 degrees clockwise.">↻</button>
+            -->
+          </div>
         </div>
 
         <div class="card">
           <h3>Draw mode</h3>
           <div class="row">
-            <button id="modeFreeform" class="btn primary" data-hint="Pasting: move preview with mouse, click to place.|Drag to draw (cell-by-cell).">Free</button>
-            <button id="modeSelect" class="btn" data-hint="Pasting: move preview with mouse, click to place.|Drag to select. Drag inside selection to move.">Move</button>
-            <button id="modeCopy" class="btn" data-hint="Drag to select. Drag inside selection to copy (source remains).">Copy</button>
-            <button id="modeBlank" class="btn" data-hint="Drag to select. Release to blank the selected area.">Blank</button>
-            <button id="modeSLine" class="btn" data-hint="Drag: press to place a new line section, hold 'shift' for horizontal origin. Use 'Esc' to complete section.">SLine</button>
-            <button id="modeFLine" class="btn" data-hint="Drag: press to place a new line section, hold 'shift' for horizontal origin. Use 'Esc' to complete section.">FLine</button>
-            <button id="modeDLine" class="btn" data-hint="Drag: press to place a new line section, hold 'shift' for horizontal origin. Use 'Esc' to complete section.">DLine</button>
-            <button id="modeSBox"  class="btn" data-hint="Drag: press to set start, move to preview, press to place single line box.">SBox</button>
-            <button id="modeFBox"  class="btn" data-hint="Drag: press to set start, move to preview, press to place fat line box.">FBox</button>
-            <button id="modeDBox"  class="btn" data-hint="Drag: press to set start, move to preview, press to place double line box.">DBox</button>
+
+            <button id="lineStyle" class="btn" data-hint="Line styles">LineStyle ⇅</button>
+            <button id="lineRoute" class="btn" data-hint="Line routing options">LineRoute ⇅</button> <!-- RouteSpan / RouteCorner / RouteBridge / MultiLine -->
+            <button id="modeLine" class="btn" data-hint="Drag: press to place a new line section, hold 'shift' for horizontal origin. Use 'Esc' to complete section.">Line</button>
+            <button id="modeBox" class="btn" data-hint="Drag: press to set start, move to preview, press to place single line box.">Box</button>
             <button id="modeFreetext" class="btn" data-hint="Move cursor to text origin (not click), enter free text preview, press enter to commit.">Text</button>
+            <button id="modeFreehand" class="btn primary" data-hint="Pasting: move preview with mouse, click to place.|Drag to draw (cell-by-cell).">Free</button>
+            
           </div>
           <div id="modeHint" class="tiny muted" style="margin-top:8px;">Drag to draw (cell-by-cell).</div>
         </div>
@@ -78,11 +88,10 @@
         <div class="card">
           <h3>Tools</h3>
           <div class="row" style="margin-top:10px;">
-            <button id="toolSchemaHighlight" class="btn" data-hint="Highlight: Mark signle lines in blue, enclosed double line boxes in red.">Highlight</button>   
+            <button id="toolSchemaHighlight" class="btn" data-hint="Highlight: Mark signle lines in blue, enclosed double line boxes in red.">Trace</button>   
             <button id="toolSchemaMatch" class="btn" data-hint="Match: Marks matching catalog items in green. Mind replacing wildcards inside these items, '#' with numbers, '$' with alphanumeric.">Match</button>
-                        <button id="toolNetTrace" class="btn" data-hint="Netlist: Extract wire lines (endpoints + junctions) and print as JSON.">NetTrace</button>
-<span ><button class="btn" id="toolDebug" data-hint="Debug AsciiCAD" onclick="document.location='tools/AsciiCAD_debug.html'"  style="filter:grayscale(100%)">D&#x1F41E;</button></span>
-
+            <button id="toolNetTrace" class="btn" data-hint="Netlist: Extract wire lines (endpoints + junctions) and print as JSON.">NetTrace</button>
+            <span ><button class="btn" id="toolDebug" data-hint="Debug AsciiCAD" onclick="document.location='tools/AsciiCAD_debug.html'"  style="filter:grayscale(100%)">D&#x1F41E;</button></span>
           </div>
           <div id="toolHint" class="tiny muted" style="margin-top:8px;"></div>
         </div>
@@ -96,9 +105,9 @@
             <button id="uriBtn"  class="btn">PermaLink</button>
             <button id="loadBtn" class="btn">Load</button>
             <button id="clearBtn" class="btn">Clear</button>
-
             <input id="fileInput" type="file" accept="text/plain" style="display:none" />
           </div>
+
           <div class="tiny muted" id="historyLine" style="margin-top:10px;">Undo stack: 0 · Redo stack: 0</div>
           <div class="tiny muted" id="pasteLine" style="margin-top:6px; display:none;">Paste: move preview with mouse, click to place.</div>
         </div>
@@ -112,6 +121,7 @@
           </div>
           <div class="tiny muted" id="URIcontainer"></div>
         </div>
+
       </div>
     </aside>
 
@@ -223,8 +233,11 @@ const copyGlyphBtn =  document.getElementById("copyGlyphBtn");
 const button_list = document.querySelectorAll("button[id^=\"mode\"]");
 const mode_el = Object.fromEntries( Array.from(button_list).map(btn => [btn.id, btn]) );
 
-const tool_list = document.querySelectorAll("button[id^=\"tool\"]");
-const tool_el = Object.fromEntries( Array.from(tool_list).map(btn => [btn.id, btn]) );
+//const tool_list = document.querySelectorAll("button[id^=\"tool\"]");
+//const tool_el = Object.fromEntries( Array.from(tool_list).map(btn => [btn.id, btn]) );
+
+const lineStyle = document.getElementById("lineStyle");
+const lineRoute = document.getElementById("lineRoute");
 
 const modeHint = document.getElementById("modeHint");
 const pickCharBtn = document.getElementById("pickChar");
@@ -270,12 +283,19 @@ const pasteSink = document.getElementById("pasteSink");
 const ascii = Array.from({ length: ROWS }, () => Array.from({ length: COLS }, () => ' '));
 
 // Tool state
-let tool = "modeFreeform";
+let tool = "modeFreehand";
 let op = { type: "place", ch: '+' };
 let hoverCell = null;
 let stageSize = { w: 1, h: 1 };
 
 let flipPanOn = false;
+
+let lineStyles = ["single","fat","double"];
+let lineStyleSym = ["│","▌","││"];
+let lineStyleSel = 0;
+
+let lineRoutes = ["MultiLine","RouteSpan","RouteCorner","RouteBridge"];
+let lineRouteSel = 0;
 
 let schemaHighlightOn = false;
 let highlightCache = null; // { redSet:Set, insideSet:Set } cached for current ascii state
@@ -323,6 +343,32 @@ let catalogTab = "All";
 
 
 // Modals
+
+function lineStyleSelector()
+{
+  if(lineStyleSel==null) lineStyleSel = 0;  // default
+  lineStyleSel++; if(lineStyleSel==lineStyles.length) lineStyleSel = 0;
+  lineStyle.textContent = "LineStyle "+lineStyleSym[lineStyleSel];
+}
+
+function lineModeSelector()
+{
+  if(lineRouteSel==null) lineRouteSel = 0;  // default
+  lineRouteSel++; if(lineRouteSel==lineRoutes.length) lineRouteSel = 0;
+  lineRoute.textContent = lineRoutes[lineRouteSel]+" ⇅";
+
+    //let lineRoutes = ["MultiLine","RouteSpan","RouteCorner","RouteBridge"];
+    //let lineRouteSel = 0;
+
+    // modifiers.startVertical
+    // modifiers.flip
+    // modifiers.route
+    // modifiers.leastCorners
+    // modifiers.leastBridges
+
+
+}
+
 function openPicker() 
 {
   picker.classList.add("open");
@@ -336,7 +382,7 @@ function closePicker()
 {
   picker.classList.remove("open");
   picker.setAttribute("aria-hidden", "true");
-  setMode("modeFreeform");
+  setMode("modeFreehand");
   updateUI();
 }
 
@@ -532,7 +578,7 @@ for(var i in mode_el)
       updateUI(); oASC.draw("init");
   });
 }
-updateOpLine("modeFreeform",{type:"place",ch:'+'})
+updateOpLine("modeFreehand",{type:"place",ch:'+'})
 
 function setMode(mode)
 {
@@ -544,7 +590,7 @@ function setMode(mode)
 
 function updateOpLine(mode,item)
 {
-  if(mode === "modeFreeform")
+  if(mode === "modeFreehand")
   {
       currentOpLine.textContent = "Current: "
       selectedCharEl.textContent = item.type === "place" ? item.ch : "(space)";
@@ -583,7 +629,7 @@ function updateToggleButtonUI(onoff,mode_el,hint)
 
 function updateUI()
 {
-  cellsLine.textContent = "Cells: " + COLS + " x " + ROWS;
+  //cellsLine.textContent = "Cells: " + COLS + " x " + ROWS;
   zoomLine.textContent = "Zoom: " + Math.round(scale * 100) + "%";
   coordLine.textContent = hoverCell ? ("Cell: Col " + (hoverCell.c) + ", Row " + (hoverCell.r)) : "Cell: —";
 
@@ -1452,6 +1498,9 @@ if(oCOM.URL.filename == "AsciiCAD.html")
 
 // Picker/catalog
 
+lineStyle.addEventListener("click", lineStyleSelector);
+lineRoute.addEventListener("click", lineModeSelector);
+
 document.getElementById("copyGlyphBtn").addEventListener("click", async function () {
   const text = this.textContent.trim();
   try {
@@ -1469,7 +1518,7 @@ catalogClose.addEventListener("click", closeCatalog);
 
 pickCharBtn.addEventListener("click", () => { if (op.type !== "place") op = { type: "place", ch: '+' }; openPicker(); });
 openCatalogBtn.addEventListener("click", () => openCatalog());
-eraserBtn.addEventListener("click", () => { op = { type: "erase" }; setMode('modeFreeform'); updateUI(); });
+eraserBtn.addEventListener("click", () => { op = { type: "erase" }; setMode('modeFreehand'); updateUI(); });
 
 schemaHighlightBtn.addEventListener("click", () => 
 {
@@ -1743,17 +1792,12 @@ canvas.addEventListener("mousemove", (e) =>
   }
 
   // TODO SERIALISE (MOVE functions) ??
-  if (tool === "modeFreeform")      oASC.moveFreeform(cell);
+  if (tool === "modeFreehand")      oASC.moveFreeform(cell);
   else if(tool === "modeSelect" || tool === "modeCopy" || tool === "modeBlank") oASC.moveSelect(cell)
-  else if (tool === "modeSLine")    oASC.moveLine(cell);
-  else if (tool === "modeFLine")    oASC.moveLine(cell);
-  else if (tool === "modeDLine")    oASC.moveLine(cell);
-  else if (tool === "modeSBox")     oASC.moveBox(cell);
-  else if (tool === "modeFBox")     oASC.moveBox(cell);
-  else if (tool === "modeDBox")     oASC.moveBox(cell);
+  else if (tool === "modeLine")     oASC.moveLine(cell);
+  else if (tool === "modeBox")      oASC.moveBox(cell);
   else if (tool === "modeFreetext") oASC.beginFreetext(cell);
   else console.error("tool mismatch (move)");
-
 });
 
 canvas.addEventListener("mousedown", (e) => 
@@ -1812,19 +1856,39 @@ canvas.addEventListener("mousedown", (e) =>
 
   console.log("mousedown - 6 - tool="+tool);
 
-  // TODO SERIALISE (BEGIN functions)??
-  if (tool === "modeFreeform")      oASC.beginFreeform(cell);
+  var modifiers = lineRoutes[lineRouteSel].concat({kind:lineStyles[lineStyleSel]})
+
+  if (tool === "modeFreehand")      oASC.beginFreeform(cell);
   else if (tool === "modeSelect" || tool === "modeCopy" || tool === "modeBlank") oASC.beginSelect(cell);
-  else if (tool === "modeSLine")    oASC.beginLine(cell,"single");
-  else if (tool === "modeFLine")    oASC.beginLine(cell,"fat");
-  else if (tool === "modeDLine")    oASC.beginLine(cell,"double");
-  else if (tool === "modeSBox")     oASC.beginBox(cell, "single");
-  else if (tool === "modeFBox")     oASC.beginBox(cell, "fat");
-  else if (tool === "modeDBox")     oASC.beginBox(cell, "double");
+  else if (tool === "modeLine")     oASC.beginLine(cell,  lineConfig(lineRoutes[lineRouteSel],{kind:lineStyles[lineStyleSel]}) );
+  else if (tool === "modeBox")      oASC.beginBox(cell, {modifiers:lineStyles[lineStyleSel]});
   else if (tool === "modeFreetext") oASC.beginFreetext(cell);
   else console.error("tool mismatch (begin)");
-
 });
+
+
+function lineConfig(name,obj)
+{
+  switch(name)
+  {
+    case "MultiLine":   obj.route = false;
+    break;
+    case "RouteSpan":   obj.route = true;
+                        obj.leastCorners = false;     
+                        obj.leastBridges = false;
+    break;
+    case "RouteCorner": obj.route = true;
+                        obj.leastCorners = true;     
+                        obj.leastBridges = false;
+    break;
+    case "RouteBridge": obj.route = true;
+                        obj.leastCorners = true;     
+                        obj.leastBridges = true;
+    break;
+  }
+  console.log("lineModeSelector: "+JSON.stringify(obj));
+  return obj;
+}
 
 
 function hasPreviewDrag()

@@ -485,9 +485,9 @@ function runWorkerThreadSmokeTests()
     .then(function() {  worker?.terminate?.(); })
     .then(function()
     {
-      //tool = "modeFreeform";
+      //tool = "modeFreehand";
       op = { type: "place", ch: '+' };
-      //setMode("modeFreeform");
+      //setMode("modeFreehand");
       //updateUI();
       //oCMD.runExternalScript("oASC.stack('reset')");
     });

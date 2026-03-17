@@ -18,6 +18,7 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 .resize-handle:hover{background:rgba(59,130,246,0.1)}
 .resize-handle.active{background:rgba(59,130,246,0.2)}
 .sb-top{padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.btnGroup{border:1px solid #cbd5e1;background:#fff;border-radius:14px;padding:8px 12px;font-weight:500;font-size:13px;cursor:pointer;user-select:none}
 .btn{border:1px solid #cbd5e1;background:#fff;border-radius:14px;padding:8px 12px;font-weight:500;font-size:13px;cursor:pointer;user-select:none}
 .btn:hover{background:#f8fafc} .btn:disabled{opacity:.5;cursor:not-allowed} .btn.primary{border-color:#334155}
 .btnInv{border:1px solid #cbd5e1;background:#888;border-radius:14px;padding:8px 12px;font-weight:500;font-size:13px;cursor:pointer;user-select:none;color:#fff;}
@@ -25,7 +26,7 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 .sb-title{font-size:13px;color:var(--muted)}
 .sb-content{padding:10px;overflow:auto} 
 
-.card{border:1px solid var(--border);border-radius:var(--radius);padding:12px;box-shadow:0 1px 0 rgba(15,23,42,.03);background:#fff;margin-bottom:12px}
+.card{border:1px solid var(--border);border-radius:var(--radius);padding:12px;box-shadow:0 1px 0 rgba(15,23,42,.05);background:#fff;margin-bottom:12px}
 .card h3{margin:0 0 6px;font-size:14px}
 .muted{color:var(--muted)} .tiny{font-size:12px} .row{display:flex;flex-wrap:wrap;gap:8px}
 

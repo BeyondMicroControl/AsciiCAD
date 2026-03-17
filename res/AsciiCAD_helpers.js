@@ -742,18 +742,29 @@ function ASC()
 
   // subsection: lines
 
-  this.beginLine = function(cell,kind,modifiers) 
+  this.beginLine = function(cell,modifiers) 
   {
     if (!cell) return;
-    if(bDebug) console.log("beginLine()")
+    if(bDebug) console.log("beginLine()");
+
+
+    
+
+    // modifiers.startVertical
+    // modifiers.flip
+    // modifiers.route
+    // modifiers.leastCorners
+    // modifiers.leastBridges
+
 
     // hide selection box when starting a line tool action
     selection = null; selectDrag = null; moveDrag = null;
-    lineDrag = {
-      kind,
-      flip: !shiftDown,      // Shift held => horizontal-first (no vertical leg)
+    lineDrag = 
+    {
+      kind: modifiers.kind,        // TODO: use modifiers below instead and remove this one
+      flip: !shiftDown,            // Shift held => horizontal-first (no vertical leg)
       inv: true,
-      merge: !oDown,         // 'o' held => override (no merge)
+      merge: !oDown,                // 'o' held => override (no merge)
       modifiers: modifiers,         // routing is opt-in; keep legacy orthogonal preview by default
       start: { r: cell.r, c: cell.c },
       cur:   { r: cell.r, c: cell.c }
@@ -1035,7 +1046,8 @@ function ASC()
   {
     if (!lineDrag) return;
 
-    const drag = {
+    const drag = 
+    {
       start:     lineDrag.start,
       cur:       lineDrag.cur,
       flip:      lineDrag.flip,
@@ -1050,6 +1062,12 @@ function ASC()
 
   this.buildLinePath = function(from, to, flip, modifiers, kind)
   {
+    // modifiers.startVertical
+    // modifiers.flip
+    // modifiers.route
+    // modifiers.leastCorners
+    // modifiers.leastBridges
+
     const mods = Object.assign({}, modifiers || {});
     const startVertical = mods.startVertical !== undefined ? !!mods.startVertical
                         : mods.flip !== undefined          ? !!mods.flip
@@ -1471,11 +1489,11 @@ function ASC()
 
   // subsection: boxes
 
-  this.beginBox = function(cell, kind) 
+  this.beginBox = function(cell, modifiers) 
   {
     if (!cell) return;
     selection = null; selectDrag = null; moveDrag = null;
-    boxDrag = { kind, start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
+    boxDrag = { kind:modifiers.kind, start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
     this.draw("beginBox");
   }
 
@@ -1504,7 +1522,7 @@ function ASC()
 
   this.box = function(c0,r0,c1,r1, style)
   {
-     if(c0===undefined || r0===undefined || c1===undefined || r1===undefined) return;  // safe escape if no arguments provided
+    if(c0===undefined || r0===undefined || c1===undefined || r1===undefined) return;  // safe escape if no arguments provided
     if(style===undefined) var style = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
     const path = this.buildBoxPath( {"c":c0,"r":r0} , {"c":c1,"r":r1} , style);
 
