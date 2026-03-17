@@ -294,7 +294,7 @@ let lineStyles = ["single","fat","double"];
 let lineStyleSym = ["│","▌","││"];
 let lineStyleSel = 0;
 
-let lineRoutes = ["MultiLine","RouteSpan","RouteCorner","RouteBridge"];
+let lineRoutes = ["MultiLine","A*Span","A*Corner","A*Bridge"];
 let lineRouteSel = 0;
 
 let schemaHighlightOn = false;
@@ -356,17 +356,6 @@ function lineModeSelector()
   if(lineRouteSel==null) lineRouteSel = 0;  // default
   lineRouteSel++; if(lineRouteSel==lineRoutes.length) lineRouteSel = 0;
   lineRoute.textContent = lineRoutes[lineRouteSel]+" ⇅";
-
-    //let lineRoutes = ["MultiLine","RouteSpan","RouteCorner","RouteBridge"];
-    //let lineRouteSel = 0;
-
-    // modifiers.startVertical
-    // modifiers.flip
-    // modifiers.route
-    // modifiers.leastCorners
-    // modifiers.leastBridges
-
-
 }
 
 function openPicker() 
@@ -1856,32 +1845,36 @@ canvas.addEventListener("mousedown", (e) =>
 
   console.log("mousedown - 6 - tool="+tool);
 
-  var modifiers = lineRoutes[lineRouteSel].concat({kind:lineStyles[lineStyleSel]})
+  var modifiers = lineRoutes[lineRouteSel].concat({ kind:lineConfig(lineRoutes[lineRouteSel]) , flip:!shiftDown , merge:!oDown })
 
   if (tool === "modeFreehand")      oASC.beginFreeform(cell);
   else if (tool === "modeSelect" || tool === "modeCopy" || tool === "modeBlank") oASC.beginSelect(cell);
-  else if (tool === "modeLine")     oASC.beginLine(cell,  lineConfig(lineRoutes[lineRouteSel],{kind:lineStyles[lineStyleSel]}) );
-  else if (tool === "modeBox")      oASC.beginBox(cell, {modifiers:lineStyles[lineStyleSel]});
+  else if (tool === "modeLine")     oASC.beginLine(cell,lineConfig(lineRoutes[lineRouteSel]) );
+  else if (tool === "modeBox")      oASC.beginBox(cell,lineConfig() );
   else if (tool === "modeFreetext") oASC.beginFreetext(cell);
-  else console.error("tool mismatch (begin)");
-});
+  else console.error("tool mismatch (begin)") });
 
-
-function lineConfig(name,obj)
+function lineConfig(name)  // translate UI naming into modifiers
 {
+  var obj = {};
+  var lineStyle = lineStyles[lineStyleSel];
+  obj.kind = lineStyle === "double" ? oASC.BOX_DOUBLE 
+          : (lineStyle === "fat"    ? oASC.BOX_FAT 
+          : (lineStyle === "single" ? oASC.BOX_SINGLE : oASC.BOX_SINGLE));
+
   switch(name)
   {
     case "MultiLine":   obj.route = false;
     break;
-    case "RouteSpan":   obj.route = true;
+    case "A*Span":      obj.route = true;
                         obj.leastCorners = false;     
                         obj.leastBridges = false;
     break;
-    case "RouteCorner": obj.route = true;
+    case "A*Corner":    obj.route = true;
                         obj.leastCorners = true;     
                         obj.leastBridges = false;
     break;
-    case "RouteBridge": obj.route = true;
+    case "A*Bridge":    obj.route = true;
                         obj.leastCorners = true;     
                         obj.leastBridges = true;
     break;
@@ -1889,6 +1882,7 @@ function lineConfig(name,obj)
   console.log("lineModeSelector: "+JSON.stringify(obj));
   return obj;
 }
+
 
 
 function hasPreviewDrag()
@@ -1945,8 +1939,10 @@ window.addEventListener("keydown", (e) =>
   if (String(e.key || "").toLowerCase() === "o") oDown = true;
   if (lineDrag && (e.key === "Shift" || String(e.key || "").toLowerCase() === "o"))
   {
-    lineDrag.flip  = !shiftDown;
-    lineDrag.merge = !oDown;
+    lineDrag.modifiers.kind = lineConfig(lineRoutes[lineRouteSel]);
+    lineDrag.modifiers.flip = !shiftDown;
+    lineDrag.modifiers.merge = !oDown;
+
     oASC.draw("onkeydown - lineDrag");
   }
 
@@ -2022,9 +2018,12 @@ window.addEventListener("keyup", (e) =>
   if (textDrag) return;
   if (e.key === "Shift") shiftDown = false;
   if (String(e.key || "").toLowerCase() === "o") oDown = false;
-  if (lineDrag) {
-    lineDrag.flip  = !shiftDown;
-    lineDrag.merge = !oDown;
+  if (lineDrag) 
+  {
+    lineDrag.modifiers.kind = lineConfig(lineRoutes[lineRouteSel])
+    lineDrag.modifiers.flip = !shiftDown;
+    lineDrag.modifiers.merge = !oDown;
+
     if (bDebug) console.log("KEYUP: lineFlip=" + lineDrag.flip + " lineMerge=" + lineDrag.merge);
     oASC.draw("onkeyup");
   }

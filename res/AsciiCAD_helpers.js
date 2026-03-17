@@ -747,23 +747,12 @@ function ASC()
     if (!cell) return;
     if(bDebug) console.log("beginLine()");
 
-
-    
-
-    // modifiers.startVertical
-    // modifiers.flip
-    // modifiers.route
-    // modifiers.leastCorners
-    // modifiers.leastBridges
-
-
     // hide selection box when starting a line tool action
     selection = null; selectDrag = null; moveDrag = null;
     lineDrag = 
     {
-      kind: modifiers.kind,        // TODO: use modifiers below instead and remove this one
-      flip: !shiftDown,            // Shift held => horizontal-first (no vertical leg)
-      inv: true,
+      kind: modifiers.kind,         // TODO: use modifiers below instead and remove this one
+      flip: !shiftDown,             // Shift held => flip orthogonal direction (against dominant direction)
       merge: !oDown,                // 'o' held => override (no merge)
       modifiers: modifiers,         // routing is opt-in; keep legacy orthogonal preview by default
       start: { r: cell.r, c: cell.c },
@@ -781,8 +770,10 @@ function ASC()
     if (cell.r === lineDrag.cur.r && cell.c === lineDrag.cur.c) return;
     lineDrag.cur = { r: cell.r, c: cell.c };
     // live modifiers during preview
-    lineDrag.flip  = !shiftDown;
-    lineDrag.merge = !oDown;
+    //lineDrag.modifiers.kind =  lineConfig(lineRoutes[lineRouteSel])
+    lineDrag.modifiers.flip  = !shiftDown;
+    lineDrag.modifiers.merge = !oDown;
+
     this.draw("moveLine");
   }
 
@@ -797,7 +788,7 @@ function ASC()
   this.drawCharAtCell = function(r, c, ch) { ascii[r][c] = ch; }
 
   // this.N = 0b0001, this.E = 0b0010, this.S = 0b0100, this.W = 0b1000;
-  this.dominantDir = function(matrix,vector,kind)
+  this.dominantDir = function(matrix,vector)
   {
     const v = [vector.r<0?-vector.r:0,vector.c>0?vector.c>>1:0,vector.r>0?vector.r:0,vector.c<0?-(vector.c>>1):0];
     const maskDir  = 1 << v.indexOf( Math.max(...v) );   // dominant direction taken from vector
@@ -808,18 +799,20 @@ function ASC()
 
     //console.log("\n"+matrix.replace(/ /g,"."));
     //console.log(Math.random(1)+" "+this.maskToString(maskDir)+" '"+matrix[5]+"'" );
-
     return bInv;
   }
 
-  this.buildOrthogonalPath = function(start, end, start_vleg, kind)
+  this.buildOrthogonalPath = function(start, end, modifiers)
   {
+    var start_vleg = modifiers.startVertical === undefined ? !!modifiers.flip : modifiers.startVertical;
+
+    console.log("this.buildOrthogonalPath("+start+","+end+","+JSON.stringify(modifiers)+")");
+
     var watchMatrix = this.getCell(start.c,start.r,2);
     var vector = {"c":end.c-start.c,"r":end.r-start.r};
-    var bInv = this.dominantDir(watchMatrix,vector,kind);
+    var bInv = this.dominantDir(watchMatrix,vector);
     if(bInv) start_vleg = !start_vleg;
     
-  
     var cornerChar = function(r0, c0, r1, c1, v_leg, chset)          // private helper for buildOrthogonalPath
     {
       if ( (c1 > c0) &&  (r1 > r0)) return v_leg?chset.bl:chset.tr;  // left + down  | up + right
@@ -827,11 +820,10 @@ function ASC()
       if (!(c1 > c0) &&  (r1 > r0)) return v_leg?chset.br:chset.tl;  // right + down | down + right
       return v_leg?chset.tr:chset.bl;                                // right + up   | down + left
     }
-    const chset = kind === "double" ? this.BOX_DOUBLE 
-               : (kind === "fat"    ? this.BOX_FAT 
-               : (kind === "single" ? this.BOX_SINGLE : kind));
-    const r0 = start.r, c0 = start.c;
-    const r1 = end.r, c1 = end.c;
+
+    var chset = modifiers.kind;
+    const r0  = start.r, c0 = start.c;
+    const r1  = end.r, c1 = end.c;
     const out = [];
 
     // Same cell → nothing
@@ -1050,9 +1042,6 @@ function ASC()
     {
       start:     lineDrag.start,
       cur:       lineDrag.cur,
-      flip:      lineDrag.flip,
-      kind:      lineDrag.kind,
-      merge:     lineDrag.merge,
       modifiers: Object.assign({}, lineDrag.modifiers || {})
     }
 
@@ -1060,22 +1049,21 @@ function ASC()
     this.line(drag);
   }
 
-  this.buildLinePath = function(from, to, flip, modifiers, kind)
+  this.buildLinePath2 = function(from, to, modifiers)
   {
     // modifiers.startVertical
     // modifiers.flip
     // modifiers.route
     // modifiers.leastCorners
     // modifiers.leastBridges
+    // modifiers.kind
+
+    console.log("this.buildLinePath("+from+","+to+","+(modifiers===undefined?JSON.stringify(modifiers):"undefined")+")");
 
     const mods = Object.assign({}, modifiers || {});
-    const startVertical = mods.startVertical !== undefined ? !!mods.startVertical
-                        : mods.flip !== undefined          ? !!mods.flip
-                        : !!flip;
 
-    if (mods.route === true) return this.routePath(from, to, mods, kind);
-
-    return this.buildOrthogonalPath(from, to, startVertical, kind);
+    if (mods.route === true) return this.routePath(from, to, mods);
+    return this.buildOrthogonalPath(from, to, modifiers);
   }
 
 
@@ -1083,17 +1071,29 @@ function ASC()
   {
     if (!lineArg) return;
 
+    console.log("this.line("+JSON.stringify(lineArg)+")");
+
     // Accept both programmatic shape ({from,to,...}) and UI shape ({start,cur,...})
     const from      = lineArg.from ?? lineArg.start;
     const to        = lineArg.to   ?? lineArg.cur;
-    const flip      = !!lineArg.flip;
-    const modifiers = lineArg.modifiers || {};
-    const kind      = lineArg.kind;
-    const merge     = lineArg.merge===undefined?true:lineArg.merge;
+
+    var modifiers = lineArg.modifiers || {};
+    const flip      = !!modifiers.flip;
+    const kind      = modifiers.kind===undefined?this.BOX_SINGLE:modifiers.kind;
+    const merge     = modifiers.merge===undefined?true:modifiers.merge;
+
+    if(typeof(modifiers) != "object") 
+      modifiers = {flip:flip,kind:kind};
+    else
+    {
+      if(modifiers["flip"]===undefined) modifiers["flip"] = flip;
+      if(modifiers["kind"]===undefined) modifiers["kind"] = kind;
+    }
 
     if (!from || !to) return;
 
-    const rawPath = this.buildLinePath(from, to, flip, modifiers, kind);
+    //const rawPath = this.buildLinePath(from, to, flip, modifiers, kind);
+    const rawPath = this.buildLinePath2(from, to, modifiers);
     const path    = merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
 
     const stroke = [];
@@ -1126,27 +1126,24 @@ function ASC()
     ],
     unitTests: [
      "oASC.clear();",
-     "oASC.line({from:{r:1,c:1},to:{r:0,c:0},flip:true,kind:BOX_SINGLE});",
+     "oASC.line({from:{r:1,c:1},to:{r:0,c:0},modifiers:{flip:true}});",
      "oASC.assert('simple line',oASC.getCell(0,0,2,oASC.E),'─┐');",
      "oASC.stack(\"undo\");",
      
-     
-     "oASC.box(3,1,5,3,BOX_DOUBLE);",
+     "oASC.box(3,1,5,3,{kind:BOX_DOUBLE});",
      "oASC.cell(4,4,'*');",
      "oASC.cell(0,0,'╟\\n╟\\n╟\\n╟\\n╟');",
      "oASC.cell(8,0,'╢\\n╢\\n╢\\n╢\\n╢');",
-     "oASC.line({from:{c:6,r:0},to:{c:6,r:4},kind:BOX_SINGLE});",
-     "oASC.line({from:{c:2,r:0},to:{c:2,r:3},kind:BOX_SINGLE});",
-     "oASC.line({from:{c:0,r:2},to:{c:8,r:2},modifiers:{route:true,leastCorners:true,leastBridges:true},kind:oASC.BOX_SINGLE});",
-     "oASC.line({from:{c:0,r:3},to:{c:8,r:3},modifiers:{route:true,leastCorners:true,leastBridges:true},kind:oASC.BOX_SINGLE});",
+     "oASC.line({from:{c:6,r:0},to:{c:6,r:4}});",
+     "oASC.line({from:{c:2,r:0},to:{c:2,r:3}});",
+     "oASC.line({from:{c:0,r:2},to:{c:8,r:2},modifiers:{route:true,leastCorners:true,leastBridges:true}});",
+     "oASC.line({from:{c:0,r:3},to:{c:8,r:3},modifiers:{route:true,leastCorners:true,leastBridges:true}});",
      "oASC.assert('routed line',oASC.getCell(0,0,9,E|S),'╟┌│───│┐╢\\n╟││╔═╗││╢\\n╟┘│║ ║│└╢\\n╟┐│╚═╝│┌╢\\n╟│  * ││╢\\n └─────┘ \\n         \\n         \\n         ');",
+    //"throw Error('StopChain');",
      "oASC.stack(\"undo5\")",
      "oASC.stack(\"undo\")",
      "oASC.stack(\"undo\")",
      "oASC.stack(\"undo\")",
-     //"throw Error('StopChain');"
-
-
 
     ]
   }
@@ -1156,14 +1153,6 @@ function ASC()
   // ------------------------------------------------------------
   // ROUTER (A* over (r,c,dir))
   // ------------------------------------------------------------
-
-  this.resolveLineStyle = function(kind)
-  {
-    return kind === "double" ? this.BOX_DOUBLE
-         : kind === "fat"    ? this.BOX_FAT
-         : kind === "single" ? this.BOX_SINGLE
-         : (kind || this.BOX_SINGLE);
-  }
 
   this.routeLexLess = function(a, b)
   {
@@ -1195,7 +1184,7 @@ function ASC()
     return 0;
   }
 
-  this.routeNormalizeModifiers = function(from, to, modifiers, kind)
+  this.routeNormalizeModifiers = function(from, to, modifiers)
   {
     let m = (typeof modifiers === "boolean")
       ? { startVertical: !!modifiers }
@@ -1212,7 +1201,7 @@ function ASC()
     // preserve old dominantDir influence as a tie-break preference
     const watchMatrix = this.getCell(from.c, from.r, 2);
     const vector = { c: to.c - from.c, r: to.r - from.r };
-    if (this.dominantDir(watchMatrix, vector, kind))
+    if (this.dominantDir(watchMatrix, vector))
       m.startVertical = !m.startVertical;
 
     return m;
@@ -1306,9 +1295,9 @@ function ASC()
     return " ";
   }
 
-  this.routeStatesToPath = function(states, kind)
+  this.routeStatesToPath = function(states, modifiers)
   {
-    const chset = this.resolveLineStyle(kind);
+    const chset = modifiers.kind;
     const out = [];
 
     if (!states || states.length <= 1) return out;
@@ -1342,12 +1331,13 @@ function ASC()
     return out;
   }
 
-  this.routePath = function(from, to, modifiers, kind)
+  this.routePath = function(from, to, modifiers)
   {
     if (!from || !to) return [];
     if (from.r === to.r && from.c === to.c) return [];
+    console.log("routePath("+from+","+to+","+JSON.stringify(modifiers)+")");
 
-    const mods = this.routeNormalizeModifiers(from, to, modifiers, kind);
+    const mods = this.routeNormalizeModifiers(from, to, modifiers);
     const ctx  = this.routeBuildContext(from, to);
     const self = this;
 
@@ -1439,7 +1429,7 @@ function ASC()
           k = p ? p.prevKey : null;
         }
         states.reverse();
-        return this.routeStatesToPath(states, kind);
+        return this.routeStatesToPath(states, modifiers);
       }
 
       for (const d of DIRS)
@@ -1483,7 +1473,7 @@ function ASC()
     }
 
     // fallback: preserve old behaviour when no obstacle-free route exists
-    return this.buildOrthogonalPath(from, to, mods.startVertical, kind);
+    return this.buildOrthogonalPath(from, to, mods);
   }
 
 
@@ -1493,7 +1483,7 @@ function ASC()
   {
     if (!cell) return;
     selection = null; selectDrag = null; moveDrag = null;
-    boxDrag = { kind:modifiers.kind, start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c } };
+    boxDrag = { start: { r: cell.r, c: cell.c }, cur: { r: cell.r, c: cell.c }, modifiers:modifiers };
     this.draw("beginBox");
   }
 
@@ -1508,8 +1498,7 @@ function ASC()
   this.commitBox = function() 
   {
     if (!boxDrag) return;
-    const style = boxDrag.kind === "double" ? this.BOX_DOUBLE : boxDrag.kind === "fat" ? this.BOX_FAT : this.BOX_SINGLE;
-    this.box( boxDrag.start.c,boxDrag.start.r , boxDrag.cur.c,boxDrag.cur.r , style );
+    this.box( boxDrag.start.c,boxDrag.start.r , boxDrag.cur.c,boxDrag.cur.r , boxDrag.modifiers );
     boxDrag = null;
     this.draw("commitBox");
   }
@@ -1520,11 +1509,13 @@ function ASC()
       oASC.draw("cancelBox");
   }
 
-  this.box = function(c0,r0,c1,r1, style)
+  this.box = function(c0,r0,c1,r1, modifiers)
   {
+    console.log("this.box("+c0+","+r0+","+c1+","+r1+","+JSON.stringify(modifiers)+")");
+
     if(c0===undefined || r0===undefined || c1===undefined || r1===undefined) return;  // safe escape if no arguments provided
-    if(style===undefined) var style = { h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' };
-    const path = this.buildBoxPath( {"c":c0,"r":r0} , {"c":c1,"r":r1} , style);
+    if(modifiers===undefined) var modifiers = {kind:{ h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' }};
+    const path = this.buildBoxPath( {"c":c0,"r":r0} , {"c":c1,"r":r1} , modifiers);
 
     // De-dup (corners overwrite edges)
     const m = new Map();
@@ -1551,7 +1542,7 @@ function ASC()
     desc: "Draw a box in line style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
     examples:  ["oASC.box(1,0,3,2,BOX_SINGLE)","oASC.box(1,0,3,2,BOX_FAT)","oASC.box(1,0,3,2,BOX_DOUBLE)"],
     unitTests: [
-     "oASC.box(0,0,2,2,BOX_SINGLE);oASC.box(3,0,5,2,BOX_FAT);oASC.box(6,0,8,2,BOX_DOUBLE);",
+     "oASC.box(0,0,2,2,{kind:BOX_SINGLE});oASC.box(3,0,5,2,{kind:BOX_FAT});oASC.box(6,0,8,2,{kind:BOX_DOUBLE});",
      "oASC.assert('box',oASC.getCell(0,0,9,E),'┌─┐┏━┓╔═╗');",
      "oASC.assert('oASC.isValidDoubleBox(0,6,2,8)',oASC.isValidDoubleBox(0,6,2,8),true);",
      "oASC.stack(\"undo\");oASC.stack(\"undo\");oASC.stack(\"undo\");"]
@@ -1617,8 +1608,9 @@ function ASC()
     return true;
   }
 
-  this.buildBoxPath = function(start, end, style) 
+  this.buildBoxPath = function(start, end, modifiers) 
   {
+    const style = modifiers.kind;
     const r0 = start.r, c0 = start.c;
     const r1 = end.r, c1 = end.c;
 
@@ -1701,7 +1693,6 @@ function ASC()
     examples: ["oTERM.printJSON(isWireGlyph('┼'))", "oTERM.printJSON(isWireGlyph('A'))"]
   }
 
-
   this.isVisiblyRenderable = function(ch, font = "16px monospace") 
   {
     if (!ch) return false;
@@ -1722,20 +1713,6 @@ function ASC()
       if (img[i] !== 0) return true;
     }
     return false;
-  }
-
-  this.mergedWireGlyph = function(prevCh, nextCh, lineKind /* "single"|"double","fat" */)
-  {
-    const pm = this.glyphToMask(prevCh) ?? 0;
-    const nm = this.glyphToMask(nextCh) ?? 0;
-    const m  = pm | nm;
-
-    // double wins:
-    const wantDouble = (lineKind === "double") || this.isDoubleWire(prevCh) || this.isDoubleWire(nextCh);
-    const wantFat  = (lineKind === "fat")  || this.isFatWire(prevCh)  || this.isFatWire(nextCh);
-
-    const out = wantDouble ? this.maskToDouble(m) : wantFat ? this.maskToFat(m) : this.maskToSingle(m);
-    return out ?? nextCh;
   }
 
   // subsection: freetext
@@ -3507,7 +3484,9 @@ this.startPasteWithText = function(text)
       const old = ctx.fillStyle;
       ctx.fillStyle = "rgba(59,130,246,0.9)";
 
-      const rawPath = this.buildLinePath(lineDrag.start, lineDrag.cur, lineDrag.flip, lineDrag.modifiers, lineDrag.kind);
+      console.log("this.buildLinePath2("+lineDrag.start+","+lineDrag.cur+","+JSON.stringify(lineDrag.modifiers)+")");
+
+      const rawPath = this.buildLinePath2(lineDrag.start, lineDrag.cur, lineDrag.modifiers);
       const path    = lineDrag.merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
 
       for (const p of path)
@@ -3523,8 +3502,7 @@ this.startPasteWithText = function(text)
     {
       const old = ctx.fillStyle;
       ctx.fillStyle = "rgba(59,130,246,0.9)";
-      const style = boxDrag.kind === "double" ? this.BOX_DOUBLE : boxDrag.kind === "fat" ? this.BOX_FAT : this.BOX_SINGLE;
-      const path = this.buildBoxPath(boxDrag.start, boxDrag.cur, style);
+      const path = this.buildBoxPath(boxDrag.start, boxDrag.cur, boxDrag.modifiers);
 
       for (const p of path)
       {
