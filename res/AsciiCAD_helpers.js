@@ -1049,7 +1049,7 @@ function ASC()
     this.line(drag);
   }
 
-  this.buildLinePath2 = function(from, to, modifiers)
+  this.buildLinePath = function(from, to, modifiers)
   {
     // modifiers.startVertical
     // modifiers.flip
@@ -1093,7 +1093,7 @@ function ASC()
     if (!from || !to) return;
 
     //const rawPath = this.buildLinePath(from, to, flip, modifiers, kind);
-    const rawPath = this.buildLinePath2(from, to, modifiers);
+    const rawPath = this.buildLinePath(from, to, modifiers);
     const path    = merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
 
     const stroke = [];
@@ -3484,9 +3484,9 @@ this.startPasteWithText = function(text)
       const old = ctx.fillStyle;
       ctx.fillStyle = "rgba(59,130,246,0.9)";
 
-      console.log("this.buildLinePath2("+lineDrag.start+","+lineDrag.cur+","+JSON.stringify(lineDrag.modifiers)+")");
+      console.log("this.buildLinePath("+lineDrag.start+","+lineDrag.cur+","+JSON.stringify(lineDrag.modifiers)+")");
 
-      const rawPath = this.buildLinePath2(lineDrag.start, lineDrag.cur, lineDrag.modifiers);
+      const rawPath = this.buildLinePath(lineDrag.start, lineDrag.cur, lineDrag.modifiers);
       const path    = lineDrag.merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
 
       for (const p of path)
