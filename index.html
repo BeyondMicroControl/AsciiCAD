@@ -294,7 +294,7 @@ let lineStyles = ["single","fat","double"];
 let lineStyleSym = ["│","▌","││"];
 let lineStyleSel = 0;
 
-let lineRoutes = ["MultiLine","Mikami","MikamiBridge","A*Span","A*Corner","A*Bridge"];
+let lineRoutes = ["MultiLine","Mikami","MikamiBridge","MikamiMultiWorker","A*Span","A*Corner","A*Bridge"];
 let lineRouteSel = 0;
 
 let schemaHighlightOn = false;
@@ -1789,32 +1789,18 @@ canvas.addEventListener("mousemove", (e) =>
   else console.error("tool mismatch (move)");
 });
 
-canvas.addEventListener("mousedown", (e) => 
-{
-  
-  if (e.button === 1 || e.button === 2)   // Middle OR right mouse drag = pan
-  {
-      console.log("mousedown - 1");
-      e.preventDefault();
-      panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
-      canvas.style.cursor = "grabbing";
-      return;
-  }
 
-  if (e.button !== 0) 
+canvas.addEventListener("mousedown", async (e) =>
+{
+  if (e.button === 1 || e.button === 2)
   {
-    console.log("mousedown - 2");
+    e.preventDefault();
+    panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
+    canvas.style.cursor = "grabbing";
     return;
   }
 
-  if (e.button === 1)
-  {
-      console.log("mousedown - 3");
-      e.preventDefault();
-      panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
-      canvas.style.cursor = "grabbing";
-      return;
-  }
+  if (e.button !== 0) return;
 
   canvas.focus();
   setHoverFromEvent(e);
@@ -1822,37 +1808,28 @@ canvas.addEventListener("mousedown", (e) =>
 
   if (pasteDrag)
   {
-      console.log("mousedown - 4");
-      oASC.commitPasteAt(); // uses pasteDrag.anchor
-      if(bDebug) console.log("setMode('"+modeRECALL+"')");
-      setMode(modeRECALL);
-      return;
+    oASC.commitPasteAt();
+    setMode(modeRECALL);
+    return;
   }
 
-  // If a line/box preview is already active, this click commits it.
-  // Do not start a new preview with the same click.
   if (hasPreviewDrag())
   {
-    console.log("mousedown - 5");
-    commitPreviewDrag();
+    const committed = await commitPreviewDrag();
 
-    if (tool === "modeSLine" || tool === "modeFLine" || tool === "modeDLine")
-    {
-        // lineDrag is always null here
-    }
-    else return; // this stops dragging when mousedown during preview
+    if (!committed) return;
+
+    if (tool !== "modeLine") return;
   }
-
-  console.log("mousedown - 6 - tool="+tool);
-
-  var modifiers = lineRoutes[lineRouteSel].concat({ kind:lineConfig(lineRoutes[lineRouteSel]) , flip:!shiftDown , merge:!oDown })
 
   if (tool === "modeFreehand")      oASC.beginFreeform(cell);
   else if (tool === "modeSelect" || tool === "modeCopy" || tool === "modeBlank") oASC.beginSelect(cell);
-  else if (tool === "modeLine")     oASC.beginLine(cell,lineConfig(lineRoutes[lineRouteSel]) );
-  else if (tool === "modeBox")      oASC.beginBox(cell,lineConfig() );
+  else if (tool === "modeLine")     oASC.beginLine(cell, lineConfig(lineRoutes[lineRouteSel]));
+  else if (tool === "modeBox")      oASC.beginBox(cell, lineConfig());
   else if (tool === "modeFreetext") oASC.beginFreetext(cell);
-  else console.error("tool mismatch (begin)") });
+  else console.error("tool mismatch (begin)");
+});
+
 
 function lineConfig(name)  // translate UI naming into modifiers
 {
@@ -1881,6 +1858,13 @@ function lineConfig(name)  // translate UI naming into modifiers
       obj.routeMethod = "mikami";
       obj.leastCorners = true;
       obj.leastBridges = true;
+    break;
+
+    case "MikamiMultiWorker":
+      obj.route = true;
+      obj.routeMethod = "mikami-mw";
+      obj.leastCorners = true;
+      obj.leastBridges = false;     // or true if you want a MikamiMultiWorkerBridge variant later
     break;
 
     case "A*Span":
@@ -1917,12 +1901,21 @@ function hasPreviewDrag()
   return !!(lineDrag || boxDrag);
 }
 
-function commitPreviewDrag()
+async function commitPreviewDrag()
 {
-  if (lineDrag) { oASC.commitLine(); return true; }
+  if (lineDrag)
+  {
+    const method = String(lineDrag.modifiers?.routeMethod || "").toLowerCase();
+    if (method === "mikami-mw") { await oASC.commitLineAsync(); return true; }
+    oASC.commitLine();
+    return true;
+  }
+
   if (boxDrag)  { oASC.commitBox();  return true; }
+
   return false;
 }
+
 
 window.addEventListener("mouseup", () =>
 {

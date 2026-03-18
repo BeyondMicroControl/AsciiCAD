@@ -1048,6 +1048,7 @@ function ASC()
     this.line(drag);
   }
 
+  // Build line paths with synchronous methods
   this.buildLinePath = function(from, to, modifiers)
   {
     // modifiers.startVertical
@@ -1067,6 +1068,103 @@ function ASC()
     }
 
   return this.buildOrthogonalPath(from, to, mods);
+  }
+
+  // Build line paths with asynchronous methods
+  this.buildLinePathAsync = async function(from, to, modifiers)
+  {
+    const mods = Object.assign({}, modifiers || {});
+    const method = String(mods.routeMethod || mods.routeAlgo || "astar").toLowerCase();
+
+    if (mods.route !== true)
+      return this.buildOrthogonalPath(from, to, mods);
+
+    if (method === "mikami-mw")
+      return await this.mikamiPathMultiWorker(from, to, mods);
+
+    if (method === "mikami")
+      return this.mikamiPath(from, to, mods);
+
+    return this.routePathAStar(from, to, mods);
+  }
+
+  this.commitLineAsync = async function()
+  {
+    if (!lineDrag) return;
+
+    const drag = {
+      start: lineDrag.start,
+      cur: lineDrag.cur,
+      modifiers: Object.assign({}, lineDrag.modifiers || {})
+    };
+
+    lineDrag = null;
+    await this.lineAsync(drag);
+  }
+
+  this.lineAsync = async function(lineArg)
+  {
+    if (!lineArg) return;
+
+    const from = lineArg.from ?? lineArg.start;
+    const to   = lineArg.to   ?? lineArg.cur;
+
+    let modifiers = lineArg.modifiers || {};
+    if (typeof modifiers !== "object") modifiers = { flip: !!modifiers };
+    if (modifiers.kind === undefined) modifiers.kind = this.BOX_SINGLE;
+
+    const merge   = modifiers.merge === undefined ? true : modifiers.merge;
+    const rawPath = await this.buildLinePathAsync(from, to, modifiers);
+    const path    = merge ? this.solveIntersect(rawPath) : rawPath;
+
+    const stroke = [];
+    for (const p of path)
+    {
+      if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+      const prev = ascii[p.r][p.c];
+      const next = p.ch;
+      if (prev !== next)
+      {
+        stroke.push({ r: p.r, c: p.c, prev, next });
+        ascii[p.r][p.c] = next;
+      }
+    }
+
+    this.pushStrokeIfNonEmpty(stroke);
+    this.draw("lineAsync");
+  }
+
+  this.benchRoutePair = async function(from, to, modifiers, runs = 5)
+  {
+    const serialMods = Object.assign({}, modifiers, { route:true, routeMethod:"mikami" });
+    const multiMods  = Object.assign({}, modifiers, { route:true, routeMethod:"mikami-mw" });
+
+    const eqPath = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+    let serialMs = 0;
+    let multiMs  = 0;
+    let same = true;
+
+    for (let i = 0; i < runs; i++)
+    {
+      let t0 = performance.now();
+      const p1 = this.mikamiPath(from, to, serialMods);
+      serialMs += (performance.now() - t0);
+
+      t0 = performance.now();
+      const p2 = await this.mikamiPathMultiWorker(from, to, multiMods);
+      multiMs += (performance.now() - t0);
+
+      if (!eqPath(p1, p2)) same = false;
+    }
+
+    return {
+      runs,
+      serialAvgMs: serialMs / runs,
+      multiAvgMs:  multiMs / runs,
+      speedup: (multiMs > 0) ? (serialMs / multiMs) : 0,
+      same
+    };
   }
 
 
