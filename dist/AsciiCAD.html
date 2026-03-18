@@ -2128,6 +2128,7 @@ function ASC()
     this.line(drag);
   }
 
+  // Build line paths with synchronous methods
   this.buildLinePath = function(from, to, modifiers)
   {
     // modifiers.startVertical
@@ -2147,6 +2148,103 @@ function ASC()
     }
 
   return this.buildOrthogonalPath(from, to, mods);
+  }
+
+  // Build line paths with asynchronous methods
+  this.buildLinePathAsync = async function(from, to, modifiers)
+  {
+    const mods = Object.assign({}, modifiers || {});
+    const method = String(mods.routeMethod || mods.routeAlgo || "astar").toLowerCase();
+
+    if (mods.route !== true)
+      return this.buildOrthogonalPath(from, to, mods);
+
+    if (method === "mikami-mw")
+      return await this.mikamiPathMultiWorker(from, to, mods);
+
+    if (method === "mikami")
+      return this.mikamiPath(from, to, mods);
+
+    return this.routePathAStar(from, to, mods);
+  }
+
+  this.commitLineAsync = async function()
+  {
+    if (!lineDrag) return;
+
+    const drag = {
+      start: lineDrag.start,
+      cur: lineDrag.cur,
+      modifiers: Object.assign({}, lineDrag.modifiers || {})
+    };
+
+    lineDrag = null;
+    await this.lineAsync(drag);
+  }
+
+  this.lineAsync = async function(lineArg)
+  {
+    if (!lineArg) return;
+
+    const from = lineArg.from ?? lineArg.start;
+    const to   = lineArg.to   ?? lineArg.cur;
+
+    let modifiers = lineArg.modifiers || {};
+    if (typeof modifiers !== "object") modifiers = { flip: !!modifiers };
+    if (modifiers.kind === undefined) modifiers.kind = this.BOX_SINGLE;
+
+    const merge   = modifiers.merge === undefined ? true : modifiers.merge;
+    const rawPath = await this.buildLinePathAsync(from, to, modifiers);
+    const path    = merge ? this.solveIntersect(rawPath) : rawPath;
+
+    const stroke = [];
+    for (const p of path)
+    {
+      if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+      const prev = ascii[p.r][p.c];
+      const next = p.ch;
+      if (prev !== next)
+      {
+        stroke.push({ r: p.r, c: p.c, prev, next });
+        ascii[p.r][p.c] = next;
+      }
+    }
+
+    this.pushStrokeIfNonEmpty(stroke);
+    this.draw("lineAsync");
+  }
+
+  this.benchRoutePair = async function(from, to, modifiers, runs = 5)
+  {
+    const serialMods = Object.assign({}, modifiers, { route:true, routeMethod:"mikami" });
+    const multiMods  = Object.assign({}, modifiers, { route:true, routeMethod:"mikami-mw" });
+
+    const eqPath = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+    let serialMs = 0;
+    let multiMs  = 0;
+    let same = true;
+
+    for (let i = 0; i < runs; i++)
+    {
+      let t0 = performance.now();
+      const p1 = this.mikamiPath(from, to, serialMods);
+      serialMs += (performance.now() - t0);
+
+      t0 = performance.now();
+      const p2 = await this.mikamiPathMultiWorker(from, to, multiMods);
+      multiMs += (performance.now() - t0);
+
+      if (!eqPath(p1, p2)) same = false;
+    }
+
+    return {
+      runs,
+      serialAvgMs: serialMs / runs,
+      multiAvgMs:  multiMs / runs,
+      speedup: (multiMs > 0) ? (serialMs / multiMs) : 0,
+      same
+    };
   }
 
 
@@ -9684,7 +9782,7 @@ let lineStyles = ["single","fat","double"];
 let lineStyleSym = ["│","▌","││"];
 let lineStyleSel = 0;
 
-let lineRoutes = ["MultiLine","Mikami","MikamiBridge","A*Span","A*Corner","A*Bridge"];
+let lineRoutes = ["MultiLine","Mikami","MikamiBridge","MikamiMultiWorker","A*Span","A*Corner","A*Bridge"];
 let lineRouteSel = 0;
 
 let schemaHighlightOn = false;
@@ -11179,32 +11277,18 @@ canvas.addEventListener("mousemove", (e) =>
   else console.error("tool mismatch (move)");
 });
 
-canvas.addEventListener("mousedown", (e) => 
-{
-  
-  if (e.button === 1 || e.button === 2)   // Middle OR right mouse drag = pan
-  {
-      console.log("mousedown - 1");
-      e.preventDefault();
-      panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
-      canvas.style.cursor = "grabbing";
-      return;
-  }
 
-  if (e.button !== 0) 
+canvas.addEventListener("mousedown", async (e) =>
+{
+  if (e.button === 1 || e.button === 2)
   {
-    console.log("mousedown - 2");
+    e.preventDefault();
+    panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
+    canvas.style.cursor = "grabbing";
     return;
   }
 
-  if (e.button === 1)
-  {
-      console.log("mousedown - 3");
-      e.preventDefault();
-      panDrag = { x: e.clientX, y: e.clientY, panX0: panX, panY0: panY };
-      canvas.style.cursor = "grabbing";
-      return;
-  }
+  if (e.button !== 0) return;
 
   canvas.focus();
   setHoverFromEvent(e);
@@ -11212,37 +11296,28 @@ canvas.addEventListener("mousedown", (e) =>
 
   if (pasteDrag)
   {
-      console.log("mousedown - 4");
-      oASC.commitPasteAt(); // uses pasteDrag.anchor
-      if(bDebug) console.log("setMode('"+modeRECALL+"')");
-      setMode(modeRECALL);
-      return;
+    oASC.commitPasteAt();
+    setMode(modeRECALL);
+    return;
   }
 
-  // If a line/box preview is already active, this click commits it.
-  // Do not start a new preview with the same click.
   if (hasPreviewDrag())
   {
-    console.log("mousedown - 5");
-    commitPreviewDrag();
+    const committed = await commitPreviewDrag();
 
-    if (tool === "modeSLine" || tool === "modeFLine" || tool === "modeDLine")
-    {
-        // lineDrag is always null here
-    }
-    else return; // this stops dragging when mousedown during preview
+    if (!committed) return;
+
+    if (tool !== "modeLine") return;
   }
-
-  console.log("mousedown - 6 - tool="+tool);
-
-  var modifiers = lineRoutes[lineRouteSel].concat({ kind:lineConfig(lineRoutes[lineRouteSel]) , flip:!shiftDown , merge:!oDown })
 
   if (tool === "modeFreehand")      oASC.beginFreeform(cell);
   else if (tool === "modeSelect" || tool === "modeCopy" || tool === "modeBlank") oASC.beginSelect(cell);
-  else if (tool === "modeLine")     oASC.beginLine(cell,lineConfig(lineRoutes[lineRouteSel]) );
-  else if (tool === "modeBox")      oASC.beginBox(cell,lineConfig() );
+  else if (tool === "modeLine")     oASC.beginLine(cell, lineConfig(lineRoutes[lineRouteSel]));
+  else if (tool === "modeBox")      oASC.beginBox(cell, lineConfig());
   else if (tool === "modeFreetext") oASC.beginFreetext(cell);
-  else console.error("tool mismatch (begin)") });
+  else console.error("tool mismatch (begin)");
+});
+
 
 function lineConfig(name)  // translate UI naming into modifiers
 {
@@ -11271,6 +11346,13 @@ function lineConfig(name)  // translate UI naming into modifiers
       obj.routeMethod = "mikami";
       obj.leastCorners = true;
       obj.leastBridges = true;
+    break;
+
+    case "MikamiMultiWorker":
+      obj.route = true;
+      obj.routeMethod = "mikami-mw";
+      obj.leastCorners = true;
+      obj.leastBridges = false;     // or true if you want a MikamiMultiWorkerBridge variant later
     break;
 
     case "A*Span":
@@ -11307,12 +11389,21 @@ function hasPreviewDrag()
   return !!(lineDrag || boxDrag);
 }
 
-function commitPreviewDrag()
+async function commitPreviewDrag()
 {
-  if (lineDrag) { oASC.commitLine(); return true; }
+  if (lineDrag)
+  {
+    const method = String(lineDrag.modifiers?.routeMethod || "").toLowerCase();
+    if (method === "mikami-mw") { await oASC.commitLineAsync(); return true; }
+    oASC.commitLine();
+    return true;
+  }
+
   if (boxDrag)  { oASC.commitBox();  return true; }
+
   return false;
 }
+
 
 window.addEventListener("mouseup", () =>
 {
