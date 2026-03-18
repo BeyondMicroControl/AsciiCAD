@@ -2143,7 +2143,7 @@ function ASC()
 
     if (mods.route === true)
     {
-      if (method === "mikami") return this.mikamiPath(from, to, mods);
+      if (method === "mikami" || method === "mikami-mw") return this.mikamiPath(from, to, mods);
       return this.routePathAStar(from, to, mods);
     }
 
@@ -2748,6 +2748,401 @@ this.routeBacktraceMarksToStates = function(finalMark, markMap)
   return states;
 }
 
+this.routeBuildCellCodeGrid = function(ctx)
+{
+  const grid = new Uint8Array(ROWS * COLS);
+  let i = 0;
+
+  for (let r = 0; r < ROWS; r++)
+  {
+    for (let c = 0; c < COLS; c++, i++)
+    {
+      const kind = this.routeCellKind(r, c, ctx);
+      grid[i] = kind === "free"     ? 1
+              : kind === "terminal" ? 1
+              : kind === "wire_h"   ? 2
+              : kind === "wire_v"   ? 3
+              : 0;
+    }
+  }
+
+  return grid;
+}
+
+this.routeRecommendedWorkerCount = function(modifiers)
+{
+  const forced = Number(modifiers?.workerCount || modifiers?.workers || 0) || 0;
+  if (forced > 0) return Math.max(1, forced | 0);
+
+  const hc = Number(globalThis.navigator?.hardwareConcurrency || 0) || 0;
+  if (!hc) return 2;
+  return Math.max(2, Math.min(4, hc));
+}
+
+this.routeDisposeWorkerPool = function()
+{
+  const pool = this._routeWorkerPool;
+  this._routeWorkerPool = null;
+
+  if (!pool) return;
+
+  try {
+    for (const w of (pool.workers || [])) {
+      try { w.terminate(); } catch (_) {}
+    }
+  } catch (_) {}
+
+  if (pool.url) {
+    try { URL.revokeObjectURL(pool.url); } catch (_) {}
+  }
+}
+
+this.routeInlineWorkerSource = function()
+{
+  return `
+const N = 1, E = 2, S = 4, W = 8;
+let __rows = 0;
+let __cols = 0;
+let __grid = null;
+
+function routeMarkKey(r, c, axis) {
+  return r + "," + c + "," + axis;
+}
+
+function routeAxisForDir(dir) {
+  return (dir === E || dir === W) ? "H" : "V";
+}
+
+function routeAllowedDirs(prevAxis, modifiers) {
+  const verticalFirst = !!modifiers.startVertical;
+  if (prevAxis === "H") return [N, S];
+  if (prevAxis === "V") return [E, W];
+  return verticalFirst ? [N, S, E, W] : [E, W, N, S];
+}
+
+function routeDirVec(dir) {
+  if (dir === N) return { dr: -1, dc:  0 };
+  if (dir === E) return { dr:  0, dc:  1 };
+  if (dir === S) return { dr:  1, dc:  0 };
+  if (dir === W) return { dr:  0, dc: -1 };
+  return { dr: 0, dc: 0 };
+}
+
+function routeLexLess(a, b) {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] < b[i]) return true;
+    if (a[i] > b[i]) return false;
+  }
+  return false;
+}
+
+function routeScoreMark(mark, modifiers) {
+  const score = [mark.level];
+  if (modifiers.leastBridges) score.push(mark.bridges);
+  score.push(mark.steps);
+  score.push(mark.firstAxisPenalty || 0);
+  return score;
+}
+
+function routeCellCode(r, c) {
+  return __grid[r * __cols + c] | 0;
+}
+
+function routeStepVerdict(nr, nc, dirOut, from, to) {
+  if ((nr === from.r && nc === from.c) || (nr === to.r && nc === to.c)) {
+    return { allowed: true, bridge: false };
+  }
+
+  const code = routeCellCode(nr, nc);
+  if (code === 1) return { allowed: true, bridge: false };
+  if (code === 3) {
+    const ok = (dirOut === E || dirOut === W);
+    return { allowed: ok, bridge: ok };
+  }
+  return { allowed: false, bridge: false };
+}
+
+function expandChunk(frontier, modifiers, from, to) {
+  const best = new Map();
+  const hits = [];
+
+  for (const base of frontier) {
+    const dirs = routeAllowedDirs(base.axis, modifiers);
+
+    for (const dir of dirs) {
+      const vec = routeDirVec(dir);
+      const axis = routeAxisForDir(dir);
+
+      let r = base.r;
+      let c = base.c;
+      let segSteps = 0;
+      let segBridges = 0;
+
+      for (;;) {
+        r += vec.dr;
+        c += vec.dc;
+
+        if (r < 0 || r >= __rows || c < 0 || c >= __cols) break;
+
+        const verdict = routeStepVerdict(r, c, dir, from, to);
+        if (!verdict.allowed) break;
+
+        segSteps += 1;
+        if (verdict.bridge) segBridges += 1;
+
+        const mark = {
+          key: routeMarkKey(r, c, axis),
+          r,
+          c,
+          axis,
+          level: base.level + 1,
+          steps: base.steps + segSteps,
+          bridges: base.bridges + segBridges,
+          firstAxisPenalty: base.axis === "ROOT"
+            ? ((modifiers.startVertical && axis !== "V") || (!modifiers.startVertical && axis !== "H") ? 1 : 0)
+            : (base.firstAxisPenalty || 0),
+          parentKey: base.key
+        };
+
+        const prev = best.get(mark.key);
+        if (prev && !routeLexLess(routeScoreMark(mark, modifiers), routeScoreMark(prev, modifiers))) {
+          continue;
+        }
+
+        best.set(mark.key, mark);
+        if (r === to.r && c === to.c) hits.push(mark);
+      }
+    }
+  }
+
+  return { candidates: Array.from(best.values()), hits };
+}
+
+self.onmessage = function(ev) {
+  const msg = ev.data || {};
+
+  if (msg.type === "init") {
+    __rows = msg.rows | 0;
+    __cols = msg.cols | 0;
+    __grid = new Uint8Array(msg.grid);
+    self.postMessage({ type: "inited", id: msg.id });
+    return;
+  }
+
+  if (msg.type === "expand") {
+    const out = expandChunk(msg.frontier || [], msg.modifiers || {}, msg.from, msg.to);
+    self.postMessage({ type: "expandResult", id: msg.id, candidates: out.candidates, hits: out.hits });
+    return;
+  }
+};`;
+}
+
+this.routeEnsureWorkerPool = async function(workerCount, grid)
+{
+  if (typeof Worker === "undefined" || typeof Blob === "undefined" || !URL?.createObjectURL)
+    return null;
+
+  workerCount = Math.max(1, workerCount | 0);
+
+  let pool = this._routeWorkerPool;
+  const needFresh = !pool || pool.workerCount !== workerCount || pool.rows !== ROWS || pool.cols !== COLS;
+
+  if (needFresh)
+  {
+    this.routeDisposeWorkerPool();
+
+    const blob = new Blob([this.routeInlineWorkerSource()], { type: "text/javascript" });
+    const url = URL.createObjectURL(blob);
+    const workers = [];
+
+    for (let i = 0; i < workerCount; i++)
+      workers.push(new Worker(url));
+
+    pool = {
+      url,
+      workers,
+      workerCount,
+      rows: ROWS,
+      cols: COLS,
+      seq: 1
+    };
+
+    this._routeWorkerPool = pool;
+  }
+
+  {
+    const initJobs = pool.workers.map((worker) => new Promise((resolve, reject) => {
+      const id = pool.seq++;
+      const onMessage = (ev) => {
+        const msg = ev.data || {};
+        if (msg.id !== id || msg.type !== "inited") return;
+        cleanup();
+        resolve();
+      };
+      const onError = (err) => {
+        cleanup();
+        reject(err);
+      };
+      const cleanup = () => {
+        worker.removeEventListener("message", onMessage);
+        worker.removeEventListener("error", onError);
+      };
+      worker.addEventListener("message", onMessage);
+      worker.addEventListener("error", onError);
+      worker.postMessage({ type: "init", id, rows: ROWS, cols: COLS, grid });
+    }));
+
+    await Promise.all(initJobs);
+  }
+
+  return pool;
+}
+
+this.routeWorkerExpand = function(worker, pool, frontierChunk, from, to, modifiers)
+{
+  return new Promise((resolve, reject) => {
+    const id = pool.seq++;
+    const onMessage = (ev) => {
+      const msg = ev.data || {};
+      if (msg.id !== id || msg.type !== "expandResult") return;
+      cleanup();
+      resolve(msg);
+    };
+    const onError = (err) => {
+      cleanup();
+      reject(err);
+    };
+    const cleanup = () => {
+      worker.removeEventListener("message", onMessage);
+      worker.removeEventListener("error", onError);
+    };
+    worker.addEventListener("message", onMessage);
+    worker.addEventListener("error", onError);
+    worker.postMessage({ type: "expand", id, frontier: frontierChunk, from, to, modifiers });
+  });
+}
+
+this.routeChunkFrontier = function(frontier, chunkCount)
+{
+  const out = [];
+  const n = frontier.length;
+  chunkCount = Math.max(1, Math.min(chunkCount | 0, n || 1));
+  const base = Math.floor(n / chunkCount);
+  let extra = n % chunkCount;
+  let off = 0;
+
+  for (let i = 0; i < chunkCount; i++)
+  {
+    const len = base + (extra-- > 0 ? 1 : 0);
+    if (len > 0) out.push(frontier.slice(off, off + len));
+    off += len;
+  }
+
+  return out;
+}
+
+this.mikamiPathMultiWorker = async function(from, to, modifiers)
+{
+  if (!from || !to) return [];
+  if (from.r === to.r && from.c === to.c) return [];
+
+  const mods = this.routeNormalizeModifiers(from, to, modifiers);
+  const ctx  = this.routeBuildContext(from, to);
+
+  const workerCount = this.routeRecommendedWorkerCount(mods);
+  if (workerCount <= 1) return this.mikamiPath(from, to, mods);
+
+  const grid = this.routeBuildCellCodeGrid(ctx);
+  let pool = null;
+
+  try {
+    pool = await this.routeEnsureWorkerPool(workerCount, grid);
+  } catch (err) {
+    console.warn("MikamiMultiWorker init failed, falling back to serial Mikami:", err);
+    this.routeDisposeWorkerPool();
+    return this.mikamiPath(from, to, mods);
+  }
+
+  if (!pool || !pool.workers?.length)
+    return this.mikamiPath(from, to, mods);
+
+  const root = {
+    key: this.routeMarkKey(from.r, from.c, "ROOT"),
+    r: from.r,
+    c: from.c,
+    axis: "ROOT",
+    level: 0,
+    steps: 0,
+    bridges: 0,
+    firstAxisPenalty: 0,
+    parentKey: null
+  };
+
+  const marks = new Map();
+  marks.set(root.key, root);
+
+  let frontier = [root];
+
+  while (frontier.length)
+  {
+    const chunks = this.routeChunkFrontier(frontier, Math.min(pool.workers.length, frontier.length));
+    const jobs = chunks.map((chunk, i) => this.routeWorkerExpand(pool.workers[i], pool, chunk, from, to, mods));
+
+    let results;
+    try {
+      results = await Promise.all(jobs);
+    } catch (err) {
+      console.warn("MikamiMultiWorker expand failed, falling back to serial Mikami:", err);
+      this.routeDisposeWorkerPool();
+      return this.mikamiPath(from, to, mods);
+    }
+
+    const nextBest = new Map();
+    const hits = [];
+
+    for (const res of results)
+    {
+      for (const mark of (res.candidates || []))
+      {
+        const prevCommitted = marks.get(mark.key);
+        if (prevCommitted && !this.routeLexLess(this.routeScoreMark(mark, mods), this.routeScoreMark(prevCommitted, mods)))
+          continue;
+
+        const prevWave = nextBest.get(mark.key);
+        if (prevWave && !this.routeLexLess(this.routeScoreMark(mark, mods), this.routeScoreMark(prevWave, mods)))
+          continue;
+
+        nextBest.set(mark.key, mark);
+      }
+    }
+
+    const nextFrontier = Array.from(nextBest.values());
+    for (const mark of nextFrontier)
+    {
+      marks.set(mark.key, mark);
+      if (mark.r === to.r && mark.c === to.c) hits.push(mark);
+    }
+
+    if (hits.length)
+    {
+      let best = hits[0];
+      for (let i = 1; i < hits.length; i++)
+      {
+        if (this.routeLexLess(this.routeScoreMark(hits[i], mods), this.routeScoreMark(best, mods)))
+          best = hits[i];
+      }
+
+      const states = this.routeBacktraceMarksToStates(best, marks);
+      return this.routeStatesToPath(states, mods);
+    }
+
+    frontier = nextFrontier;
+  }
+
+  return this.buildOrthogonalPath(from, to, mods);
+}
+
+
 this.mikamiPath = function(from, to, modifiers)
 {
   if (!from || !to) return [];
@@ -2860,7 +3255,7 @@ this.mikamiPath = function(from, to, modifiers)
   this.routePath = function(from, to, modifiers)
   {
     const method = String(modifiers?.routeMethod || modifiers?.routeAlgo || "astar").toLowerCase();
-    if (method === "mikami") return this.mikamiPath(from, to, modifiers || {});
+    if (method === "mikami" || method === "mikami-mw") return this.mikamiPath(from, to, modifiers || {});
     return this.routePathAStar(from, to, modifiers || {});
   }
 
