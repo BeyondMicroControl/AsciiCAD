@@ -1373,6 +1373,195 @@ function ASC()
     }
   }
 
+
+  this.netHeatPalette = function()
+  {
+    const fallback = ["#E4F4FF", "#E9FBE8", "#D1FCC7", "#B0F6A1", "#BDE485", "#DCCA76", "#F6844F", "#FF0000"];
+    const src = globalThis.heatMapCols;
+    return (Array.isArray(src) && src.length) ? src.slice() : fallback;
+  }
+
+  this.netHeatHexToRGBA = function(hex, alpha)
+  {
+    const txt = String(hex || "#000000").trim();
+    const m = txt.match(/^#?([0-9a-f]{6})$/i);
+    if (!m) return "rgba(255,0,0," + (alpha ?? 0.28) + ")";
+    const n = parseInt(m[1], 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    return "rgba(" + r + "," + g + "," + b + "," + (alpha ?? 0.28) + ")";
+  }
+
+  this.netHeatMapColor = function(value, minScore, maxScore, palette)
+  {
+    const cols = (Array.isArray(palette) && palette.length) ? palette : this.netHeatPalette();
+    if (!Number.isFinite(value)) return cols[cols.length - 1];
+    if (!Number.isFinite(minScore) || !Number.isFinite(maxScore) || maxScore <= minScore)
+      return cols[0];
+
+    const t = Math.max(0, Math.min(1, (value - minScore) / (maxScore - minScore)));
+    const idx = Math.max(0, Math.min(cols.length - 1, Math.round(t * (cols.length - 1))));
+    return cols[idx];
+  }
+
+  this.computeDirectionalHeatmap = function(from, to, modifiers)
+  {
+    if (!from || !to) return null;
+
+    const mods = this.routeNormalizeModifiers(from, to, modifiers || {});
+    const ctx  = this.routeBuildContext(from, to);
+    const dirs = [N, E, S, W];
+    const dirVec = {
+      [N]: { dr: -1, dc:  0 },
+      [E]: { dr:  0, dc:  1 },
+      [S]: { dr:  1, dc:  0 },
+      [W]: { dr:  0, dc: -1 }
+    };
+    const INF = Number.POSITIVE_INFINITY;
+    const size = ROWS * COLS;
+    const layers = Object.create(null);
+
+    for (const dir of dirs) layers[dir] = new Float32Array(size);
+
+    let minScore = INF;
+    let maxScore = -INF;
+
+    const idxOf = (r, c) => r * COLS + c;
+    const isOpposingGoalDir = (r, c, dir) =>
+      (dir === N && to.r > r) ||
+      (dir === S && to.r < r) ||
+      (dir === E && to.c < c) ||
+      (dir === W && to.c > c);
+
+    const obstacleProximityPenalty = (r, c) =>
+    {
+      let penalty = 0;
+      for (const dir of dirs)
+      {
+        const dv = dirVec[dir];
+        const rr = r + dv.dr;
+        const cc = c + dv.dc;
+
+        if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) {
+          penalty += 2;
+          continue;
+        }
+
+        const kind = this.routeCellKind(rr, cc, ctx);
+        if (kind === "blocked" || kind === "wire_h" || kind === "wire_v") penalty += 1.5;
+      }
+      return penalty;
+    };
+
+    for (let r = 0; r < ROWS; r++)
+    {
+      for (let c = 0; c < COLS; c++)
+      {
+        const baseIdx = idxOf(r, c);
+        const cellKind = this.routeCellKind(r, c, ctx);
+        const curDist = Math.abs(r - to.r) + Math.abs(c - to.c);
+        const needH = Math.abs(to.c - c) >= Math.abs(to.r - r);
+
+        for (const dir of dirs)
+        {
+          const dv = dirVec[dir];
+          const nr = r + dv.dr;
+          const nc = c + dv.dc;
+          const layer = layers[dir];
+
+          if (r === to.r && c === to.c)
+          {
+            layer[baseIdx] = 0;
+            minScore = Math.min(minScore, 0);
+            maxScore = Math.max(maxScore, 0);
+            continue;
+          }
+
+          if (cellKind === "blocked" && !(r === from.r && c === from.c))
+          {
+            layer[baseIdx] = INF;
+            continue;
+          }
+
+          const verdict = this.routeStepVerdict(nr, nc, dir, ctx);
+          if (!verdict.allowed)
+          {
+            layer[baseIdx] = INF;
+            continue;
+          }
+
+          const nextDist = Math.abs(nr - to.r) + Math.abs(nc - to.c);
+          const towardGoal = nextDist < curDist;
+          const isH = (dir === E || dir === W);
+
+          let score = 0;
+          score += 1;                     // base movement effort
+          score += nextDist * 2;          // remaining distance dominates
+          score += towardGoal ? -2 : 6;   // reward motion toward the target, punish retreat
+          score += verdict.bridge ? (mods.leastBridges ? 18 : 12) : 0;
+          score += obstacleProximityPenalty(nr, nc);
+
+          if (to.r !== r && to.c !== c && (isH !== needH)) score += 3;
+          if (isOpposingGoalDir(r, c, dir)) score += 8;
+          if ((dir === N || dir === S) && r === to.r) score += 4;
+          if ((dir === E || dir === W) && c === to.c) score += 4;
+
+          layer[baseIdx] = score;
+          minScore = Math.min(minScore, score);
+          maxScore = Math.max(maxScore, score);
+        }
+      }
+    }
+
+    if (!Number.isFinite(minScore)) minScore = 0;
+    if (!Number.isFinite(maxScore)) maxScore = 1;
+
+    return { layers, minScore, maxScore, from, to, modifiers: mods };
+  }
+
+  this.drawDirectionalHeatmap = function(ctx, cw, ch, snap, heat, dirMask)
+  {
+    if (!heat || !dirMask) return;
+
+    const palette = this.netHeatPalette();
+    const alpha = 0.30;
+    const layers = heat.layers || {};
+    const masks = [N, E, S, W].filter(m => (dirMask & m) !== 0);
+    if (!masks.length) return;
+
+    ctx.save();
+    for (let r = 0; r < ROWS; r++)
+    {
+      for (let c = 0; c < COLS; c++)
+      {
+        const idx = r * COLS + c;
+        let score = Number.POSITIVE_INFINITY;
+
+        for (const m of masks)
+        {
+          const layer = layers[m];
+          if (!layer) continue;
+          const v = layer[idx];
+          if (Number.isFinite(v) && v < score) score = v;
+        }
+
+        if (!Number.isFinite(score))
+        {
+          // still show impediments in hottest color
+          score = Number.POSITIVE_INFINITY;
+        }
+
+        const col = this.netHeatMapColor(score, heat.minScore, heat.maxScore, palette);
+        ctx.fillStyle = this.netHeatHexToRGBA(col, alpha);
+        ctx.fillRect(snap(c * cw), snap(r * ch), cw + 0.5, ch + 0.5);
+      }
+    }
+    ctx.restore();
+  }
+
+
+
   this.routeHeuristic = function(r, c, to)
   {
     return [Math.abs(r - to.r) + Math.abs(c - to.c), 0, 0, 0];
@@ -4077,6 +4266,13 @@ this.startPasteWithText = function(text)
     if (schemaHighlightOn && !highlightCache) highlightCache = this.computeHighlightOverlay();
     const redSet = highlightCache ? highlightCache.redSet : null;
     const insideSet = highlightCache ? highlightCache.insideSet : null;
+
+    const activeNetHeatMask = (Number(globalThis.netHeatMask) || 0) & (N|E|S|W);
+    if (lineDrag && activeNetHeatMask)
+    {
+      const heat = this.computeDirectionalHeatmap(lineDrag.start, lineDrag.cur, lineDrag.modifiers || {});
+      this.drawDirectionalHeatmap(ctx, cw, ch, snap, heat, activeNetHeatMask);
+    }
 
     const BLACK = "rgba(0,0,0,1)";
     const BLUE = "rgba(59,130,246,0.9)";

@@ -33,7 +33,7 @@
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.17</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.171</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
 
@@ -91,6 +91,7 @@
             <button id="toolSchemaHighlight" class="btn" data-hint="Highlight: Mark signle lines in blue, enclosed double line boxes in red.">Trace</button>   
             <button id="toolSchemaMatch" class="btn" data-hint="Match: Marks matching catalog items in green. Mind replacing wildcards inside these items, '#' with numbers, '$' with alphanumeric.">Match</button>
             <button id="toolNetTrace" class="btn" data-hint="Netlist: Extract wire lines (endpoints + junctions) and print as JSON.">NetTrace</button>
+            <button id="toolNetHeat" class="btn" data-hint="Heatmap: Color each cell according to horizontal and vertical penalty score">NetHeat</button>
             <span ><button class="btn" id="toolDebug" data-hint="Debug AsciiCAD" onclick="document.location='tools/AsciiCAD_debug.html'"  style="filter:grayscale(100%)">D&#x1F41E;</button></span>
           </div>
           <div id="toolHint" class="tiny muted" style="margin-top:8px;"></div>
@@ -249,6 +250,7 @@ const toolHint = document.getElementById("toolHint");
 const schemaHighlightBtn =  document.getElementById("toolSchemaHighlight");
 const schemaMatchBtn =  document.getElementById("toolSchemaMatch");
 const netTraceBtn =      document.getElementById("toolNetTrace");
+const netHeatBtn =      document.getElementById("toolNetHeat");
 
 const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
@@ -304,6 +306,7 @@ let schemaMatchOn = false;
 let matchCache = null; // { greenSet:Set } cached matches for current ascii state
 
 let netTraceOn = false;
+let netHeatMask = null;
 
 // Cache for interactive net highlighting:
 // - nets: array of { cells:Set<string>, LE:[{c,r}], LJ:[{c,r}] }
@@ -1558,6 +1561,16 @@ netTraceBtn.addEventListener("click", () =>
   }
 });
 
+netHeatBtn.addEventListener("click", () =>
+{
+  const arrow = [' ',' ↑',' →',,' ↓',,,,' ←'];
+  if(netHeatMask==null || netHeatMask==0b0000) { netHeatMask = 0b0001; netHeatBtn.textContent += arrow[1]; }
+  else 
+  {
+    netHeatMask = (netHeatMask << 1) & 0b1111;
+    netHeatBtn.textContent = netHeatBtn.textContent.substring(0,netHeatBtn.textContent.length-2) + arrow[netHeatMask];
+  }
+});
 
 flipPanBtn.addEventListener("click", () =>
 {
