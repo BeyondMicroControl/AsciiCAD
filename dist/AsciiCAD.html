@@ -150,6 +150,43 @@ function COM()
       return [(idx & msk)<<scl,((idx>>sig_bits) & msk)<<scl,((idx>>sig_bits>>sig_bits) & msk)<<scl];
   }
 
+this.interpolateColors = function(col_arr, rangeLen) 
+{
+  if (!Array.isArray(col_arr) || col_arr.length < 2) {
+    throw new Error("col_arr must contain at least 2 colors");
+  }
+  if (!Number.isInteger(rangeLen) || rangeLen < 2) {
+    throw new Error("rangeLen must be an integer >= 2");
+  }
+
+  var out = [];
+  var lastIndex = col_arr.length - 1;
+
+  for (var i = 0; i < rangeLen; i++) {
+    // Global position from 0 to last color
+    var t = i / (rangeLen - 1);
+    var scaled = t * lastIndex;
+
+    // Segment index
+    var idx = Math.floor(scaled);
+    if (idx >= lastIndex) idx = lastIndex - 1;
+
+    // Local interpolation factor inside this segment
+    var localT = scaled - idx;
+
+    var c1 = this.HEX2RGB(col_arr[idx]);
+    var c2 = this.HEX2RGB(col_arr[idx + 1]);
+
+    var r = Math.round(c1[0] + (c2[0] - c1[0]) * localT);
+    var g = Math.round(c1[1] + (c2[1] - c1[1]) * localT);
+    var b = Math.round(c1[2] + (c2[2] - c1[2]) * localT);
+
+    out.push("#" + this.RGB2HEX([r, g, b]).join(""));
+  }
+
+  return out;
+}
+
   this.base64ToArrayBuffer = function(base64)
   {
       try{ var binary_string = window.atob(base64); } catch(e) { return null }
