@@ -1,0 +1,23 @@
+<html>
+<script type="text/javascript"  src="../../res/COM_MAIN.js"></script>
+<script>
+
+var HEX_PCT = []
+// initialise heat map colors
+//var col_arr = ["#2D788E","#2CA984","#7DD552","#FDEA27"];
+//var col_arr = ["#430054","#403F87","#2D788E","#2CA984","#7DD552","#FDEA27"];
+//var col_arr = ["#0000FF","#44984C","#B6C41F","#FF9400","#FF0000","#FB94F8"];
+//var col_arr = ["#64D4FF","#8BDEDF","#8EDAA6","#BFD080","#F2C98F","#FEAC86"];
+var col_arr = ["#E4F4FF","#EBFEDF","#AEFAA6","#BFE080","#F2B96F","#FF0000"];
+var rangeLen = 255;
+
+var HEX_PCT = oCOM.interpolateColors(col_arr,rangeLen);
+
+for(var i=0;i<rangeLen;i++)
+{
+    document.write("<span style='font-family:monospace,monospace;'>"+i+" "+HEX_PCT[i]+" <span style=float:left;height:15px;width:20px;background-color:"+HEX_PCT[i]+"></span></span><br>");
+}
+//HEX_PCT[0] = "#000000"
+//HEX_PCT[100] = col_arr[col_arr.length-1];
+</script>
+</html>
