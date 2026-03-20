@@ -5384,7 +5384,9 @@ this.startPasteWithText = function(text)
     const redSet = highlightCache ? highlightCache.redSet : null;
     const insideSet = highlightCache ? highlightCache.insideSet : null;
 
-    const activeNetHeatMask = (Number(globalThis.netHeatMask) || 0) & (N|E|S|W);
+    console.log("globalThis.netHeatMask="+globalThis.netHeatMask);
+
+    const activeNetHeatMask = (Number(netHeatMask) || 0) & (N|E|S|W);
     if (lineDrag && activeNetHeatMask)
     {
       const heat = this.computeDirectionalHeatmap(lineDrag.start, lineDrag.cur, lineDrag.modifiers || {});
