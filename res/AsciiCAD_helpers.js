@@ -1416,7 +1416,7 @@ function ASC()
   {
     return Object.assign({
       blockerWeight: 15,
-      bridgeWeight: 1,
+      bridgeWeight: 2,
       rayLength: 16,
       sideRadius: 4,
       alpha: 0.30
