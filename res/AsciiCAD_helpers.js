@@ -1539,39 +1539,6 @@ function ASC()
     return { layers, minScore, maxScore, activeMask, cfg };
   }
 
-  this.drawNetHeatOverlay = function(ctx, cw, ch, snap, heat, dirMask)
-  {
-    if (!heat || !dirMask) return;
-
-    const palette = this.netHeatPalette();
-    const masks = [N, E, S, W].filter(m => (dirMask & m) !== 0);
-    if (!masks.length) return;
-
-    ctx.save();
-    for (let r = 0; r < ROWS; r++)
-    {
-      for (let c = 0; c < COLS; c++)
-      {
-        const idx = r * COLS + c;
-        let score = Number.POSITIVE_INFINITY;
-
-        for (const m of masks)
-        {
-          const layer = heat.layers[m];
-          if (!layer) continue;
-          const v = layer[idx];
-          if (Number.isFinite(v) && v < score) score = v;
-        }
-
-        const col = this.netHeatMapColor(score, heat.minScore, heat.maxScore, palette);
-        ctx.fillStyle = this.netHeatHexToRGBA(col, heat.cfg?.alpha ?? 0.30);
-        ctx.fillRect(snap(c * cw), snap(r * ch), cw + 0.5, ch + 0.5);
-      }
-    }
-    ctx.restore();
-  }
-
-
   this.routeHeuristic = function(r, c, to)
   {
     return [Math.abs(r - to.r) + Math.abs(c - to.c), 0, 0, 0];
