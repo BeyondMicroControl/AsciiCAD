@@ -1405,128 +1405,142 @@ function ASC()
     return cols[idx];
   }
 
-  this.computeDirectionalHeatmap = function(from, to, modifiers)
-  {
-    if (!from || !to) return null;
 
-    const mods = this.routeNormalizeModifiers(from, to, modifiers || {});
-    const ctx  = this.routeBuildContext(from, to);
-    const dirs = [N, E, S, W];
-    const dirVec = {
-      [N]: { dr: -1, dc:  0 },
-      [E]: { dr:  0, dc:  1 },
-      [S]: { dr:  1, dc:  0 },
-      [W]: { dr:  0, dc: -1 }
-    };
-    const INF = Number.POSITIVE_INFINITY;
+
+
+  this.netHeatConfig = function()
+  {
+    return Object.assign({
+      blockerWeight: 15,
+      bridgeWeight: 1,
+      rayLength: 16,
+      sideRadius: 4,
+      alpha: 0.30
+    }, globalThis.netHeatCfg || {});
+  }
+
+  this.netHeatDistancePenalty = function(weight, distance)
+  {
+    const d = Math.max(1, Number(distance) || 1);
+    return Number(weight || 0) / (d * d);
+  }
+
+  this.netHeatCellPenaltyKind = function(r, c, ctx)
+  {
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return "blocker";
+    const kind = this.routeCellKind(r, c, ctx);
+    if (kind === "blocked") return "blocker";
+    if (kind === "wire_v" || kind === "wire_h") return "bridge";
+    return null;
+  }
+
+  this.computeNetHeatScoreAt = function(r, c, dir, ctx, cfg)
+  {
+    const vec = this.routeDirVec(dir);
+    const perpA = (dir === N || dir === S) ? { dr: 0, dc: -1 } : { dr: -1, dc: 0 };
+    const perpB = (dir === N || dir === S) ? { dr: 0, dc:  1 } : { dr:  1, dc: 0 };
+    const nr = r + vec.dr;
+    const nc = c + vec.dc;
+
+    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return Number.POSITIVE_INFINITY;
+    if (!this.routeStepVerdict(nr, nc, dir, ctx).allowed) return Number.POSITIVE_INFINITY;
+
+    let score = 0;
+    let rr = r;
+    let cc = c;
+
+    for (let step = 1; step <= cfg.rayLength; step++)
+    {
+      rr += vec.dr;
+      cc += vec.dc;
+
+      if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS)
+      {
+        score += this.netHeatDistancePenalty(cfg.blockerWeight, step);
+        break;
+      }
+
+      const verdict = this.routeStepVerdict(rr, cc, dir, ctx);
+      if (!verdict.allowed)
+      {
+        score += this.netHeatDistancePenalty(cfg.blockerWeight, step);
+        break;
+      }
+
+      if (verdict.bridge)
+        score += this.netHeatDistancePenalty(cfg.bridgeWeight, step);
+
+      for (let side = 1; side <= cfg.sideRadius; side++)
+      {
+        const checks = [
+          { r: rr + perpA.dr * side, c: cc + perpA.dc * side },
+          { r: rr + perpB.dr * side, c: cc + perpB.dc * side }
+        ];
+
+        for (const p of checks)
+        {
+          const hit = this.netHeatCellPenaltyKind(p.r, p.c, ctx);
+          if (!hit) continue;
+          const dist = step + side;
+          score += this.netHeatDistancePenalty(
+            hit === "bridge" ? cfg.bridgeWeight : cfg.blockerWeight,
+            dist
+          );
+        }
+      }
+    }
+
+    return score;
+  }
+
+  this.computeNetHeatField = function(dirMask)
+  {
+    const activeMask = (Number(dirMask) || 0) & (N|E|S|W);
+    if (!activeMask) return null;
+
+    const cfg = this.netHeatConfig();
+    const dummy = { r: -9999, c: -9999 };
+    const ctx = this.routeBuildContext(dummy, dummy);
+    const dirs = [N, E, S, W].filter(m => (activeMask & m) !== 0);
     const size = ROWS * COLS;
     const layers = Object.create(null);
 
-    for (const dir of dirs) layers[dir] = new Float32Array(size);
+    let minScore = Number.POSITIVE_INFINITY;
+    let maxScore = -Number.POSITIVE_INFINITY;
 
-    let minScore = INF;
-    let maxScore = -INF;
-
-    const idxOf = (r, c) => r * COLS + c;
-    const isOpposingGoalDir = (r, c, dir) =>
-      (dir === N && to.r > r) ||
-      (dir === S && to.r < r) ||
-      (dir === E && to.c < c) ||
-      (dir === W && to.c > c);
-
-    const obstacleProximityPenalty = (r, c) =>
-    {
-      let penalty = 0;
-      for (const dir of dirs)
-      {
-        const dv = dirVec[dir];
-        const rr = r + dv.dr;
-        const cc = c + dv.dc;
-
-        if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) {
-          penalty += 2;
-          continue;
-        }
-
-        const kind = this.routeCellKind(rr, cc, ctx);
-        if (kind === "blocked" || kind === "wire_h" || kind === "wire_v") penalty += 1.5;
-      }
-      return penalty;
-    };
+    for (const dir of dirs)
+      layers[dir] = new Float32Array(size);
 
     for (let r = 0; r < ROWS; r++)
     {
       for (let c = 0; c < COLS; c++)
       {
-        const baseIdx = idxOf(r, c);
-        const cellKind = this.routeCellKind(r, c, ctx);
-        const curDist = Math.abs(r - to.r) + Math.abs(c - to.c);
-        const needH = Math.abs(to.c - c) >= Math.abs(to.r - r);
+        const idx = r * COLS + c;
 
         for (const dir of dirs)
         {
-          const dv = dirVec[dir];
-          const nr = r + dv.dr;
-          const nc = c + dv.dc;
-          const layer = layers[dir];
-
-          if (r === to.r && c === to.c)
+          const score = this.computeNetHeatScoreAt(r, c, dir, ctx, cfg);
+          layers[dir][idx] = score;
+          if (Number.isFinite(score))
           {
-            layer[baseIdx] = 0;
-            minScore = Math.min(minScore, 0);
-            maxScore = Math.max(maxScore, 0);
-            continue;
+            if (score < minScore) minScore = score;
+            if (score > maxScore) maxScore = score;
           }
-
-          if (cellKind === "blocked" && !(r === from.r && c === from.c))
-          {
-            layer[baseIdx] = INF;
-            continue;
-          }
-
-          const verdict = this.routeStepVerdict(nr, nc, dir, ctx);
-          if (!verdict.allowed)
-          {
-            layer[baseIdx] = INF;
-            continue;
-          }
-
-          const nextDist = Math.abs(nr - to.r) + Math.abs(nc - to.c);
-          const towardGoal = nextDist < curDist;
-          const isH = (dir === E || dir === W);
-
-          let score = 0;
-          score += 1;                     // base movement effort
-          score += nextDist * 2;          // remaining distance dominates
-          score += towardGoal ? -2 : 6;   // reward motion toward the target, punish retreat
-          score += verdict.bridge ? (mods.leastBridges ? 18 : 12) : 0;
-          score += obstacleProximityPenalty(nr, nc);
-
-          if (to.r !== r && to.c !== c && (isH !== needH)) score += 3;
-          if (isOpposingGoalDir(r, c, dir)) score += 8;
-          if ((dir === N || dir === S) && r === to.r) score += 4;
-          if ((dir === E || dir === W) && c === to.c) score += 4;
-
-          layer[baseIdx] = score;
-          minScore = Math.min(minScore, score);
-          maxScore = Math.max(maxScore, score);
         }
       }
     }
 
     if (!Number.isFinite(minScore)) minScore = 0;
-    if (!Number.isFinite(maxScore)) maxScore = 1;
+    if (!Number.isFinite(maxScore) || maxScore <= minScore) maxScore = minScore + 1;
 
-    return { layers, minScore, maxScore, from, to, modifiers: mods };
+    return { layers, minScore, maxScore, activeMask, cfg };
   }
 
-  this.drawDirectionalHeatmap = function(ctx, cw, ch, snap, heat, dirMask)
+  this.drawNetHeatOverlay = function(ctx, cw, ch, snap, heat, dirMask)
   {
     if (!heat || !dirMask) return;
 
     const palette = this.netHeatPalette();
-    const alpha = 0.30;
-    const layers = heat.layers || {};
     const masks = [N, E, S, W].filter(m => (dirMask & m) !== 0);
     if (!masks.length) return;
 
@@ -1540,26 +1554,19 @@ function ASC()
 
         for (const m of masks)
         {
-          const layer = layers[m];
+          const layer = heat.layers[m];
           if (!layer) continue;
           const v = layer[idx];
           if (Number.isFinite(v) && v < score) score = v;
         }
 
-        if (!Number.isFinite(score))
-        {
-          // still show impediments in hottest color
-          score = Number.POSITIVE_INFINITY;
-        }
-
         const col = this.netHeatMapColor(score, heat.minScore, heat.maxScore, palette);
-        ctx.fillStyle = this.netHeatHexToRGBA(col, alpha);
+        ctx.fillStyle = this.netHeatHexToRGBA(col, heat.cfg?.alpha ?? 0.30);
         ctx.fillRect(snap(c * cw), snap(r * ch), cw + 0.5, ch + 0.5);
       }
     }
     ctx.restore();
   }
-
 
 
   this.routeHeuristic = function(r, c, to)
@@ -4270,11 +4277,12 @@ this.startPasteWithText = function(text)
     console.log("globalThis.netHeatMask="+globalThis.netHeatMask);
 
     const activeNetHeatMask = (Number(netHeatMask) || 0) & (N|E|S|W);
-    if (lineDrag && activeNetHeatMask)
+    if (activeNetHeatMask)
     {
-      const heat = this.computeDirectionalHeatmap(lineDrag.start, lineDrag.cur, lineDrag.modifiers || {});
-      this.drawDirectionalHeatmap(ctx, cw, ch, snap, heat, activeNetHeatMask);
+      const heat = this.computeNetHeatField(activeNetHeatMask);
+      this.drawNetHeatOverlay(ctx, cw, ch, snap, heat, activeNetHeatMask);
     }
+
 
     const BLACK = "rgba(0,0,0,1)";
     const BLUE = "rgba(59,130,246,0.9)";

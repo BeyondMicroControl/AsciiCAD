@@ -308,6 +308,16 @@ let matchCache = null; // { greenSet:Set } cached matches for current ascii stat
 let netTraceOn = false;
 let netHeatMask = null;
 
+globalThis.heatMapCols = ["#E4F4FF","#E9FBE8","#D1FCC7","#B0F6A1","#BDE485","#DCCA76","#F6844F","#FF0000"];
+globalThis.netHeatCfg = {
+  blockerWeight: 15,
+  bridgeWeight: 1,
+  rayLength: 16,
+  sideRadius: 4,
+  alpha: 0.30
+};
+
+
 // Cache for interactive net highlighting:
 // - nets: array of { cells:Set<string>, LE:[{c,r}], LJ:[{c,r}] }
 // - cellToNet: Map<"r,c", netIndex>
@@ -1570,6 +1580,7 @@ netHeatBtn.addEventListener("click", () =>
     netHeatMask = (netHeatMask << 1) & 0b1111;
     netHeatBtn.textContent = netHeatBtn.textContent.substring(0,netHeatBtn.textContent.length-2) + arrow[netHeatMask];
   }
+  oASC.draw("netHeatToggle");
 });
 
 flipPanBtn.addEventListener("click", () =>
