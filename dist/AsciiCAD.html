@@ -2478,40 +2478,22 @@ function ASC()
         return { allowed: true, bridge: false };
 
       case "wire_v":
-        // bridge policy supported by current solveIntersect() / rendering
-        if (dirOut === E || dirOut === W)
-          return { allowed: true, bridge: true };
-        return { allowed: false, bridge: false };
+        return {
+          allowed: (dirOut === E || dirOut === W),
+          bridge:  (dirOut === E || dirOut === W)
+        };
 
       case "wire_h":
+        return {
+          allowed: (dirOut === N || dirOut === S),
+          bridge:  (dirOut === N || dirOut === S)
+        };
+
       case "blocked":
       default:
         return { allowed: false, bridge: false };
     }
   }
-
-  this.netHeatVerdict = function(r, c, dir, ctx)
-  {
-    const kind = this.routeCellKind(r, c, ctx);
-
-    switch (kind)
-    {
-      case "free":
-      case "terminal":
-        return { blocked:false, bridge:false };
-
-      case "wire_v":
-        return { blocked: !(dir === E || dir === W), bridge: (dir === E || dir === W) };
-
-      case "wire_h":
-        return { blocked: !(dir === N || dir === S), bridge: (dir === N || dir === S) };
-
-      case "blocked":
-      default:
-        return { blocked:true, bridge:false };
-    }
-  }
-
 
   this.netHeatPalette = function()
   {
@@ -3109,11 +3091,19 @@ function routeStepVerdict(nr, nc, dirOut, from, to) {
   }
 
   const code = routeCellCode(nr, nc);
-  if (code === 1) return { allowed: true, bridge: false };
-  if (code === 3) {
+
+  if (code === 1) return { allowed: true, bridge: false }; // free / terminal
+
+  if (code === 3) { // wire_v
     const ok = (dirOut === E || dirOut === W);
     return { allowed: ok, bridge: ok };
   }
+
+  if (code === 2) { // wire_h
+    const ok = (dirOut === N || dirOut === S);
+    return { allowed: ok, bridge: ok };
+  }
+
   return { allowed: false, bridge: false };
 }
 
