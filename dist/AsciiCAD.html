@@ -2490,6 +2490,28 @@ function ASC()
     }
   }
 
+  this.netHeatVerdict = function(r, c, dir, ctx)
+  {
+    const kind = this.routeCellKind(r, c, ctx);
+
+    switch (kind)
+    {
+      case "free":
+      case "terminal":
+        return { blocked:false, bridge:false };
+
+      case "wire_v":
+        return { blocked: !(dir === E || dir === W), bridge: (dir === E || dir === W) };
+
+      case "wire_h":
+        return { blocked: !(dir === N || dir === S), bridge: (dir === N || dir === S) };
+
+      case "blocked":
+      default:
+        return { blocked:true, bridge:false };
+    }
+  }
+
 
   this.netHeatPalette = function()
   {
