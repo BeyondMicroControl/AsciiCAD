@@ -15,8 +15,82 @@ if (typeof bDebug === "undefined" || !bDebug) {
 //    ██      ██   ██ ██      ██      ██  ██       ██ 
 //     ██████ ██   ██ ███████  ██████ ██   ██ ███████ 
 
+/*
+// this version buffers duplicate messages, but it's not reporting failed assertions anymore and also does not flush messages at the end
 
+(function () {
+  if (window.__ASCIICAD_LOG_FORWARD__) return;
+  window.__ASCIICAD_LOG_FORWARD__ = true;
 
+  // State to keep track of the last message and count for each type
+  const state = {
+    log: { lastMessage: null, count: 0 },
+    warn: { lastMessage: null, count: 0 },
+    error: { lastMessage: null, count: 0 },
+    assert: { lastMessage: null, count: 0 }
+  };
+
+  // Helper function to send a message with its count
+  function sendMessage(type, message, count) {
+    const countStr = count > 1 ? ` [*${count}]` : '';
+    parent.postMessage(
+      {
+        __asciicadLog: true,
+        type,
+        args: [message + countStr]
+      },
+      "*"
+    );
+  }
+
+  function forward(type, args) {
+    try {
+      const message = args.map(a =>
+        typeof a === "object" ? JSON.stringify(a) : String(a)
+      ).join(' ');
+
+      const currentState = state[type];
+
+      if (message === currentState.lastMessage) {
+        currentState.count++;
+      } else {
+        // If there was a previous message, send it now with its count
+        if (currentState.lastMessage !== null) {
+          sendMessage(type, currentState.lastMessage, currentState.count);
+        }
+        // Update the state for the current message
+        currentState.lastMessage = message;
+        currentState.count = 1;
+      }
+    } catch { }
+  }
+
+  function flushLogs() {
+    for (const type in state) {
+      const currentState = state[type];
+      if (currentState.lastMessage !== null) {
+        sendMessage(type, currentState.lastMessage, currentState.count);
+        currentState.lastMessage = null;
+        currentState.count = 0;
+      }
+    }
+  }
+
+  ["log", "warn", "error", "assert"].forEach(type => {
+    const orig = console[type];
+    console[type] = (...args) => {
+      forward(type, args);
+      orig.apply(console, args);
+    };
+  });
+
+  // Flush logs when the page is unloaded
+  window.addEventListener('beforeunload', flushLogs);
+
+  // Make flushLogs available globally
+  window.flushLogs = flushLogs;
+})();
+*/
 
 var DebugFilter = ["log", "warn", "error", "assert"]; // default filter
 oCOM.URL.parse(document.location.toString());
@@ -256,6 +330,9 @@ function runWorkerThreadSmokeTests()
     return oCMD.runExternalScript(oASC.mask2glyph.help.unitTests.join(";"));       // UNIT test
     })
     .then(function(){
+    return oCMD.runExternalScript(oASC.glyph2dir.help.unitTests.join(";"));       // UNIT test
+    })
+    .then(function(){
     return oCMD.runExternalScript(oASC.computeNetlist.help.unitTests.join(";"));   // UNIT test
     }) 
     .then(function(){
@@ -316,7 +393,6 @@ function runWorkerThreadSmokeTests()
         "◀ ══╡     ◀ ══┫     ◀ ══╣           ",
         "◀═══│     ◀═══┃     ◀═══║           "
         ]
-//throw Error('StopChain');
 
         oASC.assert("combined horizontal crossing", oASC.getCell(0,0,36,oASC.E|oASC.S) ,ar.join("\n"));
 
@@ -481,7 +557,7 @@ function runWorkerThreadSmokeTests()
     .then(function()
     {
        updateUI(); 
-       draw("smoketest"); 
+       oASC.draw("smoketest"); 
     })
     .catch(function(err){ console.error('Worker smoke tests failed:', err); updateUI(); draw(); });
   })();
