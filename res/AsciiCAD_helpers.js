@@ -3363,62 +3363,120 @@ this.startPasteWithText = function(text)
     return out;
   }
 
-
-
-
-  this.computeHighlightOverlay = function() 
+  this.collectDoubleBoxRects = function()
   {
-    if (typeof oGASC !== "undefined" && oGASC && typeof oGASC.computeHighlightOverlay === "function")
-      return oGASC.computeHighlightOverlay(ascii, this, ROWS, COLS);
+    const rects = [];
 
-    const redSet = new Set();    // frame cells of valid double boxes
-    const insideSet = new Set(); // interior cells of valid double boxes
-
-    // Find boxes by scanning for ╔ and matching to a ╗ on same row + a ╚/╝ on lower row.
-    for (let r0 = 0; r0 < ROWS; r0++) 
+    for (let r0 = 0; r0 < ROWS; r0++)
     {
       for (let c0 = 0; c0 < COLS; c0++)
       {
-        if (ascii[r0][c0] !== "╔") continue;
+        if (ascii?.[r0]?.[c0] !== "╔") continue;
 
-        // find candidate top-right corners on same row
-        for (let c1 = c0 + 1; c1 < COLS; c1++) 
+        for (let c1 = c0 + 1; c1 < COLS; c1++)
         {
           if (ascii[r0][c1] !== "╗") continue;
 
-          // find candidate bottom row
           for (let r1 = r0 + 1; r1 < ROWS; r1++)
           {
-            // quick corner check before full validation
             if (ascii[r1][c0] !== "╚") continue;
             if (ascii[r1][c1] !== "╝") continue;
-
             if (!this.isValidDoubleBox(r0, c0, r1, c1)) continue;
 
-            // frame: top/bottom
-            for (let c = c0; c <= c1; c++) {
-              redSet.add(keyRC(r0, c));
-              redSet.add(keyRC(r1, c));
-            }
-            // frame: left/right
-            for (let r = r0; r <= r1; r++) {
-              redSet.add(keyRC(r, c0));
-              redSet.add(keyRC(r, c1));
-            }
-            // interior
-            for (let r = r0 + 1; r <= r1 - 1; r++) {
-              for (let c = c0 + 1; c <= c1 - 1; c++) {
-                insideSet.add(keyRC(r, c));
-              }
-            }
+            rects.push(r0, c0, r1, c1);
           }
         }
       }
     }
-    return { redSet, insideSet, mask: null }
-  }
-  
 
+    return rects;
+  };
+
+  this.computeHighlightOverlayMaskCPUFromRects = function(rects)
+  {
+    const OVERLAY_NONE = (typeof oGASC !== "undefined" && oGASC) ? oGASC.OVERLAY_NONE : 0;
+    const OVERLAY_RED  = (typeof oGASC !== "undefined" && oGASC) ? oGASC.OVERLAY_RED  : 1;
+    const OVERLAY_BLUE = (typeof oGASC !== "undefined" && oGASC) ? oGASC.OVERLAY_BLUE : 2;
+
+    const mask2D = Array.from({ length: ROWS }, () => Array(COLS).fill(OVERLAY_NONE));
+
+    for (let i = 0; i < rects.length; i += 4)
+    {
+      const r0 = rects[i + 0];
+      const c0 = rects[i + 1];
+      const r1 = rects[i + 2];
+      const c1 = rects[i + 3];
+
+      for (let c = c0; c <= c1; c++)
+      {
+        mask2D[r0][c] = OVERLAY_RED;
+        mask2D[r1][c] = OVERLAY_RED;
+      }
+
+      for (let r = r0; r <= r1; r++)
+      {
+        mask2D[r][c0] = OVERLAY_RED;
+        mask2D[r][c1] = OVERLAY_RED;
+      }
+
+      for (let r = r0 + 1; r <= r1 - 1; r++)
+      {
+        for (let c = c0 + 1; c <= c1 - 1; c++)
+        {
+          if (mask2D[r][c] !== OVERLAY_RED) mask2D[r][c] = OVERLAY_BLUE;
+        }
+      }
+    }
+
+    return mask2D;
+  };
+
+  this.buildHighlightOverlaySets = function(mask2D)
+  {
+    const OVERLAY_RED  = (typeof oGASC !== "undefined" && oGASC) ? oGASC.OVERLAY_RED  : 1;
+    const OVERLAY_BLUE = (typeof oGASC !== "undefined" && oGASC) ? oGASC.OVERLAY_BLUE : 2;
+
+    const redSet = new Set();
+    const insideSet = new Set();
+
+    for (let r = 0; r < ROWS; r++)
+    {
+      for (let c = 0; c < COLS; c++)
+      {
+        const v = mask2D[r][c] | 0;
+
+        if (v === OVERLAY_RED) redSet.add(r + "," + c);
+        else if (v === OVERLAY_BLUE) insideSet.add(r + "," + c);
+      }
+    }
+
+    return { redSet, insideSet };
+  };
+
+  this.computeHighlightOverlay = function()
+  {
+    const rects = this.collectDoubleBoxRects();
+
+    let mask = null;
+
+    if (typeof oGASC !== "undefined" &&
+        oGASC &&
+        typeof oGASC.computeOverlayMaskFromRects === "function")
+    {
+      mask = oGASC.computeOverlayMaskFromRects(rects, ROWS, COLS);
+    }
+
+    if (!mask) mask = this.computeHighlightOverlayMaskCPUFromRects(rects);
+
+    const sets = this.buildHighlightOverlaySets(mask);
+
+    return {
+      rects,
+      mask,
+      redSet: sets.redSet,
+      insideSet: sets.insideSet
+    };
+  };
 
     // ---- internal methods that need `this` -----------------------------------
 
