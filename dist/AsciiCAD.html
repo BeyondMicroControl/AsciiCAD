@@ -1184,7 +1184,7 @@ function ASC()
     const GL3_FAT_SET    = "━┃┏┓┗┛┣┫┳┻╋╸╹╺╻";
     const GL3_DOUBLE_SET = "═║╔╗╚╝╠╣╦╩╬";
 
-    // local direction-only mapping for pure sets (NO dirMask3 dependency)
+    // local direction-only mapping for pure sets (NO glyph2dir dependency)
     const dir4 = (g) => {
       const D = {
         "─":E|W,"━":E|W,"═":E|W,
@@ -1345,7 +1345,7 @@ function ASC()
   {
     if (!g) return 0;
     const codec = getGlyph3Codec();
-    return codec.g2m[g] ?? pack3(this.dirMask3(g), 0, 0);
+    return codec.g2m[g];
   }
   this.glyph2mask.help =   
   {
@@ -1391,33 +1391,27 @@ function ASC()
     ]
   }
 
-  this.glyphToMask = function(ch) 
+  this.glyph2dir = function(g) 
   {
-    const k = String(ch ?? "");
-    const v = this.glyph2mask(k);
-    return (v === undefined) ? 0 : ((v | v>>4) & 0xF);  // suprapose high bits with lower
+    if (!g) return 0;
+    const codec = getGlyph3Codec();
+    const m8 = codec.g2m[String(g ?? "")] ?? 0;
+    return (m8 & 0xF) | ((m8 >> 4) & 0xF);  // collapse to 4-bit mask
   }
-  this.glyphToMask.help = 
+  this.glyph2dir.help = 
   {
     type: "CADScript_FN",
-    usage: "glyphMask(<i>ch</i>)",
+    usage: "glyph2dir(<i>ch</i>)",
     desc: "Return 4-bit wire direction mask for a glyph (N|E|S|W). Unknown glyph returns 0. "+
     "Stand-in glyphs fullfil a inexistent (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.",
-    examples: ["printJSON(glyphMask('┼'))", "printJSON(glyphMask('╵'))"]
-  }
-
-  this.dirMask3 = function(ch) 
-  {
-    const codec = getGlyph3Codec();
-    const m8 = codec.g2m[String(ch ?? "")] ?? 0;
-    return ((m8 & 0xF) | ((m8 >> 4) & 0xF)) & 0xF;
-  }
-  this.dirMask3.help = 
-  {
-    type: "CADScript_FN",
-    usage: "dirMask3(<i>ch</i>)",
-    desc: "Return 4-bit direction mask (N|E|S|W) for supported wire glyphs, independent of glyphToMask.",
-    examples: ["printJSON(dirMask3('┼'))", "printJSON(dirMask3('╵'))"]
+    examples: ["printJSON(glyph2dir('┼'))", "printJSON(glyph2dir('╵'))"],
+    unitTests: [
+      "oASC.assert('oASC.glyph2dir(\\'┼\\')', oASC.glyph2dir('┼') , N|E|S|W)",  // unitype-glyph canonical mapping (ignoring alias)
+      "oASC.assert('oASC.glyph2dir(\\'+\\')', oASC.glyph2dir('+') , N|E|S|W)",  // unitype-glyph alias mapping
+      "oASC.assert('oASC.glyph2dir(\\'╇\\')', oASC.glyph2dir('╇') , N|E|S|W)",  // mixed-glyph canonical mapping
+      "oASC.assert('oASC.glyph2dir(\\'╧\\')', oASC.glyph2dir('╧') , N|E|W)",    // mixed-glyph canonical mapping (no stand-in)
+      "oASC.assert('oASC.glyph2dir(\\'┣\\')', oASC.glyph2dir('┣') , N|E|S)"     // canonical mapping (ignoring stand-in)
+    ]
   }
 
   this.rotateMask3 = function(m)
@@ -1527,7 +1521,6 @@ function ASC()
   const WILD_U_SET = new Set(Array.from(WILDCARD_U));
 
   function keyRC(r, c) { return r + "," + c; }
-  this.keyRC = function(r, c) { return r + "," + c; }
 
   //       ______           _        __
   //     .' ___  |         (_)      |  ] 
@@ -2034,7 +2027,7 @@ function ASC()
       if (typeof this.WILDCHAR_U !== "undefined" && ch === this.WILDCHAR_U) continue;
 
       // Drop wire glyphs (box drawing chars) so rotation/protrusions don't affect LabelID.
-      if ((this.glyphToMask(ch) ?? 0) !== 0) continue;
+      if ((this.glyph2dir(ch) ?? 0) !== 0) continue;
 
       out += ch;
     }
@@ -2448,7 +2441,7 @@ function ASC()
     const ch = ascii?.[r]?.[c] ?? " ";
     if (ch === " ") return "free";
 
-    const mask = this.glyphToMask(ch) ?? 0;
+    const mask = this.glyph2dir(ch) ?? 0;
     if (mask === 0) return "blocked";          // labels / text / unknown glyphs
 
     // Current bridge renderer only really supports single vertical wire
@@ -2494,6 +2487,200 @@ function ASC()
       default:
         return { allowed: false, bridge: false };
     }
+  }
+
+  this.netHeatPalette = function()
+  {
+    const fallback = ["#E4F4FF", "#E9FBE8", "#D1FCC7", "#B0F6A1", "#BDE485", "#DCCA76", "#F6844F", "#FF0000"];
+    const src = globalThis.heatMapCols;
+    return (Array.isArray(src) && src.length) ? src.slice() : fallback;
+  }
+
+  this.netHeatHexToRGBA = function(hex, alpha)
+  {
+    const txt = String(hex || "#000000").trim();
+    const m = txt.match(/^#?([0-9a-f]{6})$/i);
+    if (!m) return "rgba(255,0,0," + (alpha ?? 0.28) + ")";
+    const n = parseInt(m[1], 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    return "rgba(" + r + "," + g + "," + b + "," + (alpha ?? 0.28) + ")";
+  }
+
+  this.netHeatMapColor = function(value, minScore, maxScore, palette)
+  {
+    const cols = (Array.isArray(palette) && palette.length) ? palette : this.netHeatPalette();
+    if (!Number.isFinite(value)) return cols[cols.length - 1];
+    if (!Number.isFinite(minScore) || !Number.isFinite(maxScore) || maxScore <= minScore)
+      return cols[0];
+
+    const t = Math.max(0, Math.min(1, (value - minScore) / (maxScore - minScore)));
+    const idx = Math.max(0, Math.min(cols.length - 1, Math.round(t * (cols.length - 1))));
+    return cols[idx];
+  }
+
+
+
+
+  this.netHeatConfig = function()
+  {
+    return Object.assign({
+      blockerWeight: 15,
+      bridgeWeight: 2,
+      rayLength: 16,
+      sideRadius: 4,
+      alpha: 0.30
+    }, globalThis.netHeatCfg || {});
+  }
+
+  this.netHeatDistancePenalty = function(weight, distance)
+  {
+    const d = Math.max(1, Number(distance) || 1);
+    return Number(weight || 0) / (d * d);
+  }
+
+  this.netHeatCellPenaltyKind = function(r, c, ctx)
+  {
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return "blocker";
+    const kind = this.routeCellKind(r, c, ctx);
+    if (kind === "blocked") return "blocker";
+    if (kind === "wire_v" || kind === "wire_h") return "bridge";
+    return null;
+  }
+
+  this.computeNetHeatScoreAt = function(r, c, dir, ctx, cfg)
+  {
+    const vec = this.routeDirVec(dir);
+    const perpA = (dir === N || dir === S) ? { dr: 0, dc: -1 } : { dr: -1, dc: 0 };
+    const perpB = (dir === N || dir === S) ? { dr: 0, dc:  1 } : { dr:  1, dc: 0 };
+    const nr = r + vec.dr;
+    const nc = c + vec.dc;
+
+    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return Number.POSITIVE_INFINITY;
+    if (!this.routeStepVerdict(nr, nc, dir, ctx).allowed) return Number.POSITIVE_INFINITY;
+
+    let score = 0;
+    let rr = r;
+    let cc = c;
+
+    for (let step = 1; step <= cfg.rayLength; step++)
+    {
+      rr += vec.dr;
+      cc += vec.dc;
+
+      if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS)
+      {
+        score += this.netHeatDistancePenalty(cfg.blockerWeight, step);
+        break;
+      }
+
+      const verdict = this.routeStepVerdict(rr, cc, dir, ctx);
+      if (!verdict.allowed)
+      {
+        score += this.netHeatDistancePenalty(cfg.blockerWeight, step);
+        break;
+      }
+
+      if (verdict.bridge)
+        score += this.netHeatDistancePenalty(cfg.bridgeWeight, step);
+
+      for (let side = 1; side <= cfg.sideRadius; side++)
+      {
+        const checks = [
+          { r: rr + perpA.dr * side, c: cc + perpA.dc * side },
+          { r: rr + perpB.dr * side, c: cc + perpB.dc * side }
+        ];
+
+        for (const p of checks)
+        {
+          const hit = this.netHeatCellPenaltyKind(p.r, p.c, ctx);
+          if (!hit) continue;
+          const dist = step + side;
+          score += this.netHeatDistancePenalty(
+            hit === "bridge" ? cfg.bridgeWeight : cfg.blockerWeight,
+            dist
+          );
+        }
+      }
+    }
+
+    return score;
+  }
+
+  this.computeNetHeatField = function(dirMask)
+  {
+    const activeMask = (Number(dirMask) || 0) & (N|E|S|W);
+    if (!activeMask) return null;
+
+    const cfg = this.netHeatConfig();
+    const dummy = { r: -9999, c: -9999 };
+    const ctx = this.routeBuildContext(dummy, dummy);
+    const dirs = [N, E, S, W].filter(m => (activeMask & m) !== 0);
+    const size = ROWS * COLS;
+    const layers = Object.create(null);
+
+    let minScore = Number.POSITIVE_INFINITY;
+    let maxScore = -Number.POSITIVE_INFINITY;
+
+    for (const dir of dirs)
+      layers[dir] = new Float32Array(size);
+
+    for (let r = 0; r < ROWS; r++)
+    {
+      for (let c = 0; c < COLS; c++)
+      {
+        const idx = r * COLS + c;
+
+        for (const dir of dirs)
+        {
+          const score = this.computeNetHeatScoreAt(r, c, dir, ctx, cfg);
+          layers[dir][idx] = score;
+          if (Number.isFinite(score))
+          {
+            if (score < minScore) minScore = score;
+            if (score > maxScore) maxScore = score;
+          }
+        }
+      }
+    }
+
+    if (!Number.isFinite(minScore)) minScore = 0;
+    if (!Number.isFinite(maxScore) || maxScore <= minScore) maxScore = minScore + 1;
+
+    return { layers, minScore, maxScore, activeMask, cfg };
+  }
+
+  this.drawNetHeatOverlay = function(ctx, cw, ch, snap, heat, dirMask)
+  {
+    if (!heat || !dirMask) return;
+
+    const palette = this.netHeatPalette();
+    const masks = [N, E, S, W].filter(m => (dirMask & m) !== 0);
+    if (!masks.length) return;
+
+    ctx.save();
+    for (let r = 0; r < ROWS; r++)
+    {
+      for (let c = 0; c < COLS; c++)
+      {
+        const idx = r * COLS + c;
+        let score = Number.POSITIVE_INFINITY;
+
+        for (const m of masks)
+        {
+          const layer = heat.layers[m];
+          if (!layer) continue;
+          const v = layer[idx];
+          if (Number.isFinite(v) && v < score) score = v;
+        }
+
+        const col = this.netHeatMapColor(score, heat.minScore, heat.maxScore, palette);
+        ctx.fillStyle = this.netHeatHexToRGBA(col, heat.cfg?.alpha ?? 0.30);
+        ctx.fillRect(snap(c * cw), snap(r * ch), cw + 0.5, ch + 0.5);
+      }
+    }
+    ctx.restore();
   }
 
 
@@ -4030,6 +4217,45 @@ this.startPasteWithText = function(text)
     const out = [];
     const seen = new Set();
 
+    function isValidDoubleBox(r0, c0, r1, c1) 
+    {
+      if (r1 <= r0 || c1 <= c0) return false;
+
+      // Keep corners strict (recommended)
+      if (ascii[r0][c0] !== "╔") return false;
+      if (ascii[r0][c1] !== "╗") return false;
+      if (ascii[r1][c0] !== "╚") return false;
+      if (ascii[r1][c1] !== "╝") return false;
+
+      // Top & bottom edges must carry double-horizontal
+      for (let c = c0 + 1; c <= c1 - 1; c++) {
+        if (!hasDoubleH(ascii[r0][c])) return false;
+        if (!hasDoubleH(ascii[r1][c])) return false;
+      }
+
+      // Left & right edges must carry double-vertical
+      for (let r = r0 + 1; r <= r1 - 1; r++) {
+        if (!hasDoubleV(ascii[r][c0])) return false;
+        if (!hasDoubleV(ascii[r][c1])) return false;
+      }
+
+      return true;
+    }
+
+  function hasDoubleH(ch){
+    const m = this.glyph2mask(ch) & 0xFF;
+    const lo = m & 0xF, hi = (m >> 4) & 0xF;
+    return ((lo & (E|W)) !== 0) && ((hi & (E|W)) !== 0);
+  }
+
+  function hasDoubleV(ch){
+    const m = this.glyph2mask(ch) & 0xFF;
+    const lo = m & 0xF, hi = (m >> 4) & 0xF;
+    return ((lo & (N|S)) !== 0) && ((hi & (N|S)) !== 0);
+  }
+
+
+
     for (let r0 = 0; r0 < ROWS; r0++)
     {
       for (let c0 = 0; c0 < COLS; c0++)
@@ -4045,7 +4271,7 @@ this.startPasteWithText = function(text)
             if (ascii[r1][c0] !== "╚") continue;
             if (ascii[r1][c1] !== "╝") continue;
 
-            if (!this.isValidDoubleBox?.(r0, c0, r1, c1)) continue;
+            if (!isValidDoubleBox?.(r0, c0, r1, c1)) continue;
 
             const k = r0 + "," + c0 + "," + r1 + "," + c1;
             if (seen.has(k)) continue;
@@ -4257,8 +4483,538 @@ this.startPasteWithText = function(text)
 
 
 
+  this.computeHighlightOverlay = function() 
+  {
+    const redSet = new Set();    // frame cells of valid double boxes
+    const insideSet = new Set(); // interior cells of valid double boxes
+
+    // Find boxes by scanning for ╔ and matching to a ╗ on same row + a ╚/╝ on lower row.
+    for (let r0 = 0; r0 < ROWS; r0++) 
+    {
+      for (let c0 = 0; c0 < COLS; c0++)
+      {
+        if (ascii[r0][c0] !== "╔") continue;
+
+        // find candidate top-right corners on same row
+        for (let c1 = c0 + 1; c1 < COLS; c1++) 
+        {
+          if (ascii[r0][c1] !== "╗") continue;
+
+          // find candidate bottom row
+          for (let r1 = r0 + 1; r1 < ROWS; r1++)
+          {
+            // quick corner check before full validation
+            if (ascii[r1][c0] !== "╚") continue;
+            if (ascii[r1][c1] !== "╝") continue;
+
+            if (!this.isValidDoubleBox(r0, c0, r1, c1)) continue;
+
+            // frame: top/bottom
+            for (let c = c0; c <= c1; c++) {
+              redSet.add(keyRC(r0, c));
+              redSet.add(keyRC(r1, c));
+            }
+            // frame: left/right
+            for (let r = r0; r <= r1; r++) {
+              redSet.add(keyRC(r, c0));
+              redSet.add(keyRC(r, c1));
+            }
+            // interior
+            for (let r = r0 + 1; r <= r1 - 1; r++) {
+              for (let c = c0 + 1; c <= c1 - 1; c++) {
+                insideSet.add(keyRC(r, c));
+              }
+            }
+          }
+        }
+      }
+    }
+    return { redSet, insideSet }
+  }
   
 
+
+    // ---- internal methods that need `this` -----------------------------------
+
+  var self = this;
+
+  function __computeNetlistCore(opts)
+  {
+    opts = opts || {};
+    const includeCellSet = !!opts.includeCellSet;
+
+    const overlay = self.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
+    const mo = self.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set(), footprintSet: new Set() };
+
+    // For CE detection we want the footprint (includes wildcard cells)
+    const compSet = mo.solidSet ?? mo.greenSet ?? mo.footprintSet ?? new Set();
+
+    // One source of truth for banned
+    const banned = self.computeNetlistBannedSet?.(mo, overlay) ?? new Set();
+
+    function isNetWireCell(r,c)
+    {
+      const k = KeyRC(r,c);
+      if (banned.has(k)) return false;
+      const ch = ascii?.[r]?.[c];
+      if (ch === undefined) return false;
+      if (ch === " ") return false;
+      return (self.glyph2dir(ch) ?? 0) !== 0;
+    }
+
+    function connectedNeighbors(r,c)
+    {
+      const out = [];
+      const ch = ascii[r][c];
+      const m  = self.glyph2dir(ch) ?? 0;
+
+      // up
+      if ((m & N) && r > 0 && isNetWireCell(r-1,c)) {
+        const m2 = self.glyph2dir(ascii[r-1][c]) ?? 0;
+        if (m2 & S) pushUnique(out, r-1, c);
+      }
+      // down
+      if ((m & S) && r < ROWS-1 && isNetWireCell(r+1,c)) {
+        const m2 = self.glyph2dir(ascii[r+1][c]) ?? 0;
+        if (m2 & N) pushUnique(out, r+1, c);
+      }
+
+      // left (with horizontal-only crossing bypass ─│─)
+      if ((m & W) && c > 0 && isNetWireCell(r, c-1)) {
+        const ch2 = ascii[r][c-1];
+        const m2  = self.glyph2dir(ch2) ?? 0;
+
+        if (m2 & E) {
+          pushUnique(out, r, c-1);
+        } else {
+          const isVerticalOnly = (m2 & N) && (m2 & S) && !(m2 & E) && !(m2 & W);
+          if (isVerticalOnly && c-2 >= 0 && isNetWireCell(r, c-2)) {
+            const m3 = self.glyph2dir(ascii[r][c-2]) ?? 0;
+            if (m3 & E) pushUnique(out, r, c-2);
+          }
+        }
+      }
+
+      // right (with horizontal-only crossing bypass ─│─)
+      if ((m & E) && c < COLS-1 && isNetWireCell(r, c+1)) {
+        const ch2 = ascii[r][c+1];
+        const m2  = self.glyph2dir(ch2) ?? 0;
+
+        if (m2 & W) {
+          pushUnique(out, r, c+1);
+        } else {
+          const isVerticalOnly = (m2 & N) && (m2 & S) && !(m2 & E) && !(m2 & W);
+          if (isVerticalOnly && c+2 < COLS && isNetWireCell(r, c+2)) {
+            const m3 = self.glyph2dir(ascii[r][c+2]) ?? 0;
+            if (m3 & W) pushUnique(out, r, c+2);
+          }
+        }
+      }
+
+      return out;
+    }
+
+    function pushUniqueCR(out, c, r) {
+      for (let i = 0; i < out.length; i++) if (out[i].c === c && out[i].r === r) return;
+      out.push({ c, r });
+    }
+    function hasCR(out, c, r) {
+      for (let i = 0; i < out.length; i++) if (out[i].c === c && out[i].r === r) return true;
+      return false;
+    }
+
+    function tryAddCE(LE, CE, fromR, fromC, compR, compC, needBitOnComp)
+    {
+      if (compR < 0 || compR >= ROWS || compC < 0 || compC >= COLS) return;
+      const kk = KeyRC(compR, compC);
+      if (!compSet.has(kk)) return;
+
+      const chC = ascii?.[compR]?.[compC];
+      if (!chC || chC === " " || chC === this.WILDCHAR_U) return;
+
+      const mC = self.glyph2dir(chC) ?? 0;
+      if (!(mC & needBitOnComp)) return;
+
+      pushUniqueCR(CE, compC, compR);
+      if (!hasCR(LE, fromC, fromR)) pushUniqueCR(LE, fromC, fromR);
+    }
+
+    const visited = new Set();
+    let nets = [];
+
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (!isNetWireCell(r,c)) continue;
+        const rootK = KeyRC(r,c);
+        if (visited.has(rootK)) continue;
+
+        // BFS
+        const q = [{r,c}];
+        visited.add(rootK);
+
+        const nodes = [];
+        const deg = new Map();
+
+        while (q.length) {
+          const cur = q.shift();
+          const ck = KeyRC(cur.r, cur.c);
+          nodes.push(cur);
+
+          const nbs = connectedNeighbors(cur.r, cur.c);
+          deg.set(ck, nbs.length);
+
+          for (const nb of nbs) {
+            const nk = KeyRC(nb.r, nb.c);
+            if (visited.has(nk)) continue;
+            visited.add(nk);
+            q.push(nb);
+          }
+        }
+
+        if (nodes.length < 2) continue;
+
+        const LE = [];
+        const LJ = [];
+        const CE = [];
+
+        // degrees => LE/LJ
+        for (const n of nodes) {
+          const d = deg.get(KeyRC(n.r, n.c)) ?? 0;
+          if (d === 1) pushUniqueCR(LE, n.c, n.r);
+          else if (d >= 3) pushUniqueCR(LJ, n.c, n.r);
+        }
+
+        // CE scan on all nodes
+        for (const n of nodes) {
+          const m = self.glyph2dir(ascii[n.r][n.c]) ?? 0;
+          if (m & W) tryAddCE(LE, CE, n.r, n.c, n.r, n.c - 1, E);
+          if (m & E) tryAddCE(LE, CE, n.r, n.c, n.r, n.c + 1, W);
+          if (m & N) tryAddCE(LE, CE, n.r, n.c, n.r - 1, n.c, S);
+          if (m & S) tryAddCE(LE, CE, n.r, n.c, n.r + 1, n.c, N);
+        }
+
+        const out = { LE, LJ, CE, nodes };
+        if (includeCellSet) {
+          const s = new Set();
+          for (const n of nodes) s.add(KeyRC(n.r, n.c));
+          out.cellSet = s;
+        }
+        nets.push(out);
+      }
+    }
+
+    // Merge nets that are logically tied together by catalog items of type "Net" (e.g. GND, NetLabel).
+    // A net is considered connected to a Net-label item if one of its CE coordinates lies on that catalog item.
+    if (mo && mo.matches && mo.matchByCell && typeof CATALOG !== "undefined" && Array.isArray(CATALOG))
+    {
+      const parent = new Array(nets.length);
+      for (let i = 0; i < parent.length; i++) parent[i] = i;
+
+      const find = (x) => {
+        while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; }
+        return x;
+      }
+      const union = (a, b) => {
+        a = find(a); b = find(b);
+        if (a !== b) parent[b] = a;
+      }
+
+      // labelID -> [netIdx,...]
+      const labelToNets = new Map();
+
+      for (let ni = 0; ni < nets.length; ni++)
+      {
+        const net = nets[ni];
+        const touched = new Set();
+
+        for (let i = 0; i < (net.CE?.length ?? 0); i++)
+        {
+          const ce = net.CE[i];
+          const k = KeyRC(ce.r, ce.c);
+          const mid = mo.matchByCell.get(k);
+          if (mid === undefined || mid === null) continue;
+
+          const m = mo.matches[mid];
+          if (!m) continue;
+
+          const ty = String(m.type ?? CATALOG?.[m.catalog_idx]?.type ?? "");
+          if (ty !== "Net") continue;
+
+          const labelID = self.NetLabelID?.(m.catalog_idx, m.rotation) ?? "";
+          if (!labelID) continue;
+          touched.add(labelID);
+        }
+
+        for (const labelID of touched)
+        {
+          if (!labelToNets.has(labelID)) labelToNets.set(labelID, []);
+          labelToNets.get(labelID).push(ni);
+        }
+      }
+
+      // Union nets that share the same labelID
+      for (const arr of labelToNets.values())
+      {
+        if (!arr || arr.length < 2) continue;
+        const base = arr[0];
+        for (let i = 1; i < arr.length; i++) union(base, arr[i]);
+      }
+
+      // If nothing merged, keep as-is
+      let anyMerge = false;
+      for (let i = 0; i < parent.length; i++) { if (parent[i] !== i) { anyMerge = true; break; } }
+
+      if (anyMerge)
+      {
+        const groups = new Map();
+
+        for (let i = 0; i < nets.length; i++)
+        {
+          const root = find(i);
+          let g = groups.get(root);
+          if (!g)
+          {
+            g = { LE: [], LJ: [], CE: [], nodes: [] };
+            if (includeCellSet) g.cellSet = new Set();
+            groups.set(root, g);
+          }
+
+          const n = nets[i];
+          for (let j = 0; j < (n.LE?.length ?? 0); j++) pushUniqueCR(g.LE, n.LE[j].c, n.LE[j].r);
+          for (let j = 0; j < (n.LJ?.length ?? 0); j++) pushUniqueCR(g.LJ, n.LJ[j].c, n.LJ[j].r);
+          for (let j = 0; j < (n.CE?.length ?? 0); j++) pushUniqueCR(g.CE, n.CE[j].c, n.CE[j].r);
+
+          if (Array.isArray(n.nodes)) g.nodes = g.nodes.concat(n.nodes);
+
+          if (includeCellSet)
+          {
+            if (n.cellSet && typeof n.cellSet.forEach === "function")
+            {
+              n.cellSet.forEach(k => g.cellSet.add(k));
+            }
+            else if (Array.isArray(n.nodes))
+            {
+              for (let j = 0; j < n.nodes.length; j++) g.cellSet.add(KeyRC(n.nodes[j].r, n.nodes[j].c));
+            }
+          }
+        }
+
+        const roots = Array.from(groups.keys()).sort((a,b) => a-b);
+        const merged = [];
+        for (let i = 0; i < roots.length; i++) merged.push(groups.get(roots[i]));
+        nets = merged;
+      }
+    }
+
+    return nets;
+  }
+
+
+  // Netlist extraction: follow connected wire glyphs outside double-box boundaries.
+  // Returns [{ LE:[{c,r},...], LJ:[{c,r},...]} ...]
+  this.computeNetlist = function()
+  {
+    const nets = __computeNetlistCore({ includeCellSet: false });
+    return nets.map(n => ({ LE: n.LE, LJ: n.LJ, CE: n.CE }));
+  }
+  this.computeNetlist.help =
+  {
+    type: "CADScript_FN",
+    usage: "computeNetlist()",
+    desc: "Compute netlist including Line Ends (LE) and Component Ends (CE)",
+    examples: [
+      "oTERM.printJSON(oASC.computeNetlist())"
+    ],
+    unitTests:[
+      "oASC.clear();",
+      "oASC.cell(0,0,\""
+      +"     ⎽⎽⎽⎽⎽\\n"
+      +"  ┌─[  11Ω]───◠◠◠◠─┐\\n"
+      +"  │  ⎺⎺⎺⎺⎺         │\\n"
+      +"╭─╵─╮              │\\n"
+      +"( ~ )              │\\n"
+      +"╰─╷─╯              │\\n"
+      +"  │   [103]        │\\n"
+      +"  ├────┨┠─────(A)──┘\\n"
+      +"  ╧\");",
+      //"oASC.assert(\"oASC.computeNetlist()\",oASC.computeNetlist().length,5);",
+      "oASC.assert(\"(await oASC.computeNetlist()).length\", (await oASC.computeNetlist()).length, 5);",
+      //"oASC.assert(\"oASC.computeNetlist()\",oASC.computeNetlist(),[{\"LE\":[{\"c\":2,\"r\":2},{\"c\":3,\"r\":1}],\"LJ\":[],\"CE\":[{\"c\":2,\"r\":3}]},{\"LE\":[{\"c\":11,\"r\":1},{\"c\":12,\"r\":1}],\"LJ\":[],\"CE\":[{\"c\":13,\"r\":1}]},{\"LE\":[{\"c\":19,\"r\":1},{\"c\":18,\"r\":7}],\"LJ\":[],\"CE\":[{\"c\":18,\"r\":1},{\"c\":17,\"r\":7}]},{\"LE\":[{\"c\":2,\"r\":6},{\"c\":5,\"r\":7},{\"c\":2,\"r\":7}],\"LJ\":[],\"CE\":[{\"c\":2,\"r\":5},{\"c\":2,\"r\":8},{\"c\":6,\"r\":7}]},{\"LE\":[{\"c\":10,\"r\":7},{\"c\":12,\"r\":7}],\"LJ\":[],\"CE\":[{\"c\":9,\"r\":7},{\"c\":13,\"r\":7}]}]);",
+      "oASC.stack(\"undo\");"
+    ]
+  }
+
+  this.computeNetlistNets = function() {
+    const nets = __computeNetlistCore({ includeCellSet: true });
+    return nets.map(n => ({ cells: n.cellSet, LE: n.LE, LJ: n.LJ, CE: n.CE, CO: n.CE }));
+  }
+  
+
+  this.printNetlist = function()
+  {
+    if (window.oTERM && typeof oTERM.output === "function") 
+    {
+      const lines = (typeof this.computeNetlist === "function")
+        ? this.computeNetlist()
+        : [];
+
+      const pretty = JSON.stringify(lines, null, 2)
+        .replace(/\n\s+"r": /g      ,"\"r\":")
+        .replace(/\n\s+"c": /g      ,"\"c\":")
+        .replace(/\[\n\s+\{/g        ,"[{")
+        .replace(/\n\s+\}\n\s+\]/g   ,"}]")
+        .replace(/\n(\s+)\},\n(\s)+\{"/g ,"},\n$1{\"")
+        .replace(/\]\n(\s+)\},\n\s+\{/g        ,"]\n$1},{");
+
+      const l = lines.length;                          // for JSON line report
+      oTERM.output("<b>NETLIST</b> (" +l + " " +(l==1?"net":"nets")+") \n"
+            +"<pre>"
+            + oCOM.escapeHTML(pretty) +
+            "</pre>");
+    }
+  }
+  this.printNetlist.help =
+  {
+    type: "Tool",
+    usage: "printNetlist()",
+    desc: "Extract connected wire lines (endpoints + junctions), excluding valid double-box boundaries/interiors.",
+    examples: ["oASC.printNetlist()"]
+  }
+
+
+  function pushUnique(out, r, c)
+  {
+    for (let i=0;i<out.length;i++) if (out[i].r===r && out[i].c===c) return;
+    out.push({r,c});
+  }
+
+  function KeyRC(r,c){ return r + "," + c; }
+
+
+  this.computeNetlistBannedSet = function(moIn, hlIn)
+  {
+    const banned = new Set();
+
+    // 1) Exclude double-line boxes (frame + interior)
+    const hl = hlIn ?? (this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() });
+    hl.redSet?.forEach(k => banned.add(k));
+    hl.insideSet?.forEach(k => banned.add(k));
+
+    // 2) Exclude matched catalog components (pattern cells only; skip spaces + '§')
+    const mo = moIn ?? (this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() });
+    const banSet = mo.solidSet ?? mo.greenSet ?? new Set();
+    banSet.forEach(k => banned.add(k));
+
+    return banned;
+  }
+
+
+  this.computeMatchOverlay = function()
+  {
+    const greenSet = new Set();
+    const rects = [];
+    const matches = [];            // [{matchId,r0,c0,r1,c1,catalog_idx,rotation,uid,name,type}]
+    const matchByCell = new Map(); // keyRC(r,c) -> matchId (solid cells only)
+    const solidSet = new Set(); // NEW: for netlist masking (skip ' ' and '§')
+    const footprintSet = new Set();  // component footprint (skip ' ' only)
+
+    if (!(typeof CATALOG !== "undefined" && Array.isArray(CATALOG)))
+      return { greenSet, rects, solidSet, footprintSet, matches, matchByCell };
+
+    if (!catalogVariantsCache) catalogVariantsCache = this.buildCatalogVariants();
+
+    // Build grid lines once for fast access
+    const gridLines = new Array(ROWS);
+    for (let r = 0; r < ROWS; r++) gridLines[r] = ascii[r].join("");
+
+    for (let v = 0; v < catalogVariantsCache.length; v++)
+    {
+      const pat = catalogVariantsCache[v];
+      const first = pat.first;
+      const patLines = pat.lines;
+
+      // compute a stable rectangle width (max line length)
+      let w = 0;
+      for (let i = 0; i < patLines.length; i++)
+        w = Math.max(w, (patLines[i] ?? "").length);
+      const h = patLines.length;
+
+      for (let r0 = 0; r0 < ROWS; r0++)
+      {
+        const gl0 = gridLines[r0];
+        const maxC = COLS - first.length;
+        if (maxC < 0) continue;
+
+        for (let c0 = 0; c0 <= maxC; c0++)
+        {
+          if (!this.lineMatchesAt(gl0, c0, first)) continue;
+          if (r0 + h > ROWS) continue;
+
+          let ok = true;
+          for (let rr = 0; rr < h; rr++)
+          {
+            const pl = patLines[rr] ?? "";
+            const gl = gridLines[r0 + rr];
+            if (!this.lineMatchesAt(gl, c0, pl)) { ok = false; break; }
+          }
+          if (!ok) continue;
+          // NEW: record match meta (catalog item + rotation)
+          const matchId = matches.length;
+          const r1 = r0 + h - 1;
+          const c1 = c0 + w - 1;
+          matches.push({ matchId, r0, c0, r1, c1, catalog_idx: pat.catalog_idx, rotation: pat.rotation, uid: pat.uid, name: pat.name, type: pat.type });
+
+          // NEW: record full bounding rectangle (includes spaces)
+          rects.push({ r0, c0, r1, c1 });
+
+          // existing: mark matched glyph cells in green (skip spaces)
+          for (let rr = 0; rr < h; rr++)
+          {
+            const pl = patLines[rr] ?? "";
+            for (let cc = 0; cc < pl.length; cc++)
+            {
+              const pc = pl[cc];
+              if (pc === " ") continue;
+
+              const r = r0 + rr;
+              const c = c0 + cc;
+              if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
+
+              const k = keyRC(r, c);
+
+              // Footprint includes wildcard cells too (so CE can “see” pins/protrusions)
+              footprintSet.add(k);
+
+              // Visual highlight + ban mask exclude wildcard cells
+              if (pc !== this.WILDCHAR_U) {
+                greenSet.add(k);
+                solidSet.add(k);
+                matchByCell.set(k, matchId);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return { greenSet, rects, solidSet, footprintSet, matches, matchByCell }
+  }
+
+
+  this.lineMatchesAt = function(gridLine, c0, patLine) // helper for computeMatchOverlay (TODO: useful to privatise or not?)
+  {
+    // gridLine is a string of length COLS
+    // patLine is a string; must fit fully
+    if (c0 < 0) return false;
+    if (c0 + patLine.length > gridLine.length) return false;
+
+    for (let i = 0; i < patLine.length; i++) {
+      const pc = patLine[i];
+      const gc = gridLine[c0 + i] || " ";
+      if (!this.charMatchesPatternCell(pc, gc)) return false;
+    }
+    return true;
+  }
 
   //     ____  ____   _          _                              ___ 
   //    |_   ||   _| (_)        / |_                          .' _ '. 
@@ -4575,677 +5331,288 @@ this.startPasteWithText = function(text)
   }
 
 
-}
-var oASC = new ASC();
-
-
-
-</script>
-    <script type="text/javascript">
-                                                                                                                                                                                                            
-//     █████  ███████  ██████ ██ ██  ██████  █████  ██████      ████████  ██████   ██████  ██      ███████ 
-//    ██   ██ ██      ██      ██ ██ ██      ██   ██ ██   ██        ██    ██    ██ ██    ██ ██      ██      
-//    ███████ ███████ ██      ██ ██ ██      ███████ ██   ██        ██    ██    ██ ██    ██ ██      ███████ 
-//    ██   ██      ██ ██      ██ ██ ██      ██   ██ ██   ██        ██    ██    ██ ██    ██ ██           ██ 
-//    ██   ██ ███████  ██████ ██ ██  ██████ ██   ██ ██████         ██     ██████   ██████  ███████ ███████ 
-
- 
- function TOOL()
- {
-  const self = this;
-
-  function pushUnique(out, r, c)
+  this.draw = function( str_reason ) 
   {
-    for (let i = 0; i < out.length; i++) if (out[i].r === r && out[i].c === c) return;
-    out.push({ r, c });
-  }
-
-  function KeyRC(r, c) { return r + "," + c; }
-
-  this.computeHighlightOverlay = function()
-  {
-    const redSet = new Set();
-    const insideSet = new Set();
-
-    for (let r0 = 0; r0 < ROWS; r0++)
+    function renderCharAtCell(ctx, r, c, ch) 
     {
-      for (let c0 = 0; c0 < COLS; c0++)
-      {
-        if (ascii[r0][c0] !== "╔") continue;
+      const x = c * baseCellW + baseCellW / 2;
+      const y = r * baseCellH + baseCellH / 2;
+      ctx.fillText(ch, x, y);
+    }
 
-        for (let c1 = c0 + 1; c1 < COLS; c1++)
+    const dpr = window.devicePixelRatio || 1;
+    const wCss = stageSize.w;
+    const hCss = stageSize.h;
+
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.fillStyle = GRID_BG;
+    ctx.fillRect(0,0,wCss,hCss);
+
+    const cx = wCss/2, cy = hCss/2;
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+    ctx.translate(-cx + panX, -cy + panY);
+
+    // TODO: refactor this function, as it leads to unreadable code, difficult to debug/understand
+    const getSnapFns = function(dpr, scaleNow)
+    {
+      const pxScale = (dpr || 1) * (scaleNow || 1);
+      const snap = (v) => Math.round(v * pxScale) / pxScale;
+      const snapLine = (v) => (Math.round(v * pxScale) + 0.5) / pxScale;
+      return { snap, snapLine };
+    }
+    const { snap, snapLine } = getSnapFns(dpr, scale);   // get snap functions
+
+    var { cw, ch } = this.getCellSize();
+
+    // Visible bounds in WORLD coordinates (undo pan/zoom around center)
+    const left   = (0 - cx) / scale + cx - panX;
+    const top    = (0 - cy) / scale + cy - panY;
+    const right  = (wCss - cx) / scale + cx - panX;
+    const bottom = (hCss - cy) / scale + cy - panY;
+
+    // Convert bounds -> grid indices (clamped)
+    const c0 = Math.max(0, Math.floor( oCOM.PanZoomSize(0,cx,scale,panX,cw) ));
+    const r0 = Math.max(0, Math.floor( oCOM.PanZoomSize(0,cy,scale,panY,ch) ));
+    const c1 = Math.min(COLS, Math.ceil( oCOM.PanZoomSize(wCss,cx,scale,panX,cw) ));
+    const r1 = Math.min(ROWS, Math.ceil( oCOM.PanZoomSize(hCss,cy,scale,panY,ch)  ));
+
+    ctx.beginPath();
+    ctx.strokeStyle = GRID_LINE;
+    ctx.lineWidth = 1 / scale;
+
+    for (let c = c0; c <= c1; c++)  // vertical lines
+    {
+      const x = snapLine(c * cw);
+      ctx.moveTo(x, snapLine(r0 * ch));
+      ctx.lineTo(x, snapLine(r1 * ch));
+    }
+
+    for (let r = r0; r <= r1; r++)   // horizontal lines
+    {
+      const y = snapLine(r * ch);
+      ctx.moveTo(snapLine(c0 * cw), y);
+      ctx.lineTo(snapLine(c1 * cw), y);
+    }
+
+    ctx.stroke();
+    ctx.fillStyle = "#000";     // Font sized to cell
+
+    const cwr = 0.62;   // 0.62
+    const maxByHeight = ch * 0.98;
+    const maxByWidth = (cw / cwr) * 0.98;
+    const fontPx = Math.max(4, Math.floor(Math.min(maxByHeight, maxByWidth)));
+
+    ctx.font = fontPx + "px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // Move preview
+    if (moveDrag)
+    {
+      const b = moveDrag.baseRect;
+      const o = moveDrag.offset;
+      const snapMap = moveDrag.snapshot;
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+      for (let r = b.r0; r <= b.r1; r++)
+      {
+        for (let c = b.c0; c <= b.c1; c++)
         {
-          if (ascii[r0][c1] !== "╗") continue;
-
-          for (let r1 = r0 + 1; r1 < ROWS; r1++)
-          {
-            if (ascii[r1][c0] !== "╚") continue;
-            if (ascii[r1][c1] !== "╝") continue;
-            if (!oASC.isValidDoubleBox?.(r0, c0, r1, c1)) continue;
-
-            for (let c = c0; c <= c1; c++) {
-              redSet.add(oASC.keyRC(r0, c));
-              redSet.add(oASC.keyRC(r1, c));
-            }
-            for (let r = r0; r <= r1; r++) {
-              redSet.add(oASC.keyRC(r, c0));
-              redSet.add(oASC.keyRC(r, c1));
-            }
-            for (let r = r0 + 1; r <= r1 - 1; r++) {
-              for (let c = c0 + 1; c <= c1 - 1; c++) {
-                insideSet.add(oASC.keyRC(r, c));
-              }
-            }
-          }
+          const chx = snapMap.get(r + ',' + c) || ' ';
+          if (chx === ' ') continue;
+          const rr = r + o.dr;
+          const cc = c + o.dc;
+          if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+          ctx.fillText(chx, snap(cc * cw + cw/2), snap(rr * ch + ch/2));
         }
       }
+      ctx.restore();
     }
-    return { redSet, insideSet };
-  };
 
-  function __computeNetlistCore(opts)
-  {
-    opts = opts || {};
-    const includeCellSet = !!opts.includeCellSet;
+    if (schemaHighlightOn && !highlightCache) highlightCache = this.computeHighlightOverlay();
+    const redSet = highlightCache ? highlightCache.redSet : null;
+    const insideSet = highlightCache ? highlightCache.insideSet : null;
 
-    const overlay = self.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
-    const mo = self.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set(), footprintSet: new Set() };
-    const compSet = mo.solidSet ?? mo.greenSet ?? mo.footprintSet ?? new Set();
-    const banned = self.computeNetlistBannedSet?.(mo, overlay) ?? new Set();
+    console.log("globalThis.netHeatMask="+globalThis.netHeatMask);
 
-    function isNetWireCell(r, c)
+    const activeNetHeatMask = (Number(netHeatMask) || 0) & (N|E|S|W);
+    if (activeNetHeatMask)
     {
-      const k = KeyRC(r, c);
-      if (banned.has(k)) return false;
-      const ch = ascii?.[r]?.[c];
-      if (ch === undefined || ch === " ") return false;
-      return (oASC.glyphToMask(ch) ?? 0) !== 0;
+      const heat = this.computeNetHeatField(activeNetHeatMask);
+      this.drawNetHeatOverlay(ctx, cw, ch, snap, heat, activeNetHeatMask);
     }
 
-    function connectedNeighbors(r, c)
-    {
-      const out = [];
-      const ch = ascii[r][c];
-      const m  = oASC.glyphToMask(ch) ?? 0;
 
-      if ((m & oASC.N) && r > 0 && isNetWireCell(r - 1, c)) {
-        const m2 = oASC.glyphToMask(ascii[r - 1][c]) ?? 0;
-        if (m2 & oASC.S) pushUnique(out, r - 1, c);
-      }
-      if ((m & oASC.S) && r < ROWS - 1 && isNetWireCell(r + 1, c)) {
-        const m2 = oASC.glyphToMask(ascii[r + 1][c]) ?? 0;
-        if (m2 & oASC.N) pushUnique(out, r + 1, c);
-      }
+    const BLACK = "rgba(0,0,0,1)";
+    const BLUE = "rgba(59,130,246,0.9)";
+    const RED  = "rgba(239,68,68,0.9)";
+    const GREEN = "rgba(34,197,94,0.95)";
 
-      if ((m & oASC.W) && c > 0 && isNetWireCell(r, c - 1)) {
-        const ch2 = ascii[r][c - 1];
-        const m2  = oASC.glyphToMask(ch2) ?? 0;
-        if (m2 & oASC.E) {
-          pushUnique(out, r, c - 1);
-        } else {
-          const isVerticalOnly = (m2 & oASC.N) && (m2 & oASC.S) && !(m2 & oASC.E) && !(m2 & oASC.W);
-          if (isVerticalOnly && c - 2 >= 0 && isNetWireCell(r, c - 2)) {
-            const m3 = oASC.glyphToMask(ascii[r][c - 2]) ?? 0;
-            if (m3 & oASC.E) pushUnique(out, r, c - 2);
-          }
-        }
-      }
+    if (schemaMatchOn && !matchCache) matchCache = this.computeMatchOverlay();
 
-      if ((m & oASC.E) && c < COLS - 1 && isNetWireCell(r, c + 1)) {
-        const ch2 = ascii[r][c + 1];
-        const m2  = oASC.glyphToMask(ch2) ?? 0;
-        if (m2 & oASC.W) {
-          pushUnique(out, r, c + 1);
-        } else {
-          const isVerticalOnly = (m2 & oASC.N) && (m2 & oASC.S) && !(m2 & oASC.E) && !(m2 & oASC.W);
-          if (isVerticalOnly && c + 2 < COLS && isNetWireCell(r, c + 2)) {
-            const m3 = oASC.glyphToMask(ascii[r][c + 2]) ?? 0;
-            if (m3 & oASC.W) pushUnique(out, r, c + 2);
-          }
-        }
-      }
-
-      return out;
-    }
-
-    function pushUniqueCR(out, c, r)
-    {
-      for (let i = 0; i < out.length; i++) if (out[i].c === c && out[i].r === r) return;
-      out.push({ c, r });
-    }
-
-    function hasCR(out, c, r)
-    {
-      for (let i = 0; i < out.length; i++) if (out[i].c === c && out[i].r === r) return true;
-      return false;
-    }
-
-    function tryAddCE(LE, CE, fromR, fromC, compR, compC, needBitOnComp)
-    {
-      if (compR < 0 || compR >= ROWS || compC < 0 || compC >= COLS) return;
-      const kk = KeyRC(compR, compC);
-      if (!compSet.has(kk)) return;
-
-      const chC = ascii?.[compR]?.[compC];
-      if (!chC || chC === " " || chC === oASC.WILDCHAR_U) return;
-
-      const mC = oASC.glyphToMask(chC) ?? 0;
-      if (!(mC & needBitOnComp)) return;
-
-      pushUniqueCR(CE, compC, compR);
-      if (!hasCR(LE, fromC, fromR)) pushUniqueCR(LE, fromC, fromR);
-    }
-
-    const visited = new Set();
-    let nets = [];
-
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        if (!isNetWireCell(r, c)) continue;
-        const rootK = KeyRC(r, c);
-        if (visited.has(rootK)) continue;
-
-        const q = [{ r, c }];
-        visited.add(rootK);
-
-        const nodes = [];
-        const deg = new Map();
-
-        while (q.length) {
-          const cur = q.shift();
-          const ck = KeyRC(cur.r, cur.c);
-          nodes.push(cur);
-
-          const nbs = connectedNeighbors(cur.r, cur.c);
-          deg.set(ck, nbs.length);
-
-          for (const nb of nbs) {
-            const nk = KeyRC(nb.r, nb.c);
-            if (visited.has(nk)) continue;
-            visited.add(nk);
-            q.push(nb);
-          }
-        }
-
-        if (nodes.length < 2) continue;
-
-        const LE = [];
-        const LJ = [];
-        const CE = [];
-
-        for (const n of nodes) {
-          const d = deg.get(KeyRC(n.r, n.c)) ?? 0;
-          if (d === 1) pushUniqueCR(LE, n.c, n.r);
-          else if (d >= 3) pushUniqueCR(LJ, n.c, n.r);
-        }
-
-        for (const n of nodes) {
-          const m = oASC.glyphToMask(ascii[n.r][n.c]) ?? 0;
-          if (m & oASC.W) tryAddCE(LE, CE, n.r, n.c, n.r, n.c - 1, oASC.E);
-          if (m & oASC.E) tryAddCE(LE, CE, n.r, n.c, n.r, n.c + 1, oASC.W);
-          if (m & oASC.N) tryAddCE(LE, CE, n.r, n.c, n.r - 1, n.c, oASC.S);
-          if (m & oASC.S) tryAddCE(LE, CE, n.r, n.c, n.r + 1, n.c, oASC.N);
-        }
-
-        const out = { LE, LJ, CE, nodes };
-        if (includeCellSet) {
-          const s = new Set();
-          for (const n of nodes) s.add(KeyRC(n.r, n.c));
-          out.cellSet = s;
-        }
-        nets.push(out);
-      }
-    }
-
-    if (mo && mo.matches && mo.matchByCell && typeof CATALOG !== "undefined" && Array.isArray(CATALOG))
-    {
-      const parent = new Array(nets.length);
-      for (let i = 0; i < parent.length; i++) parent[i] = i;
-
-      const find = (x) => {
-        while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; }
-        return x;
-      };
-      const union = (a, b) => {
-        a = find(a); b = find(b);
-        if (a !== b) parent[b] = a;
-      };
-
-      const labelToNets = new Map();
-
-      for (let ni = 0; ni < nets.length; ni++)
-      {
-        const net = nets[ni];
-        const touched = new Set();
-
-        for (let i = 0; i < (net.CE?.length ?? 0); i++)
-        {
-          const ce = net.CE[i];
-          const k = KeyRC(ce.r, ce.c);
-          const mid = mo.matchByCell.get(k);
-          if (mid === undefined || mid === null) continue;
-
-          const m = mo.matches[mid];
-          if (!m) continue;
-
-          const ty = String(m.type ?? CATALOG?.[m.catalog_idx]?.type ?? "");
-          if (ty !== "Net") continue;
-
-          const labelID = oASC.NetLabelID?.(m.catalog_idx, m.rotation) ?? "";
-          if (!labelID) continue;
-          touched.add(labelID);
-        }
-
-        for (const labelID of touched)
-        {
-          if (!labelToNets.has(labelID)) labelToNets.set(labelID, []);
-          labelToNets.get(labelID).push(ni);
-        }
-      }
-
-      for (const arr of labelToNets.values())
-      {
-        if (!arr || arr.length < 2) continue;
-        const base = arr[0];
-        for (let i = 1; i < arr.length; i++) union(base, arr[i]);
-      }
-
-      let anyMerge = false;
-      for (let i = 0; i < parent.length; i++) { if (parent[i] !== i) { anyMerge = true; break; } }
-
-      if (anyMerge)
-      {
-        const groups = new Map();
-
-        for (let i = 0; i < nets.length; i++)
-        {
-          const root = find(i);
-          let g = groups.get(root);
-          if (!g)
-          {
-            g = { LE: [], LJ: [], CE: [], nodes: [] };
-            if (includeCellSet) g.cellSet = new Set();
-            groups.set(root, g);
-          }
-
-          const n = nets[i];
-          for (let j = 0; j < (n.LE?.length ?? 0); j++) pushUniqueCR(g.LE, n.LE[j].c, n.LE[j].r);
-          for (let j = 0; j < (n.LJ?.length ?? 0); j++) pushUniqueCR(g.LJ, n.LJ[j].c, n.LJ[j].r);
-          for (let j = 0; j < (n.CE?.length ?? 0); j++) pushUniqueCR(g.CE, n.CE[j].c, n.CE[j].r);
-
-          if (Array.isArray(n.nodes)) g.nodes = g.nodes.concat(n.nodes);
-
-          if (includeCellSet)
-          {
-            if (n.cellSet && typeof n.cellSet.forEach === "function") {
-              n.cellSet.forEach(k => g.cellSet.add(k));
-            } else if (Array.isArray(n.nodes)) {
-              for (let j = 0; j < n.nodes.length; j++) g.cellSet.add(KeyRC(n.nodes[j].r, n.nodes[j].c));
-            }
-          }
-        }
-
-        const roots = Array.from(groups.keys()).sort((a, b) => a - b);
-        const merged = [];
-        for (let i = 0; i < roots.length; i++) merged.push(groups.get(roots[i]));
-        nets = merged;
-      }
-    }
-
-    return nets;
-  }
-
-  this.computeNetlist = function()
-  {
-    const nets = __computeNetlistCore({ includeCellSet: false });
-    return nets.map(n => ({ LE: n.LE, LJ: n.LJ, CE: n.CE }));
-  };
-
-this.computeNetlist.help =
-{
-  type: "CADScript_FN",
-  usage: "computeNetlist()",
-  desc: "Compute netlist including Line Ends (LE) and Component Ends (CE)",
-  examples: [
-    "oTERM.printJSON(oASC.computeNetlist())"
-  ],
-  unitTests: [
-    "oASC.clear();",
-    "oASC.cell(0,0,\""
-    + "     ⎽⎽⎽⎽⎽\\n"
-    + "  ┌─[  11Ω]───◠◠◠◠─┐\\n"
-    + "  │  ⎺⎺⎺⎺⎺         │\\n"
-    + "╭─╵─╮              │\\n"
-    + "( ~ )              │\\n"
-    + "╰─╷─╯              │\\n"
-    + "  │   [103]        │\\n"
-    + "  ├────┨┠─────(A)──┘\\n"
-    + "  ╧\");",
-    "oASC.assert(\"(await oASC.computeNetlist()).length\", (await oASC.computeNetlist()).length, 5);",
-    "oASC.stack(\"undo\");"
-  ]
-};
-
-  this.computeNetlistNets = function()
-  {
-    const nets = __computeNetlistCore({ includeCellSet: true });
-    return nets.map(n => ({ cells: n.cellSet, LE: n.LE, LJ: n.LJ, CE: n.CE, CO: n.CE }));
-  };
-
-  this.printNetlist = function()
-  {
-    if (window.oTERM && typeof oTERM.output === "function")
-    {
-      const lines = (typeof this.computeNetlist === "function") ? this.computeNetlist() : [];
-      const pretty = JSON.stringify(lines, null, 2)
-        .replace(/\n\s+"r": /g, "\"r\":")
-        .replace(/\n\s+"c": /g, "\"c\":")
-        .replace(/\[\n\s+\{/g, "[{")
-        .replace(/\n\s+\}\n\s+\]/g, "}]")
-        .replace(/\n(\s+)\},\n(\s)+\{\"/g, "},\n$1{\"")
-        .replace(/\]\n(\s+)\},\n\s+\{/g, "]\n$1},{");
-
-      const l = lines.length;
-      oTERM.output("<b>NETLIST</b> (" + l + " " + (l == 1 ? "net" : "nets") + ") \n<pre>" + oCOM.escapeHTML(pretty) + "</pre>");
-    }
-  };
-
-  this.computeNetlistBannedSet = function(moIn, hlIn)
-  {
-    const banned = new Set();
-    const hl = hlIn ?? (this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() });
-    hl.redSet?.forEach(k => banned.add(k));
-    hl.insideSet?.forEach(k => banned.add(k));
-
-    const mo = moIn ?? (this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() });
-    const banSet = mo.solidSet ?? mo.greenSet ?? new Set();
-    banSet.forEach(k => banned.add(k));
-    return banned;
-  };
-
-  this.lineMatchesAt = function(gridLine, c0, patLine)
-  {
-    if (c0 < 0) return false;
-    if (c0 + patLine.length > gridLine.length) return false;
-    for (let i = 0; i < patLine.length; i++) {
-      const pc = patLine[i];
-      const gc = gridLine[c0 + i] || " ";
-      if (!oASC.charMatchesPatternCell(pc, gc)) return false;
-    }
-    return true;
-  };
-
-  this.computeMatchOverlay = function()
-  {
-    const greenSet = new Set();
-    const rects = [];
-    const matches = [];
-    const matchByCell = new Map();
-    const solidSet = new Set();
-    const footprintSet = new Set();
-
-    if (!(typeof CATALOG !== "undefined" && Array.isArray(CATALOG)))
-      return { greenSet, rects, solidSet, footprintSet, matches, matchByCell };
-
-    const catalogVariants = oASC.buildCatalogVariants();
-    const gridLines = new Array(ROWS);
-    for (let r = 0; r < ROWS; r++) gridLines[r] = ascii[r].join("");
-
-    for (let v = 0; v < catalogVariants.length; v++)
-    {
-      const pat = catalogVariants[v];
-      const first = pat.first;
-      const patLines = pat.lines;
-
-      let w = 0;
-      for (let i = 0; i < patLines.length; i++) w = Math.max(w, (patLines[i] ?? "").length);
-      const h = patLines.length;
-
-      for (let r0 = 0; r0 < ROWS; r0++)
-      {
-        const gl0 = gridLines[r0];
-        const maxC = COLS - first.length;
-        if (maxC < 0) continue;
-
-        for (let c0 = 0; c0 <= maxC; c0++)
-        {
-          if (!this.lineMatchesAt(gl0, c0, first)) continue;
-          if (r0 + h > ROWS) continue;
-
-          let ok = true;
-          for (let rr = 0; rr < h; rr++)
-          {
-            const pl = patLines[rr] ?? "";
-            const gl = gridLines[r0 + rr];
-            if (!this.lineMatchesAt(gl, c0, pl)) { ok = false; break; }
-          }
-          if (!ok) continue;
-
-          const matchId = matches.length;
-          const r1 = r0 + h - 1;
-          const c1 = c0 + w - 1;
-          matches.push({ matchId, r0, c0, r1, c1, catalog_idx: pat.catalog_idx, rotation: pat.rotation, uid: pat.uid, name: pat.name, type: pat.type });
-          rects.push({ r0, c0, r1, c1 });
-
-          for (let rr = 0; rr < h; rr++)
-          {
-            const pl = patLines[rr] ?? "";
-            for (let cc = 0; cc < pl.length; cc++)
-            {
-              const pc = pl[cc];
-              if (pc === " ") continue;
-
-              const r = r0 + rr;
-              const c = c0 + cc;
-              if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
-
-              const k = oASC.keyRC(r, c);
-              footprintSet.add(k);
-
-              if (pc !== oASC.WILDCHAR_U) {
-                greenSet.add(k);
-                solidSet.add(k);
-                matchByCell.set(k, matchId);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return { greenSet, rects, solidSet, footprintSet, matches, matchByCell };
-  };
-
-  this.netHeatPalette = function()
-  {
-    const fallback = ["#E4F4FF", "#E9FBE8", "#D1FCC7", "#B0F6A1", "#BDE485", "#DCCA76", "#F6844F", "#FF0000"];
-    const src = oASC.heatMapCols;
-    return (Array.isArray(src) && src.length) ? src.slice() : fallback;
-  };
-
-  this.netHeatHexToRGBA = function(hex, alpha)
-  {
-    const txt = String(hex || "#000000").trim();
-    const m = txt.match(/^#?([0-9a-f]{6})$/i);
-    if (!m) return "rgba(255,0,0," + (alpha ?? 0.28) + ")";
-    const n = parseInt(m[1], 16);
-    const r = (n >> 16) & 255;
-    const g = (n >> 8) & 255;
-    const b = n & 255;
-    return "rgba(" + r + "," + g + "," + b + "," + (alpha ?? 0.28) + ")";
-  };
-
-  this.netHeatMapColor = function(value, minScore, maxScore, palette)
-  {
-    const cols = (Array.isArray(palette) && palette.length) ? palette : this.netHeatPalette();
-    if (!Number.isFinite(value)) return cols[cols.length - 1];
-    if (!Number.isFinite(minScore) || !Number.isFinite(maxScore) || maxScore <= minScore) return cols[0];
-
-    const t = Math.max(0, Math.min(1, (value - minScore) / (maxScore - minScore)));
-    const idx = Math.max(0, Math.min(cols.length - 1, Math.round(t * (cols.length - 1))));
-    return cols[idx];
-  };
-
-  this.netHeatConfig = function()
-  {
-    return Object.assign({
-      blockerWeight: 15,
-      bridgeWeight: 2,
-      rayLength: 16,
-      sideRadius: 4,
-      alpha: 0.30
-    }, oASC.netHeatCfg || {});
-  };
-
-  this.netHeatDistancePenalty = function(weight, distance)
-  {
-    const d = Math.max(1, Number(distance) || 1);
-    return Number(weight || 0) / (d * d);
-  };
-
-  this.netHeatCellPenaltyKind = function(r, c, ctx)
-  {
-    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return "blocker";
-    const kind = oASC.routeCellKind(r, c, ctx);
-    if (kind === "blocked") return "blocker";
-    if (kind === "wire_v" || kind === "wire_h") return "bridge";
-    return null;
-  };
-
-  this.computeNetHeatScoreAt = function(r, c, dir, ctx, cfg)
-  {
-    const vec = oASC.routeDirVec(dir);
-    const perpA = (dir === oASC.N || dir === oASC.S) ? { dr: 0, dc: -1 } : { dr: -1, dc: 0 };
-    const perpB = (dir === oASC.N || dir === oASC.S) ? { dr: 0, dc:  1 } : { dr:  1, dc: 0 };
-    const nr = r + vec.dr;
-    const nc = c + vec.dc;
-
-    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return Number.POSITIVE_INFINITY;
-    if (!oASC.routeStepVerdict(nr, nc, dir, ctx).allowed) return Number.POSITIVE_INFINITY;
-
-    let score = 0;
-    let rr = r;
-    let cc = c;
-
-    for (let step = 1; step <= cfg.rayLength; step++)
-    {
-      rr += vec.dr;
-      cc += vec.dc;
-
-      if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS)
-      {
-        score += this.netHeatDistancePenalty(cfg.blockerWeight, step);
-        break;
-      }
-
-      const verdict = oASC.routeStepVerdict(rr, cc, dir, ctx);
-      if (!verdict.allowed)
-      {
-        score += this.netHeatDistancePenalty(cfg.blockerWeight, step);
-        break;
-      }
-
-      if (verdict.bridge)
-        score += this.netHeatDistancePenalty(cfg.bridgeWeight, step);
-
-      for (let side = 1; side <= cfg.sideRadius; side++)
-      {
-        const checks = [
-          { r: rr + perpA.dr * side, c: cc + perpA.dc * side },
-          { r: rr + perpB.dr * side, c: cc + perpB.dc * side }
-        ];
-
-        for (const p of checks)
-        {
-          const hit = this.netHeatCellPenaltyKind(p.r, p.c, ctx);
-          if (!hit) continue;
-          const dist = step + side;
-          score += this.netHeatDistancePenalty(hit === "bridge" ? cfg.bridgeWeight : cfg.blockerWeight, dist);
-        }
-      }
-    }
-
-    return score;
-  };
-
-  this.computeNetHeatField = function(dirMask)
-  {
-    const activeMask = (Number(dirMask) || 0) & (oASC.N | oASC.E | oASC.S | oASC.W);
-    if (!activeMask) return null;
-
-    const cfg = this.netHeatConfig();
-    const dummy = { r: -9999, c: -9999 };
-    const ctx = oASC.routeBuildContext(dummy, dummy);
-    const dirs = [oASC.N, oASC.E, oASC.S, oASC.W].filter(m => (activeMask & m) !== 0);
-    const size = ROWS * COLS;
-    const layers = Object.create(null);
-
-    let minScore = Number.POSITIVE_INFINITY;
-    let maxScore = -Number.POSITIVE_INFINITY;
-
-    for (const dir of dirs) layers[dir] = new Float32Array(size);
-
+    const greenSet = matchCache ? matchCache.greenSet : null;
+    // Draw all chars (skip base rect while moving)
     for (let r = 0; r < ROWS; r++)
     {
       for (let c = 0; c < COLS; c++)
       {
-        const idx = r * COLS + c;
+        const chx = ascii[r][c];
+        if (chx === " ") continue;
 
-        for (const dir of dirs)
+        if (moveDrag)
         {
-          const score = this.computeNetHeatScoreAt(r, c, dir, ctx, cfg);
-          layers[dir][idx] = score;
-          if (Number.isFinite(score))
-          {
-            if (score < minScore) minScore = score;
-            if (score > maxScore) maxScore = score;
+          const b = moveDrag.baseRect;
+          if (r >= b.r0 && r <= b.r1 && c >= b.c0 && c <= b.c1) continue;
+        }
+
+        // Default color
+        let color = BLACK;
+
+        // Match overlay has priority (green)
+        if (schemaMatchOn && greenSet) 
+        {
+          const k = keyRC(r, c);
+          if (greenSet.has(k)) color = GREEN;
+        }
+
+        // Netlist hover highlight (BLUE) — overrides other colors for wire cells in the hovered net
+        if (netTraceOn && hoverNetIndex >= 0) {
+          __ensureNetlistCache();
+          const k = keyRC(r, c);
+          const net = netlistCache?.nets?.[hoverNetIndex];
+          if (net && net.cells && net.cells.has(k)) {
+            color = BLUE;
           }
         }
+
+        if (schemaHighlightOn && color === BLACK) 
+        {
+          const k = keyRC(r, c);
+          const inside = insideSet && insideSet.has(k);
+
+          // 1) Red: only double-line frame cells of enclosed rectangles
+          // 2) Blue: single-line glyphs + crossings, but NOT inside double rectangles
+          if (redSet && redSet.has(k) && (this.hasDoubleH(chx) || this.hasDoubleV(chx) || chx==="╔"||chx==="╗"||chx==="╚"||chx==="╝"))
+            color = RED;
+          else if (!inside) // single-line wires are: wire glyphs that are neither double nor fat
+          {
+            if (this.isWireGlyph(chx) && !this.isDoubleWire(chx) && !this.isFatWire(chx) && chx !== " ")
+              color = BLUE;
+          }
+        }
+
+        if (bDebug && netTraceOn && netlistDebugCESet)
+        {
+          const kk = r + "," + c;           // MUST match __refreshNetlistDebugCE() keying
+          if (netlistDebugCESet.has(kk)) {
+            color = RED;                    // LAST override wins
+          }
+        }
+
+        ctx.fillStyle = color;
+        ctx.fillText(chx, snap(c * cw + cw / 2), snap(r * ch + ch / 2));
       }
     }
 
-    if (!Number.isFinite(minScore)) minScore = 0;
-    if (!Number.isFinite(maxScore) || maxScore <= minScore) maxScore = minScore + 1;
+    // Selection overlay (stays after select; cleared after move mouseup)
+    if (selection) 
+    {
+        const x0 = selection.c0 * cw;
+        const y0 = selection.r0 * ch;
+        const w = (selection.c1 - selection.c0 + 1) * cw;
+        const h = (selection.r1 - selection.r0 + 1) * ch;
+        ctx.save();
+        ctx.lineWidth = 2 / scale;
+        ctx.strokeStyle = "rgba(59,130,246,0.9)";
+        ctx.fillStyle = "rgba(59,130,246,0.12)";
+        ctx.fillRect(x0, y0, w, h);
+        ctx.strokeRect(x0, y0, w, h);
+        ctx.restore();
+    }
 
-    return { layers, minScore, maxScore, activeMask, cfg };
-  };
- }
- 
- var oTOOL = new TOOL();
+    // Drag-select marquee
+    if (selectDrag) 
+    {
+        const rr = oCOM.normRect(selectDrag.start, selectDrag.current);
+        const x0 = rr.c0 * cw;
+        const y0 = rr.r0 * ch;
+        const w = (rr.c1 - rr.c0 + 1) * cw;
+        const h = (rr.r1 - rr.r0 + 1) * ch;
+        ctx.save();
+        ctx.lineWidth = 2 / scale;
+        ctx.setLineDash([6/scale, 4/scale]);
+        ctx.strokeStyle = "rgba(16,185,129,0.95)";
+        ctx.strokeRect(x0, y0, w, h);
+        ctx.restore();
+    }
 
+    if (pasteDrag) drawPastePreview(cw, ch, snap);
 
+    if (lineDrag)         // Line preview overlay
+    {
+      const old = ctx.fillStyle;
+      ctx.fillStyle = "rgba(59,130,246,0.9)";
 
-function bindToolMethod(name)
-{
-  const fn = function(...args) {
-    return oTOOL[name](...args);
-  };
+      console.log("this.buildLinePath("+lineDrag.start+","+lineDrag.cur+","+JSON.stringify(lineDrag.modifiers)+")");
 
-  Object.defineProperty(fn, "help", {
-    get() { return oTOOL[name]?.help; },
-    configurable: true
-  });
+      const rawPath = this.buildLinePath(lineDrag.start, lineDrag.cur, lineDrag.modifiers);
+      const path    = lineDrag.merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
 
-  oASC[name] = fn;
+      for (const p of path)
+      {
+        if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+        renderCharAtCell(ctx, p.r, p.c, p.ch);
+      }
+
+      ctx.fillStyle = old;
+    }
+
+    if (boxDrag)
+    {
+      const old = ctx.fillStyle;
+      ctx.fillStyle = "rgba(59,130,246,0.9)";
+      const path = this.buildBoxPath(boxDrag.start, boxDrag.cur, boxDrag.modifiers);
+
+      for (const p of path)
+      {
+          if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+          renderCharAtCell(ctx, p.r, p.c, p.ch); // canvas-only renderer
+      }
+
+      ctx.fillStyle = old;
+    }
+
+    if (textDrag) 
+    {
+      const old = ctx.fillStyle;
+      ctx.fillStyle = "rgba(59,130,246,0.9)";
+      const r = textDrag.anchor.r;
+      let c = textDrag.anchor.c;
+      renderCharAtCell(ctx, r, c-1, '█');
+
+      for (const ch of Array.from(textDrag.text)) 
+      {
+          if (ch === '\n' || ch === '\r') continue;
+          if (r < 0 || r >= ROWS) break;
+          if (c < 0) { c++; continue; }
+          if (c >= COLS) break;
+
+          renderCharAtCell(ctx, r, c, ch); // canvas-only renderer
+          c++;
+      }
+
+      ctx.fillStyle = old;
+    }
+
+    if(bDebug) console.log("draw(\""+str_reason+"\")")
+  }
 }
+var oASC = new ASC();
 
-[
-  "computeHighlightOverlay",
-  "lineMatchesAt",
-  "computeMatchOverlay",
-  "computeNetlistBannedSet",
-  "computeNetlist",
-  "computeNetlistNets",
-  "printNetlist",
-  "netHeatPalette",
-  "netHeatHexToRGBA",
-  "netHeatMapColor",
-  "netHeatConfig",
-  "netHeatDistancePenalty",
-  "netHeatCellPenaltyKind",
-  "computeNetHeatScoreAt",
-  "computeNetHeatField"
-].forEach(bindToolMethod);
+
 
 </script>
     <script type="text/javascript" ">
@@ -10112,8 +10479,8 @@ let matchCache = null; // { greenSet:Set } cached matches for current ascii stat
 let netTraceOn = false;
 let netHeatMask = null;
 
-oASC.heatMapCols = ["#E4F4FF","#E9FBE8","#D1FCC7","#B0F6A1","#BDE485","#DCCA76","#F6844F","#FF0000"];
-oASC.netHeatCfg = {
+globalThis.heatMapCols = ["#E4F4FF","#E9FBE8","#D1FCC7","#B0F6A1","#BDE485","#DCCA76","#F6844F","#FF0000"];
+globalThis.netHeatCfg = {
   blockerWeight: 15,
   bridgeWeight: 1,
   rayLength: 16,
@@ -11898,343 +12265,6 @@ function downloadThisFile( callback )
   const mimeType = 'text/html';
   oCOM.download(htmlContent, filename, mimeType, callback );
 }
-
-
-
-
-
-
-oASC.draw = draw;
-
-function draw( str_reason ) 
-{
-  function renderCharAtCell(ctx, r, c, ch) 
-  {
-    const x = c * baseCellW + baseCellW / 2;
-    const y = r * baseCellH + baseCellH / 2;
-    ctx.fillText(ch, x, y);
-  }
-
-  const dpr = window.devicePixelRatio || 1;
-  const wCss = stageSize.w;
-  const hCss = stageSize.h;
-
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.fillStyle = GRID_BG;
-  ctx.fillRect(0,0,wCss,hCss);
-
-  const cx = wCss/2, cy = hCss/2;
-  ctx.translate(cx, cy);
-  ctx.scale(scale, scale);
-  ctx.translate(-cx + panX, -cy + panY);
-
-  // TODO: refactor this function, as it leads to unreadable code, difficult to debug/understand
-  const getSnapFns = function(dpr, scaleNow)
-  {
-    const pxScale = (dpr || 1) * (scaleNow || 1);
-    const snap = (v) => Math.round(v * pxScale) / pxScale;
-    const snapLine = (v) => (Math.round(v * pxScale) + 0.5) / pxScale;
-    return { snap, snapLine };
-  }
-  const { snap, snapLine } = getSnapFns(dpr, scale);   // get snap functions
-
-  var { cw, ch } = oASC.getCellSize();
-
-  // Visible bounds in WORLD coordinates (undo pan/zoom around center)
-  const left   = (0 - cx) / scale + cx - panX;
-  const top    = (0 - cy) / scale + cy - panY;
-  const right  = (wCss - cx) / scale + cx - panX;
-  const bottom = (hCss - cy) / scale + cy - panY;
-
-  // Convert bounds -> grid indices (clamped)
-  const c0 = Math.max(0, Math.floor( oCOM.PanZoomSize(0,cx,scale,panX,cw) ));
-  const r0 = Math.max(0, Math.floor( oCOM.PanZoomSize(0,cy,scale,panY,ch) ));
-  const c1 = Math.min(COLS, Math.ceil( oCOM.PanZoomSize(wCss,cx,scale,panX,cw) ));
-  const r1 = Math.min(ROWS, Math.ceil( oCOM.PanZoomSize(hCss,cy,scale,panY,ch)  ));
-
-  ctx.beginPath();
-  ctx.strokeStyle = GRID_LINE;
-  ctx.lineWidth = 1 / scale;
-
-  for (let c = c0; c <= c1; c++)  // vertical lines
-  {
-    const x = snapLine(c * cw);
-    ctx.moveTo(x, snapLine(r0 * ch));
-    ctx.lineTo(x, snapLine(r1 * ch));
-  }
-
-  for (let r = r0; r <= r1; r++)   // horizontal lines
-  {
-    const y = snapLine(r * ch);
-    ctx.moveTo(snapLine(c0 * cw), y);
-    ctx.lineTo(snapLine(c1 * cw), y);
-  }
-
-  ctx.stroke();
-  ctx.fillStyle = "#000";     // Font sized to cell
-
-  const cwr = 0.62;   // 0.62
-  const maxByHeight = ch * 0.98;
-  const maxByWidth = (cw / cwr) * 0.98;
-  const fontPx = Math.max(4, Math.floor(Math.min(maxByHeight, maxByWidth)));
-
-  ctx.font = fontPx + "px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  // Move preview
-  if (moveDrag)
-  {
-    const b = moveDrag.baseRect;
-    const o = moveDrag.offset;
-    const snapMap = moveDrag.snapshot;
-    ctx.save();
-    ctx.globalAlpha = 0.9;
-    for (let r = b.r0; r <= b.r1; r++)
-    {
-      for (let c = b.c0; c <= b.c1; c++)
-      {
-        const chx = snapMap.get(r + ',' + c) || ' ';
-        if (chx === ' ') continue;
-        const rr = r + o.dr;
-        const cc = c + o.dc;
-        if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
-        ctx.fillText(chx, snap(cc * cw + cw/2), snap(rr * ch + ch/2));
-      }
-    }
-    ctx.restore();
-  }
-
-  if (schemaHighlightOn && !highlightCache) highlightCache = oASC.computeHighlightOverlay();
-  const redSet = highlightCache ? highlightCache.redSet : null;
-  const insideSet = highlightCache ? highlightCache.insideSet : null;
-
-  console.log("globalThis.netHeatMask="+globalThis.netHeatMask);
-
-  const activeNetHeatMask = (Number(netHeatMask) || 0) & (oASC.N|oASC.E|oASC.S|oASC.W);
-  const netHeat = activeNetHeatMask ? oASC.computeNetHeatField(activeNetHeatMask) : null;
-
-
-  const BLACK = "rgba(0,0,0,1)";
-  const BLUE = "rgba(59,130,246,0.9)";
-  const RED  = "rgba(239,68,68,0.9)";
-  const GREEN = "rgba(34,197,94,0.95)";
-
-  if (schemaMatchOn && !matchCache) matchCache = oASC.computeMatchOverlay();
-
-  const greenSet = matchCache ? matchCache.greenSet : null;
-  // Draw all chars (skip base rect while moving)
-  for (let r = 0; r < ROWS; r++)
-  {
-    for (let c = 0; c < COLS; c++)
-    {
-
-      if (netHeat)
-      {
-        const idx = r * COLS + c;
-        let score = Number.POSITIVE_INFINITY;
-
-        if (activeNetHeatMask & oASC.N) {
-          const layer = netHeat.layers[oASC.N];
-          if (layer) {
-            const v = layer[idx];
-            if (Number.isFinite(v) && v < score) score = v;
-          }
-        }
-        if (activeNetHeatMask & oASC.E) {
-          const layer = netHeat.layers[oASC.E];
-          if (layer) {
-            const v = layer[idx];
-            if (Number.isFinite(v) && v < score) score = v;
-          }
-        }
-        if (activeNetHeatMask & oASC.S) {
-          const layer = netHeat.layers[oASC.S];
-          if (layer) {
-            const v = layer[idx];
-            if (Number.isFinite(v) && v < score) score = v;
-          }
-        }
-        if (activeNetHeatMask & oASC.W) {
-          const layer = netHeat.layers[oASC.W];
-          if (layer) {
-            const v = layer[idx];
-            if (Number.isFinite(v) && v < score) score = v;
-          }
-        }
-
-        const bg = oASC.netHeatMapColor(
-          score,
-          netHeat.minScore,
-          netHeat.maxScore,
-          oASC.netHeatPalette()
-        );
-
-        ctx.fillStyle = oASC.netHeatHexToRGBA(bg, netHeat.cfg?.alpha ?? 0.30);
-        ctx.fillRect(snap(c * cw), snap(r * ch), cw + 0.5, ch + 0.5);
-      }
-
-
-
-      const chx = ascii[r][c];
-      if (chx === " ") continue;
-
-      if (moveDrag)
-      {
-        const b = moveDrag.baseRect;
-        if (r >= b.r0 && r <= b.r1 && c >= b.c0 && c <= b.c1) continue;
-      }
-
-      // Default color
-      let color = BLACK;
-
-      // Match overlay has priority (green)
-      if (schemaMatchOn && greenSet) 
-      {
-        const k = oASC.keyRC(r, c);
-        if (greenSet.has(k)) color = GREEN;
-      }
-
-      // Netlist hover highlight (BLUE) — overrides other colors for wire cells in the hovered net
-      if (netTraceOn && hoverNetIndex >= 0) {
-        __ensureNetlistCache();
-        const k = oASC.keyRC(r, c);
-        const net = netlistCache?.nets?.[hoverNetIndex];
-        if (net && net.cells && net.cells.has(k)) {
-          color = BLUE;
-        }
-      }
-
-      if (schemaHighlightOn && color === BLACK) 
-      {
-        const k = oASC.keyRC(r, c);
-        const inside = insideSet && insideSet.has(k);
-
-        // 1) Red: only double-line frame cells of enclosed rectangles
-        // 2) Blue: single-line glyphs + crossings, but NOT inside double rectangles
-        if (redSet && redSet.has(k) && (oASC.hasDoubleH(chx) || oASC.hasDoubleV(chx) || chx==="╔"||chx==="╗"||chx==="╚"||chx==="╝"))
-          color = RED;
-        else if (!inside) // single-line wires are: wire glyphs that are neither double nor fat
-        {
-          if (oASC.isWireGlyph(chx) && !oASC.isDoubleWire(chx) && !oASC.isFatWire(chx) && chx !== " ")
-            color = BLUE;
-        }
-      }
-
-      if (bDebug && netTraceOn && netlistDebugCESet)
-      {
-        const kk = r + "," + c;           // MUST match __refreshNetlistDebugCE() keying
-        if (netlistDebugCESet.has(kk)) {
-          color = RED;                    // LAST override wins
-        }
-      }
-
-      ctx.fillStyle = color;
-      ctx.fillText(chx, snap(c * cw + cw / 2), snap(r * ch + ch / 2));
-    }
-  }
-
-  // Selection overlay (stays after select; cleared after move mouseup)
-  if (selection) 
-  {
-      const x0 = selection.c0 * cw;
-      const y0 = selection.r0 * ch;
-      const w = (selection.c1 - selection.c0 + 1) * cw;
-      const h = (selection.r1 - selection.r0 + 1) * ch;
-      ctx.save();
-      ctx.lineWidth = 2 / scale;
-      ctx.strokeStyle = "rgba(59,130,246,0.9)";
-      ctx.fillStyle = "rgba(59,130,246,0.12)";
-      ctx.fillRect(x0, y0, w, h);
-      ctx.strokeRect(x0, y0, w, h);
-      ctx.restore();
-  }
-
-  // Drag-select marquee
-  if (selectDrag) 
-  {
-      const rr = oCOM.normRect(selectDrag.start, selectDrag.current);
-      const x0 = rr.c0 * cw;
-      const y0 = rr.r0 * ch;
-      const w = (rr.c1 - rr.c0 + 1) * cw;
-      const h = (rr.r1 - rr.r0 + 1) * ch;
-      ctx.save();
-      ctx.lineWidth = 2 / scale;
-      ctx.setLineDash([6/scale, 4/scale]);
-      ctx.strokeStyle = "rgba(16,185,129,0.95)";
-      ctx.strokeRect(x0, y0, w, h);
-      ctx.restore();
-  }
-
-  if (pasteDrag) drawPastePreview(cw, ch, snap);
-
-  if (lineDrag)         // Line preview overlay
-  {
-    const old = ctx.fillStyle;
-    ctx.fillStyle = "rgba(59,130,246,0.9)";
-
-    console.log("oASC.buildLinePath("+lineDrag.start+","+lineDrag.cur+","+JSON.stringify(lineDrag.modifiers)+")");
-
-    const rawPath = oASC.buildLinePath(lineDrag.start, lineDrag.cur, lineDrag.modifiers);
-    const path    = lineDrag.merge ? oASC.solveIntersect(rawPath) : rawPath;    // solve all intersections
-
-    for (const p of path)
-    {
-      if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-      renderCharAtCell(ctx, p.r, p.c, p.ch);
-    }
-
-    ctx.fillStyle = old;
-  }
-
-  if (boxDrag)
-  {
-    const old = ctx.fillStyle;
-    ctx.fillStyle = "rgba(59,130,246,0.9)";
-    const path = oASC.buildBoxPath(boxDrag.start, boxDrag.cur, boxDrag.modifiers);
-
-    for (const p of path)
-    {
-        if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
-        renderCharAtCell(ctx, p.r, p.c, p.ch); // canvas-only renderer
-    }
-
-    ctx.fillStyle = old;
-  }
-
-  if (textDrag) 
-  {
-    const old = ctx.fillStyle;
-    ctx.fillStyle = "rgba(59,130,246,0.9)";
-    const r = textDrag.anchor.r;
-    let c = textDrag.anchor.c;
-    renderCharAtCell(ctx, r, c-1, '█');
-
-    for (const ch of Array.from(textDrag.text)) 
-    {
-        if (ch === '\n' || ch === '\r') continue;
-        if (r < 0 || r >= ROWS) break;
-        if (c < 0) { c++; continue; }
-        if (c >= COLS) break;
-
-        renderCharAtCell(ctx, r, c, ch); // canvas-only renderer
-        c++;
-    }
-
-    ctx.fillStyle = old;
-  }
-
-  if(bDebug) console.log("draw(\""+str_reason+"\")")
-}
-
-
-
-
-
-
-
   </script>
 
 </body>
