@@ -3368,6 +3368,9 @@ this.startPasteWithText = function(text)
 
   this.computeHighlightOverlay = function() 
   {
+    if (typeof oGASC !== "undefined" && oGASC && typeof oGASC.computeHighlightOverlay === "function")
+      return oGASC.computeHighlightOverlay(ascii, this, ROWS, COLS);
+
     const redSet = new Set();    // frame cells of valid double boxes
     const insideSet = new Set(); // interior cells of valid double boxes
 
@@ -3412,7 +3415,7 @@ this.startPasteWithText = function(text)
         }
       }
     }
-    return { redSet, insideSet }
+    return { redSet, insideSet, mask: null }
   }
   
 
@@ -4316,6 +4319,7 @@ this.startPasteWithText = function(text)
     }
 
     if (schemaHighlightOn && !highlightCache) highlightCache = this.computeHighlightOverlay();
+    const overlayMask = highlightCache ? highlightCache.mask : null;
     const redSet = highlightCache ? highlightCache.redSet : null;
     const insideSet = highlightCache ? highlightCache.insideSet : null;
 
@@ -4373,12 +4377,14 @@ this.startPasteWithText = function(text)
 
         if (schemaHighlightOn && color === BLACK) 
         {
-          const k = keyRC(r, c);
-          const inside = insideSet && insideSet.has(k);
+           const overlayState = overlayMask ? (overlayMask[r]?.[c] | 0) : 0;
+           const k = overlayState ? null : keyRC(r, c);
+           const inside = overlayState === 2 || (!!insideSet && insideSet.has(k));
+           const isRedFrame = overlayState === 1 || (!!redSet && redSet.has(k));
 
           // 1) Red: only double-line frame cells of enclosed rectangles
           // 2) Blue: single-line glyphs + crossings, but NOT inside double rectangles
-          if (redSet && redSet.has(k) && (this.hasDoubleH(chx) || this.hasDoubleV(chx) || chx==="╔"||chx==="╗"||chx==="╚"||chx==="╝"))
+          if (isRedFrame && (this.hasDoubleH(chx) || this.hasDoubleV(chx) || chx==="╔"||chx==="╗"||chx==="╚"||chx==="╝"))
             color = RED;
           else if (!inside) // single-line wires are: wire glyphs that are neither double nor fat
           {

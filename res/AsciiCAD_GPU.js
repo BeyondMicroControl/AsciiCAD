@@ -1,63 +1,178 @@
 function GASC()
 {
-    this.serial8 = new Uint8Array();
-    this.config8_map = {};
-    this.config8_idx = {};
-    this.ser8_ref = function(name,arr) { this.setlen(name,null); this.serial8 = new Uint8Array([...this.serial8,...arr]) }
-    this.ser8_val = function(name,val,modifier) { this.setlen(name,modifier); this.serial8 = new Uint8Array([...this.serial8,...[val&255]]) } 
-    this.ser8_map = function() { return "const "+JSON.stringify(this.config8_map).replace(/"|\{|\}/g,"").replace(/:/g,"=")+";" }
-    this.idx8 = function(name) { return this.config8_idx[name] }
-    this.setlen = function(name,modifier)
+  this.gpu = null;
+  this.failed = false;
+  this.overlayKernel = null;
+  this.overlayDims = { cols: 0, rows: 0 };
+
+  this.OVERLAY_NONE   = 0;
+  this.OVERLAY_RED    = 1;
+  this.OVERLAY_INSIDE = 2;
+
+  this.ensureGPU = function() {
+    if (this.failed) return false;
+    if (this.gpu) return true;
+    try {
+      const GPUCtor = window.GPU?.GPU || window.GPU || GPU;
+      this.gpu = new GPUCtor({ mode: 'gpu' });
+      return true;
+    } catch (e) {
+      console.warn('AsciiCAD GPU overlay disabled; falling back to CPU.', e);
+      this.failed = true;
+      this.gpu = null;
+      return false;
+     }
+  };
+    
+this.ensureOverlayKernel = function(cols, rows) {
+    if (!this.ensureGPU()) return false;
+    if (
+      this.overlayKernel &&
+      this.overlayDims.cols === cols &&
+      this.overlayDims.rows === rows
+    ) return true;
+
+    this.overlayDims = { cols, rows };
+
+    // Each thread paints one grid cell.
+    // Input is a flat rect list: [r0,c0,r1,c1, r0,c0,r1,c1, ...]
+    this.overlayKernel = this.gpu.createKernel(function(rects, rectCount) {
+      const r = this.thread.y;
+      const c = this.thread.x;
+      let state = 0;
+
+      for (let i = 0; i < 4096; i++) {
+        if (i >= rectCount) break;
+        const base = i * 4;
+        const r0 = rects[base + 0];
+        const c0 = rects[base + 1];
+        const r1 = rects[base + 2];
+        const c1 = rects[base + 3];
+
+        if (r < r0 || r > r1 || c < c0 || c > c1) continue;
+        if (r === r0 || r === r1 || c === c0 || c === c1) return 1;
+        state = 2;
+      }
+
+      return state;
+    }, {
+      output: [cols, rows],
+      graphical: false,
+      pipeline: false,
+      immutable: true,
+      precision: 'single',
+      loopMaxIterations: 4096
+    });
+
+    return true;
+  };
+
+    this.collectDoubleBoxRects = function(ascii, asc, rows, cols) 
     {
-        if(modifier===undefined) var modifier = ["cfg[","]"];
-        else if(modifier==null)  var modifier = ["",""];
-        if(this.config8_map[name]===undefined)
+        const rects = [];
+
+        for (let r0 = 0; r0 < rows; r0++) 
         {
-        this.config8_map[name] = modifier[0] + this.serial8.length + modifier[1];
-        this.config8_idx[name] = this.serial8.length;
+            for (let c0 = 0; c0 < cols; c0++) 
+            {
+                if (ascii[r0][c0] !== '╔') continue;
+
+                for (let c1 = c0 + 1; c1 < cols; c1++) {
+                    if (ascii[r0][c1] !== '╗') continue;
+
+                    for (let r1 = r0 + 1; r1 < rows; r1++) {
+                    if (ascii[r1][c0] !== '╚') continue;
+                    if (ascii[r1][c1] !== '╝') continue;
+                    if (!asc.isValidDoubleBox(r0, c0, r1, c1)) continue;
+                    rects.push(r0, c0, r1, c1);
+                    }
+                }
+            }
         }
-    }
+        return rects;
+    };
 
-    this.kernel = function() { console.warn("initialise first with initGPU()") }
-
-    this.initGPU = function(GPUarg,KERNELarg,config)
-    { 
-        // CONFIGURE DATA SERIALISATION
-        for(var i in config)
-        {
-            if(config[i][0].constructor === Uint8Array) this.ser8_ref(i,config[i][0])
-            else this.ser8_val(i,config[i][0],config[i][1]===undefined?undefined:[config[i][1],config[i][2]])
+    this.buildOverlaySets = function(mask2D, rows, cols) 
+    {
+        const redSet = new Set();
+        const insideSet = new Set();
+        for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const v = mask2D[r][c] | 0;
+            if (v === this.OVERLAY_RED) redSet.add(r + ',' + c);
+            else if (v === this.OVERLAY_INSIDE) insideSet.add(r + ',' + c);
         }
+        }
+   return { redSet, insideSet };
+  };
+ 
+  this.computeHighlightOverlayCPUFromRects = function(rects, rows, cols) 
+  {
+    const mask2D = Array.from({ length: rows }, () => Array(cols).fill(0));
+ 
+    for (let i = 0; i < rects.length; i += 4) {
+      const r0 = rects[i + 0];
+      const c0 = rects[i + 1];
+      const r1 = rects[i + 2];
+      const c1 = rects[i + 3];
 
-        // INSTATIATE GPU CLASS & ATTACH TO WINDOW OBJECT
-        try { var gpu = new window.GPU.GPU(GPUarg) } catch (e) { var gpu = new GPU(GPUarg) }
-            console.log("gpu = "+JSON.stringify(gpu));
-
-        // TRANSPILE CHOSEN KERNEL SCRIPT
-        //this.kernel = gpu.createKernel(KERNELarg.kernel,KERNELarg);
-        //console.log("kernel = "+JSON.stringify(this.kernel));
+      for (let c = c0; c <= c1; c++) {
+        mask2D[r0][c] = this.OVERLAY_RED;
+        mask2D[r1][c] = this.OVERLAY_RED;
+      }
+      for (let r = r0; r <= r1; r++) {
+        mask2D[r][c0] = this.OVERLAY_RED;
+        mask2D[r][c1] = this.OVERLAY_RED;
+      }
+      for (let r = r0 + 1; r <= r1 - 1; r++) {
+        for (let c = c0 + 1; c <= c1 - 1; c++) {
+          if (mask2D[r][c] !== this.OVERLAY_RED) mask2D[r][c] = this.OVERLAY_INSIDE;
+        }
+      }
     }
+ 
+    return mask2D;
+  };
 
-    this.kProcess =  function(ascii, cfg)
-    { 
-        const DIM_H=cfg[0], DIM_V=cfg[1];
+
+  this.computeHighlightOverlay = function(ascii, asc, rows, cols) 
+  {
+    const rects = this.collectDoubleBoxRects(ascii, asc, rows, cols);
+ 
+    let mask2D = null;
+    if (rects.length && this.ensureOverlayKernel(cols, rows)) {
+      try {
+        const rectBuf = new Float32Array(rects);
+        mask2D = this.overlayKernel(rectBuf, rects.length / 4);
+      } catch (e) {
+        console.warn('AsciiCAD GPU overlay kernel failed; falling back to CPU.', e);
+        mask2D = null;
+      }
     }
+ 
+    if (!mask2D) {
+      mask2D = this.computeHighlightOverlayCPUFromRects(rects, rows, cols);
+    }
+     const sets = this.buildOverlaySets(mask2D, rows, cols);
+    return {
+      rects,
+      mask: mask2D,
+      redSet: sets.redSet,
+      insideSet: sets.insideSet
+    };
+  };
+
+
+
 }
-oGASC = new GASC();
+
+window.oGASC = window.oGASC || new GASC();
+window.addEventListener('load', () => {
+  window.oGASC?.ensureOverlayKernel?.(typeof COLS === 'number' ? COLS : 1, typeof ROWS === 'number' ? ROWS : 1);
+});
 
 
 
 
-window.addEventListener("load", () => 
-{
-    oGASC.initGPU(
-         { canvas:  ctx,mode: 'gpu'}
-        ,{ kernel: oGASC.kProcess, output: [COLS,ROWS], graphical: false }
-        ,{"DIM_H":[ROWS & 0xFF]
-        ,"DIM_V":[COLS & 0xFF]});
 
 
-
-    //oGASC.kernel( ascii, oGASC.serial8 )
-
-})
