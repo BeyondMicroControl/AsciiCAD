@@ -1306,7 +1306,7 @@ function ASC()
 
   this.routeBuildContext = function(from, to)
   {
-    const hl = this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
+    const hl = this.computeHighlightOverlay?.() ?? { redSet: new Set(), blueSet: new Set() };
     const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() };
     const banned = this.computeNetlistBannedSet?.(mo, hl) ?? new Set();
 
@@ -3437,7 +3437,7 @@ this.startPasteWithText = function(text)
     const OVERLAY_BLUE = (typeof oGASC !== "undefined" && oGASC) ? oGASC.OVERLAY_BLUE : 2;
 
     const redSet = new Set();
-    const insideSet = new Set();
+    const blueSet = new Set();
 
     for (let r = 0; r < ROWS; r++)
     {
@@ -3446,11 +3446,11 @@ this.startPasteWithText = function(text)
         const v = mask2D[r][c] | 0;
 
         if (v === OVERLAY_RED) redSet.add(r + "," + c);
-        else if (v === OVERLAY_BLUE) insideSet.add(r + "," + c);
+        else if (v === OVERLAY_BLUE) blueSet.add(r + "," + c);
       }
     }
 
-    return { redSet, insideSet };
+    return { redSet, blueSet };
   };
 
   this.computeHighlightOverlay = function()
@@ -3458,23 +3458,17 @@ this.startPasteWithText = function(text)
     const rects = this.collectDoubleBoxRects();
 
     let mask = null;
-
-    if (typeof oGASC !== "undefined" &&
-        oGASC &&
-        typeof oGASC.computeOverlayMaskFromRects === "function")
+    if (typeof oGASC !== "undefined" && oGASC && typeof oGASC.computeHighlightOverlay === "function")
     {
-      mask = oGASC.computeOverlayMaskFromRects(rects, ROWS, COLS);
+      mask = oGASC.computeHighlightOverlay(rects, ROWS, COLS);
     }
 
     if (!mask) mask = this.computeHighlightOverlayMaskCPUFromRects(rects);
 
     const sets = this.buildHighlightOverlaySets(mask);
 
-    return {
-      rects,
-      mask,
-      redSet: sets.redSet,
-      insideSet: sets.insideSet
+    return { rects, mask, redSet: sets.redSet,
+      blueSet: sets.blueSet
     };
   };
 
@@ -3487,7 +3481,7 @@ this.startPasteWithText = function(text)
     opts = opts || {};
     const includeCellSet = !!opts.includeCellSet;
 
-    const overlay = self.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() };
+    const overlay = self.computeHighlightOverlay?.() ?? { redSet: new Set(), blueSet: new Set() };
     const mo = self.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set(), footprintSet: new Set() };
 
     // For CE detection we want the footprint (includes wildcard cells)
@@ -3840,9 +3834,9 @@ this.startPasteWithText = function(text)
     const banned = new Set();
 
     // 1) Exclude double-line boxes (frame + interior)
-    const hl = hlIn ?? (this.computeHighlightOverlay?.() ?? { redSet: new Set(), insideSet: new Set() });
+    const hl = hlIn ?? (this.computeHighlightOverlay?.() ?? { redSet: new Set(), blueSet: new Set() });
     hl.redSet?.forEach(k => banned.add(k));
-    hl.insideSet?.forEach(k => banned.add(k));
+    hl.blueSet?.forEach(k => banned.add(k));
 
     // 2) Exclude matched catalog components (pattern cells only; skip spaces + '§')
     const mo = moIn ?? (this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() });
@@ -4379,7 +4373,7 @@ this.startPasteWithText = function(text)
     if (schemaHighlightOn && !highlightCache) highlightCache = this.computeHighlightOverlay();
     const overlayMask = highlightCache ? highlightCache.mask : null;
     const redSet = highlightCache ? highlightCache.redSet : null;
-    const insideSet = highlightCache ? highlightCache.insideSet : null;
+    const blueSet = highlightCache ? highlightCache.blueSet : null;
 
     console.log("globalThis.netHeatMask="+globalThis.netHeatMask);
 
@@ -4437,7 +4431,7 @@ this.startPasteWithText = function(text)
         {
            const overlayState = overlayMask ? (overlayMask[r]?.[c] | 0) : 0;
            const k = overlayState ? null : keyRC(r, c);
-           const inside = overlayState === 2 || (!!insideSet && insideSet.has(k));
+           const inside = overlayState === 2 || (!!blueSet && blueSet.has(k));
            const isRedFrame = overlayState === 1 || (!!redSet && redSet.has(k));
 
           // 1) Red: only double-line frame cells of enclosed rectangles
