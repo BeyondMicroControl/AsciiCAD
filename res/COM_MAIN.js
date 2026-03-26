@@ -157,6 +157,17 @@ this.interpolateColors = function(col_arr, rangeLen)
       this.config8_idx[name] = this.serial8.length;
       }
   }
+  this.packAscii16 = function(ascii2D, rows, cols) 
+  {
+    const out = new Uint16Array(rows * cols);
+    let k = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        out[k++] = ascii2D[r][c].charCodeAt(0);
+      }
+    }
+    return out;
+  }
 
   this.MathParser = function()
   {
