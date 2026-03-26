@@ -11,7 +11,7 @@ function GASC()
     this.rectScratch = new Float32Array(this.MAX_RECTS * 4);
 
 
-    // 
+    // Call function
     this.computeHighlightOverlay = function(rects, rows, cols)
     {
         if (!rects || !rects.length) return null;
@@ -48,8 +48,10 @@ function GASC()
         catch (e) { console.warn("AsciiCAD GPU overlay kernel failed; falling back to CPU.", e); return null; }
     };
 
+    // Kernel object
     this.computeHighlightOverlay.kObject = null;
 
+    // Kernel script
     this.computeHighlightOverlay.kScript = function(rects, rectCount)
     {
         const r = this.thread.y;
