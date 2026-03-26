@@ -3453,31 +3453,45 @@ this.startPasteWithText = function(text)
     return { redSet, blueSet };
   };
 
-  this.computeHighlightOverlay = function()
-  {
-    const rects = this.collectDoubleBoxRects();
-
-    let mask = null;
-    if (typeof oGASC !== "undefined" && oGASC && typeof oGASC.computeHighlightOverlay === "function")
+    this.computeHighlightOverlay = function()
     {
-      mask = oGASC.computeHighlightOverlay(rects, ROWS, COLS);  // GPU process
-      if(bDebug && mask!=null) 
-        console.log("GPU has generated mask (len="+mask.length+")")
-    }
+      let mask = null;
 
-    if (!mask)
-    {
-      mask = this.computeHighlightOverlayMaskCPUFromRects(rects); // CPU fallback
-      if(bDebug && mask!=null) 
-        console.log("CPU has generated mask (len="+mask.length+")")
-    }
+      if (typeof oGASC !== "undefined" && oGASC && typeof oGASC.computeHighlightOverlay === "function")
+      {
+        try
+        {
+          const ascii16 = oCOM.packAscii16(ascii, ROWS, COLS);
+          const cfg8 = new Uint8Array(4);
+          cfg8[0] = COLS & 0xFF;
+          cfg8[1] = (COLS >>> 8) & 0xFF;
+          cfg8[2] = ROWS & 0xFF;
+          cfg8[3] = (ROWS >>> 8) & 0xFF;
+          mask = oGASC.computeHighlightOverlay(ascii16, cfg8);
+        }
+        catch (e)
+        {
+          console.warn("AsciiCAD dense GPU highlight preparation failed; falling back to CPU.", e);
+          mask = null;
+        }
+      }
 
-    const sets = this.buildHighlightOverlaySets(mask);
+      let rects = null;
+      if (!mask)
+      {
+        rects = this.collectDoubleBoxRects();
+        mask = this.computeHighlightOverlayMaskCPUFromRects(rects);
+      }
 
-    return { rects, mask, redSet: sets.redSet,
-      blueSet: sets.blueSet
+      const sets = this.buildHighlightOverlaySets(mask);
+
+      return {
+        rects,
+        mask,
+        redSet: sets.redSet,
+        blueSet: sets.blueSet
+      };
     };
-  };
 
     // ---- internal methods that need `this` -----------------------------------
 
