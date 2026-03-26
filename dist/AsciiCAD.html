@@ -5779,13 +5779,27 @@ function GASC()
     {
         if (!ascii2D || !rows || !cols) return null;
 
-        const ascii16 = oCOM.packAscii16(ascii2D, rows, cols);
+        const CFG_COLS_LO = 0;
+        const CFG_COLS_HI = 1;
+        const CFG_ROWS_LO = 2;
+        const CFG_ROWS_HI = 3;
+        const CFG_LUT_BASE = 8;        // leave a few spare bytes for flags later
+        const LUT_CP0 = 0x2500;        // Box Drawing block
+        const LUT_LEN = 0x80;          // 0x2500..0x257F inclusive
 
-        const cfg8 = new Uint8Array(4);
-        cfg8[0] = cols & 0xFF;
-        cfg8[1] = (cols >>> 8) & 0xFF;
-        cfg8[2] = rows & 0xFF;
-        cfg8[3] = (rows >>> 8) & 0xFF;
+        const ascii16 = oCOM.packAscii16(ascii2D, rows, cols);
+        const cfg8 = new Uint8Array(CFG_LUT_BASE + LUT_LEN);
+
+        cfg8[CFG_COLS_LO] = cols & 0xFF;
+        cfg8[CFG_COLS_HI] = (cols >>> 8) & 0xFF;
+        cfg8[CFG_ROWS_LO] = rows & 0xFF;
+        cfg8[CFG_ROWS_HI] = (rows >>> 8) & 0xFF;
+
+        for (let cp = LUT_CP0; cp < LUT_CP0 + LUT_LEN; cp++) 
+        {
+            const ch = String.fromCharCode(cp);
+            cfg8[CFG_LUT_BASE + (cp - LUT_CP0)] = oASC.glyph2mask(ch) & 0xFF;
+        }
 
         const ok = this.runGPU(
             this.computeHighlightOverlay,
@@ -5819,85 +5833,91 @@ function GASC()
     };
 
     this.computeHighlightOverlay.kObject = null;
-    this.computeHighlightOverlay.kScript = function(ascii16, cfg8)
-    {
-    // dense neighborhood kernel body
-    };
-
-    this.computeHighlightOverlay.kObject = null;
-
 
     this.computeHighlightOverlay.kScript = function(ascii16, cfg8)
     {
-    const cols = cfg8[0] | (cfg8[1] << 8);
-    const rows = cfg8[2] | (cfg8[3] << 8);
+        const cols = cfg8[0] | (cfg8[1] << 8);
+        const rows = cfg8[2] | (cfg8[3] << 8);
 
-    const r = this.thread.y;
-    const c = this.thread.x;
+        const CFG_LUT_BASE = 8;
+        const LUT_CP0 = 9472;   // 0x2500
+        const LUT_CP1 = 9599;   // 0x257F
 
-    const CH_SPACE = 32;
-    const CH_H = 9552;   // ═
-    const CH_V = 9553;   // ║
-    const CH_TL = 9556;  // ╔
-    const CH_TR = 9559;  // ╗
-    const CH_BL = 9562;  // ╚
-    const CH_BR = 9565;  // ╝
+        const N = 1, E = 2, S = 4, W = 8;
 
-    let state = 0;
+        const CH_TL = 9556; // ╔
+        const CH_TR = 9559; // ╗
+        const CH_BL = 9562; // ╚
+        const CH_BR = 9565; // ╝
 
-    // Search candidate rectangles that may contain this cell.
-    for (let r0 = 0; r0 <= r; r0++)
-    {
+        function glyphMask(ch)
+        {
+            if (ch < LUT_CP0 || ch > LUT_CP1) return 0;
+            return cfg8[CFG_LUT_BASE + (ch - LUT_CP0)] | 0;
+        }
+
+        function hasDoubleH(ch)
+        {
+            const m = glyphMask(ch);
+            const lo = m & 15;
+            const hi = (m >> 4) & 15;
+            return ((lo & (E | W)) !== 0) && ((hi & (E | W)) !== 0);
+        }
+
+        function hasDoubleV(ch)
+        {
+            const m = glyphMask(ch);
+            const lo = m & 15;
+            const hi = (m >> 4) & 15;
+            return ((lo & (N | S)) !== 0) && ((hi & (N | S)) !== 0);
+        }
+
+        const r = this.thread.y;
+        const c = this.thread.x;
+        let state = 0;
+
+        for (let r0 = 0; r0 <= r; r0++)
         for (let c0 = 0; c0 <= c; c0++)
         {
-        const iTL = r0 * cols + c0;
-        if (ascii16[iTL] !== CH_TL) continue;
+            const iTL = r0 * cols + c0;
+            if (ascii16[iTL] !== CH_TL) continue;
 
-        for (let c1 = c; c1 < cols; c1++)
-        {
-            const iTR = r0 * cols + c1;
-            if (ascii16[iTR] !== CH_TR) continue;
+            for (let c1 = c; c1 < cols; c1++)
+            {
             if (c1 <= c0 + 1) continue;
+            if (ascii16[r0 * cols + c1] !== CH_TR) continue;
 
             for (let r1 = r; r1 < rows; r1++)
             {
-            const iBL = r1 * cols + c0;
-            const iBR = r1 * cols + c1;
+                if (r1 <= r0 + 1) continue;
+                if (ascii16[r1 * cols + c0] !== CH_BL) continue;
+                if (ascii16[r1 * cols + c1] !== CH_BR) continue;
+                if (r < r0 || r > r1 || c < c0 || c > c1) continue;
 
-            if (ascii16[iBL] !== CH_BL) continue;
-            if (ascii16[iBR] !== CH_BR) continue;
-            if (r1 <= r0 + 1) continue;
+                let valid = 1;
 
-            // Current cell must lie inside candidate bounds.
-            if (r < r0 || r > r1 || c < c0 || c > c1) continue;
+                for (let x = c0 + 1; x < c1; x++)
+                { 
+                if (!hasDoubleH(ascii16[r0 * cols + x])) { valid = 0; break; }
+                if (!hasDoubleH(ascii16[r1 * cols + x])) { valid = 0; break; }
+                }
+                
+                if (valid === 0) continue;
 
-            let valid = 1;
+                for (let y = r0 + 1; y < r1; y++)
+                {
+                if (!hasDoubleV(ascii16[y * cols + c0])) { valid = 0; break; }
+                if (!hasDoubleV(ascii16[y * cols + c1])) { valid = 0; break; }
+                }
+                if (valid === 0) continue;
 
-            // Top and bottom edges must be ═
-            for (let x = c0 + 1; x < c1; x++)
-            {
-                if (ascii16[r0 * cols + x] !== CH_H) { valid = 0; break; }
-                if (ascii16[r1 * cols + x] !== CH_H) { valid = 0; break; }
+                if (r === r0 || r === r1 || c === c0 || c === c1) return 1;
+                state = 2;
             }
-            if (valid === 0) continue;
-
-            // Left and right edges must be ║
-            for (let y = r0 + 1; y < r1; y++)
-            {
-                if (ascii16[y * cols + c0] !== CH_V) { valid = 0; break; }
-                if (ascii16[y * cols + c1] !== CH_V) { valid = 0; break; }
-            }
-            if (valid === 0) continue;
-
-            // Border takes priority over interior.
-            if (r === r0 || r === r1 || c === c0 || c === c1) return 1;
-            state = 2;
             }
         }
-        }
-    }
 
-    return state;
+        return state;
     };
 
 
