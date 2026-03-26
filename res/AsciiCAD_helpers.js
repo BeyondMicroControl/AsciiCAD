@@ -3424,7 +3424,7 @@ this.startPasteWithText = function(text)
     if (typeof oGASC !== "undefined" && oGASC &&
         typeof oGASC.computeHighlightOverlay === "function")
     {
-      mask = oGASC.computeHighlightOverlay(ascii, ROWS, COLS);
+      //mask = oGASC.computeHighlightOverlay(ascii, ROWS, COLS);
     }
 
     if (!mask)

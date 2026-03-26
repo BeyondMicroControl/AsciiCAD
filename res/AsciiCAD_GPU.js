@@ -149,30 +149,9 @@ function GASC()
         const CH_BL = 9562; // ╚
         const CH_BR = 9565; // ╝
 
-        function glyphMask(ch)
-        {
-            if (ch < LUT_CP0 || ch > LUT_CP1) return 0;
-            return cfg8[CFG_LUT_BASE + (ch - LUT_CP0)] | 0;
-        }
-
-        function hasDoubleH(ch)
-        {
-            const m = glyphMask(ch);
-            const lo = m & 15;
-            const hi = (m >> 4) & 15;
-            return ((lo & (E | W)) !== 0) && ((hi & (E | W)) !== 0);
-        }
-
-        function hasDoubleV(ch)
-        {
-            const m = glyphMask(ch);
-            const lo = m & 15;
-            const hi = (m >> 4) & 15;
-            return ((lo & (N | S)) !== 0) && ((hi & (N | S)) !== 0);
-        }
-
         const r = this.thread.y;
         const c = this.thread.x;
+
         let state = 0;
 
         for (let r0 = 0; r0 <= r; r0++)
@@ -196,17 +175,38 @@ function GASC()
                 let valid = 1;
 
                 for (let x = c0 + 1; x < c1; x++)
-                { 
-                if (!hasDoubleH(ascii16[r0 * cols + x])) { valid = 0; break; }
-                if (!hasDoubleH(ascii16[r1 * cols + x])) { valid = 0; break; }
+                {
+                let chTop = ascii16[r0 * cols + x];
+                let mTop = 0;
+                if (chTop >= LUT_CP0 && chTop <= LUT_CP1) mTop = cfg8[CFG_LUT_BASE + (chTop - LUT_CP0)] | 0;
+                let loTop = mTop & 15;
+                let hiTop = (mTop >> 4) & 15;
+                if (((loTop & (E | W)) === 0) || ((hiTop & (E | W)) === 0)) { valid = 0; break; }
+
+                let chBot = ascii16[r1 * cols + x];
+                let mBot = 0;
+                if (chBot >= LUT_CP0 && chBot <= LUT_CP1) mBot = cfg8[CFG_LUT_BASE + (chBot - LUT_CP0)] | 0;
+                let loBot = mBot & 15;
+                let hiBot = (mBot >> 4) & 15;
+                if (((loBot & (E | W)) === 0) || ((hiBot & (E | W)) === 0)) { valid = 0; break; }
                 }
-                
                 if (valid === 0) continue;
 
                 for (let y = r0 + 1; y < r1; y++)
                 {
-                if (!hasDoubleV(ascii16[y * cols + c0])) { valid = 0; break; }
-                if (!hasDoubleV(ascii16[y * cols + c1])) { valid = 0; break; }
+                let chLeft = ascii16[y * cols + c0];
+                let mLeft = 0;
+                if (chLeft >= LUT_CP0 && chLeft <= LUT_CP1) mLeft = cfg8[CFG_LUT_BASE + (chLeft - LUT_CP0)] | 0;
+                let loLeft = mLeft & 15;
+                let hiLeft = (mLeft >> 4) & 15;
+                if (((loLeft & (N | S)) === 0) || ((hiLeft & (N | S)) === 0)) { valid = 0; break; }
+
+                let chRight = ascii16[y * cols + c1];
+                let mRight = 0;
+                if (chRight >= LUT_CP0 && chRight <= LUT_CP1) mRight = cfg8[CFG_LUT_BASE + (chRight - LUT_CP0)] | 0;
+                let loRight = mRight & 15;
+                let hiRight = (mRight >> 4) & 15;
+                if (((loRight & (N | S)) === 0) || ((hiRight & (N | S)) === 0)) { valid = 0; break; }
                 }
                 if (valid === 0) continue;
 
