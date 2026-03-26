@@ -3460,10 +3460,17 @@ this.startPasteWithText = function(text)
     let mask = null;
     if (typeof oGASC !== "undefined" && oGASC && typeof oGASC.computeHighlightOverlay === "function")
     {
-      mask = oGASC.computeHighlightOverlay(rects, ROWS, COLS);
+      mask = oGASC.computeHighlightOverlay(rects, ROWS, COLS);  // GPU process
+      if(bDebug && mask!=null) 
+        console.log("GPU has generated mask (len="+mask.length+")")
     }
 
-    if (!mask) mask = this.computeHighlightOverlayMaskCPUFromRects(rects);
+    if (!mask)
+    {
+      mask = this.computeHighlightOverlayMaskCPUFromRects(rects); // CPU fallback
+      if(bDebug && mask!=null) 
+        console.log("CPU has generated mask (len="+mask.length+")")
+    }
 
     const sets = this.buildHighlightOverlaySets(mask);
 

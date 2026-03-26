@@ -139,6 +139,25 @@ this.interpolateColors = function(col_arr, rangeLen)
   this.trim  = function(s) { return this.rtrim(this.ltrim(s)) }
   this.stripHTML = function(s) { s = String(s ?? ""); s = s.replace(/&nbsp;/ig, " "); return s.replace(/<[^>]*>/g, ""); }
 
+  // BYTE ARRAY SERIALISATION
+  this.serial8 = new Uint8Array();
+  this.config8_map = {};
+  this.config8_idx = {};
+  this.ser8_ref = function(name,arr) { this.setlen(name,null); this.serial8 = new Uint8Array([...this.serial8,...arr]) }
+  this.ser8_val = function(name,val,modifier) { this.setlen(name,modifier); this.serial8 = new Uint8Array([...this.serial8,...[val&255]]) } 
+  this.ser8_map = function() { return "const "+JSON.stringify(this.config8_map).replace(/"|\{|\}/g,"").replace(/:/g,"=")+";" }
+  this.idx8 = function(name) { return this.config8_idx[name] }
+  this.setlen = function(name,modifier)
+  {
+      if(modifier===undefined) var modifier = ["cfg[","]"];
+      else if(modifier==null)  var modifier = ["",""];
+      if(this.config8_map[name]===undefined)
+      {
+      this.config8_map[name] = modifier[0] + this.serial8.length + modifier[1];
+      this.config8_idx[name] = this.serial8.length;
+      }
+  }
+
   this.MathParser = function()
   {
       p = this.operator = {};
