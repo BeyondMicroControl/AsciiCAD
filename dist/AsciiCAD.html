@@ -4600,31 +4600,45 @@ this.startPasteWithText = function(text)
     return { redSet, blueSet };
   };
 
-  this.computeHighlightOverlay = function()
-  {
-    const rects = this.collectDoubleBoxRects();
-
-    let mask = null;
-    if (typeof oGASC !== "undefined" && oGASC && typeof oGASC.computeHighlightOverlay === "function")
+    this.computeHighlightOverlay = function()
     {
-      mask = oGASC.computeHighlightOverlay(rects, ROWS, COLS);  // GPU process
-      if(bDebug && mask!=null) 
-        console.log("GPU has generated mask (len="+mask.length+")")
-    }
+      let mask = null;
 
-    if (!mask)
-    {
-      mask = this.computeHighlightOverlayMaskCPUFromRects(rects); // CPU fallback
-      if(bDebug && mask!=null) 
-        console.log("CPU has generated mask (len="+mask.length+")")
-    }
+      if (typeof oGASC !== "undefined" && oGASC && typeof oGASC.computeHighlightOverlay === "function")
+      {
+        try
+        {
+          const ascii16 = oCOM.packAscii16(ascii, ROWS, COLS);
+          const cfg8 = new Uint8Array(4);
+          cfg8[0] = COLS & 0xFF;
+          cfg8[1] = (COLS >>> 8) & 0xFF;
+          cfg8[2] = ROWS & 0xFF;
+          cfg8[3] = (ROWS >>> 8) & 0xFF;
+          mask = oGASC.computeHighlightOverlay(ascii16, cfg8);
+        }
+        catch (e)
+        {
+          console.warn("AsciiCAD dense GPU highlight preparation failed; falling back to CPU.", e);
+          mask = null;
+        }
+      }
 
-    const sets = this.buildHighlightOverlaySets(mask);
+      let rects = null;
+      if (!mask)
+      {
+        rects = this.collectDoubleBoxRects();
+        mask = this.computeHighlightOverlayMaskCPUFromRects(rects);
+      }
 
-    return { rects, mask, redSet: sets.redSet,
-      blueSet: sets.blueSet
+      const sets = this.buildHighlightOverlaySets(mask);
+
+      return {
+        rects,
+        mask,
+        redSet: sets.redSet,
+        blueSet: sets.blueSet
+      };
     };
-  };
 
     // ---- internal methods that need `this` -----------------------------------
 
@@ -5755,7 +5769,7 @@ function GASC()
 
 
     // Call function
-    this.computeHighlightOverlay = function(rects, rows, cols)
+    this.rasterizeRectsOverlay = function(rects, rows, cols)
     {
         if (!rects || !rects.length) return null;
 
@@ -5765,8 +5779,8 @@ function GASC()
             loopMaxIterations:  this.MAX_RECTS,
             precision:          "single",
             graphical: false, pipeline: false, immutable: true, dynamicArguments: true,
-            kScript:            this.computeHighlightOverlay.kScript,  // <-- input kernel script
-            kObject:            this.computeHighlightOverlay.kObject   // --> output kernel object
+            kScript:            this.rasterizeRectsOverlay.kScript,  // <-- input kernel script
+            kObject:            this.rasterizeRectsOverlay.kObject   // --> output kernel object
         },
         {"COLS":[cols],"ROWS":[rows]});
 
@@ -5783,19 +5797,19 @@ function GASC()
             rectBuf.fill(0);
             for (let i = 0; i < rectCount * 4; i++) rectBuf[i] = rects[i];
 
-             // caution: this.computeHighlightOverlay.kObject appears to contain string "Error: not enough arguments for kernel"
-             // This is normal behavior. When calling with arguments, GPU kicks in (this.computeHighlightOverlay.kObject object resides in the GPU, not accessible by CPU)
-            const ret = this.computeHighlightOverlay.kObject(rectBuf, rectCount); 
+             // caution: this.rasterizeRectsOverlay.kObject appears to contain string "Error: not enough arguments for kernel"
+             // This is normal behavior. When calling with arguments, GPU kicks in (this.rasterizeRectsOverlay.kObject object resides in the GPU, not accessible by CPU)
+            const ret = this.rasterizeRectsOverlay.kObject(rectBuf, rectCount); 
             return ret;
         }
         catch (e) { console.warn("AsciiCAD GPU overlay kernel failed; falling back to CPU.", e); return null; }
     };
 
     // Kernel object
-    this.computeHighlightOverlay.kObject = null;
+    this.rasterizeRectsOverlay.kObject = null;
 
     // Kernel script
-    this.computeHighlightOverlay.kScript = function(rects, rectCount)
+    this.rasterizeRectsOverlay.kScript = function(rects, rectCount)
     {
         const r = this.thread.y;
         const c = this.thread.x;
@@ -5817,43 +5831,161 @@ function GASC()
         return state;
     }
 
-    this.runGPU = function(GPUarg,KERNELarg,config)
+
+
+
+
+    this.computeHighlightOverlay = function(ascii16, cfg8)
     {
-        if (this.failed) return false;
-        if (this.gpu)    return true;
-        try
+    if (!ascii16 || !cfg8) return null;
+
+    const cols = cfg8[0] | (cfg8[1] << 8);
+    const rows = cfg8[2] | (cfg8[3] << 8);
+
+    const ok = this.runGPU(
+        { mode: 'gpu' },
         {
-            // DATA SERIALISATION
-            for(var i in config)
-            {
-                if(config[i][0].constructor === Uint8Array) oCOM.ser8_ref(i,config[i][0]);
-                else oCOM.ser8_val(i,config[i][0],config[i][1]===undefined?undefined:[config[i][1],config[i][2]]);
-            }
+        output: [cols, rows],
+        loopMaxIterations: 512,
+        precision: 'single',
+        graphical: false,
+        pipeline: false,
+        immutable: true,
+        dynamicArguments: true,
+        kScript: this.computeHighlightOverlay.kScript,
+        kObject: this.computeHighlightOverlay.kObject
+        },
+        { "cfg8": [cfg8] }
+    );
 
-            // INSTATIATE GPU CONTAINER & ATTACH TO WINDOW OBJECT
-            const gpu = window.GPU?.GPU || window.GPU || GPU;
-            this.gpu  = new gpu(GPUarg);
+    if (ok === false) return null;
 
-            // OMMIT TRANSPILATION if kernel object already exists
-            if(this.gpu.kernels.length!=0)
-            {
-                for(var i=0; i < this.gpu.kernels.length; i++ )
-                    if(this.gpu.kernels[i].source == KERNELarg.kScript.toString())
-                        return true;
-            }
+    try
+    {
+        // keep the compiled kernel cached on the comprehensive object
+        this.computeHighlightOverlay.kObject = this.computeHighlightOverlay.kObject || null;
+        const ret = this.computeHighlightOverlay.kObject(ascii16, cfg8);
+        return ret;
+    }
+    catch (e)
+    {
+        console.warn("AsciiCAD GPU computeHighlightOverlay failed; falling back to CPU.", e);
+        return null;
+    }
+    };
 
-            // TRANSPILE KERNEL SCRIPT into kernel object
-            KERNELarg.kObject = this.gpu.createKernel(KERNELarg.kScript,KERNELarg);
-            
-            return true;
-        }
-        catch (e)
+    this.computeHighlightOverlay.kObject = null;
+
+
+    this.computeHighlightOverlay.kScript = function(ascii16, cfg8)
+    {
+    const cols = cfg8[0] | (cfg8[1] << 8);
+    const rows = cfg8[2] | (cfg8[3] << 8);
+
+    const r = this.thread.y;
+    const c = this.thread.x;
+
+    const CH_SPACE = 32;
+    const CH_H = 9552;   // ═
+    const CH_V = 9553;   // ║
+    const CH_TL = 9556;  // ╔
+    const CH_TR = 9559;  // ╗
+    const CH_BL = 9562;  // ╚
+    const CH_BR = 9565;  // ╝
+
+    let state = 0;
+
+    // Search candidate rectangles that may contain this cell.
+    for (let r0 = 0; r0 <= r; r0++)
+    {
+        for (let c0 = 0; c0 <= c; c0++)
         {
-            console.warn("AsciiCAD GPU (oHighlightOverlay_kernel) disabled; falling back to CPU.", e);
-            this.failed = true;
-            this.gpu = null;
-            return false;
+        const iTL = r0 * cols + c0;
+        if (ascii16[iTL] !== CH_TL) continue;
+
+        for (let c1 = c; c1 < cols; c1++)
+        {
+            const iTR = r0 * cols + c1;
+            if (ascii16[iTR] !== CH_TR) continue;
+            if (c1 <= c0 + 1) continue;
+
+            for (let r1 = r; r1 < rows; r1++)
+            {
+            const iBL = r1 * cols + c0;
+            const iBR = r1 * cols + c1;
+
+            if (ascii16[iBL] !== CH_BL) continue;
+            if (ascii16[iBR] !== CH_BR) continue;
+            if (r1 <= r0 + 1) continue;
+
+            // Current cell must lie inside candidate bounds.
+            if (r < r0 || r > r1 || c < c0 || c > c1) continue;
+
+            let valid = 1;
+
+            // Top and bottom edges must be ═
+            for (let x = c0 + 1; x < c1; x++)
+            {
+                if (ascii16[r0 * cols + x] !== CH_H) { valid = 0; break; }
+                if (ascii16[r1 * cols + x] !== CH_H) { valid = 0; break; }
+            }
+            if (valid === 0) continue;
+
+            // Left and right edges must be ║
+            for (let y = r0 + 1; y < r1; y++)
+            {
+                if (ascii16[y * cols + c0] !== CH_V) { valid = 0; break; }
+                if (ascii16[y * cols + c1] !== CH_V) { valid = 0; break; }
+            }
+            if (valid === 0) continue;
+
+            // Border takes priority over interior.
+            if (r === r0 || r === r1 || c === c0 || c === c1) return 1;
+            state = 2;
+            }
         }
+        }
+    }
+
+    return state;
+    };
+
+
+
+
+
+    this.runGPU = function(GPUarg, KERNELarg, config)
+    {
+    if (this.failed) return false;
+
+    try
+    {
+        for (var i in config)
+        {
+        if (config[i][0].constructor === Uint8Array || config[i][0].constructor === Uint16Array || config[i][0].constructor === Float32Array)
+            oCOM.ser8_ref(i, config[i][0]);
+        else
+            oCOM.ser8_val(i, config[i][0], config[i][1] === undefined ? undefined : [config[i][1], config[i][2]]);
+        }
+
+        if (!this.gpu)
+        {
+        const gpu = window.GPU?.GPU || window.GPU || GPU;
+        this.gpu = new gpu(GPUarg);
+        }
+
+        if (!KERNELarg.kObject)
+        KERNELarg.kObject = this.gpu.createKernel(KERNELarg.kScript, KERNELarg);
+
+        return true;
+    }
+    catch (e)
+    {
+        console.warn("AsciiCAD GPU disabled; falling back to CPU.", e);
+        this.failed = true;
+        this.gpu = null;
+        return false;
+    }
     };
 
 
