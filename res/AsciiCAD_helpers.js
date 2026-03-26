@@ -3093,50 +3093,13 @@ this.startPasteWithText = function(text)
     return "";
   }
 
+  // TODO: check similarities between computeBoxRects() and collectDoubleBoxRects() and refactor !!!
   // Locate all valid BOX rectangles (double-line boxes) on the grid.
   // Returns [{ ref:"DEFINITION", r0,c0,r1,c1, name, type:"BOX" }, ...]
   this.computeBoxRects = function()
   {
     const out = [];
     const seen = new Set();
-
-    function isValidDoubleBox(r0, c0, r1, c1) 
-    {
-      if (r1 <= r0 || c1 <= c0) return false;
-
-      // Keep corners strict (recommended)
-      if (ascii[r0][c0] !== "╔") return false;
-      if (ascii[r0][c1] !== "╗") return false;
-      if (ascii[r1][c0] !== "╚") return false;
-      if (ascii[r1][c1] !== "╝") return false;
-
-      // Top & bottom edges must carry double-horizontal
-      for (let c = c0 + 1; c <= c1 - 1; c++) {
-        if (!hasDoubleH(ascii[r0][c])) return false;
-        if (!hasDoubleH(ascii[r1][c])) return false;
-      }
-
-      // Left & right edges must carry double-vertical
-      for (let r = r0 + 1; r <= r1 - 1; r++) {
-        if (!hasDoubleV(ascii[r][c0])) return false;
-        if (!hasDoubleV(ascii[r][c1])) return false;
-      }
-
-      return true;
-    }
-
-  function hasDoubleH(ch){
-    const m = this.glyph2mask(ch) & 0xFF;
-    const lo = m & 0xF, hi = (m >> 4) & 0xF;
-    return ((lo & (E|W)) !== 0) && ((hi & (E|W)) !== 0);
-  }
-
-  function hasDoubleV(ch){
-    const m = this.glyph2mask(ch) & 0xFF;
-    const lo = m & 0xF, hi = (m >> 4) & 0xF;
-    return ((lo & (N|S)) !== 0) && ((hi & (N|S)) !== 0);
-  }
-
 
 
     for (let r0 = 0; r0 < ROWS; r0++)
@@ -3154,7 +3117,7 @@ this.startPasteWithText = function(text)
             if (ascii[r1][c0] !== "╚") continue;
             if (ascii[r1][c1] !== "╝") continue;
 
-            if (!isValidDoubleBox?.(r0, c0, r1, c1)) continue;
+            if (!this.isValidDoubleBox?.(r0, c0, r1, c1)) continue;
 
             const k = r0 + "," + c0 + "," + r1 + "," + c1;
             if (seen.has(k)) continue;
@@ -3453,45 +3416,26 @@ this.startPasteWithText = function(text)
     return { redSet, blueSet };
   };
 
-    this.computeHighlightOverlay = function()
+  this.computeHighlightOverlay = function()
+  {
+    let mask = null;
+
+
+    if (typeof oGASC !== "undefined" && oGASC &&
+        typeof oGASC.computeHighlightOverlay === "function")
     {
-      let mask = null;
+      mask = oGASC.computeHighlightOverlay(ascii, ROWS, COLS);
+    }
 
-      if (typeof oGASC !== "undefined" && oGASC && typeof oGASC.computeHighlightOverlay === "function")
-      {
-        try
-        {
-          const ascii16 = oCOM.packAscii16(ascii, ROWS, COLS);
-          const cfg8 = new Uint8Array(4);
-          cfg8[0] = COLS & 0xFF;
-          cfg8[1] = (COLS >>> 8) & 0xFF;
-          cfg8[2] = ROWS & 0xFF;
-          cfg8[3] = (ROWS >>> 8) & 0xFF;
-          mask = oGASC.computeHighlightOverlay(ascii16, cfg8);
-        }
-        catch (e)
-        {
-          console.warn("AsciiCAD dense GPU highlight preparation failed; falling back to CPU.", e);
-          mask = null;
-        }
-      }
+    if (!mask)
+    {
+      const rects = this.collectDoubleBoxRects();
+      mask = this.computeHighlightOverlayMaskCPUFromRects(rects);
+    }
 
-      let rects = null;
-      if (!mask)
-      {
-        rects = this.collectDoubleBoxRects();
-        mask = this.computeHighlightOverlayMaskCPUFromRects(rects);
-      }
-
-      const sets = this.buildHighlightOverlaySets(mask);
-
-      return {
-        rects,
-        mask,
-        redSet: sets.redSet,
-        blueSet: sets.blueSet
-      };
-    };
+    const sets = this.buildHighlightOverlaySets(mask);
+    return { mask, redSet: sets.redSet, blueSet: sets.blueSet };
+  };
 
     // ---- internal methods that need `this` -----------------------------------
 

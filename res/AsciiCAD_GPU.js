@@ -74,47 +74,53 @@ function GASC()
         return state;
     }
 
-
-
-
-
-    this.computeHighlightOverlay = function(ascii16, cfg8)
+    this.computeHighlightOverlay = function(ascii2D, rows, cols)
     {
-    if (!ascii16 || !cfg8) return null;
+        if (!ascii2D || !rows || !cols) return null;
 
-    const cols = cfg8[0] | (cfg8[1] << 8);
-    const rows = cfg8[2] | (cfg8[3] << 8);
+        const ascii16 = oCOM.packAscii16(ascii2D, rows, cols);
 
-    const ok = this.runGPU(
-        { mode: 'gpu' },
+        const cfg8 = new Uint8Array(4);
+        cfg8[0] = cols & 0xFF;
+        cfg8[1] = (cols >>> 8) & 0xFF;
+        cfg8[2] = rows & 0xFF;
+        cfg8[3] = (rows >>> 8) & 0xFF;
+
+        const ok = this.runGPU(
+            this.computeHighlightOverlay,
+            { mode: "gpu" },
+            {
+            output: [cols, rows],
+            loopMaxIterations: 512,
+            precision: "single",
+            graphical: false,
+            pipeline: false,
+            immutable: true,
+            dynamicArguments: true
+            },
+            {
+            ascii16: [ascii16],
+            cfg8: [cfg8]
+            }
+        );
+
+        if (ok === false) return null;
+
+        try
         {
-        output: [cols, rows],
-        loopMaxIterations: 512,
-        precision: 'single',
-        graphical: false,
-        pipeline: false,
-        immutable: true,
-        dynamicArguments: true,
-        kScript: this.computeHighlightOverlay.kScript,
-        kObject: this.computeHighlightOverlay.kObject
-        },
-        { "cfg8": [cfg8] }
-    );
+            return this.computeHighlightOverlay.kObject(ascii16, cfg8);
+        }
+        catch (e)
+        {
+            console.warn("AsciiCAD GPU computeHighlightOverlay failed; falling back to CPU.", e);
+            return null;
+        }
+    };
 
-    if (ok === false) return null;
-
-    try
+    this.computeHighlightOverlay.kObject = null;
+    this.computeHighlightOverlay.kScript = function(ascii16, cfg8)
     {
-        // keep the compiled kernel cached on the comprehensive object
-        this.computeHighlightOverlay.kObject = this.computeHighlightOverlay.kObject || null;
-        const ret = this.computeHighlightOverlay.kObject(ascii16, cfg8);
-        return ret;
-    }
-    catch (e)
-    {
-        console.warn("AsciiCAD GPU computeHighlightOverlay failed; falling back to CPU.", e);
-        return null;
-    }
+    // dense neighborhood kernel body
     };
 
     this.computeHighlightOverlay.kObject = null;
@@ -197,38 +203,47 @@ function GASC()
 
 
 
-    this.runGPU = function(GPUarg, KERNELarg, config)
+    this.runGPU = function(kernelFn, GPUarg, kernelArg, config)
     {
-    if (this.failed) return false;
+        if (this.failed) return false;
 
-    try
-    {
-        for (var i in config)
+        try
         {
-        if (config[i][0].constructor === Uint8Array || config[i][0].constructor === Uint16Array || config[i][0].constructor === Float32Array)
-            oCOM.ser8_ref(i, config[i][0]);
-        else
-            oCOM.ser8_val(i, config[i][0], config[i][1] === undefined ? undefined : [config[i][1], config[i][2]]);
-        }
+            for (const name in config)
+            {
+            const value = config[name][0];
+            if (
+                value.constructor === Uint8Array ||
+                value.constructor === Uint16Array ||
+                value.constructor === Float32Array
+            )
+                oCOM.ser8_ref(name, value);
+            else
+                oCOM.ser8_val(
+                name,
+                value,
+                config[name][1] === undefined ? undefined : [config[name][1], config[name][2]]
+                );
+            }
 
-        if (!this.gpu)
+            if (!this.gpu)
+            {
+            const GPUCtor = window.GPU?.GPU || window.GPU || GPU;
+            this.gpu = new GPUCtor(GPUarg);
+            }
+
+            if (!kernelFn.kObject)
+            kernelFn.kObject = this.gpu.createKernel(kernelFn.kScript, kernelArg);
+
+            return true;
+        }
+        catch (e)
         {
-        const gpu = window.GPU?.GPU || window.GPU || GPU;
-        this.gpu = new gpu(GPUarg);
+            console.warn("AsciiCAD GPU disabled; falling back to CPU.", e);
+            this.failed = true;
+            this.gpu = null;
+            return false;
         }
-
-        if (!KERNELarg.kObject)
-        KERNELarg.kObject = this.gpu.createKernel(KERNELarg.kScript, KERNELarg);
-
-        return true;
-    }
-    catch (e)
-    {
-        console.warn("AsciiCAD GPU disabled; falling back to CPU.", e);
-        this.failed = true;
-        this.gpu = null;
-        return false;
-    }
     };
 
 
