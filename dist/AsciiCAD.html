@@ -5735,8 +5735,6 @@ function GASC()
     this.gpu = null;
     this.failed = false;
 
-    this.computeHighlightOverlay.kObject = null;
-
     this.OVERLAY_NONE = 0;
     this.OVERLAY_RED  = 1;
     this.OVERLAY_BLUE = 2;
@@ -5744,6 +5742,8 @@ function GASC()
     this.MAX_RECTS = 4096;
     this.rectScratch = new Float32Array(this.MAX_RECTS * 4);
 
+
+    // 
     this.computeHighlightOverlay = function(rects, rows, cols)
     {
         if (!rects || !rects.length) return null;
@@ -5751,13 +5751,14 @@ function GASC()
         const ret = this.runGPU(
         {   mode: 'gpu'},
         {   output: [cols, rows],
-            loopMaxIterations: this.MAX_RECTS,
-            precision: "single",
+            loopMaxIterations:  this.MAX_RECTS,
+            precision:          "single",
             graphical: false, pipeline: false, immutable: true, dynamicArguments: true,
-            kScript: this.computeHighlightOverlay.kScript,  // <-- input kernel script
-            kObject: this.computeHighlightOverlay.kObject   // --> output kernel object
+            kScript:            this.computeHighlightOverlay.kScript,  // <-- input kernel script
+            kObject:            this.computeHighlightOverlay.kObject   // --> output kernel object
         },
         {"COLS":[cols],"ROWS":[rows]});
+
         if (ret==false) return null;
 
         try
@@ -5772,8 +5773,9 @@ function GASC()
             for (let i = 0; i < rectCount * 4; i++) rectBuf[i] = rects[i];
 
              // caution: this.computeHighlightOverlay.kObject appears to contain string "Error: not enough arguments for kernel"
-             // This is normal behavior. When calling with arguments, GPU kicks in (this.computeHighlightOverlay.kObject object is resides in the GPU, not accessible by CPU)
-            return this.computeHighlightOverlay.kObject(rectBuf, rectCount); 
+             // This is normal behavior. When calling with arguments, GPU kicks in (this.computeHighlightOverlay.kObject object resides in the GPU, not accessible by CPU)
+            const ret = this.computeHighlightOverlay.kObject(rectBuf, rectCount); 
+            return ret;
         }
         catch (e) { console.warn("AsciiCAD GPU overlay kernel failed; falling back to CPU.", e); return null; }
     };
@@ -5805,14 +5807,14 @@ function GASC()
     this.runGPU = function(GPUarg,KERNELarg,config)
     {
         if (this.failed) return false;
-        if (this.gpu) return true;
+        if (this.gpu)    return true;
         try
         {
             // DATA SERIALISATION
             for(var i in config)
             {
-                if(config[i][0].constructor === Uint8Array) oCOM.ser8_ref(i,config[i][0])
-                else oCOM.ser8_val(i,config[i][0],config[i][1]===undefined?undefined:[config[i][1],config[i][2]])
+                if(config[i][0].constructor === Uint8Array) oCOM.ser8_ref(i,config[i][0]);
+                else oCOM.ser8_val(i,config[i][0],config[i][1]===undefined?undefined:[config[i][1],config[i][2]]);
             }
 
             // INSTATIATE GPU CONTAINER & ATTACH TO WINDOW OBJECT
