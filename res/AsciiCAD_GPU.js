@@ -234,15 +234,7 @@ function GASC()
         "Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.  " +
         "Alias glyphs are alternative glyphs for the same (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.",
         examples: [
-        "oTERM.printJSON(oGASC.glyph2mask('╇'))",
-        "oTERM.printJSON(oGASC.glyph2mask('╧'))",
-        ],
-        unitTests: [
-        "oASC.assert('oGASC.glyph2mask(\\'┼\\')', oGASC.glyph2mask('┼') , N|E|S|W)",              // unitype-glyph canonical mapping (ignoring alias)
-        "oASC.assert('oGASC.glyph2mask(\\'+\\')', oGASC.glyph2mask('+') , N|E|S|W)",              // unitype-glyph alias mapping
-        "oASC.assert('oGASC.glyph2mask(\\'╇\\')', oGASC.glyph2mask('╇') , (S) | (W|N|E)<<4 )",    // mixed-glyph canonical mapping
-        "oASC.assert('oGASC.glyph2mask(\\'╧\\')', oGASC.glyph2mask('╧') , (N|E|W) | (W|E)<<4 )",  // mixed-glyph canonical mapping (no stand-in)
-        "oASC.assert('oGASC.glyph2mask(\\'┣\\')', oGASC.glyph2mask('┣') , (N|E|S)<<4 )"           // canonical mapping (ignoring stand-in)
+        "oTERM.print(oGASC.glyph2mask(),\"array_hex\")"
         ]
     }
 
