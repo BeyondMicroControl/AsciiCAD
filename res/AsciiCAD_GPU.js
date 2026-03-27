@@ -516,23 +516,26 @@ this.glyph2mask_x2.kScript = function(ascii16, cfg8)
     return m0 + m1 * 256;
 };
 
-    this.unpackGlyph2Mask_x2 = function(packed2D, rows, cols)
+this.unpackGlyph2Mask_x2 = function(packed2D, rows, cols)
+{
+  const out = new Uint8Array(rows * cols);
+
+  for (let r = 0; r < rows; r++)
+  {
+    const rowBase = r * cols;
+
+    for (let px = 0; px < packed2D[r].length; px++)
     {
-        const out = new Uint8Array(rows * cols);
-        let k = 0;
+      const v = packed2D[r][px] | 0;
+      const c0 = px * 2;
 
-        for (let r = 0; r < rows; r++)
-        {
-            for (let px = 0; px < packed2D[r].length; px++)
-            {
-            const v = packed2D[r][px] | 0;
-            out[k++] = v & 0xFF;
-            if (k < out.length) out[k++] = (v >> 8) & 0xFF;
-            }
-        }
+      if (c0 < cols)       out[rowBase + c0]     =  v       & 0xFF;
+      if (c0 + 1 < cols)   out[rowBase + c0 + 1] = (v >> 8) & 0xFF;
+    }
+  }
 
-        return out;
-    };
+  return out;
+};
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -628,18 +631,25 @@ this.glyph2mask_x3.kScript = function(ascii16, cfg8) {
   return m0 + m1 * 256 + m2 * 65536;
 };
 
-this.unpackGlyph2Mask_x3 = function(packed2D, rows, cols) {
+this.unpackGlyph2Mask_x3 = function(packed2D, rows, cols)
+{
   const out = new Uint8Array(rows * cols);
-  let k = 0;
 
-  for (let r = 0; r < rows; r++) {
-    for (let px = 0; px < packed2D[r].length; px++) {
+  for (let r = 0; r < rows; r++)
+  {
+    const rowBase = r * cols;
+
+    for (let px = 0; px < packed2D[r].length; px++)
+    {
       const v = packed2D[r][px] | 0;
-      if (k < out.length) out[k++] = v & 0xFF;
-      if (k < out.length) out[k++] = (v >> 8) & 0xFF;
-      if (k < out.length) out[k++] = (v >> 16) & 0xFF;
+      const c0 = px * 3;
+
+      if (c0 < cols)       out[rowBase + c0]     =  v        & 0xFF;
+      if (c0 + 1 < cols)   out[rowBase + c0 + 1] = (v >> 8)  & 0xFF;
+      if (c0 + 2 < cols)   out[rowBase + c0 + 2] = (v >> 16) & 0xFF;
     }
   }
+
   return out;
 };
 
