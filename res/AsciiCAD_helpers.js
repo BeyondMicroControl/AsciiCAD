@@ -4342,8 +4342,6 @@ this.startPasteWithText = function(text)
     const redSet = highlightCache ? highlightCache.redSet : null;
     const blueSet = highlightCache ? highlightCache.blueSet : null;
 
-    console.log("globalThis.netHeatMask="+globalThis.netHeatMask);
-
     const activeNetHeatMask = (Number(netHeatMask) || 0) & (N|E|S|W);
     if (activeNetHeatMask)
     {

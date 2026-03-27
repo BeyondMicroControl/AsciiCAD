@@ -370,11 +370,28 @@ function TERMINAL(props)
     resetCommand();
   };
 
-  this.print = function(str)
+  this.print = function(obj,fmt)
   {
-    if (typeof(str) == "object") { this.output("[object]"); return; }
+    var s = "";
+    if(fmt=="array")
+    {
+      var cnt = 0;
+      for(var i in obj) { s+= obj[i].toString()+(cnt%16==15?"\n,":","); cnt++ }
+      s = s.substring(0,s.length-1);
+      this.output("<pre>"+oCOM.escapeHTML("["+s+"]")+"</pre>");
+      return;
+    }
 
-    const s = String(str ?? "");
+    if(fmt=="array_hex")
+    {
+      var cnt = 0;
+      for(var i in obj) { s+= "0x"+obj[i].toString(16).toUpperCase()+(cnt%16==15?"\n,":","); cnt++ }
+      s = s.substring(0,s.length-1);
+      this.output("<pre>"+oCOM.escapeHTML("["+s+"]")+"</pre>");
+      return;
+    }
+
+    s = String(obj ?? "");
     // If it looks like "grid text" (newlines or leading/trailing spaces), render in <pre>
     if (s.includes("\n") || /^\s/.test(s) || /\s$/.test(s)) {
       // Use existing escape helper to avoid HTML injection and keep raw grid text intact
@@ -386,21 +403,24 @@ function TERMINAL(props)
   this.print.help = 
   {
     type: "TERMINAL_Fn",
-    usage: "print(<i>str</i>)",
+    usage: "print(<i>str</i>,<i>fmt</i>)",
     desc: "",
-    examples: ["oTERM.print(\"DONE\")"]    
+    examples: ["oTERM.print(\"DONE\")","oTERM.print([0,1,2,3,4],\"array\")"]    
   }
 
   this.printJSON = function(obj)
   {
-
     this.output(formatForOutput(obj));
 
-      function formatForOutput(v) {
+      function formatForOutput(v) 
+      {
         // already HTML/string: keep as-is
         if (typeof v === "string") return v;
 
         if (typeof v === "array") return "["+v.join(",")+"]";
+
+        if (v instanceof Uint8Array === "array") return "["+v.join(",")+"]";
+
 
         // null/undefined
         if (v == null) return String(v); // \"null\" / \"undefined\"
