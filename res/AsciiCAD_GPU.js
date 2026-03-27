@@ -221,8 +221,6 @@ function GASC()
 
 
 
-
-
     this.glyph2mask = function()
     {
         const ascii16 = oCOM.packAscii16(ascii, ROWS, COLS);
@@ -231,17 +229,23 @@ function GASC()
         const CFG_COLS_HI = 1;
         const CFG_ROWS_LO = 2;
         const CFG_ROWS_HI = 3;
-        const CFG_LUT_BASE = 8;        // leave a few spare bytes for flags later
-        const LUT_CP0 = 0x2500;        // Box Drawing block
-        const LUT_LEN = 0x80;          // 0x2500..0x257F inclusive
+        const CFG_PACK_LO = 4;
+        const CFG_PACK_HI = 5;
+        const CFG_LUT_BASE = 8;
+        const LUT_CP0 = 0x2500;
+        const LUT_LEN = 0x80;
+
+        const packedCols = (COLS + 1) >> 1;
 
         const cfg8 = new Uint8Array(CFG_LUT_BASE + LUT_LEN);
         cfg8[CFG_COLS_LO] = COLS & 0xFF;
         cfg8[CFG_COLS_HI] = (COLS >>> 8) & 0xFF;
         cfg8[CFG_ROWS_LO] = ROWS & 0xFF;
         cfg8[CFG_ROWS_HI] = (ROWS >>> 8) & 0xFF;
+        cfg8[CFG_PACK_LO] = packedCols & 0xFF;
+        cfg8[CFG_PACK_HI] = (packedCols >>> 8) & 0xFF;
 
-        for (let cp = LUT_CP0; cp < LUT_CP0 + LUT_LEN; cp++) 
+        for (let cp = LUT_CP0; cp < LUT_CP0 + LUT_LEN; cp++)
         {
             const ch = String.fromCharCode(cp);
             cfg8[CFG_LUT_BASE + (cp - LUT_CP0)] = oASC.glyph2mask(ch) & 0xFF;
@@ -253,25 +257,29 @@ function GASC()
             this.glyph2mask,
             { mode: "gpu" },
             {
-                output: [COLS, ROWS],
-                precision: "single",
-                graphical: false,
-                pipeline: false,
-                immutable: true,
-                dynamicArguments: true
+            output: [packedCols, ROWS],
+            precision: "single",
+            graphical: false,
+            pipeline: false,
+            immutable: true,
+            dynamicArguments: true
             },
-            {
-                ascii16: [ascii16],
-                cfg8: [cfg8]
-            }
+            { ascii16: [ascii16], cfg8: [cfg8] }
         );
+
         if (ok === false) return null;
 
         try
         {
-            const ret = this.glyph2mask.kObject(ascii16, cfg8);
-            const bytes = new Uint8Array(ret.buffer);
-            return bytes;
+            var ret = this.glyph2mask.kObject(ascii16, cfg8);
+            ret = this.unpackGlyph2Mask2x(ret,ROWS,COLS);
+
+            console.log("CRC="+oCOM.crc32(ret).toString(16));
+
+            // ret[y][x] contains two packed 8-bit masks in one 16-bit value:
+            // low byte = mask at column 2*x
+            // high byte = mask at column 2*x+1
+            return ret;
         }
         catch (e)
         {
@@ -279,6 +287,8 @@ function GASC()
             return null;
         }
     };
+
+
     this.glyph2mask.help =   
     {
         type: "CADScript_FN",
@@ -302,6 +312,7 @@ function GASC()
 
     this.glyph2mask.kObject = null;
 
+
     this.glyph2mask.kScript = function(ascii16, cfg8)
     {
         const cols = cfg8[0] | (cfg8[1] << 8);
@@ -310,17 +321,47 @@ function GASC()
         const LUT_CP1 = 9599; // 0x257F
 
         const r = this.thread.y;
-        const c = this.thread.x;
-        const idx = r * cols + c;
+        const packedX = this.thread.x;
 
-        const ch = ascii16[idx] | 0;
+        const c0 = packedX << 1;
+        const c1 = c0 + 1;
 
-        if (ch < LUT_CP0 || ch > LUT_CP1) return 0;
+        let m0 = 0;
+        let m1 = 0;
 
-        return cfg8[CFG_LUT_BASE + (ch - LUT_CP0)] | 0;
+        const idx0 = r * cols + c0;
+        const ch0 = ascii16[idx0] | 0;
+        if (ch0 >= LUT_CP0 && ch0 <= LUT_CP1)
+            m0 = cfg8[CFG_LUT_BASE + (ch0 - LUT_CP0)] | 0;
+
+        if (c1 < cols)
+        {
+            const idx1 = r * cols + c1;
+            const ch1 = ascii16[idx1] | 0;
+            if (ch1 >= LUT_CP0 && ch1 <= LUT_CP1)
+            m1 = cfg8[CFG_LUT_BASE + (ch1 - LUT_CP0)] | 0;
+        }
+
+        return m0 | (m1 << 8);
     };
 
+    this.unpackGlyph2Mask2x = function(packed2D, rows, cols)
+    {
+        const out = new Uint8Array(rows * cols);
+        let k = 0;
 
+        for (let r = 0; r < rows; r++)
+        {
+            for (let px = 0; px < packed2D[r].length; px++)
+            {
+            const v = packed2D[r][px] | 0;
+            out[k++] = v & 0xFF;
+            if (k < out.length) out[k++] = (v >> 8) & 0xFF;
+            }
+        }
+
+        return out;
+    };
 
 
     this.runGPU = function(kernelFn, GPUarg, kernelArg, config)
