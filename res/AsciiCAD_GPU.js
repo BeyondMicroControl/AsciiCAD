@@ -763,35 +763,62 @@ this.glyph2mask_x4 = function()
         return m0 + m1 * 256 + m2 * 65536 + m3 * 16777216;
     };
 
-    this.unpackGlyph2Mask_x4 = function(packed2D, rows, cols)
+this.unpackGlyph2Mask_x4 = function(packed2D, rows, cols)
+{
+  const out = new Uint8Array(rows * cols);
+
+  for (let r = 0; r < rows; r++)
+  {
+    const rowBase = r * cols;
+
+    for (let px = 0; px < packed2D[r].length; px++)
     {
-        const out = new Uint8Array(rows * cols);
-        let k = 0;
+      const v = Math.round(packed2D[r][px]);
+      const c0 = px * 4;
 
-        for (let r = 0; r < rows; r++)
-        {
-            for (let px = 0; px < packed2D[r].length; px++)
-            {
-            const v = Math.round(packed2D[r][px]);
+      if (c0 < cols)       out[rowBase + c0]     =  v        & 0xFF;
+      if (c0 + 1 < cols)   out[rowBase + c0 + 1] = (v >> 8)  & 0xFF;
+      if (c0 + 2 < cols)   out[rowBase + c0 + 2] = (v >> 16) & 0xFF;
+      if (c0 + 3 < cols)   out[rowBase + c0 + 3] = (v >> 24) & 0xFF;
+    }
+  }
 
-            const b0 =  v         % 256;
-            const b1 = Math.floor(v / 256)      % 256;
-            const b2 = Math.floor(v / 65536)    % 256;
-            const b3 = Math.floor(v / 16777216) % 256;
+  return out;
+};
 
-            if (k < out.length) out[k++] = b0;
-            if (k < out.length) out[k++] = b1;
-            if (k < out.length) out[k++] = b2;
-            if (k < out.length) out[k++] = b3;
-            }
-        }
+function float32ToUint32Bits(f)
+{
+  const buf = new ArrayBuffer(4);
+  const dv = new DataView(buf);
+  dv.setFloat32(0, f, true);      // little-endian
+  return dv.getUint32(0, true);
+}
 
-        return out;
-    };
+this.unpackGlyph2Mask_x4_rawbits = function(packed2D, rows, cols)
+{
+  const out = new Uint8Array(rows * cols);
+
+  for (let r = 0; r < rows; r++)
+  {
+    const rowBase = r * cols;
+
+    for (let px = 0; px < packed2D[r].length; px++)
+    {
+      const bits = float32ToUint32Bits(packed2D[r][px]);
+      const c0 = px * 4;
+
+      if (c0 < cols)       out[rowBase + c0]     =  bits        & 0xFF;
+      if (c0 + 1 < cols)   out[rowBase + c0 + 1] = (bits >> 8)  & 0xFF;
+      if (c0 + 2 < cols)   out[rowBase + c0 + 2] = (bits >> 16) & 0xFF;
+      if (c0 + 3 < cols)   out[rowBase + c0 + 3] = (bits >> 24) & 0xFF;
+    }
+  }
+
+  return out;
+};
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 
     this.runGPU = function(kernelFn, GPUarg, kernelArg, config)
