@@ -223,6 +223,106 @@ function GASC()
 
 
 
+    this.glyph2mask = function()
+    {
+        const ascii16 = oCOM.packAscii16(ascii, ROWS, COLS);
+
+        const CFG_COLS_LO = 0;
+        const CFG_COLS_HI = 1;
+        const CFG_ROWS_LO = 2;
+        const CFG_ROWS_HI = 3;
+        const CFG_LUT_BASE = 8;        // leave a few spare bytes for flags later
+        const LUT_CP0 = 0x2500;        // Box Drawing block
+        const LUT_LEN = 0x80;          // 0x2500..0x257F inclusive
+
+        const cfg8 = new Uint8Array(CFG_LUT_BASE + LUT_LEN);
+        cfg8[CFG_COLS_LO] = COLS & 0xFF;
+        cfg8[CFG_COLS_HI] = (COLS >>> 8) & 0xFF;
+        cfg8[CFG_ROWS_LO] = ROWS & 0xFF;
+        cfg8[CFG_ROWS_HI] = (ROWS >>> 8) & 0xFF;
+
+        for (let cp = LUT_CP0; cp < LUT_CP0 + LUT_LEN; cp++) 
+        {
+            const ch = String.fromCharCode(cp);
+            cfg8[CFG_LUT_BASE + (cp - LUT_CP0)] = oASC.glyph2mask(ch) & 0xFF;
+        }
+
+        if (!ascii16 || !cfg8) return null;
+
+        const ok = this.runGPU(
+            this.glyph2mask,
+            { mode: "gpu" },
+            {
+                output: [COLS, ROWS],
+                precision: "single",
+                graphical: false,
+                pipeline: false,
+                immutable: true,
+                dynamicArguments: true
+            },
+            {
+                ascii16: [ascii16],
+                cfg8: [cfg8]
+            }
+        );
+        if (ok === false) return null;
+
+        try
+        {
+            const ret = this.glyph2mask.kObject(ascii16, cfg8);
+            const bytes = new Uint8Array(ret.buffer);
+            return bytes;
+        }
+        catch (e)
+        {
+            console.warn("AsciiCAD GPU glyph2mask failed.", e);
+            return null;
+        }
+    };
+    this.glyph2mask.help =   
+    {
+        type: "CADScript_FN",
+        usage: "glyph2mask()",
+        desc:
+        "Translate a wire glyph into an 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). " +
+        "Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.  " +
+        "Alias glyphs are alternative glyphs for the same (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.",
+        examples: [
+        "oTERM.printJSON(oGASC.glyph2mask('╇'))",
+        "oTERM.printJSON(oGASC.glyph2mask('╧'))",
+        ],
+        unitTests: [
+        "oASC.assert('oGASC.glyph2mask(\\'┼\\')', oGASC.glyph2mask('┼') , N|E|S|W)",              // unitype-glyph canonical mapping (ignoring alias)
+        "oASC.assert('oGASC.glyph2mask(\\'+\\')', oGASC.glyph2mask('+') , N|E|S|W)",              // unitype-glyph alias mapping
+        "oASC.assert('oGASC.glyph2mask(\\'╇\\')', oGASC.glyph2mask('╇') , (S) | (W|N|E)<<4 )",    // mixed-glyph canonical mapping
+        "oASC.assert('oGASC.glyph2mask(\\'╧\\')', oGASC.glyph2mask('╧') , (N|E|W) | (W|E)<<4 )",  // mixed-glyph canonical mapping (no stand-in)
+        "oASC.assert('oGASC.glyph2mask(\\'┣\\')', oGASC.glyph2mask('┣') , (N|E|S)<<4 )"           // canonical mapping (ignoring stand-in)
+        ]
+    }
+
+    this.glyph2mask.kObject = null;
+
+    this.glyph2mask.kScript = function(ascii16, cfg8)
+    {
+        const cols = cfg8[0] | (cfg8[1] << 8);
+        const CFG_LUT_BASE = 8;
+        const LUT_CP0 = 9472; // 0x2500
+        const LUT_CP1 = 9599; // 0x257F
+
+        const r = this.thread.y;
+        const c = this.thread.x;
+        const idx = r * cols + c;
+
+        const ch = ascii16[idx] | 0;
+
+        if (ch < LUT_CP0 || ch > LUT_CP1) return 0;
+
+        return cfg8[CFG_LUT_BASE + (ch - LUT_CP0)] | 0;
+    };
+
+
+
+
     this.runGPU = function(kernelFn, GPUarg, kernelArg, config)
     {
         if (this.failed) return false;

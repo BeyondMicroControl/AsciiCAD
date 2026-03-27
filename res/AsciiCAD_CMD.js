@@ -400,6 +400,8 @@ function TERMINAL(props)
         // already HTML/string: keep as-is
         if (typeof v === "string") return v;
 
+        if (typeof v === "array") return "["+v.join(",")+"]";
+
         // null/undefined
         if (v == null) return String(v); // \"null\" / \"undefined\"
 
@@ -1999,6 +2001,7 @@ function CMD()
     // We can authorise by prefix, explicit variable names, or just scope all variables in the object 
     this.bind([
       { name: "oASC" ,  exposeAllNonFunctions:true /*constPrefixes: ["BOX_"],*/  /*, explicitKeys: ["BOX_SINGLE","BOX_DOUBLE","BOX_FAT","N","S","E","W"]*/ }
+      ,{ name: "oGASC"  }
       ,{ name: "oCMD"  }
       ,{ name: "oTERM" }
       ,{ name: "oCOM"  }
