@@ -219,11 +219,57 @@ function GASC()
         return state;
     };
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-    this.glyph2mask = function()
+
+   this.glyph2mask = function(pack) 
     {
-        return this.glyph2mask_x2();
+        const ascii16 = oCOM.packAscii16(ascii, ROWS, COLS);
+        const packedCols = pack?pack:1;
+
+        const param_bytes = 8;        // SERIALISE CFG parameters for kernel
+        const cfg8 = new Uint8Array(param_bytes + oASC.G2M_CACHE.length);
+        cfg8[0] = param_bytes;
+        cfg8[1] = COLS & 0xFF; cfg8[2] = (COLS >>> 8) & 0xFF;
+        cfg8[3] = oASC.G2M_LUT_CP0 & 0xFF; cfg8[4] = (oASC.G2M_LUT_CP0 >>> 8) & 0xFF; 
+        cfg8[5] = oASC.G2M_LUT_LEN & 0xFF; cfg8[6] = (oASC.G2M_LUT_LEN >>> 8) & 0xFF;
+        cfg8[7] = packedCols; // columns per packed output
+        cfg8.set(oASC.G2M_CACHE, param_bytes);
+        //oTERM.print(cfg8,"array");
+
+        if (!ascii16 || !cfg8) return null;
+
+        const ok = this.runGPU(
+        this.glyph2mask,
+        { mode: "gpu" },
+        {
+            output: [Math.ceil(COLS/packedCols), ROWS],
+            precision: "single",
+            graphical: false,
+            pipeline: false,
+            immutable: true,
+            dynamicArguments: true
+        },
+        { ascii16: [ascii16], cfg8: [cfg8] }
+        );
+        if (ok === false) return null;
+
+        try 
+        {
+        const ret = this.glyph2mask.kObject(ascii16, cfg8);
+        const bytes = this.unpackGlyph2Mask(ret, ROWS, COLS, packedCols);
+        if(bDebug)
+        {
+            console.log("(x"+packedCols+") ret.length="+ret.length);
+            console.log("(x"+packedCols+") bytes.length="+bytes.length);
+            console.log("(x"+packedCols+") CRC="+oCOM.crc32(bytes).toString(16));
+        }
+        return bytes;
+        } catch (e) { console.warn("AsciiCAD GPU glyph2mask_x3 failed.", e);
+        return null;
+        }
     };
     this.glyph2mask.help =   
     {
@@ -242,27 +288,90 @@ function GASC()
 
     this.glyph2mask.kScript = function(ascii16, cfg8)
     {
-        const COLS = cfg8[0] | (cfg8[1] << 8);
-        const CFG_LUT_BASE = 8;
-        const LUT_CP0 = 9472; // 0x2500
-        const LUT_CP1 = 9599; // 0x257F
+        // DE-SERIALISE CFG parameters
+        const CFG_LUT_BASE  = cfg8[0];
+        const COLS          = cfg8[1] | (cfg8[2] << 8);
+        const G2M_LUT_CP0   = cfg8[3] | (cfg8[4] << 8);
+        const G2M_LUT_LEN   = cfg8[5] | (cfg8[6] << 8);
+        const PAC_LEN       = cfg8[7];
 
-        const r = this.thread.y;
-        const c = this.thread.x;
-        const idx = r * COLS + c;
-        const ch = ascii16[idx] | 0;
+        const G2M_LUT_CP1   = G2M_LUT_CP0 + G2M_LUT_LEN - 1;
+        const r0            = this.thread.y * COLS;
+        const c0            = this.thread.x * PAC_LEN;   // 2 columns per packed output
 
-        if (ch < LUT_CP0 || ch > LUT_CP1) return 0;
-
-        return cfg8[CFG_LUT_BASE + (ch - LUT_CP0)] | 0;
+        for(var i=0, m=0;i<PAC_LEN;i++)
+        {
+            let c = c0 + i;
+            if (c < COLS)
+            {
+                let ch = ascii16[r0 + c] | 0;
+                if (ch >= G2M_LUT_CP0 && ch <= G2M_LUT_CP1)
+                    m = m | ((cfg8[CFG_LUT_BASE + (ch - G2M_LUT_CP0)] | 0) << (i<<3));
+            }
+        }
+        return m;
     };
 
+       // RUN ONCE
+    this.isLittleEndian = (function()
+    {
+        const u16 = new Uint16Array([0x0102]);
+        return new Uint8Array(u16.buffer)[0] === 0x02;
+    })();
+
+    this.unpackGlyph2Mask = function(packed2D, rows, cols, packBytes)
+    {
+        if (packBytes < 1 || packBytes > 3)
+            throw new RangeError("packBytes must be 1, 2, or 3");
+        const out = new Uint8Array(rows * cols);
+
+
+        if (packBytes === 1)        // Fast path for x1
+        {
+            return Uint8Array.from(packed2D.flatMap(row => Array.from(row)))
+            //for (let r = 0, rowBase = 0; r < rows; r++, rowBase += cols) out.set(packed2D[r], rowBase);
+            //return out;
+        }
+
+        // Fast path for x2 on little-endian systems
+        if (packBytes === 2 && this.isLittleEndian)
+        {
+            const packedCols = (cols + 1) >> 1;
+            const tmp16 = new Uint16Array(packedCols);
+            const tmp8  = new Uint8Array(tmp16.buffer);
+
+            for (let r = 0, rowBase = 0; r < rows; r++, rowBase += cols)
+            {
+                const row = packed2D[r];
+                const n = Math.min(row.length, packedCols);
+                tmp16.fill(0);
+                for (let i = 0; i < n; i++) tmp16[i] = row[i];
+                out.set(tmp8.subarray(0, cols), rowBase);
+            }
+            return out;
+        }
+
+        // Generic row-aware scalar path for 2 or 3 bytes
+        for (let r = 0; r < rows; r++)
+        {
+            const row = packed2D[r], rowBase = r * cols;
+            for (let px = 0, c0 = 0; px < row.length; px++, c0 += packBytes)
+            {
+                const v = row[px] | 0;
+                if (c0 < cols) out[rowBase + c0] = v & 0xFF;
+                if (packBytes >= 2 && c0 + 1 < cols) out[rowBase + c0 + 1] = (v >>> 8) & 0xFF;
+                if (packBytes >= 3 && c0 + 2 < cols) out[rowBase + c0 + 2] = (v >>> 16) & 0xFF;
+            }
+        }
+
+        return out;
+    };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-
+/*
     this.glyph2mask_x1 = function()
     {
         const ascii16 = oCOM.packAscii16(ascii, ROWS, COLS);
@@ -383,7 +492,7 @@ function GASC()
         try
         {
             var ret = this.glyph2mask_x2.kObject(ascii16, cfg8);
-            var bytes = this.unpackGlyph2Mask_x2(ret, ROWS, COLS);
+            var bytes = this.unpackGlyph2Mask(ret, ROWS, COLS, packedCols);
             if(bDebug)
             {
                 console.log("(x2) ret.length=" + ret.length);
@@ -419,7 +528,7 @@ function GASC()
             let c = c0 + i;
             if (c < COLS)
             {
-                let ch = ascii16[r0 * COLS + c] | 0;
+                let ch = ascii16[r0 + c] | 0;
                 if (ch >= G2M_LUT_CP0 && ch <= G2M_LUT_CP1)
                     m = m | ((cfg8[CFG_LUT_BASE + (ch - G2M_LUT_CP0)] | 0) << (i<<3));
             }
@@ -427,22 +536,8 @@ function GASC()
         return m;
     };
 
-    this.unpackGlyph2Mask_x2 = function(packed2D, rows, cols)
-    {
-        const out = new Uint8Array(rows * cols);
-        const packedCols = (cols + 1) >> 1;
-        const tmp16 = new Uint16Array(packedCols);
-        const tmp8  = new Uint8Array(tmp16.buffer);
+ 
 
-        for (let r = 0; r < rows; r++)
-        {
-            const row = packed2D[r];   // usually Float32Array from GPU.js
-            tmp16.set(row);            // float32 -> uint16 conversion
-            out.set(tmp8.subarray(0, cols), r * cols);
-        }
-
-        return out;
-    };
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -483,7 +578,7 @@ function GASC()
         try 
         {
         const ret = this.glyph2mask_x3.kObject(ascii16, cfg8);
-        const bytes = this.unpackGlyph2Mask_x3(ret, ROWS, COLS);
+        const bytes = this.unpackGlyph2Mask(ret, ROWS, COLS, 3);
         if(bDebug)
         {
             console.log("(x3) ret.length="+ret.length);
@@ -498,62 +593,33 @@ function GASC()
 
     this.glyph2mask_x3.kObject = null;
 
-    this.glyph2mask_x3.kScript = function(ascii16, cfg8) 
+
+    this.glyph2mask_x3.kScript = function(ascii16, cfg8)
     {
+        // DE-SERIALISE CFG parameters
         const CFG_LUT_BASE  = cfg8[0];
         const COLS          = cfg8[1] | (cfg8[2] << 8);
         const G2M_LUT_CP0   = cfg8[3] | (cfg8[4] << 8);
         const G2M_LUT_LEN   = cfg8[5] | (cfg8[6] << 8);
         const PAC_LEN       = cfg8[7];
-                
+
         const G2M_LUT_CP1   = G2M_LUT_CP0 + G2M_LUT_LEN - 1;
-        const r = this.thread.y;
-        const packedX = this.thread.x;
-        const c0 = packedX * PAC_LEN;
+        const r0            = this.thread.y * COLS;
+        const c0            = this.thread.x * PAC_LEN;   // 2 columns per packed output
 
-        let m0 = 0, m1 = 0, m2 = 0;
-
-        let c = c0;
-        if (c < COLS) {
-            let ch = ascii16[r * COLS + c] | 0;
-            if (ch >= G2M_LUT_CP0 && ch <= G2M_LUT_CP1) m0 = cfg8[CFG_LUT_BASE + (ch - G2M_LUT_CP0)] | 0;
-        }
-
-        c = c0 + 1;
-        if (c < COLS) {
-            let ch = ascii16[r * COLS + c] | 0;
-            if (ch >= G2M_LUT_CP0 && ch <= G2M_LUT_CP1) m1 = cfg8[CFG_LUT_BASE + (ch - G2M_LUT_CP0)] | 0;
-        }
-
-        c = c0 + 2;
-        if (c < COLS) {
-            let ch = ascii16[r * COLS + c] | 0;
-            if (ch >= G2M_LUT_CP0 && ch <= G2M_LUT_CP1) m2 = cfg8[CFG_LUT_BASE + (ch - G2M_LUT_CP0)] | 0;
-        }
-
-        return m0 | (m1 << 8) | (m2 << 16);
-    };
-
-    this.unpackGlyph2Mask_x3 = function(packed2D, rows, cols)
-    {
-        const out = new Uint8Array(rows * cols);
-
-        for (let r = 0; r < rows; r++)
+        for(var i=0, m=0;i<PAC_LEN;i++)
         {
-            const rowBase = r * cols;
-            for (let px = 0; px < packed2D[r].length; px++)
+            let c = c0 + i;
+            if (c < COLS)
             {
-            const v = packed2D[r][px] | 0;
-            const c0 = px * 3;
-
-            if (c0 < cols)       out[rowBase + c0]     =  v        & 0xFF;
-            if (c0 + 1 < cols)   out[rowBase + c0 + 1] = (v >> 8)  & 0xFF;
-            if (c0 + 2 < cols)   out[rowBase + c0 + 2] = (v >> 16) & 0xFF;
+                let ch = ascii16[r0 + c] | 0;
+                if (ch >= G2M_LUT_CP0 && ch <= G2M_LUT_CP1)
+                    m = m | ((cfg8[CFG_LUT_BASE + (ch - G2M_LUT_CP0)] | 0) << (i<<3));
             }
         }
-
-        return out;
+        return m;
     };
+*/
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
