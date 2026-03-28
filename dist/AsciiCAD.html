@@ -6125,31 +6125,22 @@ function GASC()
         const G2M_LUT_CP0   = cfg8[3] | (cfg8[4] << 8);
         const G2M_LUT_LEN   = cfg8[5] | (cfg8[6] << 8);
         const PAC_LEN       = cfg8[7];
-                
+
         const G2M_LUT_CP1   = G2M_LUT_CP0 + G2M_LUT_LEN - 1;
-        const r = this.thread.y;
-        const packedX = this.thread.x;
-        const c0 = packedX * PAC_LEN;   // 2 columns per packed output
+        const r0            = this.thread.y * COLS;
+        const c0            = this.thread.x * PAC_LEN;   // 2 columns per packed output
 
-        let m0 = 0, m1 = 0;
-
-        let c = c0;
-        if (c < COLS) {
-            let ch = ascii16[r * COLS + c] | 0;
-            if (ch >= G2M_LUT_CP0 && ch <= G2M_LUT_CP1) {
-                m0 = cfg8[CFG_LUT_BASE + (ch - G2M_LUT_CP0)] | 0;
+        for(var i=0, m=0;i<PAC_LEN;i++)
+        {
+            let c = c0 + i;
+            if (c < COLS)
+            {
+                let ch = ascii16[r0 * COLS + c] | 0;
+                if (ch >= G2M_LUT_CP0 && ch <= G2M_LUT_CP1)
+                    m = m | ((cfg8[CFG_LUT_BASE + (ch - G2M_LUT_CP0)] | 0) << (i<<3));
             }
         }
-
-        c = c0 + 1;
-        if (c < COLS) {
-            let ch = ascii16[r * COLS + c] | 0;
-            if (ch >= G2M_LUT_CP0 && ch <= G2M_LUT_CP1) {
-                m1 = cfg8[CFG_LUT_BASE + (ch - G2M_LUT_CP0)] | 0;
-            }
-        }
-
-        return m0 | (m1<< 8);
+        return m;
     };
 
     this.unpackGlyph2Mask_x2 = function(packed2D, rows, cols)
