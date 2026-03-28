@@ -222,10 +222,13 @@ function ASC()
 
   // AUTO-LOAD glyph2mask cache
   const codec = getGlyph3Codec();
+
   const LUT_CP0 = 0x2500;        // Box Drawing block
   const LUT_LEN = 0x80;          // 0x2500..0x257F inclusive
-
   this.G2M_CACHE = new Array(LUT_LEN);
+  this.G2M_LUT_CP0 = LUT_CP0;
+  this.G2M_LUT_LEN = LUT_LEN;
+
   for (let cp = LUT_CP0; cp < LUT_CP0 + LUT_LEN; cp++) 
   {
       const ch = String.fromCharCode(cp);
