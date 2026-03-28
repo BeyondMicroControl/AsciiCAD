@@ -298,7 +298,7 @@ let lineStyles = ["single","fat","double"];
 let lineStyleSym = ["│","▌","││"];
 let lineStyleSel = 0;
 
-let lineRoutes = ["MultiLine","Mikami","MikamiBridge","MikamiMultiWorker","A*Span","A*Corner","A*Bridge"];
+let lineRoutes = ["MultiLine","Mikami","MikamiBridge","MikamiMultiWorker","A*Span","A*Corner","A*Bridge","DijkstraSpan","DijkstraCorner","DijkstraBridge"];
 let lineRouteSel = 0;
 
 let schemaHighlightOn = false;
@@ -1865,7 +1865,7 @@ function lineConfig(name)  // translate UI naming into modifiers
           : (lineStyle === "fat"    ? oASC.BOX_FAT 
           : (lineStyle === "single" ? oASC.BOX_SINGLE : oASC.BOX_SINGLE));
 
-  // cases correspond to lineRoutes = ["MultiLine","A*Span","A*Corner","A*Bridge"];
+  // cases correspond to lineRoutes = ["MultiLine","Mikami","MikamiBridge","MikamiMultiWorker","A*Span","A*Corner","A*Bridge","DijkstraSpan","DijkstraCorner","DijkstraBridge"];
   switch(name)
   {
     case "MultiLine":
@@ -1913,6 +1913,29 @@ function lineConfig(name)  // translate UI naming into modifiers
       obj.leastCorners = true;
       obj.leastBridges = true;
     break;
+
+    case "DijkstraSpan":
+      obj.route = true;
+      obj.routeMethod = "dijkstra";
+      obj.leastCorners = false;
+      obj.leastBridges = false;
+    break;
+
+    case "DijkstraCorner":
+      obj.route = true;
+      obj.routeMethod = "dijkstra";
+      obj.leastCorners = true;
+      obj.leastBridges = false;
+    break;
+
+    case "DijkstraBridge":
+      obj.route = true;
+      obj.routeMethod = "dijkstra";
+      obj.leastCorners = true;
+      obj.leastBridges = true;
+    break;
+
+
   }
 
   console.log("lineModeSelector: "+JSON.stringify(obj));

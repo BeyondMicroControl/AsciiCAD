@@ -1073,6 +1073,7 @@ function ASC()
     if (mods.route === true)
     {
       if (method === "mikami" || method === "mikami-mw") return this.mikamiPath(from, to, mods);
+      if (method === "dijkstra") return this.routePathDijkstra(from, to, mods);
       return this.routePathAStar(from, to, mods);
     }
 
@@ -1093,6 +1094,9 @@ function ASC()
 
     if (method === "mikami")
       return this.mikamiPath(from, to, mods);
+
+    if (method === "dijkstra")
+      return this.routePathDijkstra(from, to, mods);
 
     return this.routePathAStar(from, to, mods);
   }
@@ -1587,6 +1591,11 @@ function ASC()
     return [Math.abs(r - to.r) + Math.abs(c - to.c), 0, 0, 0];
   }
 
+  this.routeZeroHeuristic = function()
+  {
+    return [0, 0, 0, 0];
+  }
+
   this.routeMaskToGlyph = function(mask, chset)
   {
     switch (mask)
@@ -1643,7 +1652,7 @@ function ASC()
     return out;
   }
 
-  this.routePathAStar = function(from, to, modifiers)
+  this.routePathSearch = function(from, to, modifiers, heuristicFn)
   {
     if (!from || !to) return [];
     if (from.r === to.r && from.c === to.c) return [];
@@ -1711,7 +1720,7 @@ function ASC()
 
     const startKey = stateKey(from.r, from.c, 0);
     const g0 = [0, 0, 0, 0];
-    const f0 = this.routeAddCost(g0, this.routeHeuristic(from.r, from.c, to));
+    const f0 = this.routeAddCost(g0, heuristicFn.call(this, from.r, from.c, to));
 
     gBest.set(startKey, g0);
     stateByKey.set(startKey, { r: from.r, c: from.c, dir: 0 });
@@ -1778,7 +1787,7 @@ function ASC()
           parent.set(k2, { prevKey: cur.key });
           stateByKey.set(k2, { r: nr, c: nc, dir: d.dir });
 
-          const f2 = this.routeAddCost(g2, this.routeHeuristic(nr, nc, to));
+          const f2 = this.routeAddCost(g2, heuristicFn.call(this, nr, nc, to));
           heapPush({ key: k2, r: nr, c: nc, dir: d.dir, g: g2, f: f2 });
         }
       }
@@ -1788,7 +1797,15 @@ function ASC()
     return this.buildOrthogonalPath(from, to, mods);
   }
 
+  this.routePathAStar = function(from, to, modifiers)
+  {
+    return this.routePathSearch(from, to, modifiers, this.routeHeuristic);
+  }
 
+  this.routePathDijkstra = function(from, to, modifiers)
+  {
+    return this.routePathSearch(from, to, modifiers, this.routeZeroHeuristic);
+  }
 
 
 
@@ -2393,6 +2410,7 @@ this.mikamiPath = function(from, to, modifiers)
   {
     const method = String(modifiers?.routeMethod || modifiers?.routeAlgo || "astar").toLowerCase();
     if (method === "mikami" || method === "mikami-mw") return this.mikamiPath(from, to, modifiers || {});
+    if (method === "dijkstra") return this.routePathDijkstra(from, to, modifiers || {});
     return this.routePathAStar(from, to, modifiers || {});
   }
 
