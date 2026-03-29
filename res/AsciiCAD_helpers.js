@@ -1802,24 +1802,28 @@ function ASC()
     return this.routePathSearch(from, to, modifiers, this.routeHeuristic);
   }
 
-  this.routePathDijkstra = function(from, to, modifiers)
+this.routePathDijkstra = function(from, to, modifiers)
+{
+  const impl = String(modifiers?.routeImpl || "auto").toLowerCase();
+
+  if (impl !== "cpu" &&
+      typeof oGASC !== "undefined" &&
+      oGASC &&
+      typeof oGASC.routePathDijkstra === "function")
   {
-    if (typeof oGASC !== "undefined" &&
-        oGASC &&
-        typeof oGASC.routePathDijkstra === "function")
+    try
     {
-      try
-      {
-        const gpuPath = oGASC.routePathDijkstra(from, to, modifiers || {});
-        if (Array.isArray(gpuPath)) return gpuPath;
-      }
-      catch (err)
-      {
-        console.warn("GPU Dijkstra failed; falling back to CPU.", err);
-      }
+      const gpuPath = oGASC.routePathDijkstra(from, to, modifiers || {});
+      if (Array.isArray(gpuPath)) return gpuPath;
     }
-    return this.routePathSearch(from, to, modifiers, this.routeZeroHeuristic);
+    catch (err)
+    {
+      console.warn("GPU Dijkstra failed; falling back to CPU.", err);
+    }
   }
+
+  return this.routePathSearch(from, to, modifiers, this.routeZeroHeuristic);
+};
 
 
 
@@ -2313,12 +2317,18 @@ this.mikamiPathMultiWorker = async function(from, to, modifiers)
 
 this.mikamiPath = function(from, to, modifiers)
 {
+  const t0 = (typeof performance !== "undefined" && performance.now)
+      ? performance.now()
+      : Date.now();
+
   if (!from || !to) return [];
   if (from.r === to.r && from.c === to.c) return [];
 
   const mods = this.routeNormalizeModifiers(from, to, modifiers);
+  const impl = String(mods?.routeImpl || "auto").toLowerCase();
 
-  if (typeof oGASC !== "undefined" &&
+  if (impl !== "cpu" &&
+      typeof oGASC !== "undefined" &&
       oGASC &&
       typeof oGASC.mikamiPath === "function")
   {
@@ -2428,9 +2438,8 @@ this.mikamiPath = function(from, to, modifiers)
     frontier = nextFrontier;
   }
 
-  // Conservative fallback preserves the previous behavior when no obstacle-avoiding route exists.
   return this.buildOrthogonalPath(from, to, mods);
-}
+};
 
   ///////////////////////////////////////////////////////
 

@@ -1861,27 +1861,36 @@ function lineConfig(name)  // translate UI naming into modifiers
 {
   var obj = {};
   var lineStyle = lineStyles[lineStyleSel];
-  obj.kind = lineStyle === "double" ? oASC.BOX_DOUBLE 
-          : (lineStyle === "fat"    ? oASC.BOX_FAT 
+  obj.kind = lineStyle === "double" ? oASC.BOX_DOUBLE
+          : (lineStyle === "fat"    ? oASC.BOX_FAT
           : (lineStyle === "single" ? oASC.BOX_SINGLE : oASC.BOX_SINGLE));
 
-  // cases correspond to lineRoutes = ["MultiLine","Mikami","MikamiBridge","MikamiWorker","A*Span","A*Corner","A*Bridge","DijkstraSpan","DijkstraCorner","DijkstraBridge"];
   switch(name)
   {
     case "MultiLine":
       obj.route = false;
     break;
 
+    case "Mikami⧉":
+      obj.route = true;
+      obj.routeMethod = "mikami";
+      obj.routeImpl = "gpu";
+      obj.leastCorners = true;
+      obj.leastBridges = false;
+    break;
+
     case "Mikami":
       obj.route = true;
       obj.routeMethod = "mikami";
-      obj.leastCorners = true;   // informational only; Mikami already minimizes bends
+      obj.routeImpl = "cpu";
+      obj.leastCorners = true;
       obj.leastBridges = false;
     break;
 
     case "MikamiBridge":
       obj.route = true;
       obj.routeMethod = "mikami";
+      obj.routeImpl = "cpu";
       obj.leastCorners = true;
       obj.leastBridges = true;
     break;
@@ -1889,13 +1898,15 @@ function lineConfig(name)  // translate UI naming into modifiers
     case "MikamiWorker":
       obj.route = true;
       obj.routeMethod = "mikami-mw";
+      obj.routeImpl = "cpu";
       obj.leastCorners = true;
-      obj.leastBridges = false;     // or true if you want a MikamiWorkerBridge variant later
+      obj.leastBridges = false;
     break;
 
     case "A*Span":
       obj.route = true;
       obj.routeMethod = "astar";
+      obj.routeImpl = "cpu";
       obj.leastCorners = false;
       obj.leastBridges = false;
     break;
@@ -1903,6 +1914,7 @@ function lineConfig(name)  // translate UI naming into modifiers
     case "A*Corner":
       obj.route = true;
       obj.routeMethod = "astar";
+      obj.routeImpl = "cpu";
       obj.leastCorners = true;
       obj.leastBridges = false;
     break;
@@ -1910,13 +1922,23 @@ function lineConfig(name)  // translate UI naming into modifiers
     case "A*Bridge":
       obj.route = true;
       obj.routeMethod = "astar";
+      obj.routeImpl = "cpu";
       obj.leastCorners = true;
       obj.leastBridges = true;
+    break;
+
+    case "Dijkstra⧉":
+      obj.route = true;
+      obj.routeMethod = "dijkstra";
+      obj.routeImpl = "gpu";
+      obj.leastCorners = false;
+      obj.leastBridges = false;
     break;
 
     case "DijkstraSpan":
       obj.route = true;
       obj.routeMethod = "dijkstra";
+      obj.routeImpl = "cpu";
       obj.leastCorners = false;
       obj.leastBridges = false;
     break;
@@ -1924,6 +1946,7 @@ function lineConfig(name)  // translate UI naming into modifiers
     case "DijkstraCorner":
       obj.route = true;
       obj.routeMethod = "dijkstra";
+      obj.routeImpl = "cpu";
       obj.leastCorners = true;
       obj.leastBridges = false;
     break;
@@ -1931,17 +1954,15 @@ function lineConfig(name)  // translate UI naming into modifiers
     case "DijkstraBridge":
       obj.route = true;
       obj.routeMethod = "dijkstra";
+      obj.routeImpl = "cpu";
       obj.leastCorners = true;
       obj.leastBridges = true;
     break;
-
-
   }
 
-  console.log("lineModeSelector: "+JSON.stringify(obj));
+  console.log("lineModeSelector: " + JSON.stringify(obj));
   return obj;
 }
-
 
 
 

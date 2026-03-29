@@ -533,29 +533,43 @@ function GASC()
     };
 
 
-
-
-
     this.routePathDijkstra = function(from, to, modifiers)
     {
-        if (!from || !to) return null;
-        if (from.r === to.r && from.c === to.c) return [];
+        const t0 = (typeof performance !== "undefined" && performance.now)
+            ? performance.now()
+            : Date.now();
 
-        // The first GPU pass is intentionally scoped to the plain shortest-path variant.
-        // More exact corner / bridge tie-breaks still fall back to CPU Dijkstra.
-        if (modifiers?.leastCorners || modifiers?.leastBridges) return null;
+        const debugDone = (ret, note) =>
+        {
+            if (typeof bDebug !== "undefined" && bDebug)
+            {
+                const t1 = (typeof performance !== "undefined" && performance.now)
+                    ? performance.now()
+                    : Date.now();
+                console.log("[GPU] routePathDijkstra() " + (note || "") + " " + (t1 - t0).toFixed(3) + " ms");
+            }
+            return ret;
+        };
 
-        if (!oASC || typeof oASC.routeNormalizeModifiers !== "function") return null;
-        if (!oASC || typeof oASC.routeBuildContext !== "function") return null;
+        if (!from || !to) return debugDone(null, "early-exit(!from||!to)");
+        if (from.r === to.r && from.c === to.c) return debugDone([], "early-exit(same-cell)");
+
+        if (modifiers?.leastCorners || modifiers?.leastBridges)
+            return debugDone(null, "unsupported-modifiers");
+
+        if (!oASC || typeof oASC.routeNormalizeModifiers !== "function")
+            return debugDone(null, "missing-routeNormalizeModifiers");
+        if (!oASC || typeof oASC.routeBuildContext !== "function")
+            return debugDone(null, "missing-routeBuildContext");
 
         const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
         const ctx  = oASC.routeBuildContext(from, to);
 
         const mask8 = this.glyph2mask(1);
-        if (!mask8) return null;
+        if (!mask8) return debugDone(null, "glyph2mask-failed");
 
         const grid = this.routeBuildCellCodeGridFromMask(mask8, ctx, from, to);
-        if (!grid) return null;
+        if (!grid) return debugDone(null, "grid-build-failed");
 
         const cfg16 = new Uint16Array(4);
         cfg16[0] = COLS;
@@ -576,7 +590,7 @@ function GASC()
             },
             { grid: [grid], cfg16: [cfg16] }
         );
-        if (okInit === false) return null;
+        if (okInit === false) return debugDone(null, "kernel-init-compile-failed");
 
         const okStep = this.runGPU(
             this.routePathDijkstraStep,
@@ -591,7 +605,7 @@ function GASC()
             },
             { distPrev: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
         );
-        if (okStep === false) return null;
+        if (okStep === false) return debugDone(null, "kernel-step-compile-failed");
 
         try
         {
@@ -606,16 +620,15 @@ function GASC()
             }
 
             if (!(Number.isFinite(targetDist) && targetDist < this.DIJKSTRA_INF))
-                return null;
+                return debugDone(null, "no-path");
 
             var ret = this.routePathDijkstraBacktrace(dist, grid, from, to, mods);
-            console.log("*** GPU *** routePathDijkstra");
-            return ret;
+            return debugDone(ret, "ok");
         }
         catch (e)
         {
             console.warn("AsciiCAD GPU Dijkstra failed; falling back to CPU.", e);
-            return null;
+            return debugDone(null, "exception");
         }
     };
 
@@ -896,23 +909,40 @@ function GASC()
 
     this.mikamiPath = function(from, to, modifiers)
     {
-        if (!from || !to) return null;
-        if (from.r === to.r && from.c === to.c) return [];
+        const t0 = (typeof performance !== "undefined" && performance.now)
+            ? performance.now()
+            : Date.now();
 
-        // First GPU Mikami pass is deliberately limited to "least bends first".
-        if (modifiers?.leastBridges) return null;
+        const debugDone = (ret, note) =>
+        {
+            if (typeof bDebug !== "undefined" && bDebug)
+            {
+                const t1 = (typeof performance !== "undefined" && performance.now)
+                    ? performance.now()
+                    : Date.now();
+                console.log("[GPU] mikamiPath() " + (note || "") + " " + (t1 - t0).toFixed(3) + " ms");
+            }
+            return ret;
+        };
 
-        if (!oASC || typeof oASC.routeNormalizeModifiers !== "function") return null;
-        if (!oASC || typeof oASC.routeBuildContext !== "function") return null;
+        if (!from || !to) return debugDone(null, "early-exit(!from||!to)");
+        if (from.r === to.r && from.c === to.c) return debugDone([], "early-exit(same-cell)");
+
+        if (modifiers?.leastBridges) return debugDone(null, "unsupported-leastBridges");
+
+        if (!oASC || typeof oASC.routeNormalizeModifiers !== "function")
+            return debugDone(null, "missing-routeNormalizeModifiers");
+        if (!oASC || typeof oASC.routeBuildContext !== "function")
+            return debugDone(null, "missing-routeBuildContext");
 
         const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
         const ctx  = oASC.routeBuildContext(from, to);
 
         const mask8 = this.glyph2mask(1);
-        if (!mask8) return null;
+        if (!mask8) return debugDone(null, "glyph2mask-failed");
 
         const grid = this.routeBuildCellCodeGridFromMask(mask8, ctx, from, to);
-        if (!grid) return null;
+        if (!grid) return debugDone(null, "grid-build-failed");
 
         const cfg16 = new Uint16Array(8);
         cfg16[0] = COLS;
@@ -938,7 +968,7 @@ function GASC()
             },
             { grid: [grid], cfg16: [cfg16] }
         );
-        if (okInitH === false) return null;
+        if (okInitH === false) return debugDone(null, "kernel-initH-compile-failed");
 
         const okInitV = this.runGPU(
             this.mikamiInitV,
@@ -954,7 +984,7 @@ function GASC()
             },
             { grid: [grid], cfg16: [cfg16] }
         );
-        if (okInitV === false) return null;
+        if (okInitV === false) return debugDone(null, "kernel-initV-compile-failed");
 
         const okStepH = this.runGPU(
             this.mikamiStepH,
@@ -970,7 +1000,7 @@ function GASC()
             },
             { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
         );
-        if (okStepH === false) return null;
+        if (okStepH === false) return debugDone(null, "kernel-stepH-compile-failed");
 
         const okStepV = this.runGPU(
             this.mikamiStepV,
@@ -986,7 +1016,7 @@ function GASC()
             },
             { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
         );
-        if (okStepV === false) return null;
+        if (okStepV === false) return debugDone(null, "kernel-stepV-compile-failed");
 
         try
         {
@@ -995,7 +1025,7 @@ function GASC()
 
             let bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
             if (bestAxis)
-                return this.mikamiBacktrace(h, v, grid, from, to, mods);
+                return debugDone(this.mikamiBacktrace(h, v, grid, from, to, mods), "ok-direct");
 
             for (let iter = 0; iter < (ROWS + COLS); iter++)
             {
@@ -1006,15 +1036,15 @@ function GASC()
 
                 bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
                 if (bestAxis)
-                    return this.mikamiBacktrace(h, v, grid, from, to, mods);
+                    return debugDone(this.mikamiBacktrace(h, v, grid, from, to, mods), "ok-iter");
             }
-            console.log("*** GPU *** mikamiPath");
-            return null;
+
+            return debugDone(null, "no-path");
         }
         catch (e)
         {
             console.warn("AsciiCAD GPU Mikami failed; falling back to CPU.", e);
-            return null;
+            return debugDone(null, "exception");
         }
     };
 
