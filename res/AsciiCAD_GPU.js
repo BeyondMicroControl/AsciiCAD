@@ -225,7 +225,7 @@ function GASC()
 
 
    this.glyph2mask = function(pack) 
-    {
+   {
         const ascii16 = oCOM.packAscii16(ascii, ROWS, COLS);
         const packedCols = pack?pack:1;
 
@@ -608,7 +608,9 @@ function GASC()
             if (!(Number.isFinite(targetDist) && targetDist < this.DIJKSTRA_INF))
                 return null;
 
-            return this.routePathDijkstraBacktrace(dist, grid, from, to, mods);
+            var ret = this.routePathDijkstraBacktrace(dist, grid, from, to, mods);
+            console.log("*** GPU *** routePathDijkstra");
+            return ret;
         }
         catch (e)
         {
@@ -631,10 +633,6 @@ function GASC()
     this.routePathDijkstraInit = function() {};
     this.routePathDijkstraStep = function() {};
 
-    this.mikamiInitH = function() {};
-    this.mikamiInitV = function() {};
-    this.mikamiStepH = function() {};
-    this.mikamiStepV = function() {};
 
     this.routePathDijkstraInit.kObject = null;
 
@@ -1010,7 +1008,7 @@ function GASC()
                 if (bestAxis)
                     return this.mikamiBacktrace(h, v, grid, from, to, mods);
             }
-
+            console.log("*** GPU *** mikamiPath");
             return null;
         }
         catch (e)
@@ -1052,9 +1050,9 @@ function GASC()
         if (!(code === 1 || code === 3)) return INF;
 
         const step = c > srcC ? 1 : -1;
-        for (let x = srcC + step; x !== c + step; x += step)
+        for (let cc2 = srcC + step; cc2 !== c + step; cc2 += step)
         {
-            const k = grid[r * cols + x] | 0;
+            const k = grid[r * cols + cc2] | 0;
             if (!(k === 1 || k === 3)) return INF;
         }
 
@@ -1079,9 +1077,9 @@ function GASC()
         if (!(code === 1 || code === 2)) return INF;
 
         const step = r > srcR ? 1 : -1;
-        for (let y = srcR + step; y !== r + step; y += step)
+        for (let rr2 = srcR + step; rr2 !== r + step; rr2 += step)
         {
-            const k = grid[y * cols + c] | 0;
+            const k = grid[rr2 * cols + c] | 0;
             if (!(k === 1 || k === 2)) return INF;
         }
 
@@ -1104,11 +1102,11 @@ function GASC()
         let best = selfAxis[r][c];
         let cand = 0;
 
-        for (let x = c - 1; x >= 0; x--)
+        for (let cc2 = c - 1; cc2 >= 0; cc2--)
         {
-            const k = grid[r * cols + x] | 0;
+            const k = grid[r * cols + cc2] | 0;
             if (!(k === 1 || k === 3)) break;
-            cand = prevAxis[r][x];
+            cand = prevAxis[r][cc2];
             if (cand < INF)
             {
                 cand = cand + 1;
@@ -1116,11 +1114,11 @@ function GASC()
             }
         }
 
-        for (let x = c + 1; x < cols; x++)
+        for (let cc2 = c + 1; cc2 < cols; cc2++)
         {
-            const k = grid[r * cols + x] | 0;
+            const k = grid[r * cols + cc2] | 0;
             if (!(k === 1 || k === 3)) break;
-            cand = prevAxis[r][x];
+            cand = prevAxis[r][cc2];
             if (cand < INF)
             {
                 cand = cand + 1;
@@ -1148,11 +1146,11 @@ function GASC()
         let best = selfAxis[r][c];
         let cand = 0;
 
-        for (let y = r - 1; y >= 0; y--)
+        for (let rr2 = r - 1; rr2 >= 0; rr2--)
         {
-            const k = grid[y * cols + c] | 0;
+            const k = grid[rr2 * cols + c] | 0;
             if (!(k === 1 || k === 2)) break;
-            cand = prevAxis[y][c];
+            cand = prevAxis[rr2][c];
             if (cand < INF)
             {
                 cand = cand + 1;
@@ -1160,11 +1158,11 @@ function GASC()
             }
         }
 
-        for (let y = r + 1; y < rows; y++)
+        for (let rr2 = r + 1; rr2 < rows; rr2++)
         {
-            const k = grid[y * cols + c] | 0;
+            const k = grid[rr2 * cols + c] | 0;
             if (!(k === 1 || k === 2)) break;
-            cand = prevAxis[y][c];
+            cand = prevAxis[rr2][c];
             if (cand < INF)
             {
                 cand = cand + 1;
