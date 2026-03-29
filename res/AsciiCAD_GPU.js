@@ -702,8 +702,460 @@ function GASC()
         return best;
     };
 
+
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    this.MIKAMI_INF = 65535;
+
+    this.routePathMikamiCanEnterH = function(code)
+    {
+        code = code | 0;
+        return code === 1 || code === 3;   // free / terminal OR wire_v bridge cell
+    };
+
+    this.routePathMikamiCanEnterV = function(code)
+    {
+        code = code | 0;
+        return code === 1 || code === 2;   // free / terminal OR wire_h bridge cell
+    };
+
+    this.mikamiBacktraceOrder = function(modifiers)
+    {
+        const verticalFirst = !!modifiers?.startVertical;
+        if (verticalFirst)
+        {
+            return {
+                H: [ { dc: -1 }, { dc: 1 } ],
+                V: [ { dr: -1 }, { dr: 1 } ]
+            };
+        }
+
+        return {
+            H: [ { dc: 1 }, { dc: -1 } ],
+            V: [ { dr: 1 }, { dr: -1 } ]
+        };
+    };
+
+    this.mikamiChooseTargetAxis = function(h2D, v2D, to, modifiers)
+    {
+        const h = h2D?.[to.r]?.[to.c];
+        const v = v2D?.[to.r]?.[to.c];
+        const INF = this.MIKAMI_INF;
+        const hf = Number.isFinite(h) && h < INF;
+        const vf = Number.isFinite(v) && v < INF;
+
+        if (hf && !vf) return "H";
+        if (vf && !hf) return "V";
+        if (!hf && !vf) return null;
+        if (h < v) return "H";
+        if (v < h) return "V";
+        return modifiers?.startVertical ? "V" : "H";
+    };
+
+    this.mikamiPathClearH = function(grid, r, c0, c1)
+    {
+        const step = c1 >= c0 ? 1 : -1;
+        for (let c = c0 + step; c !== c1 + step; c += step)
+        {
+            const code = grid[r * COLS + c] | 0;
+            if (!this.routePathMikamiCanEnterH(code)) return false;
+        }
+        return true;
+    };
+
+    this.mikamiPathClearV = function(grid, c, r0, r1)
+    {
+        const step = r1 >= r0 ? 1 : -1;
+        for (let r = r0 + step; r !== r1 + step; r += step)
+        {
+            const code = grid[r * COLS + c] | 0;
+            if (!this.routePathMikamiCanEnterV(code)) return false;
+        }
+        return true;
+    };
+
+    this.mikamiBacktrace = function(hState, vState, grid, from, to, modifiers)
+    {
+        const h2D = (hState && typeof hState.toArray === "function") ? hState.toArray() : hState;
+        const v2D = (vState && typeof vState.toArray === "function") ? vState.toArray() : vState;
+        if (!h2D || !v2D || !grid) return null;
+
+        let axis = this.mikamiChooseTargetAxis(h2D, v2D, to, modifiers);
+        if (!axis) return null;
+
+        const order = this.mikamiBacktraceOrder(modifiers);
+        const states = [ { r: to.r, c: to.c } ];
+        let curR = to.r;
+        let curC = to.c;
+        let level = axis === "H" ? h2D[curR][curC] : v2D[curR][curC];
+        let guard = ROWS * COLS * 2;
+
+        while ((curR !== from.r || curC !== from.c) && guard-- > 0)
+        {
+            let found = null;
+
+            if (axis === "H")
+            {
+                const tries = order.H;
+
+                if (level === 0)
+                {
+                    if (curR === from.r && this.mikamiPathClearH(grid, curR, from.c, curC))
+                    {
+                        found = { r: from.r, c: from.c, nextAxis: null, nextLevel: -1 };
+                    }
+                }
+
+                if (!found)
+                {
+                    for (let i = 0; i < tries.length && !found; i++)
+                    {
+                        const step = tries[i].dc;
+                        for (let c = curC - step; c >= 0 && c < COLS; c -= step)
+                        {
+                            if (!this.mikamiPathClearH(grid, curR, c, curC)) break;
+                            const prevV = v2D?.[curR]?.[c];
+                            if (Number.isFinite(prevV) && prevV === (level - 1))
+                            {
+                                found = { r: curR, c, nextAxis: "V", nextLevel: prevV };
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                const tries = order.V;
+
+                if (level === 0)
+                {
+                    if (curC === from.c && this.mikamiPathClearV(grid, curC, from.r, curR))
+                    {
+                        found = { r: from.r, c: from.c, nextAxis: null, nextLevel: -1 };
+                    }
+                }
+
+                if (!found)
+                {
+                    for (let i = 0; i < tries.length && !found; i++)
+                    {
+                        const step = tries[i].dr;
+                        for (let r = curR - step; r >= 0 && r < ROWS; r -= step)
+                        {
+                            if (!this.mikamiPathClearV(grid, curC, r, curR)) break;
+                            const prevH = h2D?.[r]?.[curC];
+                            if (Number.isFinite(prevH) && prevH === (level - 1))
+                            {
+                                found = { r, c: curC, nextAxis: "H", nextLevel: prevH };
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!found) return null;
+
+            if (found.r === from.r && found.c === from.c)
+            {
+                states.push({ r: from.r, c: from.c });
+                break;
+            }
+
+            states.push({ r: found.r, c: found.c });
+            curR = found.r;
+            curC = found.c;
+            axis = found.nextAxis;
+            level = found.nextLevel;
+        }
+
+        if (guard <= 0) return null;
+
+        states.reverse();
+        return oASC.routeStatesToPath(states, modifiers);
+    };
+
+    this.mikamiPath = function(from, to, modifiers)
+    {
+        if (!from || !to) return null;
+        if (from.r === to.r && from.c === to.c) return [];
+
+        // First GPU Mikami pass is deliberately limited to "least bends first".
+        if (modifiers?.leastBridges) return null;
+
+        if (!oASC || typeof oASC.routeNormalizeModifiers !== "function") return null;
+        if (!oASC || typeof oASC.routeBuildContext !== "function") return null;
+
+        const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
+        const ctx  = oASC.routeBuildContext(from, to);
+
+        const mask8 = this.glyph2mask(1);
+        if (!mask8) return null;
+
+        const grid = this.routeBuildCellCodeGridFromMask(mask8, ctx, from, to);
+        if (!grid) return null;
+
+        const cfg16 = new Uint16Array(8);
+        cfg16[0] = COLS;
+        cfg16[1] = ROWS;
+        cfg16[2] = from.c;
+        cfg16[3] = from.r;
+        cfg16[4] = to.c;
+        cfg16[5] = to.r;
+        cfg16[6] = mods.startVertical ? 1 : 0;
+        cfg16[7] = this.MIKAMI_INF;
+
+        const okInitH = this.runGPU(
+            this.mikamiInitH,
+            { mode: "gpu" },
+            {
+                output: [COLS, ROWS],
+                precision: "single",
+                graphical: false,
+                pipeline: true,
+                immutable: true,
+                dynamicArguments: true,
+                loopMaxIterations: COLS
+            },
+            { grid: [grid], cfg16: [cfg16] }
+        );
+        if (okInitH === false) return null;
+
+        const okInitV = this.runGPU(
+            this.mikamiInitV,
+            { mode: "gpu" },
+            {
+                output: [COLS, ROWS],
+                precision: "single",
+                graphical: false,
+                pipeline: true,
+                immutable: true,
+                dynamicArguments: true,
+                loopMaxIterations: ROWS
+            },
+            { grid: [grid], cfg16: [cfg16] }
+        );
+        if (okInitV === false) return null;
+
+        const okStepH = this.runGPU(
+            this.mikamiStepH,
+            { mode: "gpu" },
+            {
+                output: [COLS, ROWS],
+                precision: "single",
+                graphical: false,
+                pipeline: true,
+                immutable: true,
+                dynamicArguments: true,
+                loopMaxIterations: COLS
+            },
+            { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
+        );
+        if (okStepH === false) return null;
+
+        const okStepV = this.runGPU(
+            this.mikamiStepV,
+            { mode: "gpu" },
+            {
+                output: [COLS, ROWS],
+                precision: "single",
+                graphical: false,
+                pipeline: true,
+                immutable: true,
+                dynamicArguments: true,
+                loopMaxIterations: ROWS
+            },
+            { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
+        );
+        if (okStepV === false) return null;
+
+        try
+        {
+            let h = this.mikamiInitH.kObject(grid, cfg16);
+            let v = this.mikamiInitV.kObject(grid, cfg16);
+
+            let bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
+            if (bestAxis)
+                return this.mikamiBacktrace(h, v, grid, from, to, mods);
+
+            for (let iter = 0; iter < (ROWS + COLS); iter++)
+            {
+                const h2 = this.mikamiStepH.kObject(v, h, grid, cfg16);
+                const v2 = this.mikamiStepV.kObject(h2, v, grid, cfg16);
+                h = h2;
+                v = v2;
+
+                bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
+                if (bestAxis)
+                    return this.mikamiBacktrace(h, v, grid, from, to, mods);
+            }
+
+            return null;
+        }
+        catch (e)
+        {
+            console.warn("AsciiCAD GPU Mikami failed; falling back to CPU.", e);
+            return null;
+        }
+    };
+
+    this.mikamiPath.help =
+    {
+        type: "CADScript_FN",
+        usage: "mikamiPath(from,to,modifiers)",
+        desc:
+            "Tentative GPU.js Mikami-style router. " +
+            "Uses the same outer signature as the CPU Mikami router and is intentionally limited to least-bends-first behavior in this first GPU pass."
+    };
+
+    this.mikamiInitH.kObject = null;
+    this.mikamiInitH.kScript = function(grid, cfg16)
+    {
+        const cols = cfg16[0] | 0;
+        const srcC = cfg16[2] | 0;
+        const srcR = cfg16[3] | 0;
+        const INF  = cfg16[7] | 0;
+
+        const r = this.thread.y;
+        const c = this.thread.x;
+        const idx = r * cols + c;
+        const code = grid[idx] | 0;
+
+        if (r !== srcR) return INF;
+        if (r === srcR && c === srcC) return 0;
+        if (!(code === 1 || code === 3)) return INF;
+
+        const step = c > srcC ? 1 : -1;
+        for (let x = srcC + step; x !== c + step; x += step)
+        {
+            const k = grid[r * cols + x] | 0;
+            if (!(k === 1 || k === 3)) return INF;
+        }
+
+        return 0;
+    };
+
+    this.mikamiInitV.kObject = null;
+    this.mikamiInitV.kScript = function(grid, cfg16)
+    {
+        const cols = cfg16[0] | 0;
+        const srcC = cfg16[2] | 0;
+        const srcR = cfg16[3] | 0;
+        const INF  = cfg16[7] | 0;
+
+        const r = this.thread.y;
+        const c = this.thread.x;
+        const idx = r * cols + c;
+        const code = grid[idx] | 0;
+
+        if (c !== srcC) return INF;
+        if (r === srcR && c === srcC) return 0;
+        if (!(code === 1 || code === 2)) return INF;
+
+        const step = r > srcR ? 1 : -1;
+        for (let y = srcR + step; y !== r + step; y += step)
+        {
+            const k = grid[y * cols + c] | 0;
+            if (!(k === 1 || k === 2)) return INF;
+        }
+
+        return 0;
+    };
+
+    this.mikamiStepH.kObject = null;
+    this.mikamiStepH.kScript = function(prevAxis, selfAxis, grid, cfg16)
+    {
+        const cols = cfg16[0] | 0;
+        const INF  = cfg16[7] | 0;
+
+        const r = this.thread.y;
+        const c = this.thread.x;
+        const idx = r * cols + c;
+        const code = grid[idx] | 0;
+
+        if (!(code === 1 || code === 3)) return INF;
+
+        let best = selfAxis[r][c];
+        let cand = 0;
+
+        for (let x = c - 1; x >= 0; x--)
+        {
+            const k = grid[r * cols + x] | 0;
+            if (!(k === 1 || k === 3)) break;
+            cand = prevAxis[r][x];
+            if (cand < INF)
+            {
+                cand = cand + 1;
+                if (cand < best) best = cand;
+            }
+        }
+
+        for (let x = c + 1; x < cols; x++)
+        {
+            const k = grid[r * cols + x] | 0;
+            if (!(k === 1 || k === 3)) break;
+            cand = prevAxis[r][x];
+            if (cand < INF)
+            {
+                cand = cand + 1;
+                if (cand < best) best = cand;
+            }
+        }
+
+        return best;
+    };
+
+    this.mikamiStepV.kObject = null;
+    this.mikamiStepV.kScript = function(prevAxis, selfAxis, grid, cfg16)
+    {
+        const cols = cfg16[0] | 0;
+        const rows = cfg16[1] | 0;
+        const INF  = cfg16[7] | 0;
+
+        const r = this.thread.y;
+        const c = this.thread.x;
+        const idx = r * cols + c;
+        const code = grid[idx] | 0;
+
+        if (!(code === 1 || code === 2)) return INF;
+
+        let best = selfAxis[r][c];
+        let cand = 0;
+
+        for (let y = r - 1; y >= 0; y--)
+        {
+            const k = grid[y * cols + c] | 0;
+            if (!(k === 1 || k === 2)) break;
+            cand = prevAxis[y][c];
+            if (cand < INF)
+            {
+                cand = cand + 1;
+                if (cand < best) best = cand;
+            }
+        }
+
+        for (let y = r + 1; y < rows; y++)
+        {
+            const k = grid[y * cols + c] | 0;
+            if (!(k === 1 || k === 2)) break;
+            cand = prevAxis[y][c];
+            if (cand < INF)
+            {
+                cand = cand + 1;
+                if (cand < best) best = cand;
+            }
+        }
+
+        return best;
+    };
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 
     this.runGPU = function(kernelFn, GPUarg, kernelArg, config)

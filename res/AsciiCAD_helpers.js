@@ -2317,6 +2317,22 @@ this.mikamiPath = function(from, to, modifiers)
   if (from.r === to.r && from.c === to.c) return [];
 
   const mods = this.routeNormalizeModifiers(from, to, modifiers);
+
+  if (typeof oGASC !== "undefined" &&
+      oGASC &&
+      typeof oGASC.mikamiPath === "function")
+  {
+    try
+    {
+      const gpuPath = oGASC.mikamiPath(from, to, mods);
+      if (Array.isArray(gpuPath)) return gpuPath;
+    }
+    catch (err)
+    {
+      console.warn("GPU Mikami failed; falling back to CPU.", err);
+    }
+  }
+
   const ctx  = this.routeBuildContext(from, to);
 
   const root = {
