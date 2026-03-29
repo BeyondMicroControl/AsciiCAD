@@ -6850,7 +6850,7 @@ function GASC()
         return 0;
     };
 
-    this.mikamiStepH.kObject = null;
+   this.mikamiStepH.kObject = null;
     this.mikamiStepH.kScript = function(prevAxis, selfAxis, grid, cfg16)
     {
         const cols = cfg16[0] | 0;
@@ -6866,11 +6866,11 @@ function GASC()
         let best = selfAxis[r][c];
         let cand = 0;
 
-        for (let cc2 = c - 1; cc2 >= 0; cc2--)
+        for (let ccLeft = c - 1; ccLeft >= 0; ccLeft--)
         {
-            const k = grid[r * cols + cc2] | 0;
+            const k = grid[r * cols + ccLeft] | 0;
             if (!(k === 1 || k === 3)) break;
-            cand = prevAxis[r][cc2];
+            cand = prevAxis[r][ccLeft];
             if (cand < INF)
             {
                 cand = cand + 1;
@@ -6878,11 +6878,11 @@ function GASC()
             }
         }
 
-        for (let cc2 = c + 1; cc2 < cols; cc2++)
+        for (let ccRight = c + 1; ccRight < cols; ccRight++)
         {
-            const k = grid[r * cols + cc2] | 0;
+            const k = grid[r * cols + ccRight] | 0;
             if (!(k === 1 || k === 3)) break;
-            cand = prevAxis[r][cc2];
+            cand = prevAxis[r][ccRight];
             if (cand < INF)
             {
                 cand = cand + 1;
@@ -6910,11 +6910,11 @@ function GASC()
         let best = selfAxis[r][c];
         let cand = 0;
 
-        for (let rr2 = r - 1; rr2 >= 0; rr2--)
+        for (let rrUp = r - 1; rrUp >= 0; rrUp--)
         {
-            const k = grid[rr2 * cols + c] | 0;
+            const k = grid[rrUp * cols + c] | 0;
             if (!(k === 1 || k === 2)) break;
-            cand = prevAxis[rr2][c];
+            cand = prevAxis[rrUp][c];
             if (cand < INF)
             {
                 cand = cand + 1;
@@ -6922,11 +6922,11 @@ function GASC()
             }
         }
 
-        for (let rr2 = r + 1; rr2 < rows; rr2++)
+        for (let rrDown = r + 1; rrDown < rows; rrDown++)
         {
-            const k = grid[rr2 * cols + c] | 0;
+            const k = grid[rrDown * cols + c] | 0;
             if (!(k === 1 || k === 2)) break;
-            cand = prevAxis[rr2][c];
+            cand = prevAxis[rrDown][c];
             if (cand < INF)
             {
                 cand = cand + 1;
