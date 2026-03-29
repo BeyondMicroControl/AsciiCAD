@@ -1804,6 +1804,20 @@ function ASC()
 
   this.routePathDijkstra = function(from, to, modifiers)
   {
+    if (typeof oGASC !== "undefined" &&
+        oGASC &&
+        typeof oGASC.routePathDijkstra === "function")
+    {
+      try
+      {
+        const gpuPath = oGASC.routePathDijkstra(from, to, modifiers || {});
+        if (Array.isArray(gpuPath)) return gpuPath;
+      }
+      catch (err)
+      {
+        console.warn("GPU Dijkstra failed; falling back to CPU.", err);
+      }
+    }
     return this.routePathSearch(from, to, modifiers, this.routeZeroHeuristic);
   }
 
