@@ -6296,6 +6296,10 @@ function GASC()
         return oASC.routeStatesToPath(states, modifiers);
     };
 
+
+
+
+
     this.routePathDijkstra = function(from, to, modifiers)
     {
         if (!from || !to) return null;
@@ -6387,7 +6391,17 @@ function GASC()
             "returns null when unavailable or when modifiers require the exact CPU tie-break behavior."
     };
 
+
+    this.routePathDijkstraInit = function() {};
+    this.routePathDijkstraStep = function() {};
+
+    this.mikamiInitH = function() {};
+    this.mikamiInitV = function() {};
+    this.mikamiStepH = function() {};
+    this.mikamiStepV = function() {};
+
     this.routePathDijkstraInit.kObject = null;
+
     this.routePathDijkstraInit.kScript = function(grid, cfg16)
     {
         const srcC = cfg16[2] | 0;
@@ -6470,6 +6484,9 @@ function GASC()
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 
 
     this.MIKAMI_INF = 65535;
@@ -6775,6 +6792,11 @@ function GASC()
             "Tentative GPU.js Mikami-style router. " +
             "Uses the same outer signature as the CPU Mikami router and is intentionally limited to least-bends-first behavior in this first GPU pass."
     };
+
+    this.mikamiInitH = function() {};
+    this.mikamiInitV = function() {};
+    this.mikamiStepH = function() {};
+    this.mikamiStepV = function() {};
 
     this.mikamiInitH.kObject = null;
     this.mikamiInitH.kScript = function(grid, cfg16)
