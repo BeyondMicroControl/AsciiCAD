@@ -2317,10 +2317,7 @@ this.mikamiPathMultiWorker = async function(from, to, modifiers)
 
 this.mikamiPath = function(from, to, modifiers)
 {
-  const t0 = (typeof performance !== "undefined" && performance.now)
-      ? performance.now()
-      : Date.now();
-
+  
   if (!from || !to) return [];
   if (from.r === to.r && from.c === to.c) return [];
 
