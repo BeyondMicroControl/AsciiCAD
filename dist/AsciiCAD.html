@@ -2951,6 +2951,20 @@ function ASC()
 
   this.routePathDijkstra = function(from, to, modifiers)
   {
+    if (typeof oGASC !== "undefined" &&
+        oGASC &&
+        typeof oGASC.routePathDijkstra === "function")
+    {
+      try
+      {
+        const gpuPath = oGASC.routePathDijkstra(from, to, modifiers || {});
+        if (Array.isArray(gpuPath)) return gpuPath;
+      }
+      catch (err)
+      {
+        console.warn("GPU Dijkstra failed; falling back to CPU.", err);
+      }
+    }
     return this.routePathSearch(from, to, modifiers, this.routeZeroHeuristic);
   }
 
@@ -6101,6 +6115,340 @@ function GASC()
         return out;
     };
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    this.DIJKSTRA_INF = 16777215;
+
+    this.routeCellCodeFromMask = function(m8, ch, isBanned, isTerminal)
+    {
+        const N = 1, E = 2, S = 4, W = 8;
+
+        if (isTerminal) return 1;
+        if (isBanned) return 0;
+        if (ch === " ") return 1;
+
+        const v = (m8 | 0) & 0xFF;
+        if (v === 0) return 0;                        // labels / text / unknown glyphs
+
+        const lo = v & 15;
+        const hi = (v >> 4) & 15;
+
+        if (hi !== 0 && lo === 0) return 0;          // fat wire => obstacle
+        if (lo !== 0 && lo === hi) return 0;         // double wire => obstacle
+
+        const dir = (lo | hi) & 15;
+        const deg =
+            ((dir & N) ? 1 : 0) +
+            ((dir & E) ? 1 : 0) +
+            ((dir & S) ? 1 : 0) +
+            ((dir & W) ? 1 : 0);
+
+        if (deg === 2 && dir === (E | W)) return 2;  // wire_h
+        if (deg === 2 && dir === (N | S)) return 3;  // wire_v
+        return 0;                                     // corners / tees / crosses / mixeds => obstacle
+    };
+
+    this.routeBuildCellCodeGridFromMask = function(mask8, ctx, from, to)
+    {
+        if (!mask8) return null;
+
+        const grid = new Uint8Array(ROWS * COLS);
+        let i = 0;
+
+        for (let r = 0; r < ROWS; r++)
+        {
+            for (let c = 0; c < COLS; c++, i++)
+            {
+                const isTerminal = (r === from.r && c === from.c) || (r === to.r && c === to.c);
+                const isBanned = !!ctx?.banned?.has?.(r + "," + c);
+                const ch = ascii?.[r]?.[c] ?? " ";
+                grid[i] = this.routeCellCodeFromMask(mask8[i], ch, isBanned, isTerminal);
+            }
+        }
+
+        return grid;
+    };
+
+    this.routePathDijkstraCanEnter = function(code, dir)
+    {
+        const N = 1, E = 2, S = 4, W = 8;
+        code = code | 0;
+        if (code === 1) return true;                         // free / terminal
+        if (code === 2) return (dir === N || dir === S);    // wire_h, vertical crossing
+        if (code === 3) return (dir === E || dir === W);    // wire_v, horizontal crossing
+        return false;
+    };
+
+    this.routePathDijkstraBacktraceOrder = function(modifiers)
+    {
+        const N = 1, E = 2, S = 4, W = 8;
+
+        if (modifiers?.startVertical)
+        {
+            return [
+                { dr: -1, dc:  0, dir: S },
+                { dr:  1, dc:  0, dir: N },
+                { dr:  0, dc: -1, dir: E },
+                { dr:  0, dc:  1, dir: W }
+            ];
+        }
+
+        return [
+            { dr:  0, dc: -1, dir: E },
+            { dr:  0, dc:  1, dir: W },
+            { dr: -1, dc:  0, dir: S },
+            { dr:  1, dc:  0, dir: N }
+        ];
+    };
+
+    this.routePathDijkstraBacktrace = function(dist2D, grid, from, to, modifiers)
+    {
+        if (!dist2D || !grid) return null;
+
+        const INF = this.DIJKSTRA_INF;
+        const td = dist2D?.[to.r]?.[to.c];
+        if (!(Number.isFinite(td) && td < INF)) return null;
+
+        const states = [{ r: to.r, c: to.c }];
+        const order = this.routePathDijkstraBacktraceOrder(modifiers);
+        let curR = to.r;
+        let curC = to.c;
+        let guard = ROWS * COLS + 4;
+
+        while ((curR !== from.r || curC !== from.c) && guard-- > 0)
+        {
+            const curDist = dist2D[curR][curC];
+            const curCode = grid[curR * COLS + curC] | 0;
+
+            let pick = null;
+            let pickDist = Number.POSITIVE_INFINITY;
+
+            for (let i = 0; i < order.length; i++)
+            {
+                const n = order[i];
+                const nr = curR + n.dr;
+                const nc = curC + n.dc;
+
+                if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+                if (!this.routePathDijkstraCanEnter(curCode, n.dir)) continue;
+
+                const pd = dist2D?.[nr]?.[nc];
+                if (!(Number.isFinite(pd) && pd < INF)) continue;
+                if (Math.abs((pd + 1) - curDist) > 0.25) continue;
+
+                if (pd < pickDist)
+                {
+                    pick = { r: nr, c: nc };
+                    pickDist = pd;
+                }
+            }
+
+            if (!pick)
+            {
+                for (let i = 0; i < order.length; i++)
+                {
+                    const n = order[i];
+                    const nr = curR + n.dr;
+                    const nc = curC + n.dc;
+
+                    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+                    if (!this.routePathDijkstraCanEnter(curCode, n.dir)) continue;
+
+                    const pd = dist2D?.[nr]?.[nc];
+                    if (!(Number.isFinite(pd) && pd < curDist)) continue;
+
+                    if (pd < pickDist)
+                    {
+                        pick = { r: nr, c: nc };
+                        pickDist = pd;
+                    }
+                }
+            }
+
+            if (!pick) return null;
+
+            curR = pick.r;
+            curC = pick.c;
+            states.push({ r: curR, c: curC });
+        }
+
+        if (guard <= 0) return null;
+
+        states.reverse();
+        return oASC.routeStatesToPath(states, modifiers);
+    };
+
+    this.routePathDijkstra = function(from, to, modifiers)
+    {
+        if (!from || !to) return null;
+        if (from.r === to.r && from.c === to.c) return [];
+
+        // The first GPU pass is intentionally scoped to the plain shortest-path variant.
+        // More exact corner / bridge tie-breaks still fall back to CPU Dijkstra.
+        if (modifiers?.leastCorners || modifiers?.leastBridges) return null;
+
+        if (!oASC || typeof oASC.routeNormalizeModifiers !== "function") return null;
+        if (!oASC || typeof oASC.routeBuildContext !== "function") return null;
+
+        const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
+        const ctx  = oASC.routeBuildContext(from, to);
+
+        const mask8 = this.glyph2mask(1);
+        if (!mask8) return null;
+
+        const grid = this.routeBuildCellCodeGridFromMask(mask8, ctx, from, to);
+        if (!grid) return null;
+
+        const cfg16 = new Uint16Array(4);
+        cfg16[0] = COLS;
+        cfg16[1] = ROWS;
+        cfg16[2] = from.c;
+        cfg16[3] = from.r;
+
+        const okInit = this.runGPU(
+            this.routePathDijkstraInit,
+            { mode: "gpu" },
+            {
+                output: [COLS, ROWS],
+                precision: "single",
+                graphical: false,
+                pipeline: false,
+                immutable: true,
+                dynamicArguments: true
+            },
+            { grid: [grid], cfg16: [cfg16] }
+        );
+        if (okInit === false) return null;
+
+        const okStep = this.runGPU(
+            this.routePathDijkstraStep,
+            { mode: "gpu" },
+            {
+                output: [COLS, ROWS],
+                precision: "single",
+                graphical: false,
+                pipeline: false,
+                immutable: true,
+                dynamicArguments: true
+            },
+            { distPrev: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
+        );
+        if (okStep === false) return null;
+
+        try
+        {
+            let dist = this.routePathDijkstraInit.kObject(grid, cfg16);
+            let targetDist = dist?.[to.r]?.[to.c];
+
+            for (let iter = 0; iter < (ROWS * COLS); iter++)
+            {
+                if (Number.isFinite(targetDist) && targetDist < this.DIJKSTRA_INF) break;
+                dist = this.routePathDijkstraStep.kObject(dist, grid, cfg16);
+                targetDist = dist?.[to.r]?.[to.c];
+            }
+
+            if (!(Number.isFinite(targetDist) && targetDist < this.DIJKSTRA_INF))
+                return null;
+
+            return this.routePathDijkstraBacktrace(dist, grid, from, to, mods);
+        }
+        catch (e)
+        {
+            console.warn("AsciiCAD GPU Dijkstra failed; falling back to CPU.", e);
+            return null;
+        }
+    };
+
+    this.routePathDijkstra.help =
+    {
+        type: "CADScript_FN",
+        usage: "routePathDijkstra(from,to,modifiers)",
+        desc:
+            "Tentative GPU.js Dijkstra reimplementation. " +
+            "Uses the same outer signature as the CPU router and returns a path array when successful; " +
+            "returns null when unavailable or when modifiers require the exact CPU tie-break behavior."
+    };
+
+    this.routePathDijkstraInit.kObject = null;
+    this.routePathDijkstraInit.kScript = function(grid, cfg16)
+    {
+        const srcC = cfg16[2] | 0;
+        const srcR = cfg16[3] | 0;
+        const r = this.thread.y;
+        const c = this.thread.x;
+
+        if (r === srcR && c === srcC) return 0;
+        return 16777215;
+    };
+
+    this.routePathDijkstraStep.kObject = null;
+    this.routePathDijkstraStep.kScript = function(distPrev, grid, cfg16)
+    {
+        const cols = cfg16[0] | 0;
+        const rows = cfg16[1] | 0;
+        const srcC = cfg16[2] | 0;
+        const srcR = cfg16[3] | 0;
+        const INF = 16777215;
+
+        const r = this.thread.y;
+        const c = this.thread.x;
+        const idx = r * cols + c;
+        const code = grid[idx] | 0;
+
+        if (r === srcR && c === srcC) return 0;
+        if (code === 0) return INF;
+
+        let best = distPrev[r][c];
+        let cand = 0;
+
+        // from up => move S into current
+        if (r > 0)
+        {
+            cand = distPrev[r - 1][c];
+            if (cand < INF && (code === 1 || code === 2))
+            {
+                cand = cand + 1;
+                if (cand < best) best = cand;
+            }
+        }
+
+        // from down => move N into current
+        if ((r + 1) < rows)
+        {
+            cand = distPrev[r + 1][c];
+            if (cand < INF && (code === 1 || code === 2))
+            {
+                cand = cand + 1;
+                if (cand < best) best = cand;
+            }
+        }
+
+        // from left => move E into current
+        if (c > 0)
+        {
+            cand = distPrev[r][c - 1];
+            if (cand < INF && (code === 1 || code === 3))
+            {
+                cand = cand + 1;
+                if (cand < best) best = cand;
+            }
+        }
+
+        // from right => move W into current
+        if ((c + 1) < cols)
+        {
+            cand = distPrev[r][c + 1];
+            if (cand < INF && (code === 1 || code === 3))
+            {
+                cand = cand + 1;
+                if (cand < best) best = cand;
+            }
+        }
+
+        return best;
+    };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
