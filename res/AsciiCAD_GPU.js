@@ -535,24 +535,7 @@ function GASC()
 
     this.routePathDijkstra = function(from, to, modifiers)
     {
-        const t0 = (typeof performance !== "undefined" && performance.now)
-            ? performance.now()
-            : Date.now();
-
-        const debugDone = (ret, note) =>
-        {
-            if (typeof bDebug !== "undefined" && bDebug)
-            {
-                const t1 = (typeof performance !== "undefined" && performance.now)
-                    ? performance.now()
-                    : Date.now();
-                console.log("[GPU] routePathDijkstra() " + (note || "") + " " + (t1 - t0).toFixed(3) + " ms");
-            }
-            return ret;
-        };
-
-        if (!from || !to) return debugDone(null, "early-exit(!from||!to)");
-        if (from.r === to.r && from.c === to.c) return debugDone([], "early-exit(same-cell)");
+        oCOM.startChrono("oGASC.routePathDijkstra", JSON.stringify({ from, to }));
 
         if (modifiers?.leastCorners || modifiers?.leastBridges)
             return debugDone(null, "unsupported-modifiers");
@@ -909,24 +892,7 @@ function GASC()
 
     this.mikamiPath = function(from, to, modifiers)
     {
-        const t0 = (typeof performance !== "undefined" && performance.now)
-            ? performance.now()
-            : Date.now();
-
-        const debugDone = (ret, note) =>
-        {
-            if (typeof bDebug !== "undefined" && bDebug)
-            {
-                const t1 = (typeof performance !== "undefined" && performance.now)
-                    ? performance.now()
-                    : Date.now();
-                console.log("[GPU] mikamiPath() " + (note || "") + " " + (t1 - t0).toFixed(3) + " ms");
-            }
-            return ret;
-        };
-
-        if (!from || !to) return debugDone(null, "early-exit(!from||!to)");
-        if (from.r === to.r && from.c === to.c) return debugDone([], "early-exit(same-cell)");
+        oCOM.startChrono("oGASC.mikamiPath", JSON.stringify({ from, to }));
 
         if (modifiers?.leastBridges) return debugDone(null, "unsupported-leastBridges");
 

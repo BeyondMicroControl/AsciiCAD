@@ -1033,6 +1033,50 @@ this.AsciiTable = function(data2d, opts = {})
 }
 
 
+  this._chrono = Object.create(null);
+
+  this.startChrono = function(name, note)
+  {
+    const key = String(name ?? "");
+    if (!key) return null;
+
+    const now = (typeof performance !== "undefined" && typeof performance.now === "function")
+      ? performance.now()
+      : Date.now();
+
+    this._chrono[key] =
+    {
+      t0: now,
+      note: note === undefined ? "" : String(note)
+    };
+
+    return now;
+  }
+
+  this.stopChrono = function(name, note)
+  {
+    const key = String(name ?? "");
+    if (!key) return null;
+
+    const rec = this._chrono[key];
+    if (!rec) return null;
+
+    const now = (typeof performance !== "undefined" && typeof performance.now === "function")
+      ? performance.now()
+      : Date.now();
+
+    const dt = now - rec.t0;
+    const note1 = rec.note ? String(rec.note) : "";
+    const note2 = (note === undefined || note === null) ? "" : String(note);
+    const tail = [note1, note2].filter(Boolean).join(" | ");
+
+    delete this._chrono[key];
+
+    if (typeof bDebug !== "undefined" && bDebug)
+      console.log("[chrono] " + key + ": " + dt.toFixed(3) + " ms" + (tail ? " | " + tail : ""));
+
+    return dt;
+  }
 
 
 
