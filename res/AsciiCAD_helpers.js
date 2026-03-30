@@ -2317,7 +2317,6 @@ this.mikamiPathMultiWorker = async function(from, to, modifiers)
 
 this.mikamiPath = function(from, to, modifiers)
 {
-  
   if (!from || !to) return [];
   if (from.r === to.r && from.c === to.c) return [];
 
@@ -2332,11 +2331,18 @@ this.mikamiPath = function(from, to, modifiers)
     try
     {
       const gpuPath = oGASC.mikamiPath(from, to, mods);
+
       if (Array.isArray(gpuPath)) return gpuPath;
+
+      // GPU was explicitly requested: do NOT fall back
+      if (impl === "gpu") return this.buildOrthogonalPath(from, to, mods);
     }
     catch (err)
     {
       console.warn("GPU Mikami failed; falling back to CPU.", err);
+
+      // GPU was explicitly requested: do NOT fall back
+      if (impl === "gpu") return this.buildOrthogonalPath(from, to, mods);
     }
   }
 
