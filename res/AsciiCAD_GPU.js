@@ -264,7 +264,7 @@ function GASC()
         {
             console.log("(x"+packedCols+") ret.length="+ret.length);
             console.log("(x"+packedCols+") bytes.length="+bytes.length);
-            console.log("(x"+packedCols+") CRC="+oCOM.crc32(bytes).toString(16));
+            //console.log("(x"+packedCols+") CRC="+oCOM.crc32(bytes).toString(16));
         }
         return bytes;
         } catch (e) { console.warn("AsciiCAD GPU glyph2mask_x3 failed.", e);
@@ -551,7 +551,7 @@ function GASC()
         const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
         const ctx  = oASC.routeBuildContext(from, to);
 
-        const mask8 = this.glyph2mask(1);
+        const mask8 = this.glyph2mask(2);
         if (!mask8) return oCOM.debugDone(null, "GPU routePathDijkstra()", "glyph2mask-failed");
 
         const grid = this.routeBuildCellCodeGridFromMask(mask8, ctx, from, to);
@@ -928,6 +928,9 @@ function GASC()
         return ret;
     };
 
+
+    this.mikamiPath_last = {};
+
     this.mikamiPath = function(from, to, modifiers)
     {
         oCOM.startChrono("oGASC.mikamiPath", JSON.stringify({ from, to }));
@@ -945,7 +948,17 @@ function GASC()
         const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
         const ctx  = oASC.routeBuildContext(from, to);
 
-        const mask8 = this.glyph2mask(1);
+
+        if(from!=this.mikamiPath_last.from || to!=this.mikamiPath_last.to)
+        {
+            oCOM.startChrono("oGASC.glyph2mask");
+            this.mikamiPath_mask8 = this.glyph2mask(2);
+            oCOM.stopChrono("oGASC.glyph2mask");
+        }
+
+        this.mikamiPath_last = {"from":from,"to":to};
+        const mask8 = this.mikamiPath_mask8;
+
         if (!mask8) return oCOM.debugDone(null, "GPU mikamiPath()", "glyph2mask-failed");
 
         const grid = this.routeBuildCellCodeGridFromMask(mask8, ctx, from, to);
