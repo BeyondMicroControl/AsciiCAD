@@ -933,7 +933,7 @@ function GASC()
     this.mikamiPath = function(from, to, modifiers)
     {
         oCOM.startChrono("oGASC.mikamiPath", JSON.stringify({ from, to }));
-
+        oCOM.startChrono("gridbuild");
         if (!from || !to) return oCOM.debugDone(null, "GPU mikamiPath()", "early-exit(!from||!to)");
         if (from.r === to.r && from.c === to.c) return oCOM.debugDone([], "GPU mikamiPath()", "early-exit(same-cell)");
 
@@ -946,7 +946,6 @@ function GASC()
 
         const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
         const ctx  = oASC.routeBuildContext(from, to);
-
         const key = JSON.stringify({fr: from.r, fc: from.c,tr: to.r, tc: to.c,sv: !!mods.startVertical,lc: !!mods.leastCorners,lb: !!mods.leastBridges});
 
         if (this.mikamiPath_cache.key === key && Array.isArray(this.mikamiPath_cache.path))
@@ -955,10 +954,7 @@ function GASC()
             return this.mikamiPath_cache.path.slice();
         }
 
-        oCOM.startChrono("oGASC.glyph2mask");
         const mask8 = this.glyph2mask(2);
-        oCOM.stopChrono("oGASC.glyph2mask");
-
         if (!mask8) return oCOM.debugDone(null, "GPU mikamiPath()", "glyph2mask-failed");
 
         const grid = this.routeBuildCellCodeGridFromMask(mask8, ctx, from, to);
@@ -974,7 +970,9 @@ function GASC()
         cfg16[5] = to.r;
         cfg16[6] = mods.startVertical ? 1 : 0;
         cfg16[7] = this.MIKAMI_INF;
+        oCOM.stopChrono("gridbuild");
 
+        oCOM.startChrono("initH");
         const okInitH = this.runGPU(
             this.mikamiInitH,
             { mode: "gpu" },
@@ -982,15 +980,16 @@ function GASC()
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline: false,
+                pipeline: true,
                 immutable: true,
                 dynamicArguments: true,
                 loopMaxIterations: COLS
             },
             { grid: [grid], cfg16: [cfg16] }
         );
+         oCOM.stopChrono("initH");
         if (okInitH === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-initH-compile-failed");
-
+        oCOM.startChrono("initV");
         const okInitV = this.runGPU(
             this.mikamiInitV,
             { mode: "gpu" },
@@ -998,15 +997,16 @@ function GASC()
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline: false,
+                pipeline: true,
                 immutable: true,
                 dynamicArguments: true,
                 loopMaxIterations: ROWS
             },
             { grid: [grid], cfg16: [cfg16] }
         );
+        oCOM.stopChrono("initV");
         if (okInitV === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-initV-compile-failed");
-
+        oCOM.startChrono("stepH");
         const okStepH = this.runGPU(
             this.mikamiStepH,
             { mode: "gpu" },
@@ -1014,15 +1014,16 @@ function GASC()
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline: false,
+                pipeline:true,
                 immutable: true,
                 dynamicArguments: true,
                 loopMaxIterations: COLS
             },
             { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
         );
+        oCOM.stopChrono("stepH");
         if (okStepH === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-stepH-compile-failed");
-
+        oCOM.startChrono("stepV");
         const okStepV = this.runGPU(
             this.mikamiStepV,
             { mode: "gpu" },
@@ -1030,17 +1031,18 @@ function GASC()
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline: false,
+                pipeline:true,
                 immutable: true,
                 dynamicArguments: true,
                 loopMaxIterations: ROWS
             },
             { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
         );
+        oCOM.startChrono("stepV");
         if (okStepV === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-stepV-compile-failed");
-
         try
         {
+            oCOM.startChrono("backtrace");
             let h = this.mikamiInitH.kObject(grid, cfg16);
             let v = this.mikamiInitV.kObject(grid, cfg16);
 
@@ -1050,6 +1052,7 @@ function GASC()
             {
                 const ret = this.mikamiBacktrace(h, v, grid, from, to, mods);
                 this.mikamiPath_cache = { key, path: ret.slice() };
+                oCOM.stopChrono("backtrace");
                 oCOM.stopChrono("oGASC.mikamiPath", "ok-direct");
                 return oCOM.debugDone(this.logPathSummary("GPU mikamiPath ok-direct", ret), "GPU mikamiPath()", "ok-direct");
             }
@@ -1067,6 +1070,7 @@ function GASC()
                 {
                     const ret = this.mikamiBacktrace(h, v, grid, from, to, mods);
                     this.mikamiPath_cache = { key, path: ret.slice() };
+                    oCOM.stopChrono("backtrace");
                     oCOM.stopChrono("oGASC.mikamiPath", "ok-iter");
                     return oCOM.debugDone(this.logPathSummary("GPU mikamiPath ok-iter", ret), "GPU mikamiPath()", "ok-iter");
                 }
