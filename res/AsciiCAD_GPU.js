@@ -1375,6 +1375,175 @@ this.routeBuildBannedBits = function(ctx)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+ this.mikamiPath_v2 = function(from, to, modifiers)
+    {
+        oCOM.startChrono("oGASC.mikamiPath", JSON.stringify({ from, to }));
+        oCOM.startChrono("gridbuild");
+        if (!from || !to) return oCOM.debugDone(null, "GPU mikamiPath()", "early-exit(!from||!to)");
+        if (from.r === to.r && from.c === to.c) return oCOM.debugDone([], "GPU mikamiPath()", "early-exit(same-cell)");
+
+        if (modifiers?.leastBridges) return oCOM.debugDone(null, "GPU mikamiPath()", "unsupported-leastBridges");
+
+        if (!oASC || typeof oASC.routeNormalizeModifiers !== "function")
+            return oCOM.debugDone(null, "GPU mikamiPath()", "missing-routeNormalizeModifiers");
+        if (!oASC || typeof oASC.routeBuildContext !== "function")
+            return oCOM.debugDone(null, "GPU mikamiPath()", "missing-routeBuildContext");
+
+        const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
+        const ctx  = oASC.routeBuildContext(from, to);
+        const key = JSON.stringify({fr: from.r, fc: from.c,tr: to.r, tc: to.c,sv: !!mods.startVertical,lc: !!mods.leastCorners,lb: !!mods.leastBridges});
+
+        if (this.mikamiPath_cache.key === key && Array.isArray(this.mikamiPath_cache.path))
+        {
+            oCOM.stopChrono("oGASC.mikamiPath", "cache-hit");
+            return this.mikamiPath_cache.path.slice();
+        }
+
+        const mask8 = this.glyph2mask(2);
+        if (!mask8) return oCOM.debugDone(null, "GPU mikamiPath()", "glyph2mask-failed");
+
+        const grid = this.routeBuildCellCodeGridFromMask(mask8, ctx, from, to);
+        this.logRouteGridStats("GPU mikamiPath", grid, from, to);
+        if (!grid) return oCOM.debugDone(null, "GPU mikamiPath()", "grid-build-failed");
+
+        const cfg16 = new Uint16Array(8);
+        cfg16[0] = COLS;
+        cfg16[1] = ROWS;
+        cfg16[2] = from.c;
+        cfg16[3] = from.r;
+        cfg16[4] = to.c;
+        cfg16[5] = to.r;
+        cfg16[6] = mods.startVertical ? 1 : 0;
+        cfg16[7] = this.MIKAMI_INF;
+        oCOM.stopChrono("gridbuild");
+
+        oCOM.startChrono("initH");
+        const okInitH = this.runGPU(
+            this.mikamiInitH,
+            { mode: "gpu" },
+            {
+                output: [COLS, ROWS],
+                precision: "single",
+                graphical: false,
+                pipeline: true,
+                immutable: true,
+                dynamicArguments: true,
+                loopMaxIterations: COLS
+            },
+            { grid: [grid], cfg16: [cfg16] }
+        );
+         oCOM.stopChrono("initH");
+        if (okInitH === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-initH-compile-failed");
+        oCOM.startChrono("initV");
+        const okInitV = this.runGPU(
+            this.mikamiInitV,
+            { mode: "gpu" },
+            {
+                output: [COLS, ROWS],
+                precision: "single",
+                graphical: false,
+                pipeline: true,
+                immutable: true,
+                dynamicArguments: true,
+                loopMaxIterations: ROWS
+            },
+            { grid: [grid], cfg16: [cfg16] }
+        );
+        oCOM.stopChrono("initV");
+        if (okInitV === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-initV-compile-failed");
+        oCOM.startChrono("stepH");
+        const okStepH = this.runGPU(
+            this.mikamiStepH,
+            { mode: "gpu" },
+            {
+                output: [COLS, ROWS],
+                precision: "single",
+                graphical: false,
+                pipeline:true,
+                immutable: true,
+                dynamicArguments: true,
+                loopMaxIterations: COLS
+            },
+            { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
+        );
+        oCOM.stopChrono("stepH");
+        if (okStepH === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-stepH-compile-failed");
+        oCOM.startChrono("stepV");
+        const okStepV = this.runGPU(
+            this.mikamiStepV,
+            { mode: "gpu" },
+            {
+                output: [COLS, ROWS],
+                precision: "single",
+                graphical: false,
+                pipeline:true,
+                immutable: true,
+                dynamicArguments: true,
+                loopMaxIterations: ROWS
+            },
+            { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
+        );
+        oCOM.startChrono("stepV");
+        if (okStepV === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-stepV-compile-failed");
+        try
+        {
+            oCOM.startChrono("backtrace");
+            let h = this.mikamiInitH.kObject(grid, cfg16);
+            let v = this.mikamiInitV.kObject(grid, cfg16);
+
+            this.logMikamiTargetState("GPU mikamiPath init", h, v, to);
+            let bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
+            if (bestAxis)
+            {
+                const ret = this.mikamiBacktrace(h, v, grid, from, to, mods);
+                this.mikamiPath_cache = { key, path: ret.slice() };
+                oCOM.stopChrono("backtrace");
+                oCOM.stopChrono("oGASC.mikamiPath", "ok-direct");
+                return oCOM.debugDone(this.logPathSummary("GPU mikamiPath ok-direct", ret), "GPU mikamiPath()", "ok-direct");
+            }
+
+            for (let iter = 0; iter < (ROWS + COLS); iter++)
+            {
+                const h2 = this.mikamiStepH.kObject(v, h, grid, cfg16);
+                const v2 = this.mikamiStepV.kObject(h2, v, grid, cfg16);
+                h = h2;
+                v = v2;
+
+                this.logMikamiTargetState("GPU mikamiPath iter " + iter, h, v, to);
+                bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
+                if (bestAxis)
+                {
+                    const ret = this.mikamiBacktrace(h, v, grid, from, to, mods);
+                    this.mikamiPath_cache = { key, path: ret.slice() };
+                    oCOM.stopChrono("backtrace");
+                    oCOM.stopChrono("oGASC.mikamiPath", "ok-iter");
+                    return oCOM.debugDone(this.logPathSummary("GPU mikamiPath ok-iter", ret), "GPU mikamiPath()", "ok-iter");
+                }
+            }
+
+            oCOM.stopChrono("oGASC.mikamiPath", "no-path");
+            return oCOM.debugDone(null, "GPU mikamiPath()", "no-path");
+        }
+        catch (e)
+        {
+            console.warn("AsciiCAD GPU Mikami failed; falling back to CPU.", e);
+            return oCOM.debugDone(null, "GPU mikamiPath()", "exception");
+        }
+    };
+
+    this.mikamiPath_v2.help =
+    {
+        type: "CADScript_FN",
+        usage: "mikamiPath(from,to,modifiers)",
+        desc:
+            "Tentative GPU.js Mikami-style router. " +
+            "Uses the same outer signature as the CPU Mikami router and is intentionally limited to least-bends-first behavior in this first GPU pass."
+    };
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 
     this.logPathSummary = function(tag, path)
     {
