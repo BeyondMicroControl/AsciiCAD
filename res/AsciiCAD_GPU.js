@@ -724,6 +724,16 @@ function GASC()
 
     this.MIKAMI_INF = 65535;
 
+    this.logMikamiTargetState = function(tag, h2D, v2D, to)
+    {
+        if (!bDebug) return;
+
+        const h = h2D?.[to.r]?.[to.c];
+        const v = v2D?.[to.r]?.[to.c];
+
+        console.log("[" + tag + "] target=(" + to.r + "," + to.c + ") h=" + h + " v=" + v);
+    };
+
     this.routePathMikamiCanEnterH = function(code)
     {
         code = code | 0;
@@ -810,6 +820,12 @@ function GASC()
         let level = axis === "H" ? h2D[curR][curC] : v2D[curR][curC];
         let guard = ROWS * COLS * 2;
 
+        if (bDebug)
+        {
+            console.log("[GPU mikamiBacktrace] axis=" + axis + " level=" + level +
+                        " from=" + JSON.stringify(from) + " to=" + JSON.stringify(to));
+        }
+
         while ((curR !== from.r || curC !== from.c) && guard-- > 0)
         {
             let found = null;
@@ -875,6 +891,14 @@ function GASC()
                 }
             }
 
+            if (!found)
+            {
+                if (bDebug)
+                    console.log("[GPU mikamiBacktrace] failed axis=" + axis +
+                                " cur=(" + curR + "," + curC + ") level=" + level);
+                return null;
+            }
+
             if (!found) return null;
 
             if (found.r === from.r && found.c === from.c)
@@ -893,7 +917,13 @@ function GASC()
         if (guard <= 0) return null;
 
         states.reverse();
-        return oASC.routeStatesToPath(states, modifiers);
+        const ret = oASC.routeStatesToPath(states, modifiers);
+        if (bDebug)
+        {
+            console.log("[GPU mikamiBacktrace] statesLen=" + states.length +
+                        " pathLen=" + (Array.isArray(ret) ? ret.length : -1));
+        }
+        return ret;
     };
 
     this.mikamiPath = function(from, to, modifiers)
@@ -917,6 +947,7 @@ function GASC()
         if (!mask8) return oCOM.debugDone(null, "GPU mikamiPath()", "glyph2mask-failed");
 
         const grid = this.routeBuildCellCodeGridFromMask(mask8, ctx, from, to);
+        this.logRouteGridStats("GPU mikamiPath", grid, from, to);
         if (!grid) return oCOM.debugDone(null, "GPU mikamiPath()", "grid-build-failed");
 
         const cfg16 = new Uint16Array(8);
@@ -998,12 +1029,13 @@ function GASC()
             let h = this.mikamiInitH.kObject(grid, cfg16);
             let v = this.mikamiInitV.kObject(grid, cfg16);
 
+            this.logMikamiTargetState("GPU mikamiPath init", h, v, to);
             let bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
             if (bestAxis)
             {
                 const ret = this.mikamiBacktrace(h, v, grid, from, to, mods);
                 oCOM.stopChrono("oGASC.mikamiPath", "ok-direct");
-                return oCOM.debugDone(ret, "GPU mikamiPath()", "ok-direct");
+                return oCOM.debugDone(this.logPathSummary("GPU mikamiPath ok-direct", ret), "GPU mikamiPath()", "ok-direct");
             }
 
             for (let iter = 0; iter < (ROWS + COLS); iter++)
@@ -1013,12 +1045,14 @@ function GASC()
                 h = h2;
                 v = v2;
 
+                this.logMikamiTargetState("GPU mikamiPath iter " + iter, h, v, to);
                 bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
                 if (bestAxis)
                 {
                     const ret = this.mikamiBacktrace(h, v, grid, from, to, mods);
+                    
                     oCOM.stopChrono("oGASC.mikamiPath", "ok-iter");
-                    return oCOM.debugDone(ret, "GPU mikamiPath()", "ok-iter");
+                    return oCOM.debugDone(this.logPathSummary("GPU mikamiPath ok-iter", ret), "GPU mikamiPath()", "ok-iter");
                 }
             }
 
@@ -1191,6 +1225,58 @@ function GASC()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+    this.logPathSummary = function(tag, path)
+    {
+        if (!bDebug) return path;
+
+        const n = Array.isArray(path) ? path.length : -1;
+        const first = (n > 0) ? path[0] : null;
+        const last  = (n > 0) ? path[n - 1] : null;
+
+        console.log(
+            "[" + tag + "] pathLen=" + n +
+            " first=" + JSON.stringify(first) +
+            " last=" + JSON.stringify(last)
+        );
+
+        if (n > 0)
+        {
+            const head = path.slice(0, Math.min(6, n));
+            const tail = path.slice(Math.max(0, n - 6));
+            console.log("[" + tag + "] head=" + JSON.stringify(head));
+            if (n > 6) console.log("[" + tag + "] tail=" + JSON.stringify(tail));
+        }
+
+        return path;
+    };
+
+    this.logRouteGridStats = function(tag, grid, from, to)
+    {
+        if (!bDebug || !grid) return;
+
+        let n0 = 0, n1 = 0, n2 = 0, n3 = 0;
+        for (let i = 0; i < grid.length; i++)
+        {
+            const v = grid[i] | 0;
+            if (v === 0) n0++;
+            else if (v === 1) n1++;
+            else if (v === 2) n2++;
+            else if (v === 3) n3++;
+        }
+
+        const src = grid[from.r * COLS + from.c] | 0;
+        const dst = grid[to.r * COLS + to.c] | 0;
+
+        console.log(
+            "[" + tag + "] gridStats" +
+            " free=" + n1 +
+            " blocked=" + n0 +
+            " wire_h=" + n2 +
+            " wire_v=" + n3 +
+            " src=" + src +
+            " dst=" + dst
+        );
+    };   
 
     this.runGPU = function(kernelFn, GPUarg, kernelArg, config)
     {
