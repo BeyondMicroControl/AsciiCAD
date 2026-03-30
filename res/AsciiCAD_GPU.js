@@ -755,8 +755,11 @@ function GASC()
 
     this.mikamiChooseTargetAxis = function(h2D, v2D, to, modifiers)
     {
-        const h = h2D?.[to.r]?.[to.c];
-        const v = v2D?.[to.r]?.[to.c];
+        const hArr = (h2D && typeof h2D.toArray === "function") ? h2D.toArray() : h2D;
+        const vArr = (v2D && typeof v2D.toArray === "function") ? v2D.toArray() : v2D;
+
+        const h = hArr?.[to.r]?.[to.c];
+        const v = vArr?.[to.r]?.[to.c];
         const INF = this.MIKAMI_INF;
         const hf = Number.isFinite(h) && h < INF;
         const vf = Number.isFinite(v) && v < INF;
@@ -933,7 +936,7 @@ function GASC()
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline: true,
+                pipeline: false,
                 immutable: true,
                 dynamicArguments: true,
                 loopMaxIterations: COLS
@@ -949,7 +952,7 @@ function GASC()
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline: true,
+                pipeline: false,
                 immutable: true,
                 dynamicArguments: true,
                 loopMaxIterations: ROWS
@@ -965,7 +968,7 @@ function GASC()
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline: true,
+                pipeline: false,
                 immutable: true,
                 dynamicArguments: true,
                 loopMaxIterations: COLS
@@ -981,7 +984,7 @@ function GASC()
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline: true,
+                pipeline: false,
                 immutable: true,
                 dynamicArguments: true,
                 loopMaxIterations: ROWS
