@@ -1863,7 +1863,10 @@ this.routePathDijkstra = function(from, to, modifiers)
     }
   }
 
-  return this.routePathSearch(from, to, modifiers, this.routeZeroHeuristic);
+  oCOM.startChrono("oASC.routePathDijkstra", JSON.stringify({ from, to }));
+  ret = this.routePathSearch(from, to, modifiers, this.routeZeroHeuristic);
+  oCOM.stopChrono("oASC.routePathDijkstra", "ok");
+  return ret;
 };
 
 
@@ -2364,18 +2367,10 @@ this.mikamiPath = function(from, to, modifiers)
   const mods = this.routeNormalizeModifiers(from, to, modifiers);
   const impl = String(mods?.routeImpl || "auto").toLowerCase();
 
-  const gpuAvailable =
-    typeof oGASC !== "undefined" &&
-    oGASC &&
-    typeof oGASC.mikamiPath === "function";
+  const gpuAvailable = typeof oGASC !== "undefined" && oGASC && typeof oGASC.mikamiPath === "function";
+  if (impl === "gpu" && !gpuAvailable && bDebug) console.warn("GPU Mikami requested but unavailable; AsciiCAD_GPU.js not loaded or oGASC.mikamiPath missing.");
 
-  if (impl === "gpu" && !gpuAvailable && bDebug)
-    console.warn("GPU Mikami requested but unavailable; AsciiCAD_GPU.js not loaded or oGASC.mikamiPath missing.");
-
-  if (impl !== "cpu" &&
-      typeof oGASC !== "undefined" &&
-      oGASC &&
-      typeof oGASC.mikamiPath === "function")
+  if (impl !== "cpu" && typeof oGASC !== "undefined" && oGASC && typeof oGASC.mikamiPath === "function")
   {
     try
     {
