@@ -16,6 +16,7 @@ if (typeof bDebug === "undefined" || !bDebug) {
 //     ██████ ██   ██ ███████  ██████ ██   ██ ███████ 
 
 
+
 var DebugFilter = ["log", "warn", "error", "assert"]; // default filter
 oCOM.URL.parse(document.location.toString());
 for(var uri in oCOM.URL.uri)
@@ -42,6 +43,21 @@ for(var uri in oCOM.URL.uri)
   window.__ASCIICAD_LOG_FORWARD__ = true;
 
   function forward(type, args) {
+
+
+    const text = args.map(v => typeof v === "string" ? v : String(v)).join(" ");
+
+    if (RAWfilter)
+    {
+      const m = String(RAWfilter).match(/^([^\[\]]+)(?:\[([^\[\]]+)\])?$/);
+      const mainType = m ? m[1] : String(RAWfilter);
+      const subType  = m ? (m[2] || "") : "";
+
+      if (type !== mainType) return;
+      if (subType && !text.startsWith("[" + subType + "]")) return;
+    }
+
+
     try {
       parent.postMessage(
         {
