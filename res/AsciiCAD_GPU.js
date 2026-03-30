@@ -370,6 +370,137 @@ function GASC()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+this.glyph2mask16 = function()
+{
+    const ascii16 = oCOM.packAscii16(ascii, ROWS, COLS);
+
+    const param_bytes = 7;
+    const cfg8 = new Uint8Array(param_bytes + oASC.G2M_CACHE.length);
+    cfg8[0] = param_bytes;
+    cfg8[1] = COLS & 0xFF;
+    cfg8[2] = (COLS >>> 8) & 0xFF;
+    cfg8[3] = oASC.G2M_LUT_CP0 & 0xFF;
+    cfg8[4] = (oASC.G2M_LUT_CP0 >>> 8) & 0xFF;
+    cfg8[5] = oASC.G2M_LUT_LEN & 0xFF;
+    cfg8[6] = (oASC.G2M_LUT_LEN >>> 8) & 0xFF;
+    cfg8.set(oASC.G2M_CACHE, param_bytes);
+
+    const ok = this.runGPU(
+        this.glyph2mask16,
+        { mode: "gpu" },
+        {
+            output: [COLS, ROWS],
+            precision: "single",
+            graphical: false,
+            pipeline: false,
+            immutable: true,
+            dynamicArguments: true
+        },
+        { ascii16: [ascii16], cfg8: [cfg8] }
+    );
+    if (ok === false) return null;
+
+    try
+    {
+        const ret2D = this.glyph2mask16.kObject(ascii16, cfg8);
+        const out = new Uint16Array(ROWS * COLS);
+        let k = 0;
+        for (let r = 0; r < ROWS; r++)
+        {
+            const row = ret2D[r];
+            for (let c = 0; c < COLS; c++) out[k++] = row[c] | 0;
+        }
+        return out;
+    }
+    catch (e)
+    {
+        console.warn("AsciiCAD GPU glyph2mask16 failed.", e);
+        return null;
+    }
+};
+
+this.glyph2mask16.kObject = null;
+
+this.glyph2mask16.kScript = function(ascii16, cfg8)
+{
+    const CFG_LUT_BASE  = cfg8[0];
+    const COLS          = cfg8[1] | (cfg8[2] << 8);
+    const G2M_LUT_CP0   = cfg8[3] | (cfg8[4] << 8);
+    const G2M_LUT_LEN   = cfg8[5] | (cfg8[6] << 8);
+    const G2M_LUT_CP1   = G2M_LUT_CP0 + G2M_LUT_LEN - 1;
+
+    const N = 1, E = 2, S = 4, W = 8;
+
+    const r = this.thread.y;
+    const c = this.thread.x;
+    const idx = r * COLS + c;
+    const ch = ascii16[idx] | 0;
+
+    let m8 = 0;
+    if (ch >= G2M_LUT_CP0 && ch <= G2M_LUT_CP1)
+        m8 = cfg8[CFG_LUT_BASE + (ch - G2M_LUT_CP0)] | 0;
+
+    let code = 0;
+
+    if (ch === 32) code = 1;                  // space
+    else if (m8 === 0) code = 0;              // text / unknown
+    else
+    {
+        const lo = m8 & 15;
+        const hi = (m8 >> 4) & 15;
+
+        if (hi !== 0 && lo === 0) code = 0;   // fat wire obstacle
+        else if (lo !== 0 && lo === hi) code = 0; // double wire obstacle
+        else
+        {
+            const dir = (lo | hi) & 15;
+            const deg =
+                ((dir & N) ? 1 : 0) +
+                ((dir & E) ? 1 : 0) +
+                ((dir & S) ? 1 : 0) +
+                ((dir & W) ? 1 : 0);
+
+            if (deg === 2 && dir === (E | W)) code = 2;
+            else if (deg === 2 && dir === (N | S)) code = 3;
+            else code = 0;
+        }
+    }
+
+    return (code << 8) | m8;
+};
+
+this.routeBaseCodeFromMask16 = function(v16)
+{
+    return (v16 >>> 8) & 3;
+};
+
+this.routeCodeAtMask16 = function(mask16, idx, srcIdx, dstIdx, bannedBits)
+{
+    if (idx === srcIdx || idx === dstIdx) return 1;
+    if (bannedBits && bannedBits[idx]) return 0;
+    return (mask16[idx] >>> 8) & 3;
+};
+
+this.routeBuildBannedBits = function(ctx)
+{
+    const bits = new Uint8Array(ROWS * COLS);
+    if (!ctx?.banned) return bits;
+
+    ctx.banned.forEach(key => {
+        const p = key.indexOf(",");
+        if (p < 0) return;
+        const r = key.slice(0, p) | 0;
+        const c = key.slice(p + 1) | 0;
+        if (r >= 0 && r < ROWS && c >= 0 && c < COLS)
+            bits[r * COLS + c] = 1;
+    });
+
+    return bits;
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
     this.DIJKSTRA_INF = 16777215;
 
