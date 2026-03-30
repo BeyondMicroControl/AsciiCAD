@@ -1072,13 +1072,22 @@ this.AsciiTable = function(data2d, opts = {})
 
     delete this._chrono[key];
 
-    if (typeof bDebug !== "undefined" && bDebug)
+    if (bDebug)
       console.log("[chrono] " + key + ": " + dt.toFixed(3) + " ms" + (tail ? " | " + tail : ""));
 
     return dt;
   }
 
-
+  this.debugDone = function(ret, tag, note)
+  {
+    if (bDebug)
+    {
+      const p1 = tag  === undefined || tag  === null ? "" : String(tag);
+      const p2 = note === undefined || note === null ? "" : String(note);
+      console.log((p1 ? "[" + p1 + "] " : "") + p2);
+    }
+    return ret;
+  }
 
 }
 

@@ -2340,6 +2340,7 @@ this.mikamiPath = function(from, to, modifiers)
     }
   }
 
+  oCOM.startChrono("oASC.mikamiPath", JSON.stringify({ from, to }));
   const ctx  = this.routeBuildContext(from, to);
 
   const root = {
@@ -2429,13 +2430,17 @@ this.mikamiPath = function(from, to, modifiers)
       }
 
       const states = this.routeBacktraceMarksToStates(best, marks);
-      return this.routeStatesToPath(states, mods);
+      var ret = this.routeStatesToPath(states, mods);
+      oCOM.stopChrono("oASC.mikamiPath", "ok-iter");
+      return ret;
     }
 
     frontier = nextFrontier;
   }
 
-  return this.buildOrthogonalPath(from, to, mods);
+  var ret = this.buildOrthogonalPath(from, to, mods);
+  oCOM.stopChrono("oASC.mikamiPath", "no-path");
+  return ret;
 };
 
   ///////////////////////////////////////////////////////
