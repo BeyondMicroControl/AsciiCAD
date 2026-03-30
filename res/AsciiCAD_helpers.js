@@ -1210,6 +1210,9 @@ function ASC()
     const rawPath = this.buildLinePath(from, to, modifiers);
     const path    = merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
 
+    if (bDebug) console.log("[line commit] rawLen=" + (Array.isArray(rawPath) ? rawPath.length : -1) +
+                  " pathLen=" + (Array.isArray(path) ? path.length : -1));
+
     const stroke = [];
     for (const p of path)
     {
@@ -1222,6 +1225,8 @@ function ASC()
         ascii[p.r][p.c] = next;
       }
     }
+
+    if (bDebug) console.log("[line commit] strokeLen=" + stroke.length);
 
     this.pushStrokeIfNonEmpty(stroke);
     this.draw("line");
@@ -4546,6 +4551,9 @@ this.startPasteWithText = function(text)
 
       const rawPath = this.buildLinePath(lineDrag.start, lineDrag.cur, lineDrag.modifiers);
       const path    = lineDrag.merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
+
+      if (bDebug) console.log("[line preview] rawLen=" + (Array.isArray(rawPath) ? rawPath.length : -1) +
+              " pathLen=" + (Array.isArray(path) ? path.length : -1));
 
       for (const p of path)
       {
