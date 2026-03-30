@@ -6950,8 +6950,8 @@ function GASC()
             let bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
             if (bestAxis)
             {
-                this.mikamiPath_cache = { key, path: ret.slice() };
                 const ret = this.mikamiBacktrace(h, v, grid, from, to, mods);
+                this.mikamiPath_cache = { key, path: ret.slice() };
                 oCOM.stopChrono("oGASC.mikamiPath", "ok-direct");
                 return oCOM.debugDone(this.logPathSummary("GPU mikamiPath ok-direct", ret), "GPU mikamiPath()", "ok-direct");
             }
@@ -6967,8 +6967,8 @@ function GASC()
                 bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
                 if (bestAxis)
                 {
-                    this.mikamiPath_cache = { key, path: ret.slice() };
                     const ret = this.mikamiBacktrace(h, v, grid, from, to, mods);
+                    this.mikamiPath_cache = { key, path: ret.slice() };
                     oCOM.stopChrono("oGASC.mikamiPath", "ok-iter");
                     return oCOM.debugDone(this.logPathSummary("GPU mikamiPath ok-iter", ret), "GPU mikamiPath()", "ok-iter");
                 }
