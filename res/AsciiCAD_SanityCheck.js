@@ -16,47 +16,80 @@ if (typeof bDebug === "undefined" || !bDebug) {
 //     ██████ ██   ██ ███████  ██████ ██   ██ ███████ 
 
 
+var DebugFilter = ["log", "warn", "error", "assert"]; // console methods to hook
+var RAWfilter = [];                                   // parsed debug specs
 
-var DebugFilter = ["log", "warn", "error", "assert"]; // default filter
+function parseDebugSpec(spec)
+{
+  const s = String(spec || "").trim();
+  const m = s.match(/^([^\[\],]+)(?:\[([^\[\]]+)\])?$/);
+  return {
+    type: m ? String(m[1] || "").trim() : s,
+    subtype: m && m[2] ? String(m[2]).trim() : ""
+  };
+}
+
 oCOM.URL.parse(document.location.toString());
-for(var uri in oCOM.URL.uri)
+for (var uri in oCOM.URL.uri)
 {
   switch(uri)
   {
     case "bDebug":
-      var RAWfilter = oCOM.URL.uri[uri].split(",");
-      var filter = [];
-      for(var i=0;i<DebugFilter.length;i++)
+    {
+      const raw = String(oCOM.URL.uri[uri] || "").trim();
+
+      if (raw === "true")
       {
-        if( RAWfilter.includes(DebugFilter[i]) )
-            filter.push(DebugFilter[i]);
+        RAWfilter = []; // no filtering => forward everything from DebugFilter
+        DebugFilter = ["log", "warn", "error", "assert"];
+        break;
       }
-      if(filter.length>0) DebugFilter = oCOM.URL.uri[uri].split(",");
+
+      RAWfilter = raw
+        .split(",")
+        .map(parseDebugSpec)
+        .filter(x => x.type);
+
+      var filter = [];
+      for (var i = 0; i < DebugFilter.length; i++)
+      {
+        if (RAWfilter.some(x => x.type === DebugFilter[i]))
+          filter.push(DebugFilter[i]);
+      }
+
+      if (filter.length > 0) DebugFilter = filter;
+    }
     break;
-
-  }  
+  }
 }
-
 
 (function () {
   if (window.__ASCIICAD_LOG_FORWARD__) return;
   window.__ASCIICAD_LOG_FORWARD__ = true;
 
-  function forward(type, args) {
+  function argsToText(args)
+  {
+    return (args || []).map(v => {
+      if (typeof v === "string") return v;
+      try { return JSON.stringify(v); }
+      catch (e) { return String(v); }
+    }).join(" ");
+  }
 
+  function forward(type, args)
+  {
+    const text = argsToText(args);
 
-    const text = args.map(v => typeof v === "string" ? v : String(v)).join(" ");
-
-    if (RAWfilter)
+    if (RAWfilter && RAWfilter.length)
     {
-      const m = String(RAWfilter).match(/^([^\[\]]+)(?:\[([^\[\]]+)\])?$/);
-      const mainType = m ? m[1] : String(RAWfilter);
-      const subType  = m ? (m[2] || "") : "";
+      const allowed = RAWfilter.some(spec => {
+        if (spec.type !== type) return false;
+        if (!spec.subtype) return true;
+        return text.startsWith("[" + spec.subtype + "]");
+      });
 
-      if (type !== mainType) return;
-      if (subType && !text.startsWith("[" + subType + "]")) return;
+      if (!allowed) return;
     }
-
 
     try {
       parent.postMessage(
@@ -73,13 +106,13 @@ for(var uri in oCOM.URL.uri)
   }
 
   DebugFilter.forEach(type => {
-  //["warn", "error", "assert"].forEach(type => {
     const orig = console[type];
+    if (typeof orig !== "function") return;
+
     console[type] = (...args) => {
       forward(type, args);
       orig.apply(console, args);
     };
-
   });
 })();
 
