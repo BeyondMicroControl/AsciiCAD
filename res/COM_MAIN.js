@@ -143,9 +143,30 @@ this.interpolateColors = function(col_arr, rangeLen)
   this.serial8 = new Uint8Array();
   this.config8_map = {};
   this.config8_idx = {};
-  this.ser8_ref = function(name,arr) { this.setlen(name,null); this.serial8 = new Uint8Array([...this.serial8,...arr]) }
-  this.ser8_val = function(name,val,modifier) { this.setlen(name,modifier); this.serial8 = new Uint8Array([...this.serial8,...[val&255]]) } 
+  this.ser8_ref = function(name, arr)
+  {
+    this.setlen(name, null);
+    const out = new Uint8Array(this.serial8.length + arr.length);
+    out.set(this.serial8, 0);
+    out.set(arr, this.serial8.length);
+    this.serial8 = out;
+  }
+  this.ser8_val = function(name, val, modifier)
+  {
+    this.setlen(name, modifier);
+
+    const out = new Uint8Array(this.serial8.length + 1);
+    out.set(this.serial8, 0);
+    out[this.serial8.length] = val & 255;
+    this.serial8 = out;
+  }
   this.ser8_map = function() { return "const "+JSON.stringify(this.config8_map).replace(/"|\{|\}/g,"").replace(/:/g,"=")+";" }
+  this.ser8_reset = function()
+  {
+    this.serial8 = new Uint8Array(0);
+    this.config8_map = {};
+    this.config8_idx = {};
+  }  
   this.idx8 = function(name) { return this.config8_idx[name] }
   this.setlen = function(name,modifier)
   {
