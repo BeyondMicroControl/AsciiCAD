@@ -3517,7 +3517,6 @@ this.mikamiPathMultiWorker = async function(from, to, modifiers)
 
 this.mikamiPath = function(from, to, modifiers)
 {
-  
   if (!from || !to) return [];
   if (from.r === to.r && from.c === to.c) return [];
 
@@ -3532,11 +3531,18 @@ this.mikamiPath = function(from, to, modifiers)
     try
     {
       const gpuPath = oGASC.mikamiPath(from, to, mods);
+
       if (Array.isArray(gpuPath)) return gpuPath;
+
+      // GPU was explicitly requested: do NOT fall back
+      if (impl === "gpu") return this.buildOrthogonalPath(from, to, mods);
     }
     catch (err)
     {
       console.warn("GPU Mikami failed; falling back to CPU.", err);
+
+      // GPU was explicitly requested: do NOT fall back
+      if (impl === "gpu") return this.buildOrthogonalPath(from, to, mods);
     }
   }
 
@@ -6583,8 +6589,11 @@ function GASC()
 
     this.mikamiChooseTargetAxis = function(h2D, v2D, to, modifiers)
     {
-        const h = h2D?.[to.r]?.[to.c];
-        const v = v2D?.[to.r]?.[to.c];
+        const hArr = (h2D && typeof h2D.toArray === "function") ? h2D.toArray() : h2D;
+        const vArr = (v2D && typeof v2D.toArray === "function") ? v2D.toArray() : v2D;
+
+        const h = hArr?.[to.r]?.[to.c];
+        const v = vArr?.[to.r]?.[to.c];
         const INF = this.MIKAMI_INF;
         const hf = Number.isFinite(h) && h < INF;
         const vf = Number.isFinite(v) && v < INF;
@@ -6761,7 +6770,7 @@ function GASC()
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline: true,
+                pipeline: false,
                 immutable: true,
                 dynamicArguments: true,
                 loopMaxIterations: COLS
@@ -6777,7 +6786,7 @@ function GASC()
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline: true,
+                pipeline: false,
                 immutable: true,
                 dynamicArguments: true,
                 loopMaxIterations: ROWS
@@ -6793,7 +6802,7 @@ function GASC()
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline: true,
+                pipeline: false,
                 immutable: true,
                 dynamicArguments: true,
                 loopMaxIterations: COLS
@@ -6809,7 +6818,7 @@ function GASC()
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline: true,
+                pipeline: false,
                 immutable: true,
                 dynamicArguments: true,
                 loopMaxIterations: ROWS
