@@ -928,8 +928,7 @@ function GASC()
         return ret;
     };
 
-
-    this.mikamiPath_last = {};
+    this.mikamiPath_cache = { key: "", path: null };
 
     this.mikamiPath = function(from, to, modifiers)
     {
@@ -948,16 +947,17 @@ function GASC()
         const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
         const ctx  = oASC.routeBuildContext(from, to);
 
+        const key = JSON.stringify({fr: from.r, fc: from.c,tr: to.r, tc: to.c,sv: !!mods.startVertical,lc: !!mods.leastCorners,lb: !!mods.leastBridges});
 
-        if(from!=this.mikamiPath_last.from || to!=this.mikamiPath_last.to)
+        if (this.mikamiPath_cache.key === key && Array.isArray(this.mikamiPath_cache.path))
         {
-            oCOM.startChrono("oGASC.glyph2mask");
-            this.mikamiPath_mask8 = this.glyph2mask(2);
-            oCOM.stopChrono("oGASC.glyph2mask");
+            oCOM.stopChrono("oGASC.mikamiPath", "cache-hit");
+            return this.mikamiPath_cache.path.slice();
         }
 
-        this.mikamiPath_last = {"from":from,"to":to};
-        const mask8 = this.mikamiPath_mask8;
+        oCOM.startChrono("oGASC.glyph2mask");
+        const mask8 = this.glyph2mask(2);
+        oCOM.stopChrono("oGASC.glyph2mask");
 
         if (!mask8) return oCOM.debugDone(null, "GPU mikamiPath()", "glyph2mask-failed");
 
@@ -1048,6 +1048,7 @@ function GASC()
             let bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
             if (bestAxis)
             {
+                this.mikamiPath_cache = { key, path: ret.slice() };
                 const ret = this.mikamiBacktrace(h, v, grid, from, to, mods);
                 oCOM.stopChrono("oGASC.mikamiPath", "ok-direct");
                 return oCOM.debugDone(this.logPathSummary("GPU mikamiPath ok-direct", ret), "GPU mikamiPath()", "ok-direct");
@@ -1064,8 +1065,8 @@ function GASC()
                 bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
                 if (bestAxis)
                 {
+                    this.mikamiPath_cache = { key, path: ret.slice() };
                     const ret = this.mikamiBacktrace(h, v, grid, from, to, mods);
-                    
                     oCOM.stopChrono("oGASC.mikamiPath", "ok-iter");
                     return oCOM.debugDone(this.logPathSummary("GPU mikamiPath ok-iter", ret), "GPU mikamiPath()", "ok-iter");
                 }
@@ -1299,6 +1300,7 @@ function GASC()
 
         try
         {
+            oCOM.ser8_reset();
             for (const name in config)
             {
             const value = config[name][0];
