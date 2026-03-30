@@ -917,12 +917,14 @@ function GASC()
         if (guard <= 0) return null;
 
         states.reverse();
-        const ret = oASC.routeStatesToPath(states, modifiers);
-        if (bDebug)
-        {
-            console.log("[GPU mikamiBacktrace] statesLen=" + states.length +
+
+        const fullStates = oASC.routeExpandWaypointStates(states);
+        if (!fullStates || fullStates.length === 0) return null;
+
+        const ret = oASC.routeStatesToPath(fullStates, modifiers);
+        if (bDebug). console.log("[GPU mikamiBacktrace] statesLen=" + states.length +
+                        " fullStatesLen=" + fullStates.length +
                         " pathLen=" + (Array.isArray(ret) ? ret.length : -1));
-        }
         return ret;
     };
 
