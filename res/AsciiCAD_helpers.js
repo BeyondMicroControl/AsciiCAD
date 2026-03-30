@@ -1269,7 +1269,43 @@ function ASC()
 
 
   ////////////////////////////////////////////////////
-  // A* routing subsection
+  // routing subsection
+
+
+this.routeExpandWaypointStates = function(states)
+{
+  const out = [];
+  if (!states || states.length === 0) return out;
+
+  out.push({ r: states[0].r, c: states[0].c });
+
+  for (let i = 1; i < states.length; i++)
+  {
+    const a = states[i - 1];
+    const b = states[i];
+
+    if (a.r === b.r)
+    {
+      const step = b.c > a.c ? 1 : -1;
+      for (let c = a.c + step; c !== b.c + step; c += step)
+        out.push({ r: a.r, c });
+    }
+    else if (a.c === b.c)
+    {
+      const step = b.r > a.r ? 1 : -1;
+      for (let r = a.r + step; r !== b.r + step; r += step)
+        out.push({ r, c: a.c });
+    }
+    else
+    {
+      // invalid waypoint chain for an orthogonal path
+      return [];
+    }
+  }
+
+  return out;
+}
+
 
   // ------------------------------------------------------------
   // ROUTER (A* over (r,c,dir))
