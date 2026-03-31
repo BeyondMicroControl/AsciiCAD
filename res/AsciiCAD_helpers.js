@@ -1366,9 +1366,15 @@ this.routeExpandWaypointStates = function(states)
 
   this.routeBuildContext = function(from, to)
   {
+    oCOM.startChrono("oASC.computeHighlightOverlay");
     const hl = this.computeHighlightOverlay?.() ?? { redSet: new Set(), blueSet: new Set() };
+    oCOM.stopChrono("oASC.computeHighlightOverlay");
+    oCOM.startChrono("oASC.computeMatchOverlay");
     const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() };
+    oCOM.stopChrono("oASC.computeMatchOverlay");
+    oCOM.startChrono("oASC.computeNetlistBannedSet");
     const banned = this.computeNetlistBannedSet?.(mo, hl) ?? new Set();
+    oCOM.stopChrono("oASC.computeNetlistBannedSet");
 
     return { from, to, hl, mo, banned };
   }
