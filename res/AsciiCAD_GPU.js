@@ -1409,8 +1409,13 @@ this.routeBuildBannedBits = function(ctx)
         if (!oASC || typeof oASC.routeBuildContext !== "function")
             return oCOM.debugDone(null, "GPU mikamiPath_v2()", "missing-routeBuildContext");
 
+        oCOM.startChrono("routeNormalizeModifiers");
         const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
+        oCOM.stopChrono("routeNormalizeModifiers");
+
+        oCOM.startChrono("routeBuildContext");
         const ctx  = oASC.routeBuildContext(from, to);
+        oCOM.stopChrono("routeBuildContext");
         const key = JSON.stringify({
             fr: from.r, fc: from.c,
             tr: to.r, tc: to.c,
@@ -1427,7 +1432,6 @@ this.routeBuildBannedBits = function(ctx)
 
         const mask16 = this.glyph2mask16();
         if (!mask16) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "glyph2mask16-failed");
-
         const bannedBits = this.routeBuildBannedBits(ctx);
 
         const cfg16 = new Uint16Array(8);
