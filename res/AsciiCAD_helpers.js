@@ -3009,9 +3009,13 @@ this.mikamiPath = function(from, to, modifiers)
 
   // subsection: generic draw helpers
 
+
+  this.boardRevision = 1;  // for cache mechanism
+
   this.pushStrokeIfNonEmpty = function(stroke) 
   {
     if (!stroke || stroke.length === 0) return;
+    this.boardRevision = (this.boardRevision | 0) + 1;
 
     undoStack.push(stroke);
     redoStack.length = 0;
@@ -3943,6 +3947,47 @@ this.startPasteWithText = function(text)
     return banned;
   }
 
+  this.computeNetlistBannedBits = function(moIn, hlIn)
+  {
+    const bits = new Uint8Array(ROWS * COLS);
+
+    const setBitFromKey = (k) =>
+    {
+      const p = k.indexOf(",");
+      if (p < 0) return;
+      const r = k.slice(0, p) | 0;
+      const c = k.slice(p + 1) | 0;
+      if (r >= 0 && r < ROWS && c >= 0 && c < COLS)
+        bits[r * COLS + c] = 1;
+    };
+
+    const hl = hlIn ?? (this.computeHighlightOverlay?.() ?? { redSet: new Set(), blueSet: new Set() });
+    hl.redSet?.forEach(setBitFromKey);
+    hl.blueSet?.forEach(setBitFromKey);
+
+    const mo = moIn ?? (this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() });
+    const banSet = mo.solidSet ?? mo.greenSet ?? new Set();
+    banSet.forEach(setBitFromKey);
+
+    return bits;
+  };
+
+  this.routeBuildContextGPU = function(from, to)
+  {
+    oCOM.startChrono("oASC.computeHighlightOverlay");
+    const hl = this.computeHighlightOverlay?.() ?? { redSet: new Set(), blueSet: new Set(), mask: null };
+    oCOM.stopChrono("oASC.computeHighlightOverlay");
+
+    oCOM.startChrono("oASC.computeMatchOverlay");
+    const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() };
+    oCOM.stopChrono("oASC.computeMatchOverlay");
+
+    oCOM.startChrono("oASC.computeNetlistBannedBits");
+    const bannedBits = this.computeNetlistBannedBits(mo, hl);
+    oCOM.stopChrono("oASC.computeNetlistBannedBits");
+
+    return { from, to, bannedBits };
+  };
 
   this.computeMatchOverlay = function()
   {
