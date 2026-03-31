@@ -3554,12 +3554,13 @@ this.startPasteWithText = function(text)
   {
     let mask = null;
 
-
+/*
     if (typeof oGASC !== "undefined" && oGASC &&
         typeof oGASC.computeHighlightOverlay === "function")
     {
       mask = oGASC.computeHighlightOverlay(ascii, ROWS, COLS);
     }
+*/
 
     if (!mask)
     {
@@ -3951,41 +3952,30 @@ this.startPasteWithText = function(text)
   {
     const bits = new Uint8Array(ROWS * COLS);
 
-    const setBitFromKey = (k) =>
+    const hl = hlIn ?? (this.computeHighlightOverlay?.() ?? { mask: null });
+    if (hl.mask)
     {
-      const p = k.indexOf(",");
-      if (p < 0) return;
-      const r = k.slice(0, p) | 0;
-      const c = k.slice(p + 1) | 0;
-      if (r >= 0 && r < ROWS && c >= 0 && c < COLS)
-        bits[r * COLS + c] = 1;
-    };
+      let i = 0;
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++, i++)
+          if ((hl.mask[r][c] | 0) !== 0) bits[i] = 1;
+    }
 
-    const hl = hlIn ?? (this.computeHighlightOverlay?.() ?? { redSet: new Set(), blueSet: new Set() });
-    hl.redSet?.forEach(setBitFromKey);
-    hl.blueSet?.forEach(setBitFromKey);
-
-    const mo = moIn ?? (this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() });
-    const banSet = mo.solidSet ?? mo.greenSet ?? new Set();
-    banSet.forEach(setBitFromKey);
+    const mo = moIn ?? (this.computeMatchOverlay?.() ?? { solidBits: null });
+    if (mo.solidBits)
+    {
+      for (let i = 0; i < bits.length; i++)
+        if (mo.solidBits[i]) bits[i] = 1;
+    }
 
     return bits;
   };
 
   this.routeBuildContextGPU = function(from, to)
   {
-    oCOM.startChrono("oASC.computeHighlightOverlay");
-    const hl = this.computeHighlightOverlay?.() ?? { redSet: new Set(), blueSet: new Set(), mask: null };
-    oCOM.stopChrono("oASC.computeHighlightOverlay");
-
-    oCOM.startChrono("oASC.computeMatchOverlay");
-    const mo = this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() };
-    oCOM.stopChrono("oASC.computeMatchOverlay");
-
-    oCOM.startChrono("oASC.computeNetlistBannedBits");
+    const hl = this.computeHighlightOverlay?.() ?? { mask: null };
+    const mo = this.computeMatchOverlay?.() ?? { solidBits: null };
     const bannedBits = this.computeNetlistBannedBits(mo, hl);
-    oCOM.stopChrono("oASC.computeNetlistBannedBits");
-
     return { from, to, bannedBits };
   };
 
@@ -3997,6 +3987,10 @@ this.startPasteWithText = function(text)
     const matchByCell = new Map(); // keyRC(r,c) -> matchId (solid cells only)
     const solidSet = new Set(); // NEW: for netlist masking (skip ' ' and '§')
     const footprintSet = new Set();  // component footprint (skip ' ' only)
+
+    const solidBits = new Uint8Array(ROWS * COLS);
+    const footprintBits = new Uint8Array(ROWS * COLS);
+
 
     if (!(typeof CATALOG !== "undefined" && Array.isArray(CATALOG)))
       return { greenSet, rects, solidSet, footprintSet, matches, matchByCell };
@@ -4065,6 +4059,10 @@ this.startPasteWithText = function(text)
               // Footprint includes wildcard cells too (so CE can “see” pins/protrusions)
               footprintSet.add(k);
 
+              const idx = r * COLS + c;
+              footprintBits[idx] = 1;
+              if (pc !== this.WILDCHAR_U) solidBits[idx] = 1;
+
               // Visual highlight + ban mask exclude wildcard cells
               if (pc !== this.WILDCHAR_U) {
                 greenSet.add(k);
@@ -4077,7 +4075,7 @@ this.startPasteWithText = function(text)
       }
     }
 
-    return { greenSet, rects, solidSet, footprintSet, matches, matchByCell }
+    return { greenSet, rects, solidSet, solidBits, footprintSet, footprintBits, matches, matchByCell };
   }
 
 
