@@ -6331,44 +6331,60 @@ this.glyph2mask16.kScript = function(ascii16, cfg8)
     const G2M_LUT_LEN   = cfg8[5] | (cfg8[6] << 8);
     const G2M_LUT_CP1   = G2M_LUT_CP0 + G2M_LUT_LEN - 1;
 
-    const N = 1, E = 2, S = 4, W = 8;
+    const idx = this.thread.y * COLS + this.thread.x;
+    const ch  = ascii16[idx] | 0;
 
-    const r = this.thread.y;
-    const c = this.thread.x;
-    const idx = r * COLS + c;
-    const ch = ascii16[idx] | 0;
+    var m8   = 0;
+    var code = 0;
+    var lo   = 0;
+    var hi   = 0;
+    var dir  = 0;
+    var deg  = 0;
 
-    let m8 = 0;
     if (ch >= G2M_LUT_CP0 && ch <= G2M_LUT_CP1)
         m8 = cfg8[CFG_LUT_BASE + (ch - G2M_LUT_CP0)] | 0;
 
-    let code = 0;
-
-    if (ch === 32) code = 1;                  // space
-    else if (m8 === 0) code = 0;              // text / unknown
+    if (ch === 32)
+    {
+        code = 1;
+    }
+    else if (m8 === 0)
+    {
+        code = 0;
+    }
     else
     {
-        const lo = m8 & 15;
-        const hi = (m8 >> 4) & 15;
+        lo = m8 & 15;
+        hi = (m8 >> 4) & 15;
 
-        if (hi !== 0 && lo === 0) code = 0;   // fat wire obstacle
-        else if (lo !== 0 && lo === hi) code = 0; // double wire obstacle
+        if (hi !== 0 && lo === 0)
+        {
+            code = 0;
+        }
+        else if (lo !== 0 && lo === hi)
+        {
+            code = 0;
+        }
         else
         {
-            const dir = (lo | hi) & 15;
-            const deg =
-                ((dir & N) ? 1 : 0) +
-                ((dir & E) ? 1 : 0) +
-                ((dir & S) ? 1 : 0) +
-                ((dir & W) ? 1 : 0);
+            dir = (lo | hi) & 15;
+            deg = 0;
 
-            if (deg === 2 && dir === (E | W)) code = 2;
-            else if (deg === 2 && dir === (N | S)) code = 3;
-            else code = 0;
+            if ((dir & 1) > 0) deg = deg + 1;
+            if ((dir & 2) > 0) deg = deg + 1;
+            if ((dir & 4) > 0) deg = deg + 1;
+            if ((dir & 8) > 0) deg = deg + 1;
+
+            if (deg === 2 && dir === 10)
+                code = 2;
+            else if (deg === 2 && dir === 5)
+                code = 3;
+            else
+                code = 0;
         }
     }
 
-    return (code << 8) | m8;
+    return m8 + code * 256;
 };
 
 this.routeBaseCodeFromMask16 = function(v16)
@@ -7729,10 +7745,10 @@ this.routeBuildBannedBits = function(ctx)
         const dstIdx = dstR * cols + dstC;
 
         let code = (mask16[idx] >>> 8) & 3;
-        if (idx === srcIdx || idx === dstIdx) code = 1;
-        else if (bannedBits[idx]) code = 0;
+        if (idx == srcIdx || idx == dstIdx) code = 1;
+        else if ((bannedBits[idx] | 0) !== 0) code = 0;
 
-        if (r !== srcR) return INF;
+        if (r != srcR) return INF;
         if (idx === srcIdx) return 0;
         if (!(code === 1 || code === 3)) return INF;
 
@@ -7766,8 +7782,8 @@ this.routeBuildBannedBits = function(ctx)
         const dstIdx = dstR * cols + dstC;
 
         let code = (mask16[idx] >>> 8) & 3;
-        if (idx === srcIdx || idx === dstIdx) code = 1;
-        else if (bannedBits[idx]) code = 0;
+        if (kIdx === srcIdx || kIdx === dstIdx) k = 1;
+        else if ((bannedBits[kIdx] | 0) > 0) k = 0;
 
         if (c !== srcC) return INF;
         if (idx === srcIdx) return 0;
@@ -7779,7 +7795,7 @@ this.routeBuildBannedBits = function(ctx)
             const kIdx = rr * cols + c;
             let k = (mask16[kIdx] >>> 8) & 3;
             if (kIdx === srcIdx || kIdx === dstIdx) k = 1;
-            else if (bannedBits[kIdx]) k = 0;
+            else if ((bannedBits[kIdx] | 0) > 0) k = 0;
             if (!(k === 1 || k === 2)) return INF;
         }
 
@@ -7804,7 +7820,7 @@ this.routeBuildBannedBits = function(ctx)
 
         let code = (mask16[idx] >>> 8) & 3;
         if (idx === srcIdx || idx === dstIdx) code = 1;
-        else if (bannedBits[idx]) code = 0;
+        else if ((bannedBits[idx] | 0) > 0) code = 0;
 
         if (!(code === 1 || code === 3)) return INF;
 
@@ -7816,7 +7832,7 @@ this.routeBuildBannedBits = function(ctx)
             const kIdx = r * cols + ccLeft;
             let k = (mask16[kIdx] >>> 8) & 3;
             if (kIdx === srcIdx || kIdx === dstIdx) k = 1;
-            else if (bannedBits[kIdx]) k = 0;
+            else if ((bannedBits[kIdx] | 0) > 0) k = 0;
             if (!(k === 1 || k === 3)) break;
 
             cand = prevAxis[r][ccLeft];
@@ -7832,7 +7848,7 @@ this.routeBuildBannedBits = function(ctx)
             const kIdx = r * cols + ccRight;
             let k = (mask16[kIdx] >>> 8) & 3;
             if (kIdx === srcIdx || kIdx === dstIdx) k = 1;
-            else if (bannedBits[kIdx]) k = 0;
+            else if ((bannedBits[kIdx] | 0) > 0) k = 0;
             if (!(k === 1 || k === 3)) break;
 
             cand = prevAxis[r][ccRight];
@@ -7865,7 +7881,7 @@ this.routeBuildBannedBits = function(ctx)
 
         let code = (mask16[idx] >>> 8) & 3;
         if (idx === srcIdx || idx === dstIdx) code = 1;
-        else if (bannedBits[idx]) code = 0;
+        else if ((bannedBits[idx] | 0) > 0) code = 0;
 
         if (!(code === 1 || code === 2)) return INF;
 
@@ -7877,7 +7893,7 @@ this.routeBuildBannedBits = function(ctx)
             const kIdx = rrUp * cols + c;
             let k = (mask16[kIdx] >>> 8) & 3;
             if (kIdx === srcIdx || kIdx === dstIdx) k = 1;
-            else if (bannedBits[kIdx]) k = 0;
+            else if ((bannedBits[kIdx] | 0) > 0) k = 0;
             if (!(k === 1 || k === 2)) break;
 
             cand = prevAxis[rrUp][c];
@@ -7893,7 +7909,7 @@ this.routeBuildBannedBits = function(ctx)
             const kIdx = rrDown * cols + c;
             let k = (mask16[kIdx] >>> 8) & 3;
             if (kIdx === srcIdx || kIdx === dstIdx) k = 1;
-            else if (bannedBits[kIdx]) k = 0;
+            else if ((bannedBits[kIdx] | 0) > 0) k = 0;
             if (!(k === 1 || k === 2)) break;
 
             cand = prevAxis[rrDown][c];
