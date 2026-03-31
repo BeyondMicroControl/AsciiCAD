@@ -1409,13 +1409,13 @@ this.routeBuildBannedBits = function(ctx)
         if (!oASC || typeof oASC.routeBuildContext !== "function")
             return oCOM.debugDone(null, "GPU mikamiPath_v2()", "missing-routeBuildContext");
 
-        oCOM.startChrono("routeNormalizeModifiers");
+        oCOM.startChrono("oGASC.routeNormalizeModifiers");
         const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
-        oCOM.stopChrono("routeNormalizeModifiers");
+        oCOM.stopChrono("oGASC.routeNormalizeModifiers");
 
-        oCOM.startChrono("routeBuildContext");
+        oCOM.startChrono("oGASC.routeBuildContext");
         const ctx  = oASC.routeBuildContext(from, to);
-        oCOM.stopChrono("routeBuildContext");
+        oCOM.stopChrono("oGASC.routeBuildContext");
         const key = JSON.stringify({
             fr: from.r, fc: from.c,
             tr: to.r, tc: to.c,
