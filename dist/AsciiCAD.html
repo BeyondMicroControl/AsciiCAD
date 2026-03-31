@@ -4612,52 +4612,28 @@ this.startPasteWithText = function(text)
     return "";
   }
 
-  // TODO: check similarities between computeBoxRects() and collectDoubleBoxRects() and refactor !!!
   // Locate all valid BOX rectangles (double-line boxes) on the grid.
   // Returns [{ ref:"DEFINITION", r0,c0,r1,c1, name, type:"BOX" }, ...]
   this.computeBoxRects = function()
   {
     const out = [];
-    const seen = new Set();
-
-
-    for (let r0 = 0; r0 < ROWS; r0++)
+    const rects = this.collectDoubleBoxRects16();
+    
+    for (let i = 0; i < rects.length; i += 4)
     {
-      for (let c0 = 0; c0 < COLS; c0++)
-      {
-        if (ascii?.[r0]?.[c0] !== "╔") continue;
-
-        for (let c1 = c0 + 1; c1 < COLS; c1++)
-        {
-          if (ascii[r0][c1] !== "╗") continue;
-
-          for (let r1 = r0 + 1; r1 < ROWS; r1++)
-          {
-            if (ascii[r1][c0] !== "╚") continue;
-            if (ascii[r1][c1] !== "╝") continue;
-
-            if (!this.isValidDoubleBox?.(r0, c0, r1, c1)) continue;
-
-            const k = r0 + "," + c0 + "," + r1 + "," + c1;
-            if (seen.has(k)) continue;
-            seen.add(k);
-
-            const name = this.computeBoxLabel?.(r0, c0, r1, c1) ?? "";
-
-            out.push({
-              ref: "DEFINITION",  // referring to the definition (of a BOX)
-              type: "BOX",
-              name,
-              tl: { r: r0, c: c0 },
-              br: { r: r1, c: c1 },
-            });
-          }
-        }
-      }
+      const r0 = rects[i + 0], c0 = rects[i + 1];
+      const r1 = rects[i + 2], c1 = rects[i + 3];
+      out.push({
+        ref: "DEFINITION",
+        type: "BOX",
+        name: this.computeBoxLabel?.(r0, c0, r1, c1) ?? "",
+        tl: { r: r0, c: c0 },
+        br: { r: r1, c: c1 },
+      });
     }
 
     return out;
-  }
+  };
 
   // Locate matching catalog components and/or boxes according to policy.
   //
