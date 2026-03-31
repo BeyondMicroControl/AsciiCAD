@@ -1169,7 +1169,7 @@ this.routeBuildBannedBits = function(ctx)
             },
             { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
         );
-        oCOM.startChrono("stepV");
+        oCOM.stopChrono("stepV");
         if (okStepV === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-stepV-compile-failed");
         try
         {
@@ -1375,36 +1375,44 @@ this.routeBuildBannedBits = function(ctx)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
- this.mikamiPath_v2 = function(from, to, modifiers)
-    {
-        oCOM.startChrono("oGASC.mikamiPath", JSON.stringify({ from, to }));
-        oCOM.startChrono("gridbuild");
-        if (!from || !to) return oCOM.debugDone(null, "GPU mikamiPath()", "early-exit(!from||!to)");
-        if (from.r === to.r && from.c === to.c) return oCOM.debugDone([], "GPU mikamiPath()", "early-exit(same-cell)");
 
-        if (modifiers?.leastBridges) return oCOM.debugDone(null, "GPU mikamiPath()", "unsupported-leastBridges");
+    this.mikamiPath_v2_cache = { key: "", path: null };
+
+    this.mikamiPath_v2 = function(from, to, modifiers)
+    {
+        oCOM.startChrono("oGASC.mikamiPath_v2", JSON.stringify({ from, to }));
+        oCOM.startChrono("gridbuild_v2");
+
+        if (!from || !to) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "early-exit(!from||!to)");
+        if (from.r === to.r && from.c === to.c) return oCOM.debugDone([], "GPU mikamiPath_v2()", "early-exit(same-cell)");
+
+        if (modifiers?.leastBridges) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "unsupported-leastBridges");
 
         if (!oASC || typeof oASC.routeNormalizeModifiers !== "function")
-            return oCOM.debugDone(null, "GPU mikamiPath()", "missing-routeNormalizeModifiers");
+            return oCOM.debugDone(null, "GPU mikamiPath_v2()", "missing-routeNormalizeModifiers");
         if (!oASC || typeof oASC.routeBuildContext !== "function")
-            return oCOM.debugDone(null, "GPU mikamiPath()", "missing-routeBuildContext");
+            return oCOM.debugDone(null, "GPU mikamiPath_v2()", "missing-routeBuildContext");
 
         const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
         const ctx  = oASC.routeBuildContext(from, to);
-        const key = JSON.stringify({fr: from.r, fc: from.c,tr: to.r, tc: to.c,sv: !!mods.startVertical,lc: !!mods.leastCorners,lb: !!mods.leastBridges});
+        const key = JSON.stringify({
+            fr: from.r, fc: from.c,
+            tr: to.r, tc: to.c,
+            sv: !!mods.startVertical,
+            lc: !!mods.leastCorners,
+            lb: !!mods.leastBridges
+        });
 
-        if (this.mikamiPath_cache.key === key && Array.isArray(this.mikamiPath_cache.path))
+        if (this.mikamiPath_v2_cache.key === key && Array.isArray(this.mikamiPath_v2_cache.path))
         {
-            oCOM.stopChrono("oGASC.mikamiPath", "cache-hit");
-            return this.mikamiPath_cache.path.slice();
+            oCOM.stopChrono("oGASC.mikamiPath_v2", "cache-hit");
+            return this.mikamiPath_v2_cache.path.slice();
         }
 
-        const mask8 = this.glyph2mask(2);
-        if (!mask8) return oCOM.debugDone(null, "GPU mikamiPath()", "glyph2mask-failed");
+        const mask16 = this.glyph2mask16();
+        if (!mask16) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "glyph2mask16-failed");
 
-        const grid = this.routeBuildCellCodeGridFromMask(mask8, ctx, from, to);
-        this.logRouteGridStats("GPU mikamiPath", grid, from, to);
-        if (!grid) return oCOM.debugDone(null, "GPU mikamiPath()", "grid-build-failed");
+        const bannedBits = this.routeBuildBannedBits(ctx);
 
         const cfg16 = new Uint16Array(8);
         cfg16[0] = COLS;
@@ -1415,11 +1423,12 @@ this.routeBuildBannedBits = function(ctx)
         cfg16[5] = to.r;
         cfg16[6] = mods.startVertical ? 1 : 0;
         cfg16[7] = this.MIKAMI_INF;
-        oCOM.stopChrono("gridbuild");
 
-        oCOM.startChrono("initH");
+        oCOM.stopChrono("gridbuild_v2");
+
+        oCOM.startChrono("initH_v2");
         const okInitH = this.runGPU(
-            this.mikamiInitH,
+            this.mikamiInitH_v2,
             { mode: "gpu" },
             {
                 output: [COLS, ROWS],
@@ -1430,13 +1439,14 @@ this.routeBuildBannedBits = function(ctx)
                 dynamicArguments: true,
                 loopMaxIterations: COLS
             },
-            { grid: [grid], cfg16: [cfg16] }
+            { mask16: [mask16], bannedBits: [bannedBits], cfg16: [cfg16] }
         );
-         oCOM.stopChrono("initH");
-        if (okInitH === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-initH-compile-failed");
-        oCOM.startChrono("initV");
+        oCOM.stopChrono("initH_v2");
+        if (okInitH === false) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "kernel-initH_v2-compile-failed");
+
+        oCOM.startChrono("initV_v2");
         const okInitV = this.runGPU(
-            this.mikamiInitV,
+            this.mikamiInitV_v2,
             { mode: "gpu" },
             {
                 output: [COLS, ROWS],
@@ -1447,97 +1457,254 @@ this.routeBuildBannedBits = function(ctx)
                 dynamicArguments: true,
                 loopMaxIterations: ROWS
             },
-            { grid: [grid], cfg16: [cfg16] }
+            { mask16: [mask16], bannedBits: [bannedBits], cfg16: [cfg16] }
         );
-        oCOM.stopChrono("initV");
-        if (okInitV === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-initV-compile-failed");
-        oCOM.startChrono("stepH");
+        oCOM.stopChrono("initV_v2");
+        if (okInitV === false) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "kernel-initV_v2-compile-failed");
+
+        oCOM.startChrono("stepH_v2");
         const okStepH = this.runGPU(
-            this.mikamiStepH,
+            this.mikamiStepH_v2,
             { mode: "gpu" },
             {
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline:true,
+                pipeline: true,
                 immutable: true,
                 dynamicArguments: true,
                 loopMaxIterations: COLS
             },
-            { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
+            { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], mask16: [mask16], bannedBits: [bannedBits], cfg16: [cfg16] }
         );
-        oCOM.stopChrono("stepH");
-        if (okStepH === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-stepH-compile-failed");
-        oCOM.startChrono("stepV");
+        oCOM.stopChrono("stepH_v2");
+        if (okStepH === false) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "kernel-stepH_v2-compile-failed");
+
+        oCOM.startChrono("stepV_v2");
         const okStepV = this.runGPU(
-            this.mikamiStepV,
+            this.mikamiStepV_v2,
             { mode: "gpu" },
             {
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline:true,
+                pipeline: true,
                 immutable: true,
                 dynamicArguments: true,
                 loopMaxIterations: ROWS
             },
-            { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
+            { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], mask16: [mask16], bannedBits: [bannedBits], cfg16: [cfg16] }
         );
-        oCOM.startChrono("stepV");
-        if (okStepV === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-stepV-compile-failed");
+        oCOM.stopChrono("stepV_v2");
+        if (okStepV === false) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "kernel-stepV_v2-compile-failed");
+
         try
         {
-            oCOM.startChrono("backtrace");
-            let h = this.mikamiInitH.kObject(grid, cfg16);
-            let v = this.mikamiInitV.kObject(grid, cfg16);
+            oCOM.startChrono("backtrace_v2");
 
-            this.logMikamiTargetState("GPU mikamiPath init", h, v, to);
+            let h = this.mikamiInitH_v2.kObject(mask16, bannedBits, cfg16);
+            let v = this.mikamiInitV_v2.kObject(mask16, bannedBits, cfg16);
+
+            this.logMikamiTargetState("GPU mikamiPath_v2 init", h, v, to);
             let bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
+
             if (bestAxis)
             {
-                const ret = this.mikamiBacktrace(h, v, grid, from, to, mods);
-                this.mikamiPath_cache = { key, path: ret.slice() };
-                oCOM.stopChrono("backtrace");
-                oCOM.stopChrono("oGASC.mikamiPath", "ok-direct");
-                return oCOM.debugDone(this.logPathSummary("GPU mikamiPath ok-direct", ret), "GPU mikamiPath()", "ok-direct");
+                const ret = this.mikamiBacktrace_v2(h, v, mask16, bannedBits, from, to, mods);
+                this.mikamiPath_v2_cache = { key, path: ret.slice() };
+                oCOM.stopChrono("backtrace_v2");
+                oCOM.stopChrono("oGASC.mikamiPath_v2", "ok-direct");
+                return oCOM.debugDone(this.logPathSummary("GPU mikamiPath_v2 ok-direct", ret), "GPU mikamiPath_v2()", "ok-direct");
             }
 
             for (let iter = 0; iter < (ROWS + COLS); iter++)
             {
-                const h2 = this.mikamiStepH.kObject(v, h, grid, cfg16);
-                const v2 = this.mikamiStepV.kObject(h2, v, grid, cfg16);
+                const h2 = this.mikamiStepH_v2.kObject(v, h, mask16, bannedBits, cfg16);
+                const v2 = this.mikamiStepV_v2.kObject(h2, v, mask16, bannedBits, cfg16);
                 h = h2;
                 v = v2;
 
-                this.logMikamiTargetState("GPU mikamiPath iter " + iter, h, v, to);
+                this.logMikamiTargetState("GPU mikamiPath_v2 iter " + iter, h, v, to);
                 bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
+
                 if (bestAxis)
                 {
-                    const ret = this.mikamiBacktrace(h, v, grid, from, to, mods);
-                    this.mikamiPath_cache = { key, path: ret.slice() };
-                    oCOM.stopChrono("backtrace");
-                    oCOM.stopChrono("oGASC.mikamiPath", "ok-iter");
-                    return oCOM.debugDone(this.logPathSummary("GPU mikamiPath ok-iter", ret), "GPU mikamiPath()", "ok-iter");
+                    const ret = this.mikamiBacktrace_v2(h, v, mask16, bannedBits, from, to, mods);
+                    this.mikamiPath_v2_cache = { key, path: ret.slice() };
+                    oCOM.stopChrono("backtrace_v2");
+                    oCOM.stopChrono("oGASC.mikamiPath_v2", "ok-iter");
+                    return oCOM.debugDone(this.logPathSummary("GPU mikamiPath_v2 ok-iter", ret), "GPU mikamiPath_v2()", "ok-iter");
                 }
             }
 
-            oCOM.stopChrono("oGASC.mikamiPath", "no-path");
-            return oCOM.debugDone(null, "GPU mikamiPath()", "no-path");
+            oCOM.stopChrono("oGASC.mikamiPath_v2", "no-path");
+            return oCOM.debugDone(null, "GPU mikamiPath_v2()", "no-path");
         }
         catch (e)
         {
-            console.warn("AsciiCAD GPU Mikami failed; falling back to CPU.", e);
-            return oCOM.debugDone(null, "GPU mikamiPath()", "exception");
+            console.warn("AsciiCAD GPU Mikami v2 failed; falling back to CPU.", e);
+            return oCOM.debugDone(null, "GPU mikamiPath_v2()", "exception");
         }
     };
 
     this.mikamiPath_v2.help =
     {
         type: "CADScript_FN",
-        usage: "mikamiPath(from,to,modifiers)",
+        usage: "mikamiPath_v2(from,to,modifiers)",
         desc:
             "Tentative GPU.js Mikami-style router. " +
             "Uses the same outer signature as the CPU Mikami router and is intentionally limited to least-bends-first behavior in this first GPU pass."
+    };
+
+    this.mikamiInitH_v2 = function() {};
+    this.mikamiInitV_v2 = function() {};
+    this.mikamiStepH_v2 = function() {};
+    this.mikamiStepV_v2 = function() {};
+
+    this.mikamiPathClearH_v2 = function(mask16, bannedBits, srcIdx, dstIdx, r, c0, c1)
+    {
+        const step = c1 >= c0 ? 1 : -1;
+        for (let c = c0 + step; c !== c1 + step; c += step)
+        {
+            const idx = r * COLS + c;
+            const code = this.routeCodeAtMask16(mask16, idx, srcIdx, dstIdx, bannedBits);
+            if (!this.routePathMikamiCanEnterH(code)) return false;
+        }
+        return true;
+    };
+
+    this.mikamiPathClearV_v2 = function(mask16, bannedBits, srcIdx, dstIdx, c, r0, r1)
+    {
+        const step = r1 >= r0 ? 1 : -1;
+        for (let r = r0 + step; r !== r1 + step; r += step)
+        {
+            const idx = r * COLS + c;
+            const code = this.routeCodeAtMask16(mask16, idx, srcIdx, dstIdx, bannedBits);
+            if (!this.routePathMikamiCanEnterV(code)) return false;
+        }
+        return true;
+    };
+
+    this.mikamiBacktrace_v2 = function(hState, vState, mask16, bannedBits, from, to, modifiers)
+    {
+        const h2D = (hState && typeof hState.toArray === "function") ? hState.toArray() : hState;
+        const v2D = (vState && typeof vState.toArray === "function") ? vState.toArray() : vState;
+        if (!h2D || !v2D || !mask16) return null;
+
+        let axis = this.mikamiChooseTargetAxis(h2D, v2D, to, modifiers);
+        if (!axis) return null;
+
+        const srcIdx = from.r * COLS + from.c;
+        const dstIdx = to.r * COLS + to.c;
+
+        const order = this.mikamiBacktraceOrder(modifiers);
+        const states = [ { r: to.r, c: to.c } ];
+        let curR = to.r;
+        let curC = to.c;
+        let level = axis === "H" ? h2D[curR][curC] : v2D[curR][curC];
+        let guard = ROWS * COLS * 2;
+
+        if (bDebug)
+        {
+            console.log("[GPU mikamiBacktrace_v2] axis=" + axis + " level=" + level +
+                        " from=" + JSON.stringify(from) + " to=" + JSON.stringify(to));
+        }
+
+        while ((curR !== from.r || curC !== from.c) && guard-- > 0)
+        {
+            let found = null;
+
+            if (axis === "H")
+            {
+                const tries = order.H;
+
+                if (level === 0)
+                {
+                    if (curR === from.r && this.mikamiPathClearH_v2(mask16, bannedBits, srcIdx, dstIdx, curR, from.c, curC))
+                        found = { r: from.r, c: from.c, nextAxis: null, nextLevel: -1 };
+                }
+
+                if (!found)
+                {
+                    for (let i = 0; i < tries.length && !found; i++)
+                    {
+                        const step = tries[i].dc;
+                        for (let c = curC - step; c >= 0 && c < COLS; c -= step)
+                        {
+                            if (!this.mikamiPathClearH_v2(mask16, bannedBits, srcIdx, dstIdx, curR, c, curC)) break;
+                            const prevV = v2D?.[curR]?.[c];
+                            if (Number.isFinite(prevV) && prevV === (level - 1))
+                            {
+                                found = { r: curR, c, nextAxis: "V", nextLevel: prevV };
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                const tries = order.V;
+
+                if (level === 0)
+                {
+                    if (curC === from.c && this.mikamiPathClearV_v2(mask16, bannedBits, srcIdx, dstIdx, curC, from.r, curR))
+                        found = { r: from.r, c: from.c, nextAxis: null, nextLevel: -1 };
+                }
+
+                if (!found)
+                {
+                    for (let i = 0; i < tries.length && !found; i++)
+                    {
+                        const step = tries[i].dr;
+                        for (let r = curR - step; r >= 0 && r < ROWS; r -= step)
+                        {
+                            if (!this.mikamiPathClearV_v2(mask16, bannedBits, srcIdx, dstIdx, curC, r, curR)) break;
+                            const prevH = h2D?.[r]?.[curC];
+                            if (Number.isFinite(prevH) && prevH === (level - 1))
+                            {
+                                found = { r, c: curC, nextAxis: "H", nextLevel: prevH };
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!found)
+            {
+                if (bDebug)
+                    console.log("[GPU mikamiBacktrace_v2] failed axis=" + axis +
+                                " cur=(" + curR + "," + curC + ") level=" + level);
+                return null;
+            }
+
+            if (found.r === from.r && found.c === from.c)
+            {
+                states.push({ r: from.r, c: from.c });
+                break;
+            }
+
+            states.push({ r: found.r, c: found.c });
+            curR = found.r;
+            curC = found.c;
+            axis = found.nextAxis;
+            level = found.nextLevel;
+        }
+
+        if (guard <= 0) return null;
+
+        states.reverse();
+
+        const fullStates = oASC.routeExpandWaypointStates(states);
+        if (!fullStates || fullStates.length === 0) return null;
+
+        const ret = oASC.routeStatesToPath(fullStates, modifiers);
+        if (bDebug)
+            console.log("[GPU mikamiBacktrace_v2] statesLen=" + states.length +
+                        " fullStatesLen=" + fullStates.length +
+                        " pathLen=" + (Array.isArray(ret) ? ret.length : -1));
+        return ret;
     };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1642,6 +1809,201 @@ this.routeBuildBannedBits = function(ctx)
         }
     };
 
+
+    this.mikamiInitH_v2.kObject = null;
+    this.mikamiInitH_v2.kScript = function(mask16, bannedBits, cfg16)
+    {
+        const cols = cfg16[0] | 0;
+        const srcC = cfg16[2] | 0;
+        const srcR = cfg16[3] | 0;
+        const dstC = cfg16[4] | 0;
+        const dstR = cfg16[5] | 0;
+        const INF  = cfg16[7] | 0;
+
+        const r = this.thread.y;
+        const c = this.thread.x;
+        const idx = r * cols + c;
+        const srcIdx = srcR * cols + srcC;
+        const dstIdx = dstR * cols + dstC;
+
+        let code = (mask16[idx] >>> 8) & 3;
+        if (idx === srcIdx || idx === dstIdx) code = 1;
+        else if (bannedBits[idx]) code = 0;
+
+        if (r !== srcR) return INF;
+        if (idx === srcIdx) return 0;
+        if (!(code === 1 || code === 3)) return INF;
+
+        const step = c > srcC ? 1 : -1;
+        for (let cc = srcC + step; cc !== c + step; cc += step)
+        {
+            const kIdx = r * cols + cc;
+            let k = (mask16[kIdx] >>> 8) & 3;
+            if (kIdx === srcIdx || kIdx === dstIdx) k = 1;
+            else if (bannedBits[kIdx]) k = 0;
+            if (!(k === 1 || k === 3)) return INF;
+        }
+
+        return 0;
+    };
+
+    this.mikamiInitV_v2.kObject = null;
+    this.mikamiInitV_v2.kScript = function(mask16, bannedBits, cfg16)
+    {
+        const cols = cfg16[0] | 0;
+        const srcC = cfg16[2] | 0;
+        const srcR = cfg16[3] | 0;
+        const dstC = cfg16[4] | 0;
+        const dstR = cfg16[5] | 0;
+        const INF  = cfg16[7] | 0;
+
+        const r = this.thread.y;
+        const c = this.thread.x;
+        const idx = r * cols + c;
+        const srcIdx = srcR * cols + srcC;
+        const dstIdx = dstR * cols + dstC;
+
+        let code = (mask16[idx] >>> 8) & 3;
+        if (idx === srcIdx || idx === dstIdx) code = 1;
+        else if (bannedBits[idx]) code = 0;
+
+        if (c !== srcC) return INF;
+        if (idx === srcIdx) return 0;
+        if (!(code === 1 || code === 2)) return INF;
+
+        const step = r > srcR ? 1 : -1;
+        for (let rr = srcR + step; rr !== r + step; rr += step)
+        {
+            const kIdx = rr * cols + c;
+            let k = (mask16[kIdx] >>> 8) & 3;
+            if (kIdx === srcIdx || kIdx === dstIdx) k = 1;
+            else if (bannedBits[kIdx]) k = 0;
+            if (!(k === 1 || k === 2)) return INF;
+        }
+
+        return 0;
+    };
+
+    this.mikamiStepH_v2.kObject = null;
+    this.mikamiStepH_v2.kScript = function(prevAxis, selfAxis, mask16, bannedBits, cfg16)
+    {
+        const cols = cfg16[0] | 0;
+        const srcC = cfg16[2] | 0;
+        const srcR = cfg16[3] | 0;
+        const dstC = cfg16[4] | 0;
+        const dstR = cfg16[5] | 0;
+        const INF  = cfg16[7] | 0;
+
+        const r = this.thread.y;
+        const c = this.thread.x;
+        const idx = r * cols + c;
+        const srcIdx = srcR * cols + srcC;
+        const dstIdx = dstR * cols + dstC;
+
+        let code = (mask16[idx] >>> 8) & 3;
+        if (idx === srcIdx || idx === dstIdx) code = 1;
+        else if (bannedBits[idx]) code = 0;
+
+        if (!(code === 1 || code === 3)) return INF;
+
+        let best = selfAxis[r][c];
+        let cand = 0;
+
+        for (let ccLeft = c - 1; ccLeft >= 0; ccLeft--)
+        {
+            const kIdx = r * cols + ccLeft;
+            let k = (mask16[kIdx] >>> 8) & 3;
+            if (kIdx === srcIdx || kIdx === dstIdx) k = 1;
+            else if (bannedBits[kIdx]) k = 0;
+            if (!(k === 1 || k === 3)) break;
+
+            cand = prevAxis[r][ccLeft];
+            if (cand < INF)
+            {
+                cand = cand + 1;
+                if (cand < best) best = cand;
+            }
+        }
+
+        for (let ccRight = c + 1; ccRight < cols; ccRight++)
+        {
+            const kIdx = r * cols + ccRight;
+            let k = (mask16[kIdx] >>> 8) & 3;
+            if (kIdx === srcIdx || kIdx === dstIdx) k = 1;
+            else if (bannedBits[kIdx]) k = 0;
+            if (!(k === 1 || k === 3)) break;
+
+            cand = prevAxis[r][ccRight];
+            if (cand < INF)
+            {
+                cand = cand + 1;
+                if (cand < best) best = cand;
+            }
+        }
+
+        return best;
+    };
+
+    this.mikamiStepV_v2.kObject = null;
+    this.mikamiStepV_v2.kScript = function(prevAxis, selfAxis, mask16, bannedBits, cfg16)
+    {
+        const cols = cfg16[0] | 0;
+        const rows = cfg16[1] | 0;
+        const srcC = cfg16[2] | 0;
+        const srcR = cfg16[3] | 0;
+        const dstC = cfg16[4] | 0;
+        const dstR = cfg16[5] | 0;
+        const INF  = cfg16[7] | 0;
+
+        const r = this.thread.y;
+        const c = this.thread.x;
+        const idx = r * cols + c;
+        const srcIdx = srcR * cols + srcC;
+        const dstIdx = dstR * cols + dstC;
+
+        let code = (mask16[idx] >>> 8) & 3;
+        if (idx === srcIdx || idx === dstIdx) code = 1;
+        else if (bannedBits[idx]) code = 0;
+
+        if (!(code === 1 || code === 2)) return INF;
+
+        let best = selfAxis[r][c];
+        let cand = 0;
+
+        for (let rrUp = r - 1; rrUp >= 0; rrUp--)
+        {
+            const kIdx = rrUp * cols + c;
+            let k = (mask16[kIdx] >>> 8) & 3;
+            if (kIdx === srcIdx || kIdx === dstIdx) k = 1;
+            else if (bannedBits[kIdx]) k = 0;
+            if (!(k === 1 || k === 2)) break;
+
+            cand = prevAxis[rrUp][c];
+            if (cand < INF)
+            {
+                cand = cand + 1;
+                if (cand < best) best = cand;
+            }
+        }
+
+        for (let rrDown = r + 1; rrDown < rows; rrDown++)
+        {
+            const kIdx = rrDown * cols + c;
+            let k = (mask16[kIdx] >>> 8) & 3;
+            if (kIdx === srcIdx || kIdx === dstIdx) k = 1;
+            else if (bannedBits[kIdx]) k = 0;
+            if (!(k === 1 || k === 2)) break;
+
+            cand = prevAxis[rrDown][c];
+            if (cand < INF)
+            {
+                cand = cand + 1;
+                if (cand < best) best = cand;
+            }
+        }
+
+        return best;
+    };
 
 }
 
