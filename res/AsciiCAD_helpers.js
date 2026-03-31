@@ -354,19 +354,14 @@ function ASC()
   this.getMask16 = function()
   {
     const rev = this.boardRevision | 0;
-    if (this._mask16Cache.rev === rev && this._mask16Cache.data)
-      return this._mask16Cache.data;
+    if (this._mask16Cache.rev === rev && this._mask16Cache.data) return this._mask16Cache.data;
 
     let data = null;
-
     if (typeof oGASC !== "undefined" && oGASC)
     {
-      if (typeof oGASC.getMask16Cached === "function")
-        data = oGASC.getMask16Cached();
-      else if (typeof oGASC.glyph2mask16 === "function")
-        data = oGASC.glyph2mask16();
+      if   (typeof oGASC.getMask16Cached === "function") data = oGASC.getMask16Cached();
+      else if (typeof oGASC.glyph2mask16 === "function") data = oGASC.glyph2mask16();
     }
-
     if (!data) data = this.glyph2mask16CPU();
 
     this._mask16Cache = { rev, data };
