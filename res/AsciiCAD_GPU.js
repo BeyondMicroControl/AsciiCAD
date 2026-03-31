@@ -73,7 +73,7 @@ function GASC()
 
         return state;
     }
-
+/*
     this.computeHighlightOverlay = function(ascii2D, rows, cols)
     {
         if (!ascii2D || !rows || !cols) return null;
@@ -218,6 +218,7 @@ function GASC()
 
         return state;
     };
+*/
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1397,25 +1398,14 @@ this.routeBuildBannedBits = function(ctx)
     this.mikamiPath_v2 = function(from, to, modifiers)
     {
         oCOM.startChrono("oGASC.mikamiPath_v2", JSON.stringify({ from, to }));
-        oCOM.startChrono("gridbuild_v2");
 
         if (!from || !to) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "early-exit(!from||!to)");
         if (from.r === to.r && from.c === to.c) return oCOM.debugDone([], "GPU mikamiPath_v2()", "early-exit(same-cell)");
 
         if (modifiers?.leastBridges) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "unsupported-leastBridges");
 
-        if (!oASC || typeof oASC.routeNormalizeModifiers !== "function")
-            return oCOM.debugDone(null, "GPU mikamiPath_v2()", "missing-routeNormalizeModifiers");
-        if (!oASC || typeof oASC.routeBuildContext !== "function")
-            return oCOM.debugDone(null, "GPU mikamiPath_v2()", "missing-routeBuildContext");
-
-        oCOM.startChrono("oGASC.routeNormalizeModifiers");
+        oCOM.startChrono("oASC.routeNormalizeModifiers");
         const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
-        oCOM.stopChrono("oGASC.routeNormalizeModifiers");
-
-        oCOM.startChrono("oGASC.routeBuildContext");
-        const ctx  = oASC.routeBuildContext(from, to);
-        oCOM.stopChrono("oGASC.routeBuildContext");
         const key = JSON.stringify({
         rev: oASC.boardRevision | 0,
         fr: from.r, fc: from.c,
@@ -1424,6 +1414,7 @@ this.routeBuildBannedBits = function(ctx)
         lc: !!mods.leastCorners,
         lb: !!mods.leastBridges
         });
+        oCOM.stopChrono("oASC.routeNormalizeModifiers");
 
         if (this.mikamiPath_v2_cache.key === key && Array.isArray(this.mikamiPath_v2_cache.path))
         {
@@ -1431,13 +1422,13 @@ this.routeBuildBannedBits = function(ctx)
             return this.mikamiPath_v2_cache.path.slice();
         }
 
-        const mask16 = this.glyph2mask16();
-        if (!mask16) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "glyph2mask16-failed");
-        oCOM.startChrono("oGASC.routeBuildContextGPU");
-        const ctx = oASC.routeBuildContextGPU(from, to);
-        oCOM.stopChrono("oGASC.routeBuildContextGPU");
+        oCOM.startChrono("oASC.routeBuildContextGPU");
+        const ctxGPU = oASC.routeBuildContextGPU(from, to);
+        const bannedBits = ctxGPU.bannedBits;
+        oCOM.stopChrono("oASC.routeBuildContextGPU");
 
-        const bannedBits = ctx.bannedBits;
+        const mask16 = this.getMask16Cached();
+        if (!mask16) return null;
 
         const cfg16 = new Uint16Array(8);
         cfg16[0] = COLS;
@@ -1449,9 +1440,6 @@ this.routeBuildBannedBits = function(ctx)
         cfg16[6] = mods.startVertical ? 1 : 0;
         cfg16[7] = this.MIKAMI_INF;
 
-        oCOM.stopChrono("gridbuild_v2");
-
-        oCOM.startChrono("initH_v2");
         const okInitH = this.runGPU(
             this.mikamiInitH_v2,
             { mode: "gpu" },
@@ -1466,10 +1454,8 @@ this.routeBuildBannedBits = function(ctx)
             },
             { mask16: [mask16], bannedBits: [bannedBits], cfg16: [cfg16] }
         );
-        oCOM.stopChrono("initH_v2");
         if (okInitH === false) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "kernel-initH_v2-compile-failed");
 
-        oCOM.startChrono("initV_v2");
         const okInitV = this.runGPU(
             this.mikamiInitV_v2,
             { mode: "gpu" },
@@ -1484,10 +1470,8 @@ this.routeBuildBannedBits = function(ctx)
             },
             { mask16: [mask16], bannedBits: [bannedBits], cfg16: [cfg16] }
         );
-        oCOM.stopChrono("initV_v2");
         if (okInitV === false) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "kernel-initV_v2-compile-failed");
 
-        oCOM.startChrono("stepH_v2");
         const okStepH = this.runGPU(
             this.mikamiStepH_v2,
             { mode: "gpu" },
@@ -1502,10 +1486,8 @@ this.routeBuildBannedBits = function(ctx)
             },
             { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], mask16: [mask16], bannedBits: [bannedBits], cfg16: [cfg16] }
         );
-        oCOM.stopChrono("stepH_v2");
         if (okStepH === false) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "kernel-stepH_v2-compile-failed");
 
-        oCOM.startChrono("stepV_v2");
         const okStepV = this.runGPU(
             this.mikamiStepV_v2,
             { mode: "gpu" },
@@ -1520,7 +1502,6 @@ this.routeBuildBannedBits = function(ctx)
             },
             { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], mask16: [mask16], bannedBits: [bannedBits], cfg16: [cfg16] }
         );
-        oCOM.stopChrono("stepV_v2");
         if (okStepV === false) return oCOM.debugDone(null, "GPU mikamiPath_v2()", "kernel-stepV_v2-compile-failed");
 
         try
@@ -1585,6 +1566,25 @@ this.routeBuildBannedBits = function(ctx)
     this.mikamiInitV_v2 = function() {};
     this.mikamiStepH_v2 = function() {};
     this.mikamiStepV_v2 = function() {};
+
+
+    this.mask16CacheRev = -1;
+    this.mask16CacheData = null;
+
+    this.getMask16Cached = function()
+    {
+        const rev = oASC.boardRevision | 0;
+        if (this.mask16CacheRev === rev && this.mask16CacheData)
+        return this.mask16CacheData;
+
+        const m = this.glyph2mask16();
+        if (m)
+        {
+        this.mask16CacheRev = rev;
+        this.mask16CacheData = m;
+        }
+        return m;
+    };
 
     this.mikamiPathClearH_v2 = function(mask16, bannedBits, srcIdx, dstIdx, r, c0, c1)
     {
