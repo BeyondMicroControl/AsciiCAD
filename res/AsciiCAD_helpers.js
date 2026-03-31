@@ -312,7 +312,68 @@ function ASC()
     ]
   }
 
-  this.rotateMask3 = function(m)
+
+  this.glyph2mask16CPU = function()
+  {
+
+    function routeBaseCodeFromGlyphMask8(m8, ch)
+    {
+      // Route code: 0 = blocked, 1 = free, 2 = wire_h, 3 = wire_v
+      if (ch === " ") return 1;
+      m8 = (Number(m8) || 0) & 0xFF;
+      if (m8 === 0) return 0;
+      const lo = m8 & 0x0F, hi = (m8 >> 4) & 0x0F;
+      if (hi !== 0 && lo === 0) return 0;       // Fat-only glyphs are obstacles for routing
+      if (lo !== 0 && lo === hi) return 0;      // Pure double-wire glyphs are obstacles for routing
+      const dir = (lo | hi) & 0x0F;
+      if (dir === (E | W)) return 2;  // wire_h
+      if (dir === (N | S)) return 3;  // wire_v
+      return 0;                                 // stubs, corners, tees, crosses, mixeds, labels, unknowns
+    };
+
+    const out = new Uint16Array(ROWS * COLS);
+    let i = 0;
+
+    for (let r = 0; r < ROWS; r++)
+    {
+      const row = ascii[r];
+      for (let c = 0; c < COLS; c++, i++)
+      {
+        const ch = row[c] ?? " ";
+        const m8 = (this.glyph2mask(ch) || 0) & 0xFF;
+        const code = routeBaseCodeFromGlyphMask8(m8, ch) & 0x03;
+        out[i] = (code << 8) | m8;
+      }
+    }
+
+    return out;
+  };
+
+  this._mask16Cache = { rev: -1, data: null };
+
+  this.getMask16 = function()
+  {
+    const rev = this.boardRevision | 0;
+    if (this._mask16Cache.rev === rev && this._mask16Cache.data)
+      return this._mask16Cache.data;
+
+    let data = null;
+
+    if (typeof oGASC !== "undefined" && oGASC)
+    {
+      if (typeof oGASC.getMask16Cached === "function")
+        data = oGASC.getMask16Cached();
+      else if (typeof oGASC.glyph2mask16 === "function")
+        data = oGASC.glyph2mask16();
+    }
+
+    if (!data) data = this.glyph2mask16CPU();
+
+    this._mask16Cache = { rev, data };
+    return data;
+  };
+
+  this.rotateMask = function(m)
   {
     const v = (Number(m) || 0) & 0xFF;
     const lo = v & 0xF;         // thin
@@ -321,7 +382,7 @@ function ASC()
     return rot4(lo) | (rot4(hi) << 4);
   }
 
-  this.rotateMask3.help = {
+  this.rotateMask.help = {
     type: "CADScript_FN",
     usage: "rotateMask(<i>m</i>)",
     desc: "Rotate an 8-bit wire mask 90 degrees clockwise. Low nibble (thin) and high nibble (fat) are rotated independently.",
@@ -331,7 +392,7 @@ function ASC()
     ]
   }
 
-  this.mirrorMask3 = function(m, bVertAxis)
+  this.mirrorMask = function(m, bVertAxis)
   {
     const v  = (Number(m) || 0) & 0xFF;
     const lo = v & 0xF;
@@ -349,7 +410,7 @@ function ASC()
 
     return lo2 | (hi2 << 4);
   }
-  this.mirrorMask3.help = 
+  this.mirrorMask.help = 
   {
     type: "CADScript_FN",
     usage: "mirrorMask(<i>m</i>,<i>bVertAxis</i>)",
@@ -362,7 +423,7 @@ function ASC()
 
   // 4-bit -> glyph (thin/fat/double) via mask2glyph (8-bit)
   this.maskToSingle = function(m4){ return this.mask2glyph((Number(m4)||0) & 0xF) }
-  this.maskToFat = function(m4){ return this.mask2glyph(((Number(m4)||0) & 0xF) << 4) }
+  this.maskToFat    = function(m4){ return this.mask2glyph(((Number(m4)||0) & 0xF) << 4) }
   this.maskToDouble = function(m4){ const m = (Number(m4)||0) & 0xF; return this.mask2glyph(m | (m << 4)) }
 
   const BOX_CONTOUR = { h:E|W, v:N|S, tl:E|S, tr:W|S, bl:E|N, br:W|N }
@@ -405,6 +466,114 @@ function ASC()
     const lo = m & 0xF, hi = (m >> 4) & 0xF;
     return (lo !== 0) && (lo === hi);
   }
+
+
+  this._doubleBoxCornerMasks = null;
+
+  this.getDoubleBoxCornerMasks = function()
+  {
+    if (!this._doubleBoxCornerMasks)
+    {
+      this._doubleBoxCornerMasks =
+      {
+        tl: (this.glyph2mask("╔") || 0) & 0xFF,
+        tr: (this.glyph2mask("╗") || 0) & 0xFF,
+        bl: (this.glyph2mask("╚") || 0) & 0xFF,
+        br: (this.glyph2mask("╝") || 0) & 0xFF
+      };
+    }
+    return this._doubleBoxCornerMasks;
+  };
+
+  this.hasDoubleH16 = function(v16)
+  {
+    const m = (Number(v16) || 0) & 0xFF;
+    const lo = m & 0x0F;
+    const hi = (m >> 4) & 0x0F;
+    return ((lo & (this.E | this.W)) !== 0) && ((hi & (this.E | this.W)) !== 0);
+  };
+
+  this.hasDoubleV16 = function(v16)
+  {
+    const m = (Number(v16) || 0) & 0xFF;
+    const lo = m & 0x0F;
+    const hi = (m >> 4) & 0x0F;
+    return ((lo & (this.N | this.S)) !== 0) && ((hi & (this.N | this.S)) !== 0);
+  };
+
+
+  this.isValidDoubleBox16 = function(r0, c0, r1, c1, mask16)
+  {
+    if (r1 <= r0 || c1 <= c0) return false;
+
+    const m16 = mask16 || this.getMask16();
+    if (!m16) return false;
+
+    const cm = this.getDoubleBoxCornerMasks();
+
+    const idxTL = r0 * COLS + c0;
+    const idxTR = r0 * COLS + c1;
+    const idxBL = r1 * COLS + c0;
+    const idxBR = r1 * COLS + c1;
+
+    if ((m16[idxTL] & 0xFF) !== cm.tl) return false;
+    if ((m16[idxTR] & 0xFF) !== cm.tr) return false;
+    if ((m16[idxBL] & 0xFF) !== cm.bl) return false;
+    if ((m16[idxBR] & 0xFF) !== cm.br) return false;
+
+    for (let c = c0 + 1; c <= c1 - 1; c++)
+    {
+      if (!this.hasDoubleH16(m16[r0 * COLS + c])) return false;
+      if (!this.hasDoubleH16(m16[r1 * COLS + c])) return false;
+    }
+
+    for (let r = r0 + 1; r <= r1 - 1; r++)
+    {
+      if (!this.hasDoubleV16(m16[r * COLS + c0])) return false;
+      if (!this.hasDoubleV16(m16[r * COLS + c1])) return false;
+    }
+
+    return true;
+  };
+
+  this.collectDoubleBoxRects16 = function(mask16)
+  {
+    const m16 = mask16 || this.getMask16();
+    if (!m16) return [];
+
+    const rects = [];
+    const cm = this.getDoubleBoxCornerMasks();
+
+    for (let r0 = 0; r0 < ROWS; r0++)
+    {
+      const row0 = r0 * COLS;
+
+      for (let c0 = 0; c0 < COLS; c0++)
+      {
+        if ((m16[row0 + c0] & 0xFF) !== cm.tl) continue;
+
+        for (let c1 = c0 + 1; c1 < COLS; c1++)
+        {
+          if ((m16[row0 + c1] & 0xFF) !== cm.tr) continue;
+
+          for (let r1 = r0 + 1; r1 < ROWS; r1++)
+          {
+            const row1 = r1 * COLS;
+
+            if ((m16[row1 + c0] & 0xFF) !== cm.bl) continue;
+            if ((m16[row1 + c1] & 0xFF) !== cm.br) continue;
+
+            if (!this.isValidDoubleBox16(r0, c0, r1, c1, m16)) continue;
+
+            rects.push(r0, c0, r1, c1);
+          }
+        }
+      }
+    }
+
+    return rects;
+  };
+
 
   // ===== Match overlay (catalog pattern matching) =====
   // Wildcards:
@@ -1012,9 +1181,9 @@ function ASC()
         var watchCell_dir = this.glyph2mask(watchCell);
         if((watchCell_dir & dirFilter1) != 0) 
         {
-          res_dir = watchCell_dir | this.mirrorMask3(pathMask3 & dirFilter2,bDir1);    // assemble both elements to form a T-shape ending
+          res_dir = watchCell_dir | this.mirrorMask(pathMask3 & dirFilter2,bDir1);    // assemble both elements to form a T-shape ending
           path[pathIdx].ch = this.mask2glyph(res_dir);                                     //this.cell(path[pathIdx].c+6,path[pathIdx].r,"*");
-          //console.log("Solve: '"+this.mask2glyph(watchCell_dir)+"' + '"+this.mask2glyph(this.mirrorMask3(pathMask3 & dirFilter2,bDir1))+"' = '"+this.mask2glyph(res_dir)+"'");
+          //console.log("Solve: '"+this.mask2glyph(watchCell_dir)+"' + '"+this.mask2glyph(this.mirrorMask(pathMask3 & dirFilter2,bDir1))+"' = '"+this.mask2glyph(res_dir)+"'");
         }
       }
       _pre = _cur;
@@ -3460,6 +3629,7 @@ this.startPasteWithText = function(text)
     return out;
   }
 
+  /*
   this.collectDoubleBoxRects = function()
   {
     const rects = [];
@@ -3488,6 +3658,7 @@ this.startPasteWithText = function(text)
 
     return rects;
   };
+  */
 
   this.computeHighlightOverlayMaskCPUFromRects = function(rects)
   {
@@ -3564,7 +3735,7 @@ this.startPasteWithText = function(text)
 
     if (!mask)
     {
-      const rects = this.collectDoubleBoxRects();
+      const rects = this.collectDoubleBoxRects16();
       mask = this.computeHighlightOverlayMaskCPUFromRects(rects);
     }
 

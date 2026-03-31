@@ -424,62 +424,34 @@ this.glyph2mask16.kObject = null;
 
 this.glyph2mask16.kScript = function(ascii16, cfg8)
 {
-    const CFG_LUT_BASE  = cfg8[0];
-    const COLS          = cfg8[1] | (cfg8[2] << 8);
-    const G2M_LUT_CP0   = cfg8[3] | (cfg8[4] << 8);
-    const G2M_LUT_LEN   = cfg8[5] | (cfg8[6] << 8);
-    const G2M_LUT_CP1   = G2M_LUT_CP0 + G2M_LUT_LEN - 1;
+    const CFG_LUT_BASE = cfg8[0];
+    const COLS         = cfg8[1] | (cfg8[2] << 8);
+    const G2M_LUT_CP0  = cfg8[3] | (cfg8[4] << 8);
+    const G2M_LUT_LEN  = cfg8[5] | (cfg8[6] << 8);
+    const G2M_LUT_CP1  = G2M_LUT_CP0 + G2M_LUT_LEN - 1;
 
     const idx = this.thread.y * COLS + this.thread.x;
     const ch  = ascii16[idx] | 0;
 
-    var m8   = 0;
-    var code = 0;
-    var lo   = 0;
-    var hi   = 0;
-    var dir  = 0;
-    var deg  = 0;
+    var m8 = 0, code = 0, lo = 0, hi = 0, dir = 0;
 
-    if (ch >= G2M_LUT_CP0 && ch <= G2M_LUT_CP1)
+    if ((ch >= G2M_LUT_CP0) && (ch <= G2M_LUT_CP1))
         m8 = cfg8[CFG_LUT_BASE + (ch - G2M_LUT_CP0)] | 0;
 
-    if (ch === 32)
-    {
-        code = 1;
-    }
-    else if (m8 === 0)
-    {
-        code = 0;
-    }
+    if (ch === 32)     code = 1;   // free
+    else if (m8 === 0) code = 0;   // blocked / text / unknown
     else
     {
         lo = m8 & 15;
         hi = (m8 >> 4) & 15;
-
-        if (hi !== 0 && lo === 0)
-        {
-            code = 0;
-        }
-        else if (lo !== 0 && lo === hi)
-        {
-            code = 0;
-        }
+        if ((hi !== 0) && (lo === 0))       code = 0;   // fat-only glyph => blocked
+        else if ((lo !== 0) && (lo === hi)) code = 0;   // pure double wire => blocked
         else
         {
             dir = (lo | hi) & 15;
-            deg = 0;
-
-            if ((dir & 1) > 0) deg = deg + 1;
-            if ((dir & 2) > 0) deg = deg + 1;
-            if ((dir & 4) > 0) deg = deg + 1;
-            if ((dir & 8) > 0) deg = deg + 1;
-
-            if (deg === 2 && dir === 10)
-                code = 2;
-            else if (deg === 2 && dir === 5)
-                code = 3;
-            else
-                code = 0;
+            if (dir === 10)     code = 2;       // E|W -> wire_h
+            else if (dir === 5) code = 3;       // N|S- > wire_v
+            else                code = 0;       // stubs / corners / tees / crosses / mixeds
         }
     }
 
