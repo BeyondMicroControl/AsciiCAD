@@ -1754,7 +1754,7 @@ function ASC()
 
   this.collectDoubleBoxRects16 = function(mask16)
   {
-    const m16 = mask16 || this.getMask16();
+    const m16 = mask16 || this.getMask16();   // entire grid to mask16
     if (!m16) return [];
 
     const rects = [];
