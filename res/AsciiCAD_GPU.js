@@ -1856,7 +1856,7 @@ this.routeBuildBannedBits = function(ctx)
             const kIdx = r * cols + cc;
             let k = (mask16[kIdx] >>> 8) & 3;
             if (kIdx === srcIdx || kIdx === dstIdx) k = 1;
-            else if (bannedBits[kIdx]) k = 0;
+            else if ((bannedBits[kIdx] | 0) !== 0) k = 0;
             if (!(k === 1 || k === 3)) return INF;
         }
 
@@ -1880,8 +1880,8 @@ this.routeBuildBannedBits = function(ctx)
         const dstIdx = dstR * cols + dstC;
 
         let code = (mask16[idx] >>> 8) & 3;
-        if (kIdx === srcIdx || kIdx === dstIdx) k = 1;
-        else if ((bannedBits[kIdx] | 0) > 0) k = 0;
+        if (idx === srcIdx || idx === dstIdx) code = 1;
+        else if ((bannedBits[idx] | 0) !== 0) code = 0;
 
         if (c !== srcC) return INF;
         if (idx === srcIdx) return 0;
