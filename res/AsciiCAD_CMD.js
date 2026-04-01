@@ -1315,7 +1315,7 @@ function CMD()
 
     // Better diagnostics if the Worker fails to parse/execute (often shows as "Script error")
     cmd._worker.addEventListener("error", function(e) {
-      console.error("[main] worker error event:", {
+      console.error("[main]","worker error event:", {
         message:  e && e.message,
         filename: e && e.filename,
         lineno:   e && e.lineno,
@@ -1324,7 +1324,7 @@ function CMD()
     });
 
     cmd._worker.addEventListener("messageerror", function(e) {
-      console.error("[main] worker messageerror:", e);
+      console.error("[main]","worker messageerror:", e);
     });
 
     cmd._worker.postMessage({
@@ -1657,18 +1657,18 @@ function CMD()
         if (msg.type === 'ack') {
           ackSeen = true;
           if (ackTimer != null) { clearTimeout(ackTimer); ackTimer = null; }
-          if (bDebug) console.log('[main] worker ack:', runId);
+          if (bDebug) console.log('[main]','worker ack:', runId);
           return;
         }
 
         if (msg.type === 'done') {
-          if (bDebug) console.log('[main] worker done:', runId);
+          if (bDebug) console.log('[main]','worker done:', runId);
           succeed(onMsg, onErr, onMsgErr);
           return;
         }
 
         if (msg.type === 'error') {
-          console.error('[main] worker error:', msg.error);
+          console.error('[main]','worker error:', msg.error);
           fail(msg.error, onMsg, onErr, onMsgErr);
           return;
         }
@@ -1684,14 +1684,14 @@ function CMD()
           colno: e && typeof e.colno === 'number' ? e.colno : 0,
           runId: runId
         };
-        console.error('[main] worker error event:', err);
+        console.error('[main]','worker error event:', err);
         fail(err, onMsg, onErr, onMsgErr);
       }
 
       function onMsgErr(e)
       {
         var err = { name: 'MessageError', message: 'Worker messageerror', runId: runId };
-        console.error('[main] worker messageerror:', e);
+        console.error('[main]','worker messageerror:', e);
         fail(err, onMsg, onErr, onMsgErr);
       }
 
@@ -1708,7 +1708,7 @@ function CMD()
         fail({ name: 'TimeoutError', message: 'Worker did not respond (no done/error).', runId: runId }, onMsg, onErr, onMsgErr);
       }, timeoutMs);
 
-      if (bDebug) console.log('[main] sending script to worker:', String(code));
+      if (bDebug) console.log('[main]','sending script to worker:', String(code));
 
       try {
         worker.postMessage({
@@ -1750,7 +1750,7 @@ function CMD()
     const name = String(msg.name);
     const args = msg.args || [];
 
-    if (bDebug) console.log("[main] call from worker:", obj + "." + name, args);
+    if (bDebug) console.log("[main]","call from worker:", obj + "." + name, args);
 
     try {
       const target = cmd._bindings[obj];
@@ -1771,7 +1771,7 @@ function CMD()
         });
       } catch (postErr) {
         // If we can't even reply, at least log it so we don't fail silently.
-        console.error('[main] failed to post ret to worker:', postErr);
+        console.error('[main]','failed to post ret to worker:', postErr);
       }
     }
   }

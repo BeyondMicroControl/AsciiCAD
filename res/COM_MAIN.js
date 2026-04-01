@@ -1094,7 +1094,7 @@ this.AsciiTable = function(data2d, opts = {})
     delete this._chrono[key];
 
     if (bDebug)
-      console.log("[chrono] " + key + ": " + dt.toFixed(3) + " ms" + (tail ? " | " + tail : ""));
+      console.log("[chrono]", key + ": " + dt.toFixed(3) + " ms" + (tail ? " | " + tail : ""));
 
     return dt;
   }

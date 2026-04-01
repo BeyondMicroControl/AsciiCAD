@@ -230,12 +230,22 @@ if (!e.data || !e.data.__asciicadLog) return;
 
 const line = document.createElement("div");
 line.style.whiteSpace = "pre-wrap";
+console.log(">>"+e.data.type);
 line.style.color =
-    e.data.type === "error" ? "#f87171" :
+    e.data.type === "error"  ? "#f87171" :
     e.data.type === "assert" ? "#71f871" :
-    e.data.type === "warn"  ? "#fde047" : "#e5e7eb";
+    e.data.type === "warn"   ? "#fde047" : "#e5e7eb";
 
-line.textContent = `[${e.data.type}] ${(e.data.args || []).join(" ")}`;
+if(e.data.type==="log") 
+{
+  line.style.color = 
+      e.data.args[0] === "[chrono]" ? "#fd71fd" :
+      e.data.args[0] === "[main]" ? "#ffffff" :
+      e.data.args[0] === "[worker]" ? "#71fdfd" : "#e5e7eb";
+}
+//console.log(">>>"+e.data.type+">>>"+e.data.args[0]);
+
+line.textContent = `[${e.data.type}] ${(e.data.args || []).join("/")}`;
 logPanel.appendChild(line);
 
 // Most reliable autoscroll:
