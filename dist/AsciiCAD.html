@@ -7039,44 +7039,6 @@ this.routePathDijkstraProbe16.kScript = function(distState, cfg16)
 
     this.MIKAMI_INF = 65535;
 
-    // TODO: integrate & comment
-    this.routePathMikamiCanEnterH = function(code)
-    {
-        code = code | 0;
-        return code === 1 || code === 3;   // free / terminal OR wire_v bridge cell
-    };
-
-    // TODO: integrate & comment
-    this.routePathMikamiCanEnterV = function(code)
-    {
-        code = code | 0;
-        return code === 1 || code === 2;   // free / terminal OR wire_h bridge cell
-    };
-
-    // TODO: integrate & comment
-    this.mikamiBacktraceOrder = function(modifiers)
-    {
-        const verticalFirst = !!modifiers?.startVertical;
-        if (verticalFirst)
-        {
-            return {
-                H: [ { dc: -1 }, { dc: 1 } ],
-                V: [ { dr: -1 }, { dr: 1 } ]
-            };
-        }
-
-        return {
-            H: [ { dc: 1 }, { dc: -1 } ],
-            V: [ { dr: 1 }, { dr: -1 } ]
-        };
-    };
-
-    
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
     this.mikamiPath_cache = { key: "", path: null };
 
     this.mikamiPath = function(from, to, modifiers)
@@ -7289,6 +7251,7 @@ this.routePathDijkstraProbe16.kScript = function(distState, cfg16)
         return modifiers?.startVertical ? "V" : "H";
     };    
 
+
     this.mikamiPathClearH = function(mask16, bannedBits, srcIdx, dstIdx, r, c0, c1)
     {
         const step = c1 >= c0 ? 1 : -1;
@@ -7296,7 +7259,7 @@ this.routePathDijkstraProbe16.kScript = function(distState, cfg16)
         {
             const idx = r * COLS + c;
             const code = this.routeCodeAtMask16(mask16, idx, srcIdx, dstIdx, bannedBits);
-            if (!this.routePathMikamiCanEnterH(code)) return false;
+            if(code !== 1 && code !== 3) return false;      // free / terminal OR wire_v bridge cell
         }
         return true;
     };
@@ -7308,9 +7271,27 @@ this.routePathDijkstraProbe16.kScript = function(distState, cfg16)
         {
             const idx = r * COLS + c;
             const code = this.routeCodeAtMask16(mask16, idx, srcIdx, dstIdx, bannedBits);
-            if (!this.routePathMikamiCanEnterV(code)) return false;
+            if (code !== 1 && code !== 2) return false;
         }
         return true;
+    };
+
+    // TODO: integrate & comment
+    this.mikamiBacktraceOrder = function(modifiers)
+    {
+        const verticalFirst = !!modifiers?.startVertical;
+        if (verticalFirst)
+        {
+            return {
+                H: [ { dc: -1 }, { dc: 1 } ],
+                V: [ { dr: -1 }, { dr: 1 } ]
+            };
+        }
+
+        return {
+            H: [ { dc: 1 }, { dc: -1 } ],
+            V: [ { dr: 1 }, { dr: -1 } ]
+        };
     };
 
     this.mikamiBacktrace = function(hState, vState, mask16, bannedBits, from, to, modifiers)
