@@ -6642,6 +6642,21 @@ this.routeBuildBannedBits = function(ctx)
         return false;
     };
 
+    this.routePathDijkstraCanPass = function(codeA, codeB, dir)
+    {
+        const N = 1, E = 2, S = 4, W = 8;
+        codeA = codeA | 0;
+        codeB = codeB | 0;
+
+        if (dir === N || dir === S)
+            return ((codeA === 1 || codeA === 2) && (codeB === 1 || codeB === 2));
+
+        if (dir === E || dir === W)
+            return ((codeA === 1 || codeA === 3) && (codeB === 1 || codeB === 3));
+
+        return false;
+    };
+
     this.routePathDijkstraBacktraceOrder = function(modifiers)
     {
         const N = 1, E = 2, S = 4, W = 8;
@@ -6666,6 +6681,8 @@ this.routeBuildBannedBits = function(ctx)
 
     this.routePathDijkstraBacktrace16 = function(distState, mask16, bannedBits, from, to, modifiers)
     {
+        //const N = 1, E = 2, S = 4, W = 8;
+
         const dist2D = (distState && typeof distState.toArray === "function") ? distState.toArray() : distState;
         if (!dist2D || !mask16) return null;
 
@@ -6698,7 +6715,10 @@ this.routeBuildBannedBits = function(ctx)
                 const nc = curC + n.dc;
 
                 if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
-                if (!this.routePathDijkstraCanEnter(curCode, n.dir)) continue;
+
+                const prevIdx = nr * COLS + nc;
+                const prevCode = this.routeCodeAtMask16(mask16, prevIdx, srcIdx, dstIdx, bannedBits);
+                if (!this.routePathDijkstraCanPass(prevCode, curCode, n.dir)) continue;
 
                 const pd = dist2D?.[nr]?.[nc];
                 if (!(Number.isFinite(pd) && pd < INF)) continue;
@@ -6720,7 +6740,10 @@ this.routeBuildBannedBits = function(ctx)
                     const nc = curC + n.dc;
 
                     if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
-                    if (!this.routePathDijkstraCanEnter(curCode, n.dir)) continue;
+
+                    const prevIdx = nr * COLS + nc;
+                    const prevCode = this.routeCodeAtMask16(mask16, prevIdx, srcIdx, dstIdx, bannedBits);
+                    if (!this.routePathDijkstraCanPass(prevCode, curCode, n.dir)) continue;
 
                     const pd = dist2D?.[nr]?.[nc];
                     if (!(Number.isFinite(pd) && pd < curDist)) continue;
@@ -6745,84 +6768,6 @@ this.routeBuildBannedBits = function(ctx)
         states.reverse();
         return oASC.routeStatesToPath(states, modifiers);
     };
-/*
-    this.routePathDijkstraBacktrace = function(dist2D, grid, from, to, modifiers)
-    {
-        if (!dist2D || !grid) return null;
-
-        const INF = this.DIJKSTRA_INF;
-        const td = dist2D?.[to.r]?.[to.c];
-        if (!(Number.isFinite(td) && td < INF)) return null;
-
-        const states = [{ r: to.r, c: to.c }];
-        const order = this.routePathDijkstraBacktraceOrder(modifiers);
-        let curR = to.r;
-        let curC = to.c;
-        let guard = ROWS * COLS + 4;
-
-        while ((curR !== from.r || curC !== from.c) && guard-- > 0)
-        {
-            const curDist = dist2D[curR][curC];
-            const curCode = grid[curR * COLS + curC] | 0;
-
-            let pick = null;
-            let pickDist = Number.POSITIVE_INFINITY;
-
-            for (let i = 0; i < order.length; i++)
-            {
-                const n = order[i];
-                const nr = curR + n.dr;
-                const nc = curC + n.dc;
-
-                if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
-                if (!this.routePathDijkstraCanEnter(curCode, n.dir)) continue;
-
-                const pd = dist2D?.[nr]?.[nc];
-                if (!(Number.isFinite(pd) && pd < INF)) continue;
-                if (Math.abs((pd + 1) - curDist) > 0.25) continue;
-
-                if (pd < pickDist)
-                {
-                    pick = { r: nr, c: nc };
-                    pickDist = pd;
-                }
-            }
-
-            if (!pick)
-            {
-                for (let i = 0; i < order.length; i++)
-                {
-                    const n = order[i];
-                    const nr = curR + n.dr;
-                    const nc = curC + n.dc;
-
-                    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
-                    if (!this.routePathDijkstraCanEnter(curCode, n.dir)) continue;
-
-                    const pd = dist2D?.[nr]?.[nc];
-                    if (!(Number.isFinite(pd) && pd < curDist)) continue;
-
-                    if (pd < pickDist)
-                    {
-                        pick = { r: nr, c: nc };
-                        pickDist = pd;
-                    }
-                }
-            }
-
-            if (!pick) return null;
-
-            curR = pick.r;
-            curC = pick.c;
-            states.push({ r: curR, c: curC });
-        }
-
-        if (guard <= 0) return null;
-
-        states.reverse();
-        return oASC.routeStatesToPath(states, modifiers);
-    };
-*/
 
     this.routePathDijkstra = function(from, to, modifiers)
     {
@@ -6836,8 +6781,9 @@ this.routeBuildBannedBits = function(ctx)
 
         if (!oASC || typeof oASC.routeNormalizeModifiers !== "function")
             return oCOM.debugDone(null, "GPU routePathDijkstra()", "missing-routeNormalizeModifiers");
-        if (!oASC || typeof oASC.routeBuildContext !== "function")
-            return oCOM.debugDone(null, "GPU routePathDijkstra()", "missing-routeBuildContext");
+
+        if (!oASC || typeof oASC.routeBuildContextGPU !== "function")
+            return oCOM.debugDone(null, "GPU routePathDijkstra()", "missing-routeBuildContextGPU");
 
         const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
         const ctxGPU = oASC.routeBuildContextGPU(from, to);
@@ -6966,76 +6912,110 @@ this.routeBuildBannedBits = function(ctx)
         return INF;
     };
 
-this.routePathDijkstraStep16 = function() {};
-this.routePathDijkstraStep16.kObject = null;
-this.routePathDijkstraStep16.kScript = function(distPrev, mask16, bannedBits, cfg16)
-{
-    const cols = cfg16[0] | 0;
-    const rows = cfg16[1] | 0;
-    const srcC = cfg16[2] | 0;
-    const srcR = cfg16[3] | 0;
-    const dstC = cfg16[4] | 0;
-    const dstR = cfg16[5] | 0;
-    const INF  = cfg16[6] | 0;
-
-    const r = this.thread.y;
-    const c = this.thread.x;
-    const idx = r * cols + c;
-    const srcIdx = srcR * cols + srcC;
-    const dstIdx = dstR * cols + dstC;
-
-    let code = (mask16[idx] >>> 8) & 3;
-    if (idx === srcIdx || idx === dstIdx) code = 1;
-    else if ((bannedBits[idx] | 0) > 0) code = 0;
-
-    if (r === srcR && c === srcC) return 0;
-    if (code === 0) return INF;
-
-    let best = distPrev[r][c];
-    let cand = 0;
-
-    if (r > 0)
+    this.routePathDijkstraStep16 = function() {};
+    this.routePathDijkstraStep16.kObject = null;
+    this.routePathDijkstraStep16.kScript = function(distPrev, mask16, bannedBits, cfg16)
     {
-        cand = distPrev[r - 1][c];
-        if (cand < INF && (code === 1 || code === 2))
-        {
-            cand = cand + 1;
-            if (cand < best) best = cand;
-        }
-    }
+        const cols = cfg16[0] | 0;
+        const rows = cfg16[1] | 0;
+        const srcC = cfg16[2] | 0;
+        const srcR = cfg16[3] | 0;
+        const dstC = cfg16[4] | 0;
+        const dstR = cfg16[5] | 0;
+        const INF  = cfg16[6] | 0;
 
-    if ((r + 1) < rows)
-    {
-        cand = distPrev[r + 1][c];
-        if (cand < INF && (code === 1 || code === 2))
-        {
-            cand = cand + 1;
-            if (cand < best) best = cand;
-        }
-    }
+        const r = this.thread.y;
+        const c = this.thread.x;
+        const idx = r * cols + c;
+        const srcIdx = srcR * cols + srcC;
+        const dstIdx = dstR * cols + dstC;
 
-    if (c > 0)
-    {
-        cand = distPrev[r][c - 1];
-        if (cand < INF && (code === 1 || code === 3))
-        {
-            cand = cand + 1;
-            if (cand < best) best = cand;
-        }
-    }
+        let code = (mask16[idx] >>> 8) & 3;
+        if (idx === srcIdx || idx === dstIdx) code = 1;
+        else if ((bannedBits[idx] | 0) > 0) code = 0;
 
-    if ((c + 1) < cols)
-    {
-        cand = distPrev[r][c + 1];
-        if (cand < INF && (code === 1 || code === 3))
-        {
-            cand = cand + 1;
-            if (cand < best) best = cand;
-        }
-    }
+        if (r === srcR && c === srcC) return 0;
+        if (code === 0) return INF;
 
-    return best;
-};
+        let best = distPrev[r][c];
+        let cand = 0;
+        let nIdx = 0;
+        let nCode = 0;
+
+        if (r > 0)
+        {
+            cand = distPrev[r - 1][c];
+            if (cand < INF)
+            {
+                nIdx = (r - 1) * cols + c;
+                nCode = (mask16[nIdx] >>> 8) & 3;
+                if (nIdx === srcIdx || nIdx === dstIdx) nCode = 1;
+                else if ((bannedBits[nIdx] | 0) > 0) nCode = 0;
+
+                if ((code === 1 || code === 2) && (nCode === 1 || nCode === 2))
+                {
+                    cand = cand + 1;
+                    if (cand < best) best = cand;
+                }
+            }
+        }
+
+        if ((r + 1) < rows)
+        {
+            cand = distPrev[r + 1][c];
+            if (cand < INF)
+            {
+                nIdx = (r + 1) * cols + c;
+                nCode = (mask16[nIdx] >>> 8) & 3;
+                if (nIdx === srcIdx || nIdx === dstIdx) nCode = 1;
+                else if ((bannedBits[nIdx] | 0) > 0) nCode = 0;
+
+                if ((code === 1 || code === 2) && (nCode === 1 || nCode === 2))
+                {
+                    cand = cand + 1;
+                    if (cand < best) best = cand;
+                }
+            }
+        }
+
+        if (c > 0)
+        {
+            cand = distPrev[r][c - 1];
+            if (cand < INF)
+            {
+                nIdx = r * cols + (c - 1);
+                nCode = (mask16[nIdx] >>> 8) & 3;
+                if (nIdx === srcIdx || nIdx === dstIdx) nCode = 1;
+                else if ((bannedBits[nIdx] | 0) > 0) nCode = 0;
+
+                if ((code === 1 || code === 3) && (nCode === 1 || nCode === 3))
+                {
+                    cand = cand + 1;
+                    if (cand < best) best = cand;
+                }
+            }
+        }
+
+        if ((c + 1) < cols)
+        {
+            cand = distPrev[r][c + 1];
+            if (cand < INF)
+            {
+                nIdx = r * cols + (c + 1);
+                nCode = (mask16[nIdx] >>> 8) & 3;
+                if (nIdx === srcIdx || nIdx === dstIdx) nCode = 1;
+                else if ((bannedBits[nIdx] | 0) > 0) nCode = 0;
+
+                if ((code === 1 || code === 3) && (nCode === 1 || nCode === 3))
+                {
+                    cand = cand + 1;
+                    if (cand < best) best = cand;
+                }
+            }
+        }
+
+        return best;
+    };
 
 this.routePathDijkstraProbe16 = function() {};
 this.routePathDijkstraProbe16.kObject = null;
