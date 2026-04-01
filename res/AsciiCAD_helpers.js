@@ -2537,7 +2537,7 @@ this.mikamiPath = function(from, to, modifiers)
   const impl = String(mods?.routeImpl || "auto").toLowerCase();
 
   const GPUAvailable = typeof oGASC !== "undefined" && oGASC && typeof oGASC.mikamiPath === "function";
-  const CPUAvailable = typeof oASC !== "undefined" && oASC && typeof oASC.mikamiPath === "function";
+  //const CPUAvailable = typeof oASC !== "undefined" && oASC && typeof oASC.mikamiPath === "function";
 
   if (impl === "gpu" && !GPUAvailable && bDebug) console.warn("GPU Mikami requested but unavailable; AsciiCAD_GPU.js not loaded or oGASC.mikamiPath missing.");
 
