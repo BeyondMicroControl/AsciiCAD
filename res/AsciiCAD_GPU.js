@@ -1182,11 +1182,12 @@ this.routePathDijkstraProbe16.kScript = function(distState, cfg16)
         {
             const idx = r * COLS + c;
             const code = this.routeCodeAtMask16(mask16, idx, srcIdx, dstIdx, bannedBits);
-            if (code !== 1 || code !== 2) return false;  // free / terminal OR wire_h bridge cell
+            if (code !== 1 && code !== 2) return false;
         }
         return true;
     };
 
+    // TODO: integrate & comment
     this.mikamiBacktraceOrder = function(modifiers)
     {
         const verticalFirst = !!modifiers?.startVertical;
