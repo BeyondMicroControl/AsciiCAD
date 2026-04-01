@@ -1796,6 +1796,9 @@ this.routeExpandWaypointStates = function(states)
   }
 
 
+  ////////////////////////////////////////////////////
+  // A* routing subsection
+
   this.routeHeuristic = function(r, c, to)
   {
     return [Math.abs(r - to.r) + Math.abs(c - to.c), 0, 0, 0];
@@ -1825,6 +1828,7 @@ this.routeExpandWaypointStates = function(states)
     }
     return " ";
   }
+
 
   this.routeStatesToPath = function(states, modifiers)
   {
@@ -1861,6 +1865,7 @@ this.routeExpandWaypointStates = function(states)
 
     return out;
   }
+
 
   this.routePathSearch = function(from, to, modifiers, heuristicFn)
   {
@@ -2007,36 +2012,44 @@ this.routeExpandWaypointStates = function(states)
     return this.buildOrthogonalPath(from, to, mods);
   }
 
+
+
+
   this.routePathAStar = function(from, to, modifiers)
   {
     return this.routePathSearch(from, to, modifiers, this.routeHeuristic);
   }
 
-this.routePathDijkstra = function(from, to, modifiers)
-{
-  const impl = String(modifiers?.routeImpl || "auto").toLowerCase();
+  ////////////////////////////////////////////////////
+  // dijkstra routing subsection
 
-  if (impl !== "cpu" &&
-      typeof oGASC !== "undefined" &&
-      oGASC &&
-      typeof oGASC.routePathDijkstra === "function")
+
+  this.routePathDijkstra = function(from, to, modifiers)
   {
-    try
-    {
-      const gpuPath = oGASC.routePathDijkstra(from, to, modifiers || {});
-      if (Array.isArray(gpuPath)) return gpuPath;
-    }
-    catch (err)
-    {
-      console.warn("GPU Dijkstra failed; falling back to CPU.", err);
-    }
-  }
+    if (!from || !to) return [];
+    if (from.r === to.r && from.c === to.c) return [];
 
-  oCOM.startChrono("oASC.routePathDijkstra", JSON.stringify({ from, to }));
-  ret = this.routePathSearch(from, to, modifiers, this.routeZeroHeuristic);
-  oCOM.stopChrono("oASC.routePathDijkstra", "ok");
-  return ret;
-};
+    const impl = String(modifiers?.routeImpl || "auto").toLowerCase();
+    const GPUAvailable = typeof oGASC !== "undefined" && oGASC && typeof oGASC.routePathDijkstra === "function";
+
+    if (impl !== "cpu" && GPUAvailable)
+    {
+      try
+      {
+        const gpuPath = oGASC.routePathDijkstra(from, to, modifiers || {});
+        if (Array.isArray(gpuPath)) return gpuPath;
+      }
+      catch (err)
+      {
+        console.warn("GPU Dijkstra failed; falling back to CPU.", err);
+      }
+    }
+
+    oCOM.startChrono("oASC.routePathDijkstra", JSON.stringify({ from, to }));
+    ret = this.routePathSearch(from, to, modifiers, this.routeZeroHeuristic);
+    oCOM.stopChrono("oASC.routePathDijkstra", "ok");
+    return ret;
+  };
 
 
 
