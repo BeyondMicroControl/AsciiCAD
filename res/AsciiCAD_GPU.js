@@ -844,28 +844,21 @@ this.routeBuildBannedBits = function(ctx)
 
     this.MIKAMI_INF = 65535;
 
-    this.logMikamiTargetState = function(tag, h2D, v2D, to)
-    {
-        if (!bDebug) return;
-
-        const h = h2D?.[to.r]?.[to.c];
-        const v = v2D?.[to.r]?.[to.c];
-
-        console.log("[" + tag + "] target=(" + to.r + "," + to.c + ") h=" + h + " v=" + v);
-    };
-
+    // TODO: integrate & comment
     this.routePathMikamiCanEnterH = function(code)
     {
         code = code | 0;
         return code === 1 || code === 3;   // free / terminal OR wire_v bridge cell
     };
 
+    // TODO: integrate & comment
     this.routePathMikamiCanEnterV = function(code)
     {
         code = code | 0;
         return code === 1 || code === 2;   // free / terminal OR wire_h bridge cell
     };
 
+    // TODO: integrate & comment
     this.mikamiBacktraceOrder = function(modifiers)
     {
         const verticalFirst = !!modifiers?.startVertical;
@@ -883,7 +876,7 @@ this.routeBuildBannedBits = function(ctx)
         };
     };
 
-    this.mikamiChooseTargetAxis = function(h2D, v2D, to, modifiers)
+    this.mikamiChooseTargetAxis_v1 = function(h2D, v2D, to, modifiers)
     {
         const hArr = (h2D && typeof h2D.toArray === "function") ? h2D.toArray() : h2D;
         const vArr = (v2D && typeof v2D.toArray === "function") ? v2D.toArray() : v2D;
@@ -902,7 +895,7 @@ this.routeBuildBannedBits = function(ctx)
         return modifiers?.startVertical ? "V" : "H";
     };
 
-    this.mikamiPathClearH = function(grid, r, c0, c1)
+    this.mikamiPathClearH_v1 = function(grid, r, c0, c1)
     {
         const step = c1 >= c0 ? 1 : -1;
         for (let c = c0 + step; c !== c1 + step; c += step)
@@ -913,7 +906,7 @@ this.routeBuildBannedBits = function(ctx)
         return true;
     };
 
-    this.mikamiPathClearV = function(grid, c, r0, r1)
+    this.mikamiPathClearV_v1 = function(grid, c, r0, r1)
     {
         const step = r1 >= r0 ? 1 : -1;
         for (let r = r0 + step; r !== r1 + step; r += step)
@@ -924,13 +917,13 @@ this.routeBuildBannedBits = function(ctx)
         return true;
     };
 
-    this.mikamiBacktrace = function(hState, vState, grid, from, to, modifiers)
+    this.mikamiBacktrace_v1 = function(hState, vState, grid, from, to, modifiers)
     {
         const h2D = (hState && typeof hState.toArray === "function") ? hState.toArray() : hState;
         const v2D = (vState && typeof vState.toArray === "function") ? vState.toArray() : vState;
         if (!h2D || !v2D || !grid) return null;
 
-        let axis = this.mikamiChooseTargetAxis(h2D, v2D, to, modifiers);
+        let axis = this.mikamiChooseTargetAxis_v1(h2D, v2D, to, modifiers);
         if (!axis) return null;
 
         const order = this.mikamiBacktraceOrder(modifiers);
@@ -942,7 +935,7 @@ this.routeBuildBannedBits = function(ctx)
 
         if (bDebug)
         {
-            console.log("[GPU mikamiBacktrace] axis=" + axis + " level=" + level +
+            console.log("[GPU mikamiBacktrace_v1] axis=" + axis + " level=" + level +
                         " from=" + JSON.stringify(from) + " to=" + JSON.stringify(to));
         }
 
@@ -956,7 +949,7 @@ this.routeBuildBannedBits = function(ctx)
 
                 if (level === 0)
                 {
-                    if (curR === from.r && this.mikamiPathClearH(grid, curR, from.c, curC))
+                    if (curR === from.r && this.mikamiPathClearH_v1(grid, curR, from.c, curC))
                     {
                         found = { r: from.r, c: from.c, nextAxis: null, nextLevel: -1 };
                     }
@@ -969,7 +962,7 @@ this.routeBuildBannedBits = function(ctx)
                         const step = tries[i].dc;
                         for (let c = curC - step; c >= 0 && c < COLS; c -= step)
                         {
-                            if (!this.mikamiPathClearH(grid, curR, c, curC)) break;
+                            if (!this.mikamiPathClearH_v1(grid, curR, c, curC)) break;
                             const prevV = v2D?.[curR]?.[c];
                             if (Number.isFinite(prevV) && prevV === (level - 1))
                             {
@@ -986,7 +979,7 @@ this.routeBuildBannedBits = function(ctx)
 
                 if (level === 0)
                 {
-                    if (curC === from.c && this.mikamiPathClearV(grid, curC, from.r, curR))
+                    if (curC === from.c && this.mikamiPathClearV_v1(grid, curC, from.r, curR))
                     {
                         found = { r: from.r, c: from.c, nextAxis: null, nextLevel: -1 };
                     }
@@ -999,7 +992,7 @@ this.routeBuildBannedBits = function(ctx)
                         const step = tries[i].dr;
                         for (let r = curR - step; r >= 0 && r < ROWS; r -= step)
                         {
-                            if (!this.mikamiPathClearV(grid, curC, r, curR)) break;
+                            if (!this.mikamiPathClearV_v1(grid, curC, r, curR)) break;
                             const prevH = h2D?.[r]?.[curC];
                             if (Number.isFinite(prevH) && prevH === (level - 1))
                             {
@@ -1014,7 +1007,7 @@ this.routeBuildBannedBits = function(ctx)
             if (!found)
             {
                 if (bDebug)
-                    console.log("[GPU mikamiBacktrace] failed axis=" + axis +
+                    console.log("[GPU mikamiBacktrace_v1] failed axis=" + axis +
                                 " cur=(" + curR + "," + curC + ") level=" + level);
                 return null;
             }
@@ -1042,44 +1035,44 @@ this.routeBuildBannedBits = function(ctx)
         if (!fullStates || fullStates.length === 0) return null;
 
         const ret = oASC.routeStatesToPath(fullStates, modifiers);
-        if (bDebug) console.log("[GPU mikamiBacktrace] statesLen=" + states.length +
+        if (bDebug) console.log("[GPU mikamiBacktrace_v1] statesLen=" + states.length +
                         " fullStatesLen=" + fullStates.length +
                         " pathLen=" + (Array.isArray(ret) ? ret.length : -1));
         return ret;
     };
 
-    this.mikamiPath_cache = { key: "", path: null };
+    this.mikamiPath_cache_v1 = { key: "", path: null };
 
-    this.mikamiPath = function(from, to, modifiers)
+    this.mikamiPath_v1 = function(from, to, modifiers)
     {
-        oCOM.startChrono("oGASC.mikamiPath", JSON.stringify({ from, to }));
+        oCOM.startChrono("oGASC.mikamiPath_v1", JSON.stringify({ from, to }));
         oCOM.startChrono("gridbuild");
-        if (!from || !to) return oCOM.debugDone(null, "GPU mikamiPath()", "early-exit(!from||!to)");
-        if (from.r === to.r && from.c === to.c) return oCOM.debugDone([], "GPU mikamiPath()", "early-exit(same-cell)");
+        if (!from || !to) return oCOM.debugDone(null, "GPU mikamiPath_v1()", "early-exit(!from||!to)");
+        if (from.r === to.r && from.c === to.c) return oCOM.debugDone([], "GPU mikamiPath_v1()", "early-exit(same-cell)");
 
-        if (modifiers?.leastBridges) return oCOM.debugDone(null, "GPU mikamiPath()", "unsupported-leastBridges");
+        if (modifiers?.leastBridges) return oCOM.debugDone(null, "GPU mikamiPath_v1()", "unsupported-leastBridges");
 
         if (!oASC || typeof oASC.routeNormalizeModifiers !== "function")
-            return oCOM.debugDone(null, "GPU mikamiPath()", "missing-routeNormalizeModifiers");
+            return oCOM.debugDone(null, "GPU mikamiPath_v1()", "missing-routeNormalizeModifiers");
         if (!oASC || typeof oASC.routeBuildContext !== "function")
-            return oCOM.debugDone(null, "GPU mikamiPath()", "missing-routeBuildContext");
+            return oCOM.debugDone(null, "GPU mikamiPath_v1()", "missing-routeBuildContext");
 
         const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
         const ctx  = oASC.routeBuildContext(from, to);
         const key = JSON.stringify({fr: from.r, fc: from.c,tr: to.r, tc: to.c,sv: !!mods.startVertical,lc: !!mods.leastCorners,lb: !!mods.leastBridges});
 
-        if (this.mikamiPath_cache.key === key && Array.isArray(this.mikamiPath_cache.path))
+        if (this.mikamiPath_cache_v1.key === key && Array.isArray(this.mikamiPath_cache_v1.path))
         {
-            oCOM.stopChrono("oGASC.mikamiPath", "cache-hit");
-            return this.mikamiPath_cache.path.slice();
+            oCOM.stopChrono("oGASC.mikamiPath_v1", "cache-hit");
+            return this.mikamiPath_cache_v1.path.slice();
         }
 
         const mask8 = this.glyph2mask(2);
-        if (!mask8) return oCOM.debugDone(null, "GPU mikamiPath()", "glyph2mask-failed");
+        if (!mask8) return oCOM.debugDone(null, "GPU mikamiPath_v1()", "glyph2mask-failed");
 
         const grid = this.routeBuildCellCodeGridFromMask(mask8, ctx, from, to);
-        this.logRouteGridStats("GPU mikamiPath", grid, from, to);
-        if (!grid) return oCOM.debugDone(null, "GPU mikamiPath()", "grid-build-failed");
+        this.logRouteGridStats("GPU mikamiPath_v1", grid, from, to);
+        if (!grid) return oCOM.debugDone(null, "GPU mikamiPath_v1()", "grid-build-failed");
 
         const cfg16 = new Uint16Array(8);
         cfg16[0] = COLS;
@@ -1094,7 +1087,7 @@ this.routeBuildBannedBits = function(ctx)
 
         oCOM.startChrono("initH");
         const okInitH = this.runGPU(
-            this.mikamiInitH,
+            this.mikamiInitH_v1,
             { mode: "gpu" },
             {
                 output: [COLS, ROWS],
@@ -1108,10 +1101,10 @@ this.routeBuildBannedBits = function(ctx)
             { grid: [grid], cfg16: [cfg16] }
         );
          oCOM.stopChrono("initH");
-        if (okInitH === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-initH-compile-failed");
+        if (okInitH === false) return oCOM.debugDone(null, "GPU mikamiPath_v1()", "kernel-initH-compile-failed");
         oCOM.startChrono("initV");
         const okInitV = this.runGPU(
-            this.mikamiInitV,
+            this.mikamiInitV_v1,
             { mode: "gpu" },
             {
                 output: [COLS, ROWS],
@@ -1125,10 +1118,10 @@ this.routeBuildBannedBits = function(ctx)
             { grid: [grid], cfg16: [cfg16] }
         );
         oCOM.stopChrono("initV");
-        if (okInitV === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-initV-compile-failed");
+        if (okInitV === false) return oCOM.debugDone(null, "GPU mikamiPath_v1()", "kernel-initV-compile-failed");
         oCOM.startChrono("stepH");
         const okStepH = this.runGPU(
-            this.mikamiStepH,
+            this.mikamiStepH_v1,
             { mode: "gpu" },
             {
                 output: [COLS, ROWS],
@@ -1142,10 +1135,10 @@ this.routeBuildBannedBits = function(ctx)
             { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
         );
         oCOM.stopChrono("stepH");
-        if (okStepH === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-stepH-compile-failed");
+        if (okStepH === false) return oCOM.debugDone(null, "GPU mikamiPath_v1()", "kernel-stepH-compile-failed");
         oCOM.startChrono("stepV");
         const okStepV = this.runGPU(
-            this.mikamiStepV,
+            this.mikamiStepV_v1,
             { mode: "gpu" },
             {
                 output: [COLS, ROWS],
@@ -1159,69 +1152,69 @@ this.routeBuildBannedBits = function(ctx)
             { prevAxis: [ [[0]] ], selfAxis: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
         );
         oCOM.stopChrono("stepV");
-        if (okStepV === false) return oCOM.debugDone(null, "GPU mikamiPath()", "kernel-stepV-compile-failed");
+        if (okStepV === false) return oCOM.debugDone(null, "GPU mikamiPath_v1()", "kernel-stepV-compile-failed");
         try
         {
             oCOM.startChrono("backtrace");
-            let h = this.mikamiInitH.kObject(grid, cfg16);
-            let v = this.mikamiInitV.kObject(grid, cfg16);
+            let h = this.mikamiInitH_v1.kObject(grid, cfg16);
+            let v = this.mikamiInitV_v1.kObject(grid, cfg16);
+            if(bDebug) console.log("[GPU mikamiPath_v1 init] target=(" + to.r + "," + to.c + ") h=" + (h?.[to.r]?.[to.c]) + " v=" + (v?.[to.r]?.[to.c]));
 
-            this.logMikamiTargetState("GPU mikamiPath init", h, v, to);
-            let bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
+            let bestAxis = this.mikamiChooseTargetAxis_v1(h, v, to, mods);
             if (bestAxis)
             {
-                const ret = this.mikamiBacktrace(h, v, grid, from, to, mods);
-                this.mikamiPath_cache = { key, path: ret.slice() };
+                const ret = this.mikamiBacktrace_v1(h, v, grid, from, to, mods);
+                this.mikamiPath_cache_v1 = { key, path: ret.slice() };
                 oCOM.stopChrono("backtrace");
-                oCOM.stopChrono("oGASC.mikamiPath", "ok-direct");
-                return oCOM.debugDone(this.logPathSummary("GPU mikamiPath ok-direct", ret), "GPU mikamiPath()", "ok-direct");
+                oCOM.stopChrono("oGASC.mikamiPath_v1", "ok-direct");
+                return oCOM.debugDone(this.logPathSummary("GPU mikamiPath_v1 ok-direct", ret), "GPU mikamiPath_v1()", "ok-direct");
             }
 
             for (let iter = 0; iter < (ROWS + COLS); iter++)
             {
-                const h2 = this.mikamiStepH.kObject(v, h, grid, cfg16);
-                const v2 = this.mikamiStepV.kObject(h2, v, grid, cfg16);
+                const h2 = this.mikamiStepH_v1.kObject(v, h, grid, cfg16);
+                const v2 = this.mikamiStepV_v1.kObject(h2, v, grid, cfg16);
                 h = h2;
                 v = v2;
+                if(bDebug) console.log("[GPU mikamiPath_v1 iter] target=(" + to.r + "," + to.c + ") h=" + (h?.[to.r]?.[to.c]) + " v=" + (v?.[to.r]?.[to.c]));
 
-                this.logMikamiTargetState("GPU mikamiPath iter " + iter, h, v, to);
-                bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
+                bestAxis = this.mikamiChooseTargetAxis_v1(h, v, to, mods);
                 if (bestAxis)
                 {
-                    const ret = this.mikamiBacktrace(h, v, grid, from, to, mods);
-                    this.mikamiPath_cache = { key, path: ret.slice() };
+                    const ret = this.mikamiBacktrace_v1(h, v, grid, from, to, mods);
+                    this.mikamiPath_cache_v1 = { key, path: ret.slice() };
                     oCOM.stopChrono("backtrace");
-                    oCOM.stopChrono("oGASC.mikamiPath", "ok-iter");
-                    return oCOM.debugDone(this.logPathSummary("GPU mikamiPath ok-iter", ret), "GPU mikamiPath()", "ok-iter");
+                    oCOM.stopChrono("oGASC.mikamiPath_v1", "ok-iter");
+                    return oCOM.debugDone(this.logPathSummary("GPU mikamiPath_v1 ok-iter", ret), "GPU mikamiPath_v1()", "ok-iter");
                 }
             }
 
-            oCOM.stopChrono("oGASC.mikamiPath", "no-path");
-            return oCOM.debugDone(null, "GPU mikamiPath()", "no-path");
+            oCOM.stopChrono("oGASC.mikamiPath_v1", "no-path");
+            return oCOM.debugDone(null, "GPU mikamiPath_v1()", "no-path");
         }
         catch (e)
         {
             console.warn("AsciiCAD GPU Mikami failed; falling back to CPU.", e);
-            return oCOM.debugDone(null, "GPU mikamiPath()", "exception");
+            return oCOM.debugDone(null, "GPU mikamiPath_v1()", "exception");
         }
     };
 
-    this.mikamiPath.help =
+    this.mikamiPath_v1.help =
     {
         type: "CADScript_FN",
-        usage: "mikamiPath(from,to,modifiers)",
+        usage: "mikamiPath_v1(from,to,modifiers)",
         desc:
             "Tentative GPU.js Mikami-style router. " +
             "Uses the same outer signature as the CPU Mikami router and is intentionally limited to least-bends-first behavior in this first GPU pass."
     };
 
-    this.mikamiInitH = function() {};
-    this.mikamiInitV = function() {};
-    this.mikamiStepH = function() {};
-    this.mikamiStepV = function() {};
+    this.mikamiInitH_v1 = function() {};
+    this.mikamiInitV_v1 = function() {};
+    this.mikamiStepH_v1 = function() {};
+    this.mikamiStepV_v1 = function() {};
 
-    this.mikamiInitH.kObject = null;
-    this.mikamiInitH.kScript = function(grid, cfg16)
+    this.mikamiInitH_v1.kObject = null;
+    this.mikamiInitH_v1.kScript = function(grid, cfg16)
     {
         const cols = cfg16[0] | 0;
         const srcC = cfg16[2] | 0;
@@ -1247,8 +1240,8 @@ this.routeBuildBannedBits = function(ctx)
         return 0;
     };
 
-    this.mikamiInitV.kObject = null;
-    this.mikamiInitV.kScript = function(grid, cfg16)
+    this.mikamiInitV_v1.kObject = null;
+    this.mikamiInitV_v1.kScript = function(grid, cfg16)
     {
         const cols = cfg16[0] | 0;
         const srcC = cfg16[2] | 0;
@@ -1274,8 +1267,8 @@ this.routeBuildBannedBits = function(ctx)
         return 0;
     };
 
-   this.mikamiStepH.kObject = null;
-    this.mikamiStepH.kScript = function(prevAxis, selfAxis, grid, cfg16)
+    this.mikamiStepH_v1.kObject = null;
+    this.mikamiStepH_v1.kScript = function(prevAxis, selfAxis, grid, cfg16)
     {
         const cols = cfg16[0] | 0;
         const INF  = cfg16[7] | 0;
@@ -1317,8 +1310,8 @@ this.routeBuildBannedBits = function(ctx)
         return best;
     };
 
-    this.mikamiStepV.kObject = null;
-    this.mikamiStepV.kScript = function(prevAxis, selfAxis, grid, cfg16)
+    this.mikamiStepV_v1.kObject = null;
+    this.mikamiStepV_v1.kScript = function(prevAxis, selfAxis, grid, cfg16)
     {
         const cols = cfg16[0] | 0;
         const rows = cfg16[1] | 0;
@@ -1482,9 +1475,9 @@ this.routeBuildBannedBits = function(ctx)
 
             let h = this.mikamiInitH_v2.kObject(mask16, bannedBits, cfg16);
             let v = this.mikamiInitV_v2.kObject(mask16, bannedBits, cfg16);
+            if(bDebug) console.log("[GPU mikamiPath_v2 init] target=(" + to.r + "," + to.c + ") h=" + (h?.[to.r]?.[to.c]) + " v=" + (v?.[to.r]?.[to.c]));
 
-            this.logMikamiTargetState("GPU mikamiPath_v2 init", h, v, to);
-            let bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
+            let bestAxis = this.mikamiChooseTargetAxis_v2(h, v, to, mods);
 
             if (bestAxis)
             {
@@ -1501,9 +1494,9 @@ this.routeBuildBannedBits = function(ctx)
                 const v2 = this.mikamiStepV_v2.kObject(h2, v, mask16, bannedBits, cfg16);
                 h = h2;
                 v = v2;
+                if(bDebug) console.log("[GPU mikamiPath_v2 iter] target=(" + to.r + "," + to.c + ") h=" + (h?.[to.r]?.[to.c]) + " v=" + (v?.[to.r]?.[to.c]));
 
-                this.logMikamiTargetState("GPU mikamiPath_v2 iter " + iter, h, v, to);
-                bestAxis = this.mikamiChooseTargetAxis(h, v, to, mods);
+                bestAxis = this.mikamiChooseTargetAxis_v2(h, v, to, mods);
 
                 if (bestAxis)
                 {
@@ -1558,6 +1551,25 @@ this.routeBuildBannedBits = function(ctx)
         return m;
     };
 
+    this.mikamiChooseTargetAxis_v2 = function(h2D, v2D, to, modifiers)
+    {
+        const hArr = (h2D && typeof h2D.toArray === "function") ? h2D.toArray() : h2D;
+        const vArr = (v2D && typeof v2D.toArray === "function") ? v2D.toArray() : v2D;
+
+        const h = hArr?.[to.r]?.[to.c];
+        const v = vArr?.[to.r]?.[to.c];
+        const INF = this.MIKAMI_INF;
+        const hf = Number.isFinite(h) && h < INF;
+        const vf = Number.isFinite(v) && v < INF;
+
+        if (hf && !vf) return "H";
+        if (vf && !hf) return "V";
+        if (!hf && !vf) return null;
+        if (h < v) return "H";
+        if (v < h) return "V";
+        return modifiers?.startVertical ? "V" : "H";
+    };    
+
     this.mikamiPathClearH_v2 = function(mask16, bannedBits, srcIdx, dstIdx, r, c0, c1)
     {
         const step = c1 >= c0 ? 1 : -1;
@@ -1588,7 +1600,7 @@ this.routeBuildBannedBits = function(ctx)
         const v2D = (vState && typeof vState.toArray === "function") ? vState.toArray() : vState;
         if (!h2D || !v2D || !mask16) return null;
 
-        let axis = this.mikamiChooseTargetAxis(h2D, v2D, to, modifiers);
+        let axis = this.mikamiChooseTargetAxis_v2(h2D, v2D, to, modifiers);
         if (!axis) return null;
 
         const srcIdx = from.r * COLS + from.c;

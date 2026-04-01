@@ -1236,12 +1236,11 @@ function ASC()
 
     if (mods.route === true)
     {
-      if (method === "mikami" || method === "mikami-mw") return this.mikamiPath(from, to, mods);
-      if (method === "dijkstra") return this.routePathDijkstra(from, to, mods);
+      if (method === "mikami" || method === "mikami-mw")  return this.mikamiPath(from, to, mods);
+      if (method === "dijkstra")                          return this.routePathDijkstra(from, to, mods);
       return this.routePathAStar(from, to, mods);
     }
-
-  return this.buildOrthogonalPath(from, to, mods);
+    return this.buildOrthogonalPath(from, to, mods);
   }
 
   // Build line paths with asynchronous methods
@@ -2544,7 +2543,7 @@ this.mikamiPath = function(from, to, modifiers)
   {
     try
     {
-      const gpuPath = oGASC.mikamiPath_v2(from, to, mods);
+      const gpuPath = oGASC.mikamiPath_v1(from, to, mods);
 
       if (Array.isArray(gpuPath)) return gpuPath;
 
@@ -3391,29 +3390,6 @@ this.startPasteWithText = function(text)
     return "";
   }
 
-  // Locate all valid BOX rectangles (double-line boxes) on the grid.
-  // Returns [{ ref:"DEFINITION", r0,c0,r1,c1, name, type:"BOX" }, ...]
-  this.computeBoxRects = function()
-  {
-    const out = [];
-    const rects = this.collectDoubleBoxRects16();
-    
-    for (let i = 0; i < rects.length; i += 4)
-    {
-      const r0 = rects[i + 0], c0 = rects[i + 1];
-      const r1 = rects[i + 2], c1 = rects[i + 3];
-      out.push({
-        ref: "DEFINITION",
-        type: "BOX",
-        name: this.computeBoxLabel?.(r0, c0, r1, c1) ?? "",
-        tl: { r: r0, c: c0 },
-        br: { r: r1, c: c1 },
-      });
-    }
-
-    return out;
-  };
-
   // Locate matching catalog components and/or boxes according to policy.
   //
   // Examples:
@@ -3440,12 +3416,14 @@ this.startPasteWithText = function(text)
     const wantName = (q.name === undefined || q.name === null) ? null : String(q.name);
     const wantMFR  = (q.MFR  === undefined || q.MFR  === null) ? null : String(q.MFR);
 
-    function matchField(val, want) {
+    function matchField(val, want) 
+    {
       if (want === null) return true;
       return String(val ?? "").match(new RegExp(want, "g")) != null;
     }
 
-    function accept(item) {
+    function accept(item) 
+    {
       // ref
       if (wantRef !== null && !matchField(item.ref, wantRef)) return false;
       // type
@@ -3455,8 +3433,7 @@ this.startPasteWithText = function(text)
         } else if (wantType === "LABEL") {
           if (item.ref !== "DEFINITION") return false;
         } else {
-          // any non-BOX/LABEL type (so far) targets catalog items
-          if (item.ref !== "CATALOG") return false;
+          if (item.ref !== "CATALOG") return false;               // any non-BOX/LABEL type (so far) targets catalog items
           if (!matchField(item.type, wantType)) return false;
         }
       }
@@ -3475,8 +3452,8 @@ this.startPasteWithText = function(text)
     // ---- Catalog components (pattern matches) ----
     const mo = (typeof this.computeMatchOverlay === "function") ? this.computeMatchOverlay() : null;
     const matches = mo?.matches || [];
-
-    if (matches && matches.length) {
+    if (matches && matches.length) 
+    {
       const items = (typeof CATALOG !== "undefined" && Array.isArray(CATALOG)) ? CATALOG : [];
       for (let i = 0; i < matches.length; i++) 
       {
@@ -3486,37 +3463,41 @@ this.startPasteWithText = function(text)
         const type = String(m.type ?? it.type ?? "");
         const MFR  = String(m.MFR  ?? it.MFR  ?? "");
         const uid  = String(m.uid  ?? (name + "_" + type + "_" + MFR));
-        const hit = {
-          ref: "CATALOG",
-          name, type, MFR,
-          uid,
-          catalog_idx: m.catalog_idx,
-          rotation: m.rotation,
-          tl: { r: m.r0, c: m.c0 },
-          br: { r: m.r1, c: m.c1 },
-        }
+        const hit = { ref: "CATALOG",
+                      name, type, MFR,
+                      uid,
+                      catalog_idx: m.catalog_idx,
+                      rotation: m.rotation,
+                      tl: { r: m.r0, c: m.c0 },
+                      br: { r: m.r1, c: m.c1 }};
         if (accept(hit)) out.push(hit);
       }
     }
 
     // ---- Boxes (valid double-line rectangles) ----
     const shouldIncludeBoxes = (wantType === null) || (wantType === "BOX") || (wantName !== null);
-    if (shouldIncludeBoxes) {
-      const boxes = (typeof this.computeBoxRects === "function") ? this.computeBoxRects() : [];
-      for (let i = 0; i < boxes.length; i++) {
-        const b = boxes[i];
-        if (accept(b)) out.push(b);
+    if (shouldIncludeBoxes)         // Locate all valid BOX rectangles (double-line boxes) on the grid.
+    {
+      const out = [], rects = this.collectDoubleBoxRects16();
+      for (let i = 0; i < rects.length; i += 4)
+      {
+        const r0 = rects[i + 0], c0 = rects[i + 1];
+        const r1 = rects[i + 2], c1 = rects[i + 3];
+        const box = { ref: "DEFINITION",
+                      type: "BOX",
+                      name: this.computeBoxLabel?.(r0, c0, r1, c1) ?? "",
+                      tl: { r: r0, c: c0 },
+                      br: { r: r1, c: c1 }};
+        if (accept(box)) out.push(box);
       }
     }
 
     // ---- Labels (text strings) ----
     const shouldIncludeLabels = (wantType === "LABEL") || (wantName !== null);
-    if (shouldIncludeLabels) {
+    if (shouldIncludeLabels)
+    {
       const labels = (typeof this.computeLabelRects === "function") ? this.computeLabelRects() : [];
-      for (let i = 0; i < labels.length; i++) {
-        const l = labels[i];
-        if (accept(l)) out.push(l);
-      }
+      for (let i = 0; i < labels.length; i++) if (accept(labels[i])) out.push(labels[i]);
     }
 
     return out;

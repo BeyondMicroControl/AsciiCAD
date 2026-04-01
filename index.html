@@ -371,6 +371,7 @@ function lineModeSelector()
   if(lineRouteSel==null) lineRouteSel = 0;  // default
   lineRouteSel++; if(lineRouteSel==lineRoutes.length) lineRouteSel = 0;
   lineRoute.textContent = lineRoutes[lineRouteSel]+" ⇅";
+  setMode("modeLine");
 }
 
 function openPicker() 
@@ -1842,9 +1843,7 @@ canvas.addEventListener("mousedown", async (e) =>
   if (hasPreviewDrag())
   {
     const committed = await commitPreviewDrag();
-
     if (!committed) return;
-
     if (tool !== "modeLine") return;
   }
 
