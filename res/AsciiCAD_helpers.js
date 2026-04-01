@@ -1221,27 +1221,22 @@ function ASC()
     this.line(drag);
   }
 
-  // Build line paths with synchronous methods
   this.buildLinePath = function(from, to, modifiers)
   {
-    // modifiers.startVertical
-    // modifiers.flip
-    // modifiers.route
-    // modifiers.leastCorners
-    // modifiers.leastBridges
-    // modifiers.kind
-
     const mods = Object.assign({}, modifiers || {});
     const method = String(mods.routeMethod || mods.routeAlgo || "astar").toLowerCase();
 
+    let rawPath;
     if (mods.route === true)
     {
-      if (method === "mikami" || method === "mikami-mw")  return this.mikamiPath(from, to, mods);
-      if (method === "dijkstra")                          return this.routePathDijkstra(from, to, mods);
-      return this.routePathAStar(from, to, mods);
+      if (method === "mikami" || method === "mikami-mw") rawPath = this.mikamiPath(from, to, mods);
+      else if (method === "dijkstra")                    rawPath = this.routePathDijkstra(from, to, mods);
+      else                                               rawPath = this.routePathAStar(from, to, mods);
     }
-    return this.buildOrthogonalPath(from, to, mods);
-  }
+    else rawPath = this.buildOrthogonalPath(from, to, mods);
+
+    return this.resolveLineContinuation(rawPath, mods);
+  };
 
   // Build line paths with asynchronous methods
   this.buildLinePathAsync = async function(from, to, modifiers)
@@ -1249,20 +1244,15 @@ function ASC()
     const mods = Object.assign({}, modifiers || {});
     const method = String(mods.routeMethod || mods.routeAlgo || "astar").toLowerCase();
 
-    if (mods.route !== true)
-      return this.buildOrthogonalPath(from, to, mods);
+    let rawPath;
+    if (mods.route !== true) rawPath = this.buildOrthogonalPath(from, to, mods);
+    else if (method === "mikami-mw") rawPath = await this.mikamiPathMultiWorker(from, to, mods);
+    else if (method === "mikami")    rawPath = this.mikamiPath(from, to, mods);
+    else if (method === "dijkstra")  rawPath = this.routePathDijkstra(from, to, mods);
+    else rawPath = this.routePathAStar(from, to, mods);
 
-    if (method === "mikami-mw")
-      return await this.mikamiPathMultiWorker(from, to, mods);
-
-    if (method === "mikami")
-      return this.mikamiPath(from, to, mods);
-
-    if (method === "dijkstra")
-      return this.routePathDijkstra(from, to, mods);
-
-    return this.routePathAStar(from, to, mods);
-  }
+    return this.resolveLineContinuation(rawPath, mods);
+  };
 
   this.commitLineAsync = async function()
   {
@@ -1342,6 +1332,93 @@ function ASC()
       same
     };
   }
+
+
+  this.pathStepDir = function(a, b)
+  {
+    if (!a || !b) return 0;
+    const dr = (b.r - a.r) | 0;
+    const dc = (b.c - a.c) | 0;
+
+    if (dr === -1 && dc === 0) return N;
+    if (dr ===  0 && dc === 1) return E;
+    if (dr ===  1 && dc === 0) return S;
+    if (dr ===  0 && dc === -1) return W;
+    return 0;
+  };
+
+  this.lineKindMaskForDir = function(dir, kind)
+  {
+    const chset = kind || this.BOX_SINGLE;
+
+    const hMask = (this.glyph2mask(chset.h) || 0) & 0xFF;
+    const vMask = (this.glyph2mask(chset.v) || 0) & 0xFF;
+    const ref = (dir === E || dir === W) ? hMask : vMask;
+
+    let out = 0;
+    if ((ref & 0x0F) !== 0) out |= dir;         // thin family present
+    if ((ref & 0xF0) !== 0) out |= (dir << 4);  // fat family present
+
+    return out & 0xFF;
+  };
+
+  this.connectedMaskAtCell = function(r, c)
+  {
+    const ch = ascii?.[r]?.[c] ?? " ";
+    const selfMask = (this.glyph2mask(ch) || 0) & 0xFF;
+    if (selfMask === 0) return 0;
+
+    let out = 0;
+
+    const keepIfReciprocal = (dir, opp, dr, dc) =>
+    {
+      const bitLo = selfMask & dir;
+      const bitHi = selfMask & (dir << 4);
+      if (!bitLo && !bitHi) return;
+
+      const nr = r + dr;
+      const nc = c + dc;
+      if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return;
+
+      const nMask = (this.glyph2mask(ascii?.[nr]?.[nc] ?? " ") || 0) & 0xFF;
+      if ((nMask & opp) || (nMask & (opp << 4)))
+        out |= bitLo | bitHi;
+    };
+
+    keepIfReciprocal(N, S, -1,  0);
+    keepIfReciprocal(E, W,  0,  1);
+    keepIfReciprocal(S, N,  1,  0);
+    keepIfReciprocal(W, E,  0, -1);
+
+    return out & 0xFF;
+  };
+
+  this.resolveLineStartContinuation = function(path, modifiers)
+  {
+    if (!Array.isArray(path) || path.length < 2) return path;
+
+    const p0 = path[0];
+    const p1 = path[1];
+    const dirOut = this.pathStepDir(p0, p1);
+    if (!dirOut) return path;
+
+    const existingMask = this.connectedMaskAtCell(p0.r, p0.c);
+    if (!existingMask) return path;   // nothing to continue from
+
+    const newMask = this.lineKindMaskForDir(dirOut, modifiers?.kind || this.BOX_SINGLE);
+    const merged = (existingMask | newMask) & 0xFF;
+    const ch = this.mask2glyph(merged);
+
+    if (ch && ch !== " ")
+      path[0] = { r: p0.r, c: p0.c, ch };
+
+    return path;
+  };
+
+  this.resolveLineContinuation = function(path, modifiers)
+  {
+    return this.resolveLineStartContinuation(path, modifiers);
+  };
 
 
   this.line = function(lineArg)
