@@ -3017,6 +3017,9 @@ this.routeExpandWaypointStates = function(states)
   }
 
 
+  ////////////////////////////////////////////////////
+  // A* routing subsection
+
   this.routeHeuristic = function(r, c, to)
   {
     return [Math.abs(r - to.r) + Math.abs(c - to.c), 0, 0, 0];
@@ -3046,6 +3049,7 @@ this.routeExpandWaypointStates = function(states)
     }
     return " ";
   }
+
 
   this.routeStatesToPath = function(states, modifiers)
   {
@@ -3082,6 +3086,7 @@ this.routeExpandWaypointStates = function(states)
 
     return out;
   }
+
 
   this.routePathSearch = function(from, to, modifiers, heuristicFn)
   {
@@ -3228,36 +3233,44 @@ this.routeExpandWaypointStates = function(states)
     return this.buildOrthogonalPath(from, to, mods);
   }
 
+
+
+
   this.routePathAStar = function(from, to, modifiers)
   {
     return this.routePathSearch(from, to, modifiers, this.routeHeuristic);
   }
 
-this.routePathDijkstra = function(from, to, modifiers)
-{
-  const impl = String(modifiers?.routeImpl || "auto").toLowerCase();
+  ////////////////////////////////////////////////////
+  // dijkstra routing subsection
 
-  if (impl !== "cpu" &&
-      typeof oGASC !== "undefined" &&
-      oGASC &&
-      typeof oGASC.routePathDijkstra === "function")
+
+  this.routePathDijkstra = function(from, to, modifiers)
   {
-    try
-    {
-      const gpuPath = oGASC.routePathDijkstra(from, to, modifiers || {});
-      if (Array.isArray(gpuPath)) return gpuPath;
-    }
-    catch (err)
-    {
-      console.warn("GPU Dijkstra failed; falling back to CPU.", err);
-    }
-  }
+    if (!from || !to) return [];
+    if (from.r === to.r && from.c === to.c) return [];
 
-  oCOM.startChrono("oASC.routePathDijkstra", JSON.stringify({ from, to }));
-  ret = this.routePathSearch(from, to, modifiers, this.routeZeroHeuristic);
-  oCOM.stopChrono("oASC.routePathDijkstra", "ok");
-  return ret;
-};
+    const impl = String(modifiers?.routeImpl || "auto").toLowerCase();
+    const GPUAvailable = typeof oGASC !== "undefined" && oGASC && typeof oGASC.routePathDijkstra === "function";
+
+    if (impl !== "cpu" && GPUAvailable)
+    {
+      try
+      {
+        const gpuPath = oGASC.routePathDijkstra(from, to, modifiers || {});
+        if (Array.isArray(gpuPath)) return gpuPath;
+      }
+      catch (err)
+      {
+        console.warn("GPU Dijkstra failed; falling back to CPU.", err);
+      }
+    }
+
+    oCOM.startChrono("oASC.routePathDijkstra", JSON.stringify({ from, to }));
+    ret = this.routePathSearch(from, to, modifiers, this.routeZeroHeuristic);
+    oCOM.stopChrono("oASC.routePathDijkstra", "ok");
+    return ret;
+  };
 
 
 
@@ -6651,6 +6664,88 @@ this.routeBuildBannedBits = function(ctx)
         ];
     };
 
+    this.routePathDijkstraBacktrace16 = function(distState, mask16, bannedBits, from, to, modifiers)
+    {
+        const dist2D = (distState && typeof distState.toArray === "function") ? distState.toArray() : distState;
+        if (!dist2D || !mask16) return null;
+
+        const INF = this.DIJKSTRA_INF;
+        const td = dist2D?.[to.r]?.[to.c];
+        if (!(Number.isFinite(td) && td < INF)) return null;
+
+        const srcIdx = from.r * COLS + from.c;
+        const dstIdx = to.r * COLS + to.c;
+
+        const states = [{ r: to.r, c: to.c }];
+        const order = this.routePathDijkstraBacktraceOrder(modifiers);
+        let curR = to.r;
+        let curC = to.c;
+        let guard = ROWS * COLS + 4;
+
+        while ((curR !== from.r || curC !== from.c) && guard-- > 0)
+        {
+            const curDist = dist2D[curR][curC];
+            const curIdx = curR * COLS + curC;
+            const curCode = this.routeCodeAtMask16(mask16, curIdx, srcIdx, dstIdx, bannedBits);
+
+            let pick = null;
+            let pickDist = Number.POSITIVE_INFINITY;
+
+            for (let i = 0; i < order.length; i++)
+            {
+                const n = order[i];
+                const nr = curR + n.dr;
+                const nc = curC + n.dc;
+
+                if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+                if (!this.routePathDijkstraCanEnter(curCode, n.dir)) continue;
+
+                const pd = dist2D?.[nr]?.[nc];
+                if (!(Number.isFinite(pd) && pd < INF)) continue;
+                if (Math.abs((pd + 1) - curDist) > 0.25) continue;
+
+                if (pd < pickDist)
+                {
+                    pick = { r: nr, c: nc };
+                    pickDist = pd;
+                }
+            }
+
+            if (!pick)
+            {
+                for (let i = 0; i < order.length; i++)
+                {
+                    const n = order[i];
+                    const nr = curR + n.dr;
+                    const nc = curC + n.dc;
+
+                    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+                    if (!this.routePathDijkstraCanEnter(curCode, n.dir)) continue;
+
+                    const pd = dist2D?.[nr]?.[nc];
+                    if (!(Number.isFinite(pd) && pd < curDist)) continue;
+
+                    if (pd < pickDist)
+                    {
+                        pick = { r: nr, c: nc };
+                        pickDist = pd;
+                    }
+                }
+            }
+
+            if (!pick) return null;
+
+            curR = pick.r;
+            curC = pick.c;
+            states.push({ r: curR, c: curC });
+        }
+
+        if (guard <= 0) return null;
+
+        states.reverse();
+        return oASC.routeStatesToPath(states, modifiers);
+    };
+/*
     this.routePathDijkstraBacktrace = function(dist2D, grid, from, to, modifiers)
     {
         if (!dist2D || !grid) return null;
@@ -6727,7 +6822,7 @@ this.routeBuildBannedBits = function(ctx)
         states.reverse();
         return oASC.routeStatesToPath(states, modifiers);
     };
-
+*/
 
     this.routePathDijkstra = function(from, to, modifiers)
     {
@@ -6745,66 +6840,82 @@ this.routeBuildBannedBits = function(ctx)
             return oCOM.debugDone(null, "GPU routePathDijkstra()", "missing-routeBuildContext");
 
         const mods = oASC.routeNormalizeModifiers(from, to, modifiers);
-        const ctx  = oASC.routeBuildContext(from, to);
+        const ctxGPU = oASC.routeBuildContextGPU(from, to);
+        const bannedBits = ctxGPU.bannedBits;
 
-        const mask8 = this.glyph2mask(2);
-        if (!mask8) return oCOM.debugDone(null, "GPU routePathDijkstra()", "glyph2mask-failed");
+        const mask16 = this.getMask16Cached();
+        if (!mask16) return oCOM.debugDone(null, "GPU routePathDijkstra()", "mask16-failed");
 
-        const grid = this.routeBuildCellCodeGridFromMask(mask8, ctx, from, to);
-        if (!grid) return oCOM.debugDone(null, "GPU routePathDijkstra()", "grid-build-failed");
-
-        const cfg16 = new Uint16Array(4);
+        const cfg16 = new Uint16Array(7);
         cfg16[0] = COLS;
         cfg16[1] = ROWS;
         cfg16[2] = from.c;
         cfg16[3] = from.r;
+        cfg16[4] = to.c;
+        cfg16[5] = to.r;
+        cfg16[6] = this.DIJKSTRA_INF;
 
         const okInit = this.runGPU(
-            this.routePathDijkstraInit,
+            this.routePathDijkstraInit16,
             { mode: "gpu" },
             {
                 output: [COLS, ROWS],
                 precision: "single",
                 graphical: false,
-                pipeline: false,
+                pipeline: true,
                 immutable: true,
                 dynamicArguments: true
             },
-            { grid: [grid], cfg16: [cfg16] }
-        );
-        if (okInit === false) return oCOM.debugDone(null, "GPU routePathDijkstra()", "kernel-init-compile-failed");
+            { mask16: [mask16], bannedBits: [bannedBits], cfg16: [cfg16] }
+            );
+        if (okInit === false) return oCOM.debugDone(null, "GPU routePathDijkstra()", "kernel-init16-compile-failed");
 
         const okStep = this.runGPU(
-            this.routePathDijkstraStep,
+        this.routePathDijkstraStep16,
             { mode: "gpu" },
             {
                 output: [COLS, ROWS],
+                precision: "single",
+                graphical: false,
+                pipeline: true,
+                immutable: true,
+                dynamicArguments: true
+            },
+            { distPrev: [ [[0]] ], mask16: [mask16], bannedBits: [bannedBits], cfg16: [cfg16] }
+            );
+        if (okStep === false) return oCOM.debugDone(null, "GPU routePathDijkstra()", "kernel-step16-compile-failed");
+
+        const okProbe = this.runGPU(
+            this.routePathDijkstraProbe16,
+            { mode: "gpu" },
+            {
+                output: [1],
                 precision: "single",
                 graphical: false,
                 pipeline: false,
                 immutable: true,
                 dynamicArguments: true
             },
-            { distPrev: [ [[0]] ], grid: [grid], cfg16: [cfg16] }
-        );
-        if (okStep === false) return oCOM.debugDone(null, "GPU routePathDijkstra()", "kernel-step-compile-failed");
+            { distState: [ [[0]] ], cfg16: [cfg16] }
+            );
+        if (okProbe === false) return oCOM.debugDone(null, "GPU routePathDijkstra()", "kernel-probe16-compile-failed");
 
         try
         {
-            let dist = this.routePathDijkstraInit.kObject(grid, cfg16);
-            let targetDist = dist?.[to.r]?.[to.c];
+            let dist = this.routePathDijkstraInit16.kObject(mask16, bannedBits, cfg16);
+            let targetDist = this.routePathDijkstraProbe16.kObject(dist, cfg16)[0];
 
             for (let iter = 0; iter < (ROWS * COLS); iter++)
             {
                 if (Number.isFinite(targetDist) && targetDist < this.DIJKSTRA_INF) break;
-                dist = this.routePathDijkstraStep.kObject(dist, grid, cfg16);
-                targetDist = dist?.[to.r]?.[to.c];
+                dist = this.routePathDijkstraStep16.kObject(dist, mask16, bannedBits, cfg16);
+                targetDist = this.routePathDijkstraProbe16.kObject(dist, cfg16)[0];
             }
 
             if (!(Number.isFinite(targetDist) && targetDist < this.DIJKSTRA_INF))
                 return oCOM.debugDone(null, "GPU routePathDijkstra()", "no-path");
 
-            var ret = this.routePathDijkstraBacktrace(dist, grid, from, to, mods);
+            const ret = this.routePathDijkstraBacktrace16(dist, mask16, bannedBits, from, to, mods);
             oCOM.stopChrono("oGASC.routePathDijkstra", "ok");
             return oCOM.debugDone(ret, "GPU routePathDijkstra()", "ok");
         }
@@ -6829,85 +6940,110 @@ this.routeBuildBannedBits = function(ctx)
     this.routePathDijkstraStep = function() {};
 
 
-    this.routePathDijkstraInit.kObject = null;
-
-    this.routePathDijkstraInit.kScript = function(grid, cfg16)
-    {
-        const srcC = cfg16[2] | 0;
-        const srcR = cfg16[3] | 0;
-        const r = this.thread.y;
-        const c = this.thread.x;
-
-        if (r === srcR && c === srcC) return 0;
-        return 16777215;
-    };
-
-    this.routePathDijkstraStep.kObject = null;
-    this.routePathDijkstraStep.kScript = function(distPrev, grid, cfg16)
+    this.routePathDijkstraInit16 = function() {};
+    this.routePathDijkstraInit16.kObject = null;
+    this.routePathDijkstraInit16.kScript = function(mask16, bannedBits, cfg16)
     {
         const cols = cfg16[0] | 0;
-        const rows = cfg16[1] | 0;
         const srcC = cfg16[2] | 0;
         const srcR = cfg16[3] | 0;
-        const INF = 16777215;
+        const INF  = cfg16[6] | 0;
 
         const r = this.thread.y;
         const c = this.thread.x;
         const idx = r * cols + c;
-        const code = grid[idx] | 0;
+        const srcIdx = srcR * cols + srcC;
+
+        let code = (mask16[idx] >>> 8) & 3;
+        if (idx === srcIdx) code = 1;
+        else if ((bannedBits[idx] | 0) > 0) code = 0;
 
         if (r === srcR && c === srcC) return 0;
         if (code === 0) return INF;
-
-        let best = distPrev[r][c];
-        let cand = 0;
-
-        // from up => move S into current
-        if (r > 0)
-        {
-            cand = distPrev[r - 1][c];
-            if (cand < INF && (code === 1 || code === 2))
-            {
-                cand = cand + 1;
-                if (cand < best) best = cand;
-            }
-        }
-
-        // from down => move N into current
-        if ((r + 1) < rows)
-        {
-            cand = distPrev[r + 1][c];
-            if (cand < INF && (code === 1 || code === 2))
-            {
-                cand = cand + 1;
-                if (cand < best) best = cand;
-            }
-        }
-
-        // from left => move E into current
-        if (c > 0)
-        {
-            cand = distPrev[r][c - 1];
-            if (cand < INF && (code === 1 || code === 3))
-            {
-                cand = cand + 1;
-                if (cand < best) best = cand;
-            }
-        }
-
-        // from right => move W into current
-        if ((c + 1) < cols)
-        {
-            cand = distPrev[r][c + 1];
-            if (cand < INF && (code === 1 || code === 3))
-            {
-                cand = cand + 1;
-                if (cand < best) best = cand;
-            }
-        }
-
-        return best;
+        return INF;
     };
+
+this.routePathDijkstraStep16 = function() {};
+this.routePathDijkstraStep16.kObject = null;
+this.routePathDijkstraStep16.kScript = function(distPrev, mask16, bannedBits, cfg16)
+{
+    const cols = cfg16[0] | 0;
+    const rows = cfg16[1] | 0;
+    const srcC = cfg16[2] | 0;
+    const srcR = cfg16[3] | 0;
+    const dstC = cfg16[4] | 0;
+    const dstR = cfg16[5] | 0;
+    const INF  = cfg16[6] | 0;
+
+    const r = this.thread.y;
+    const c = this.thread.x;
+    const idx = r * cols + c;
+    const srcIdx = srcR * cols + srcC;
+    const dstIdx = dstR * cols + dstC;
+
+    let code = (mask16[idx] >>> 8) & 3;
+    if (idx === srcIdx || idx === dstIdx) code = 1;
+    else if ((bannedBits[idx] | 0) > 0) code = 0;
+
+    if (r === srcR && c === srcC) return 0;
+    if (code === 0) return INF;
+
+    let best = distPrev[r][c];
+    let cand = 0;
+
+    if (r > 0)
+    {
+        cand = distPrev[r - 1][c];
+        if (cand < INF && (code === 1 || code === 2))
+        {
+            cand = cand + 1;
+            if (cand < best) best = cand;
+        }
+    }
+
+    if ((r + 1) < rows)
+    {
+        cand = distPrev[r + 1][c];
+        if (cand < INF && (code === 1 || code === 2))
+        {
+            cand = cand + 1;
+            if (cand < best) best = cand;
+        }
+    }
+
+    if (c > 0)
+    {
+        cand = distPrev[r][c - 1];
+        if (cand < INF && (code === 1 || code === 3))
+        {
+            cand = cand + 1;
+            if (cand < best) best = cand;
+        }
+    }
+
+    if ((c + 1) < cols)
+    {
+        cand = distPrev[r][c + 1];
+        if (cand < INF && (code === 1 || code === 3))
+        {
+            cand = cand + 1;
+            if (cand < best) best = cand;
+        }
+    }
+
+    return best;
+};
+
+this.routePathDijkstraProbe16 = function() {};
+this.routePathDijkstraProbe16.kObject = null;
+this.routePathDijkstraProbe16.kScript = function(distState, cfg16)
+{
+    const toC = cfg16[4] | 0;
+    const toR = cfg16[5] | 0;
+    return distState[toR][toC];
+};
+
+
 
 
 
