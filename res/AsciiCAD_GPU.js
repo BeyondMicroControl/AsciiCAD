@@ -1187,7 +1187,6 @@ this.routePathDijkstraProbe16.kScript = function(distState, cfg16)
         return true;
     };
 
-    // TODO: integrate & comment
     this.mikamiBacktraceOrder = function(modifiers)
     {
         const verticalFirst = !!modifiers?.startVertical;
