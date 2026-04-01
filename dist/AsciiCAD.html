@@ -3758,7 +3758,7 @@ this.mikamiPath = function(from, to, modifiers)
   const impl = String(mods?.routeImpl || "auto").toLowerCase();
 
   const GPUAvailable = typeof oGASC !== "undefined" && oGASC && typeof oGASC.mikamiPath === "function";
-  const CPUAvailable = typeof oASC !== "undefined" && oASC && typeof oASC.mikamiPath === "function";
+  //const CPUAvailable = typeof oASC !== "undefined" && oASC && typeof oASC.mikamiPath === "function";
 
   if (impl === "gpu" && !GPUAvailable && bDebug) console.warn("GPU Mikami requested but unavailable; AsciiCAD_GPU.js not loaded or oGASC.mikamiPath missing.");
 
@@ -12230,7 +12230,7 @@ const PICKER_TABS =
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.174</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.175</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
 
