@@ -1235,7 +1235,7 @@ function ASC()
     }
     else rawPath = this.buildOrthogonalPath(from, to, mods);
 
-    return this.resolveLineContinuation(rawPath, mods);
+    return rawPath;
   };
 
   // Build line paths with asynchronous methods
@@ -1281,7 +1281,8 @@ function ASC()
 
     const merge   = modifiers.merge === undefined ? true : modifiers.merge;
     const rawPath = await this.buildLinePathAsync(from, to, modifiers);
-    const path    = merge ? this.solveIntersect(rawPath) : rawPath;
+    let path      = merge ? this.solveIntersect(rawPath) : rawPath;
+    path          = this.resolveLineContinuation(path, modifiers);
 
     const stroke = [];
     for (const p of path)
@@ -1448,8 +1449,8 @@ function ASC()
 
     //const rawPath = this.buildLinePath(from, to, flip, modifiers, kind);
     const rawPath = this.buildLinePath(from, to, modifiers);
-    const path    = merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
-
+    let path      = merge ? this.solveIntersect(rawPath) : rawPath;
+    path          = this.resolveLineContinuation(path, modifiers);
     if (bDebug) console.log("[line commit] rawLen=" + (Array.isArray(rawPath) ? rawPath.length : -1) +
                   " pathLen=" + (Array.isArray(path) ? path.length : -1));
 
@@ -4853,7 +4854,8 @@ this.startPasteWithText = function(text)
       console.log("this.buildLinePath("+lineDrag.start+","+lineDrag.cur+","+JSON.stringify(lineDrag.modifiers)+")");
 
       const rawPath = this.buildLinePath(lineDrag.start, lineDrag.cur, lineDrag.modifiers);
-      const path    = lineDrag.merge ? this.solveIntersect(rawPath) : rawPath;    // solve all intersections
+      let path      = lineDrag.merge ? this.solveIntersect(rawPath) : rawPath;
+      path          = this.resolveLineContinuation(path, lineDrag.modifiers);
 
       if (bDebug) console.log("[line preview] rawLen=" + (Array.isArray(rawPath) ? rawPath.length : -1) +
               " pathLen=" + (Array.isArray(path) ? path.length : -1));
