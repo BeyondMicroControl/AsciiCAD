@@ -827,6 +827,9 @@ this.routeBuildBannedBits = function(ctx)
                 return oCOM.debugDone(null, "GPU routePathDijkstra()", "no-path");
 
             const ret = this.routePathDijkstraBacktrace16(dist, mask16, bannedBits, from, to, mods);
+            if (!Array.isArray(ret))
+                return oCOM.debugDone(null, "GPU routePathDijkstra()", "backtrace-null");
+
             oCOM.stopChrono("oGASC.routePathDijkstra", "ok");
             return oCOM.debugDone(ret, "GPU routePathDijkstra()", "ok");
         }
