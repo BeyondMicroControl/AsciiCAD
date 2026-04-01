@@ -1401,10 +1401,10 @@ function ASC()
   this.line.help =
   {
     type: "CADScript_Fn",
-    usage: "line({from:{r:0,c:0},\nto:{r:0,c:0},flip:,kind})",
+    usage: "line({from:{r:0,c:0},to:{r:2,c:2},\nflip:</i>true</i>,kind:<i>BOX_SINGLE</i>})",
     desc: "Draw line in style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
     examples:  [
-      "CADScript {oASC.line({from:{r:0,c:0},\nto:{r:5,c:5},flip:true,kind:BOX_SINGLE})}"
+      "oASC.line({from:{r:0,c:0},\nto:{r:5,c:5},flip:true,kind:BOX_SINGLE})"
     ],
     unitTests: [
      "oASC.clear();",
