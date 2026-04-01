@@ -7081,7 +7081,7 @@ this.routePathDijkstraProbe16.kScript = function(distState, cfg16)
 
     this.mikamiPath = function(from, to, modifiers)
     {
-        oCOM.startChrono("oGASC.mikamiPath", JSON.stringify({ from, to }));
+        oCOM.startChrono("oGASC.mikamiPath");
 
         if (!from || !to) return oCOM.debugDone(null, "GPU mikamiPath()", "early-exit(!from||!to)");
         if (from.r === to.r && from.c === to.c) return oCOM.debugDone([], "GPU mikamiPath()", "early-exit(same-cell)");
