@@ -15,103 +15,52 @@ if (typeof bDebug === "undefined" || !bDebug) {
 //    ██      ██   ██ ██      ██      ██  ██       ██ 
 //     ██████ ██   ██ ███████  ██████ ██   ██ ███████ 
 
-/*
-// this version buffers duplicate messages, but it's not reporting failed assertions anymore and also does not flush messages at the end
 
-(function () {
-  if (window.__ASCIICAD_LOG_FORWARD__) return;
-  window.__ASCIICAD_LOG_FORWARD__ = true;
 
-  // State to keep track of the last message and count for each type
-  const state = {
-    log: { lastMessage: null, count: 0 },
-    warn: { lastMessage: null, count: 0 },
-    error: { lastMessage: null, count: 0 },
-    assert: { lastMessage: null, count: 0 }
-  };
+var DebugFilter = ["log", "warn", "error", "assert"]; // default methods
+var DebugSubFilter = null;                            // e.g. "chrono"
 
-  // Helper function to send a message with its count
-  function sendMessage(type, message, count) {
-    const countStr = count > 1 ? ` [*${count}]` : '';
-    parent.postMessage(
-      {
-        __asciicadLog: true,
-        type,
-        args: [message + countStr]
-      },
-      "*"
-    );
-  }
-
-  function forward(type, args) {
-    try {
-      const message = args.map(a =>
-        typeof a === "object" ? JSON.stringify(a) : String(a)
-      ).join(' ');
-
-      const currentState = state[type];
-
-      if (message === currentState.lastMessage) {
-        currentState.count++;
-      } else {
-        // If there was a previous message, send it now with its count
-        if (currentState.lastMessage !== null) {
-          sendMessage(type, currentState.lastMessage, currentState.count);
-        }
-        // Update the state for the current message
-        currentState.lastMessage = message;
-        currentState.count = 1;
-      }
-    } catch { }
-  }
-
-  function flushLogs() {
-    for (const type in state) {
-      const currentState = state[type];
-      if (currentState.lastMessage !== null) {
-        sendMessage(type, currentState.lastMessage, currentState.count);
-        currentState.lastMessage = null;
-        currentState.count = 0;
-      }
-    }
-  }
-
-  ["log", "warn", "error", "assert"].forEach(type => {
-    const orig = console[type];
-    console[type] = (...args) => {
-      forward(type, args);
-      orig.apply(console, args);
-    };
-  });
-
-  // Flush logs when the page is unloaded
-  window.addEventListener('beforeunload', flushLogs);
-
-  // Make flushLogs available globally
-  window.flushLogs = flushLogs;
-})();
-*/
-
-var DebugFilter = ["log", "warn", "error", "assert"]; // default filter
 oCOM.URL.parse(document.location.toString());
-for(var uri in oCOM.URL.uri)
+for (var uri in oCOM.URL.uri)
 {
-  switch(uri)
+  switch (uri)
   {
     case "bDebug":
-      var RAWfilter = oCOM.URL.uri[uri].split(",");
-      var filter = [];
-      for(var i=0;i<DebugFilter.length;i++)
+    {
+      const raw = String(oCOM.URL.uri[uri] || "").trim();
+
+      // default: bDebug=true => keep all methods, no subtype filter
+      if (raw !== "" && raw !== "true")
       {
-        if( RAWfilter.includes(DebugFilter[i]) )
-            filter.push(DebugFilter[i]);
+        const parts = raw.split(",");
+        const methods = [];
+        let sub = null;
+
+        for (let i = 0; i < parts.length; i++)
+        {
+          const tok = String(parts[i] || "").trim();
+          if (!tok) continue;
+
+          const m = tok.match(/^([a-z]+)(?:\[([^\]]+)\])?$/i);
+          if (!m) continue;
+
+          const method = m[1].toLowerCase();
+          const subtype = m[2] ? String(m[2]).trim() : null;
+
+          if (DebugFilter.includes(method))
+          {
+            methods.push(method);
+            if (subtype) sub = subtype;
+          }
+        }
+
+        if (methods.length > 0) DebugFilter = methods;
+        DebugSubFilter = sub || null;
       }
-      if(filter.length>0) DebugFilter = oCOM.URL.uri[uri].split(",");
+    }
     break;
-
-  }  
+  }
 }
-
 
 (function () {
   if (window.__ASCIICAD_LOG_FORWARD__) return;
@@ -119,6 +68,12 @@ for(var uri in oCOM.URL.uri)
 
   function forward(type, args) {
     try {
+      const txt = args.map(a =>
+        typeof a === "object" ? JSON.stringify(a) : String(a)
+      ).join(" ");
+
+      if (DebugSubFilter && txt.indexOf("[" + DebugSubFilter + "]") === -1) return;
+
       parent.postMessage(
         {
           __asciicadLog: true,
@@ -133,17 +88,13 @@ for(var uri in oCOM.URL.uri)
   }
 
   DebugFilter.forEach(type => {
-  //["warn", "error", "assert"].forEach(type => {
     const orig = console[type];
     console[type] = (...args) => {
       forward(type, args);
       orig.apply(console, args);
     };
-
   });
 })();
-
-
 
 
 // TEST HELPERS
