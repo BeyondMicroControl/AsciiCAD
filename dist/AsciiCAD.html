@@ -2608,8 +2608,11 @@ function ASC()
     const merge   = modifiers.merge === undefined ? true : modifiers.merge;
     const rawPath = await this.buildLinePathAsync(from, to, modifiers);
     let path      = merge ? this.solveIntersect(rawPath) : rawPath;
-    const mask16  = this.getMask16();
-    path          = this.resolveLineContinuation(path, modifiers, mask16);
+    if (modifiers.cont !== false)
+    {
+      const mask16 = this.getMask16();
+      path = this.resolveLineContinuation(path, modifiers, mask16);
+    }
 
     const stroke = [];
     for (const p of path)
@@ -2813,6 +2816,7 @@ function ASC()
 
         merge: s.merge === undefined ? true : !!s.merge,
         flip: !!s.flip,
+        cont: s.cont === undefined ? true : !!s.cont,
 
         // future-facing, already accepted by current routers
         leastCorners: !!s.leastCorners,
@@ -2830,8 +2834,11 @@ function ASC()
     const rawPath = this.buildLinePath(from, to, modifiers);
     let path      = merge ? this.solveIntersect(rawPath) : rawPath;
 
-    const mask16  = this.getMask16();
-    path          = this.resolveLineContinuation(path, modifiers, mask16);
+    if (modifiers.cont !== false)
+    {
+      const mask16 = this.getMask16();
+      path = this.resolveLineContinuation(path, modifiers, mask16);
+    }
 
     const segStroke = [];
 
@@ -2877,7 +2884,7 @@ function ASC()
   this.line.help =
   {
     type: "CADScript_FN",
-    usage: "line({path:[[c,r],[c,r],...], kind:SINGLE, router:ORTHO|MIKAMI|ASTAR|DIJKSTRA, target:AUTO|CPU|GPU})",
+    usage: "line({path:[[0,0],[10,0],[10,5]], kind:DOUBLE, router:DIJKSTRA, target:CPU, cont:false})",
     desc: "Draw a polyline through multiple waypoints. path tuples use [c,r] order. ORTHO is default.",
     examples: [
       "line({path:[[0,0],[5,6]], kind:SINGLE})",
@@ -6257,8 +6264,11 @@ this.startPasteWithText = function(text)
 
       const rawPath = this.buildLinePath(lineDrag.start, lineDrag.cur, lineDrag.modifiers);
       let path      = lineDrag.merge ? this.solveIntersect(rawPath) : rawPath;
-      const mask16  = this.getMask16();
-      path          = this.resolveLineContinuation(path, lineDrag.modifiers, mask16);
+      if (lineDrag.modifiers?.cont !== false)
+      {
+        const mask16 = this.getMask16();
+        path = this.resolveLineContinuation(path, lineDrag.modifiers, mask16);
+      }
 
       if (bDebug) console.log("[line preview] rawLen=" + (Array.isArray(rawPath) ? rawPath.length : -1) +
               " pathLen=" + (Array.isArray(path) ? path.length : -1));
