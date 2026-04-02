@@ -15,82 +15,109 @@ if (typeof bDebug === "undefined" || !bDebug) {
 //    ██      ██   ██ ██      ██      ██  ██       ██ 
 //     ██████ ██   ██ ███████  ██████ ██   ██ ███████ 
 
-
-var DebugFilter = ["log", "warn", "error", "assert"]; // console methods to hook
-var RAWfilter = [];                                   // parsed debug specs
-
-function parseDebugSpec(spec)
-{
-  const s = String(spec || "").trim();
-  const m = s.match(/^([^\[\],]+)(?:\[([^\[\]]+)\])?$/);
-  return {
-    type: m ? String(m[1] || "").trim() : s,
-    subtype: m && m[2] ? String(m[2]).trim() : ""
-  };
-}
-
-oCOM.URL.parse(document.location.toString());
-for (var uri in oCOM.URL.uri)
-{
-  switch(uri)
-  {
-    case "bDebug":
-    {
-      const raw = String(oCOM.URL.uri[uri] || "").trim();
-
-      if (raw === "true")
-      {
-        RAWfilter = []; // no filtering => forward everything from DebugFilter
-        DebugFilter = ["log", "warn", "error", "assert"];
-        break;
-      }
-
-      RAWfilter = raw
-        .split(",")
-        .map(parseDebugSpec)
-        .filter(x => x.type);
-
-      var filter = [];
-      for (var i = 0; i < DebugFilter.length; i++)
-      {
-        if (RAWfilter.some(x => x.type === DebugFilter[i]))
-          filter.push(DebugFilter[i]);
-      }
-
-      if (filter.length > 0) DebugFilter = filter;
-    }
-    break;
-  }
-}
+/*
+// this version buffers duplicate messages, but it's not reporting failed assertions anymore and also does not flush messages at the end
 
 (function () {
   if (window.__ASCIICAD_LOG_FORWARD__) return;
   window.__ASCIICAD_LOG_FORWARD__ = true;
 
-  function argsToText(args)
-  {
-    return (args || []).map(v => {
-      if (typeof v === "string") return v;
-      try { return JSON.stringify(v); }
-      catch (e) { return String(v); }
-    }).join(" ");
+  // State to keep track of the last message and count for each type
+  const state = {
+    log: { lastMessage: null, count: 0 },
+    warn: { lastMessage: null, count: 0 },
+    error: { lastMessage: null, count: 0 },
+    assert: { lastMessage: null, count: 0 }
+  };
+
+  // Helper function to send a message with its count
+  function sendMessage(type, message, count) {
+    const countStr = count > 1 ? ` [*${count}]` : '';
+    parent.postMessage(
+      {
+        __asciicadLog: true,
+        type,
+        args: [message + countStr]
+      },
+      "*"
+    );
   }
 
-  function forward(type, args)
-  {
-    const text = argsToText(args);
+  function forward(type, args) {
+    try {
+      const message = args.map(a =>
+        typeof a === "object" ? JSON.stringify(a) : String(a)
+      ).join(' ');
 
-    if (RAWfilter && RAWfilter.length)
-    {
-      const allowed = RAWfilter.some(spec => {
-        if (spec.type !== type) return false;
-        if (!spec.subtype) return true;
-        return text.startsWith("[" + spec.subtype + "]");
-      });
+      const currentState = state[type];
 
-      if (!allowed) return;
+      if (message === currentState.lastMessage) {
+        currentState.count++;
+      } else {
+        // If there was a previous message, send it now with its count
+        if (currentState.lastMessage !== null) {
+          sendMessage(type, currentState.lastMessage, currentState.count);
+        }
+        // Update the state for the current message
+        currentState.lastMessage = message;
+        currentState.count = 1;
+      }
+    } catch { }
+  }
+
+  function flushLogs() {
+    for (const type in state) {
+      const currentState = state[type];
+      if (currentState.lastMessage !== null) {
+        sendMessage(type, currentState.lastMessage, currentState.count);
+        currentState.lastMessage = null;
+        currentState.count = 0;
+      }
     }
+  }
 
+  ["log", "warn", "error", "assert"].forEach(type => {
+    const orig = console[type];
+    console[type] = (...args) => {
+      forward(type, args);
+      orig.apply(console, args);
+    };
+  });
+
+  // Flush logs when the page is unloaded
+  window.addEventListener('beforeunload', flushLogs);
+
+  // Make flushLogs available globally
+  window.flushLogs = flushLogs;
+})();
+*/
+
+var DebugFilter = ["log", "warn", "error", "assert"]; // default filter
+oCOM.URL.parse(document.location.toString());
+for(var uri in oCOM.URL.uri)
+{
+  switch(uri)
+  {
+    case "bDebug":
+      var RAWfilter = oCOM.URL.uri[uri].split(",");
+      var filter = [];
+      for(var i=0;i<DebugFilter.length;i++)
+      {
+        if( RAWfilter.includes(DebugFilter[i]) )
+            filter.push(DebugFilter[i]);
+      }
+      if(filter.length>0) DebugFilter = oCOM.URL.uri[uri].split(",");
+    break;
+
+  }  
+}
+
+
+(function () {
+  if (window.__ASCIICAD_LOG_FORWARD__) return;
+  window.__ASCIICAD_LOG_FORWARD__ = true;
+
+  function forward(type, args) {
     try {
       parent.postMessage(
         {
@@ -106,13 +133,13 @@ for (var uri in oCOM.URL.uri)
   }
 
   DebugFilter.forEach(type => {
+  //["warn", "error", "assert"].forEach(type => {
     const orig = console[type];
-    if (typeof orig !== "function") return;
-
     console[type] = (...args) => {
       forward(type, args);
       orig.apply(console, args);
     };
+
   });
 })();
 
@@ -212,19 +239,19 @@ function HlineSEQ(o)
   var co;
   o.rc++; co = 1;
 
-  oASC.line({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
-  oASC.line({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
-  oASC.line({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
-  oASC.line({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
-  oASC.line({from:{c:o.cc+co,r:o.rc},to:{c:o.cc+co+2,r:o.rc},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],kind:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],kind:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],kind:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],kind:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],kind:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
 
   o.rc++; co = 1; 
 
-  oASC.line({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
-  oASC.line({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
-  oASC.line({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
-  oASC.line({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
-  oASC.line({from:{c:o.cc+co+2,r:o.rc},to:{c:o.cc+co,r:o.rc},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],kind:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],kind:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],kind:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],kind:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],kind:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
   return o.rc;
 }
 
@@ -233,19 +260,19 @@ function VlineSEQ(o)
   var co;
   o.rc++; co = 1;
 
-  oASC.line({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.line({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.line({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.line({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.line({from:{c:o.rc,r:o.cc+co},to:{c:o.rc,r:o.cc+co+2},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
 
   o.rc++; co = 1; 
 
-  oASC.line({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.line({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.line({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.line({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.line({from:{c:o.rc,r:o.cc+co+2},to:{c:o.rc,r:o.cc+co},modifiers:{kind:o.lkind,flip:true}}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
  
   return o.rc;
 }
@@ -311,22 +338,23 @@ function runWorkerThreadSmokeTests()
     .then(function(){
         // TEST HORIZONTAL LINE CROSSINGS
         var rc = 0, cc = 4;
-        oASC.line({from:{c:cc,r:rc},to:{c:cc,r:rc+35},modifiers:{kind:oASC.BOX_SINGLE}});
-        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
-        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
-        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+        
+        oASC.line({path:[[cc,rc],[cc,rc+35]],kind:oASC.SINGLE});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.SINGLE});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.FAT});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.DOUBLE});
 
         var rc = 0, cc = 14;
-        oASC.line({from:{c:cc,r:rc},to:{c:cc,r:rc+35},modifiers:{kind:oASC.BOX_FAT}});
-        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
-        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
-        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+        oASC.line({path:[[cc,rc],[cc,rc+35]],kind:oASC.FAT});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.SINGLE});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.FAT});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.DOUBLE});
 
         var rc = 0, cc = 24;
-        oASC.line({from:{c:cc,r:rc},to:{c:cc,r:rc+35},modifiers:{kind:oASC.BOX_DOUBLE}});
-        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
-        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
-        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+        oASC.line({path:[[cc,rc],[cc,rc+35]],kind:oASC.DOUBLE});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.SINGLE});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.FAT});
+        rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.DOUBLE});
 
         var ar = [
         "    │         ┃         ║           ",
@@ -385,22 +413,22 @@ function runWorkerThreadSmokeTests()
         // TEST VERTICAL LINE CROSSINGS
 
         var rc = 0, cc = 4;
-        oASC.line({from:{c:rc,r:cc},to:{c:rc+35,r:cc},modifiers:{kind:oASC.BOX_SINGLE}});
-        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
-        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
-        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+        oASC.line({path:[[rc,cc],[rc+35,cc]],kind:oASC.SINGLE});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.SINGLE});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.FAT});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.DOUBLE});
 
         var rc = 0, cc = 14;
-         oASC.line({from:{c:rc,r:cc},to:{c:rc+35,r:cc},modifiers:{kind:oASC.BOX_FAT}});
-        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
-        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
-        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+         oASC.line({path:[[rc,cc],[rc+35,cc]],kind:oASC.FAT});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.SINGLE});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.FAT});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.DOUBLE});
          
         var rc = 0, cc = 24;
-        oASC.line({from:{c:rc,r:cc},to:{c:rc+35,r:cc},modifiers:{kind:oASC.BOX_DOUBLE}});
-        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_SINGLE});
-        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_FAT});
-        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.BOX_DOUBLE});
+        oASC.line({path:[[rc,cc],[rc+35,cc]],kind:oASC.DOUBLE});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.SINGLE});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.FAT});
+        rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.DOUBLE});
 
         var ar = [
         "       ▲▲▲▲▲       ▲▲▲▲▲       ▲▲▲▲▲",
