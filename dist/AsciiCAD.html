@@ -1739,6 +1739,28 @@ function ASC()
   this.BOX_FAT    = buildBox(this.maskToFat.bind(this));
   this.BOX_DOUBLE = buildBox(this.maskToDouble.bind(this));
 
+  this.SINGLE = "SINGLE";
+  this.FAT    = "FAT";
+  this.DOUBLE = "DOUBLE";
+
+  this.ORTHO    = "ORTHO";
+  this.MIKAMI   = "MIKAMI";
+  this.ASTAR    = "ASTAR";
+  this.DIJKSTRA = "DIJKSTRA";
+
+  this.AUTO = "AUTO";
+  this.CPU  = "CPU";
+  this.GPU  = "GPU";
+
+  // convenience aliases for CADScript examples like router:mikami
+  this.single   = this.SINGLE;
+  this.fat      = this.FAT;
+  this.double   = this.DOUBLE;
+  this.ortho    = this.ORTHO;
+  this.mikami   = this.MIKAMI;
+  this.astar    = this.ASTAR;
+  this.dijkstra = this.DIJKSTRA;
+
   this.hasDoubleH = function(ch){
     const m = this.glyph2mask(ch) & 0xFF;
     const lo = m & 0xF, hi = (m >> 4) & 0xF;
@@ -2511,16 +2533,19 @@ function ASC()
   {
     if (!lineDrag) return;
 
-    const drag = 
-    {
-      start:     lineDrag.start,
-      cur:       lineDrag.cur,
+    const drag = {
+      start: lineDrag.start,
+      cur: lineDrag.cur,
       modifiers: Object.assign({}, lineDrag.modifiers || {})
-    }
+    };
 
     lineDrag = null;
-    this.line(drag);
-  }
+
+    const stroke = [];
+    this._lineCommitSegment(drag.start, drag.cur, drag.modifiers, stroke);
+    this.pushHistoryStroke(stroke);
+    this.draw("line");
+  };
 
   this.buildLinePath = function(from, to, modifiers)
   {
@@ -2727,90 +2752,156 @@ function ASC()
   };
 
 
-  this.line = function(lineArg)
+  this.normalizeLinePoint = function(pt)
   {
-    if (!lineArg) return;
+    if (Array.isArray(pt) && pt.length >= 2)
+      return { c: pt[0] | 0, r: pt[1] | 0 };   // tuple order = [c,r]
 
-    console.log("this.line("+JSON.stringify(lineArg)+")");
+    if (pt && typeof pt === "object" && pt.c !== undefined && pt.r !== undefined)
+      return { c: pt.c | 0, r: pt.r | 0 };
 
-    // Accept both programmatic shape ({from,to,...}) and UI shape ({start,cur,...})
-    const from      = lineArg.from ?? lineArg.start;
-    const to        = lineArg.to   ?? lineArg.cur;
+    return null;
+  };
 
-    var modifiers = lineArg.modifiers || {};
-    const flip      = !!modifiers.flip;
-    const kind      = modifiers.kind===undefined?this.BOX_SINGLE:modifiers.kind;
-    const merge     = modifiers.merge===undefined?true:modifiers.merge;
+  this.resolveLineKind = function(kind)
+  {
+    const k = String(kind ?? this.SINGLE).toUpperCase();
 
-    if(typeof(modifiers) != "object") 
-      modifiers = {flip:flip,kind:kind};
-    else
-    {
-      if(modifiers["flip"]===undefined) modifiers["flip"] = flip;
-      if(modifiers["kind"]===undefined) modifiers["kind"] = kind;
-    }
+    if (k === "FAT")    return this.BOX_FAT;
+    if (k === "DOUBLE") return this.BOX_DOUBLE;
+    return this.BOX_SINGLE;
+  };
 
-    if (!from || !to) return;
+  this.resolveLineRouter = function(router)
+  {
+    const r = String(router ?? this.ORTHO).toUpperCase();
 
-    //const rawPath = this.buildLinePath(from, to, flip, modifiers, kind);
+    if (r === "ORTHO")    return { route: false, routeMethod: "astar" };
+    if (r === "MIKAMI")   return { route: true,  routeMethod: "mikami" };
+    if (r === "DIJKSTRA") return { route: true,  routeMethod: "dijkstra" };
+    if (r === "ASTAR" || r === "A*") return { route: true, routeMethod: "astar" };
+
+    throw new Error("Unsupported router: " + router);
+  };
+
+  this.resolveLineTarget = function(target)
+  {
+    const t = String(target ?? this.AUTO).toUpperCase();
+    if (t === "CPU") return "cpu";
+    if (t === "GPU") return "gpu";
+    return "auto";
+  };
+
+  this.normalizeLineSpec = function(spec)
+  {
+    const s = spec || {};
+    const rawPath = Array.isArray(s.path) ? s.path : [];
+    const points = rawPath.map(p => this.normalizeLinePoint(p)).filter(Boolean);
+
+    if (points.length < 2)
+      throw new Error("line({path:[...]}) requires at least 2 points.");
+
+    const router = this.resolveLineRouter(s.router);
+
+    return {
+      points,
+      modifiers: {
+        kind: this.resolveLineKind(s.kind),
+        route: router.route,
+        routeMethod: router.routeMethod,
+        routeImpl: this.resolveLineTarget(s.target),
+
+        merge: s.merge === undefined ? true : !!s.merge,
+        flip: !!s.flip,
+
+        // future-facing, already accepted by current routers
+        leastCorners: !!s.leastCorners,
+        leastBridges: !!s.leastBridges
+      }
+    };
+  };
+
+  this._lineCommitSegment = function(from, to, modifiers, fullStroke)
+  {
+    if (!from || !to) return [];
+    if (from.r === to.r && from.c === to.c) return [];
+
+    const merge   = modifiers.merge === undefined ? true : !!modifiers.merge;
     const rawPath = this.buildLinePath(from, to, modifiers);
     let path      = merge ? this.solveIntersect(rawPath) : rawPath;
+
     const mask16  = this.getMask16();
     path          = this.resolveLineContinuation(path, modifiers, mask16);
-    if (bDebug) console.log("[line commit] rawLen=" + (Array.isArray(rawPath) ? rawPath.length : -1) +
-                  " pathLen=" + (Array.isArray(path) ? path.length : -1));
 
-    const stroke = [];
+    const segStroke = [];
+
     for (const p of path)
     {
       if (p.r < 0 || p.r >= ROWS || p.c < 0 || p.c >= COLS) continue;
+
       const prev = ascii[p.r][p.c];
       const next = p.ch;
-      if (prev !== next)
-      {
-        stroke.push({ r: p.r, c: p.c, prev, next });
-        ascii[p.r][p.c] = next;
-      }
+      if (prev === next) continue;
+
+      const edit = { r: p.r, c: p.c, prev, next };
+      segStroke.push(edit);
+      if (fullStroke) fullStroke.push(edit);
+      ascii[p.r][p.c] = next;
     }
 
-    if (bDebug) console.log("[line commit] strokeLen=" + stroke.length);
+    // Important: later segments must see the board after this segment.
+    if (segStroke.length) this.invalidateBoardDerivedCaches();
 
-    this.pushStrokeIfNonEmpty(stroke);
+    return segStroke;
+  };
+
+
+  this.line = function(spec)
+  {
+    const cfg = this.normalizeLineSpec(spec);
+    const pts = cfg.points;
+    const modifiers = cfg.modifiers;
+    const fullStroke = [];
+
+    for (let i = 1; i < pts.length; i++)
+      this._lineCommitSegment(pts[i - 1], pts[i], modifiers, fullStroke);
+
+    this.pushHistoryStroke(fullStroke);
     this.draw("line");
-  }
+  };
 
 
 // TODO ADD A UNIT TEST ON LINE ROUTING
 
+
   this.line.help =
   {
-    type: "CADScript_Fn",
-    usage: "line({from:{r:0,c:0},to:{r:2,c:2},\nflip:</i>true</i>,kind:<i>BOX_SINGLE</i>})",
-    desc: "Draw line in style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
-    examples:  [
-      "oASC.line({from:{r:0,c:0},\nto:{r:5,c:5},flip:true,kind:BOX_SINGLE})"
+    type: "CADScript_FN",
+    usage: "line({path:[[c,r],[c,r],...], kind:SINGLE, router:ORTHO|MIKAMI|ASTAR|DIJKSTRA, target:AUTO|CPU|GPU})",
+    desc: "Draw a polyline through multiple waypoints. path tuples use [c,r] order. ORTHO is default.",
+    examples: [
+      "line({path:[[0,0],[5,6]], kind:SINGLE})",
+      "line({path:[[0,0],[5,6],[2,2]], kind:SINGLE, router:mikami, target:GPU})",
+      "line({path:[[0,0],[10,0],[10,5]], kind:DOUBLE, router:DIJKSTRA, target:CPU})"
     ],
     unitTests: [
      "oASC.clear();",
-     "oASC.line({from:{r:1,c:1},to:{r:0,c:0},modifiers:{flip:true}});",
+     "oASC.line({path:[[0,0],[1,1]]});",
      "oASC.assert('simple line',oASC.getCell(0,0,2,oASC.E),'─┐');",
      "oASC.stack(\"undo\");",
-     
      "oASC.box(3,1,5,3,{kind:BOX_DOUBLE});",
      "oASC.cell(4,4,'*');",
      "oASC.cell(0,0,'╟\\n╟\\n╟\\n╟\\n╟');",
      "oASC.cell(8,0,'╢\\n╢\\n╢\\n╢\\n╢');",
-     "oASC.line({from:{c:6,r:0},to:{c:6,r:4}});",
-     "oASC.line({from:{c:2,r:0},to:{c:2,r:3}});",
-     "oASC.line({from:{c:0,r:2},to:{c:8,r:2},modifiers:{route:true,leastCorners:true,leastBridges:true}});",
-     "oASC.line({from:{c:0,r:3},to:{c:8,r:3},modifiers:{route:true,leastCorners:true,leastBridges:true}});",
+     "oASC.line({path:[[6,0],[6,4]]});",
+     "oASC.line({path:[[2,0],[2,3]]});",
+     "oASC.line({path:[[0,2],[8,2]],router:mikami});",
+     "oASC.line({path:[[0,3],[8,3]],router:mikami});",
      "oASC.assert('routed line',oASC.getCell(0,0,9,E|S),'╟┌│───│┐╢\\n╟││╔═╗││╢\\n╟┘│║ ║│└╢\\n╟┐│╚═╝│┌╢\\n╟│  * ││╢\\n └─────┘ \\n         \\n         \\n         ');",
-    //"throw Error('StopChain');",
      "oASC.stack(\"undo5\")",
      "oASC.stack(\"undo\")",
      "oASC.stack(\"undo\")",
-     "oASC.stack(\"undo\")",
-
+     "oASC.stack(\"undo\")"
     ]
   }
 
@@ -4574,26 +4665,31 @@ this.mikamiPath = function(from, to, modifiers)
 
   this.boardRevision = 1;  // for cache mechanism
 
-  this.pushStrokeIfNonEmpty = function(stroke) 
+  this.pushStrokeIfNonEmpty = function(stroke)
   {
     if (!stroke || stroke.length === 0) return;
+    this.invalidateBoardDerivedCaches();
+    this.pushHistoryStroke(stroke);
+  };
+
+
+  this.invalidateBoardDerivedCaches = function()
+  {
     this.boardRevision = (this.boardRevision | 0) + 1;
 
+    highlightCache = null;
+    matchCache = null;
+    netlistCache = null;
+    hoverNetIndex = -1;
+  };
+
+  this.pushHistoryStroke = function(stroke)
+  {
+    if (!stroke || stroke.length === 0) return;
     undoStack.push(stroke);
     redoStack.length = 0;
-
-    // Invalidate caches that depend on grid contents
-    if (schemaHighlightOn) highlightCache = null;
-    if (schemaMatchOn) matchCache = null;
-
-    if (netTraceOn) {
-      netlistCache = null;     // force recompute on next hover/draw
-      hoverNetIndex = -1;      // clear current selection until next hover
-    }
-
     updateUI();
-  }
-
+  };
 
 
 
