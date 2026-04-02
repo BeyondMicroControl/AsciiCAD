@@ -260,19 +260,19 @@ function VlineSEQ(o)
   var co;
   o.rc++; co = 1;
 
-  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
 
   o.rc++; co = 1; 
 
-  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
  
   return o.rc;
 }
