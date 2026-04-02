@@ -2012,7 +2012,7 @@ function CMD()
     oTERM = new TERMINAL(
     {
       // We handle all input via oTERM.onInput; commands are kept for discoverability.
-      welcome: sbTitle.querySelector("big").textContent + " terminal - type <u>help</u><br>CADScript {oTERM.pushPrompt(\"CADScript\")}<br>oCMD.run(\"CADScript -h\"); oTERM.popPrompt()",
+      welcome: sbTitle.querySelector("big").textContent + " terminal - type <u>help</u><br>CADScript {oTERM.pushPrompt(\"CADScript\")}<br>oCMD.run(\"CADScript -h oASC\");",
       prompt: "AsciiCAD",
       separator: '>',
     });
