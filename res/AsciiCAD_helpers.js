@@ -368,6 +368,86 @@ function ASC()
     return data;
   };
 
+
+
+
+  this.mask8AtCell = function(r, c, mask16)
+  {
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return 0;
+    const m16 = mask16 || this.getMask16();
+    if (!m16) return 0;
+    return (m16[r * COLS + c] | 0) & 0xFF;
+  };
+
+  this.connectedMaskAtCell16 = function(r, c, mask16)
+  {
+    const m16 = mask16 || this.getMask16();
+    if (!m16) return 0;
+
+    const selfMask = this.mask8AtCell(r, c, m16);
+    if (selfMask === 0) return 0;
+
+    let out = 0;
+
+    const keepIfReciprocal = (dir, opp, dr, dc) =>
+    {
+      const bits = (selfMask & dir) | (selfMask & (dir << 4));
+      if (!bits) return;
+
+      const nMask = this.mask8AtCell(r + dr, c + dc, m16);
+      if ((nMask & opp) || (nMask & (opp << 4)))
+        out |= bits;
+    };
+
+    keepIfReciprocal(N, S, -1,  0);
+    keepIfReciprocal(E, W,  0,  1);
+    keepIfReciprocal(S, N,  1,  0);
+    keepIfReciprocal(W, E,  0, -1);
+
+    return out & 0xFF;
+  };
+
+  this.ensureLineKindRouteCache = function(kind)
+  {
+    const chset = kind || this.BOX_SINGLE;
+    if (chset.__routeMaskCache) return chset.__routeMaskCache;
+
+    const hMask = (this.glyph2mask(chset.h) || 0) & 0xFF;
+    const vMask = (this.glyph2mask(chset.v) || 0) & 0xFF;
+
+    chset.__routeMaskCache =
+    {
+      hThin: (hMask & 0x0F) !== 0,
+      hFat:  (hMask & 0xF0) !== 0,
+      vThin: (vMask & 0x0F) !== 0,
+      vFat:  (vMask & 0xF0) !== 0
+    };
+
+    return chset.__routeMaskCache;
+  };
+
+  this.lineKindMaskForDir = function(dir, kind)
+  {
+    const k = this.ensureLineKindRouteCache(kind);
+    let out = 0;
+
+    if (dir === E || dir === W)
+    {
+      if (k.hThin) out |= dir;
+      if (k.hFat)  out |= (dir << 4);
+    }
+    else
+    {
+      if (k.vThin) out |= dir;
+      if (k.vFat)  out |= (dir << 4);
+    }
+
+    return out & 0xFF;
+  };
+
+
+
+
   this.rotateMask = function(m)
   {
     const v = (Number(m) || 0) & 0xFF;
@@ -1251,7 +1331,7 @@ function ASC()
     else if (method === "dijkstra")  rawPath = this.routePathDijkstra(from, to, mods);
     else rawPath = this.routePathAStar(from, to, mods);
 
-    return this.resolveLineContinuation(rawPath, mods);
+    return rawPath;
   };
 
   this.commitLineAsync = async function()
@@ -1282,7 +1362,8 @@ function ASC()
     const merge   = modifiers.merge === undefined ? true : modifiers.merge;
     const rawPath = await this.buildLinePathAsync(from, to, modifiers);
     let path      = merge ? this.solveIntersect(rawPath) : rawPath;
-    path          = this.resolveLineContinuation(path, modifiers);
+    const mask16  = this.getMask16();
+    path          = this.resolveLineContinuation(path, modifiers, mask16);
 
     const stroke = [];
     for (const p of path)
@@ -1394,7 +1475,7 @@ function ASC()
     return out & 0xFF;
   };
 
-  this.resolveLineStartContinuation = function(path, modifiers)
+  this.resolveLineStartContinuation = function(path, modifiers, mask16)
   {
     if (!Array.isArray(path) || path.length < 2) return path;
 
@@ -1403,8 +1484,11 @@ function ASC()
     const dirOut = this.pathStepDir(p0, p1);
     if (!dirOut) return path;
 
-    const existingMask = this.connectedMaskAtCell(p0.r, p0.c);
-    if (!existingMask) return path;   // nothing to continue from
+    const m16 = mask16 || this.getMask16();
+    if (!m16) return path;
+
+    const existingMask = this.connectedMaskAtCell16(p0.r, p0.c, m16);
+    if (!existingMask) return path;
 
     const newMask = this.lineKindMaskForDir(dirOut, modifiers?.kind || this.BOX_SINGLE);
     const merged = (existingMask | newMask) & 0xFF;
@@ -1416,9 +1500,9 @@ function ASC()
     return path;
   };
 
-  this.resolveLineContinuation = function(path, modifiers)
+  this.resolveLineContinuation = function(path, modifiers, mask16)
   {
-    return this.resolveLineStartContinuation(path, modifiers);
+    return this.resolveLineStartContinuation(path, modifiers, mask16);
   };
 
 
@@ -1450,7 +1534,8 @@ function ASC()
     //const rawPath = this.buildLinePath(from, to, flip, modifiers, kind);
     const rawPath = this.buildLinePath(from, to, modifiers);
     let path      = merge ? this.solveIntersect(rawPath) : rawPath;
-    path          = this.resolveLineContinuation(path, modifiers);
+    const mask16  = this.getMask16();
+    path          = this.resolveLineContinuation(path, modifiers, mask16);
     if (bDebug) console.log("[line commit] rawLen=" + (Array.isArray(rawPath) ? rawPath.length : -1) +
                   " pathLen=" + (Array.isArray(path) ? path.length : -1));
 
@@ -4855,7 +4940,8 @@ this.startPasteWithText = function(text)
 
       const rawPath = this.buildLinePath(lineDrag.start, lineDrag.cur, lineDrag.modifiers);
       let path      = lineDrag.merge ? this.solveIntersect(rawPath) : rawPath;
-      path          = this.resolveLineContinuation(path, lineDrag.modifiers);
+      const mask16  = this.getMask16();
+      path          = this.resolveLineContinuation(path, lineDrag.modifiers, mask16);
 
       if (bDebug) console.log("[line preview] rawLen=" + (Array.isArray(rawPath) ? rawPath.length : -1) +
               " pathLen=" + (Array.isArray(path) ? path.length : -1));
