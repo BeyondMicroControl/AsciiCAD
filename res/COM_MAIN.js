@@ -717,39 +717,58 @@ this.interpolateColors = function(col_arr, rangeLen)
     }
   }
 
-  this.JShelpCollector = function(JSContainer,param) 
+  this.JShelpCollector = function(JSContainer, param)
   {
     const tokenlist = [];
-    for (const [name, val] of Object.entries(JSContainer)) {
+
+    for (const [name, val] of Object.entries(JSContainer))
+    {
       if (typeof val !== "function") continue;
       if (!val.help) continue;
 
-      for(var i in val.help) if(typeof(val.help[i])=="object") val.help[i] = val.help[i].join("\n");
+      let content;
+      if (typeof val.help === "object" && val.help !== null)
+        content = { ...val.help };
+      else
+        content = { usage: val.help };
 
-      if (typeof(val.help)=="object") tokenlist.push({"name":name,"content":val.help});
-      else if (typeof(val.help)=="string") tokenlist.push({"name":name,"content":{"usage":val.help}});
+      for (var k in content)
+      {
+        if (!Array.isArray(content[k])) continue;
+
+        content[k] = content[k].map(function(item)
+        {
+          if (typeof item === "string") return item;
+          if (item && typeof item === "object")
+            return String(item.code ?? item.title ?? item.description ?? JSON.stringify(item));
+          return String(item);
+        }).join("\n");
+      }
+
+      tokenlist.push({ "name": name, "content": content });
     }
 
     const filterlist = [];
-    for(var i in tokenlist)
+    for (var i in tokenlist)
     {
-      if(param?.filter===undefined) filterlist.push( JSON.stringify( tokenlist[i].content) )
+      if (param?.filter === undefined)
+      {
+        filterlist.push(JSON.stringify(tokenlist[i].content));
+      }
       else
       {
-          var filteredItems = [];
-          for(var j in param.filter)
-          {
-              var content = tokenlist[i].content;
-              if(content[ param.filter[j] ]===undefined) continue;
-              filteredItems.push( content[ param.filter[j] ] );
-          }
-          filterlist.push(filteredItems); // extract only usage information
+        var filteredItems = [];
+        for (var j in param.filter)
+        {
+          var content = tokenlist[i].content;
+          if (content[param.filter[j]] === undefined) continue;
+          filteredItems.push(content[param.filter[j]]);
+        }
+        filterlist.push(filteredItems);
       }
     }
-    
-    if(param?.sort==true) filterlist.sort(); // sort string content alphabetically
 
-
+    if (param?.sort == true) filterlist.sort();
     return filterlist;
   }
 
