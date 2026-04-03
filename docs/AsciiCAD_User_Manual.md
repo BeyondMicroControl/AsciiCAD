@@ -388,8 +388,9 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 | **Sidebar resizing**                                     | Mouse          | resize handle mousedown → drag → mouseup                                                    | `resizeHandle*.mousedown` + `document.mousemove/mouseup`                                                                             | Width clamped to min 180px and max 50% window width  |
 
 
+### Terminal command reference
 
-
+### line
 
 
 
