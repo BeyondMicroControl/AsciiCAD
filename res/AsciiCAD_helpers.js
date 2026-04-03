@@ -1658,7 +1658,7 @@ function ASC()
 
 
 // TODO: rename "kind:" to "wire:" (more intelligable)
-
+// TODO: remove "usage:" -> replace by "syntax:"
 
   this.line.help =
   {
@@ -1692,6 +1692,10 @@ function ASC()
           description: "Optional flag enabling line continuation: **true**|false"
         }
       ],
+    remarks: [
+      "Only MIKAMI & DIJKSTRA have a GPU implementation. The ASTAR algorithm is a classic sparse search with a heap, gBest, parent, and (r,c,dir) state keys. That is irregular, branchy, and queue-driven — good on CPU, poor on GPU.",
+      "When line continuation is switched off, the first drawn wire glyph is not merged but supraposed with any pre-existing wire glyph in this cell.",
+    ],
     examples: [
       "line({path:[[0,0],[5,6]], kind:SINGLE})",
       "line({path:[[0,0],[5,6],[2,2]], kind:FAT, router:MIKAMI, target:GPU})",
