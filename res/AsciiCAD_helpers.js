@@ -1677,7 +1677,7 @@ function ASC()
         },
         {
           name: "[enumK]",
-          description: "Optional enumerator for line wire: **SIGNLE**|FAT|DOUBLE"
+          description: "Optional enumerator for line wire: **SINGLE**|FAT|DOUBLE"
         },
         {
           name: "[enumR]",
