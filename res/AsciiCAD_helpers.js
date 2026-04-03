@@ -1663,12 +1663,12 @@ function ASC()
   this.line.help =
   {
     type: "CADScript_FN",
-    usage: "line({path:[[0,0],[10,0],[10,5]], kind:DOUBLE, router:DIJKSTRA, target:CPU, cont:false})",
+    usage: "line({path:\n [[<i>c</i>,<i>r</i>],[<i>c</i>,<i>r</i>],[<i>c</i>,<i>r</i>]],\n kind:</i>enum</i>,\n router:</i>enum</i>,\n target:CPU|GPU,\n cont:true|false})",
     desc: "Draw a polyline through multiple waypoints. path tuples use [c,r] order. ORTHO is default.",
     examples: [
       "line({path:[[0,0],[5,6]], kind:SINGLE})",
-      "line({path:[[0,0],[5,6],[2,2]], kind:SINGLE, router:mikami, target:GPU})",
-      "line({path:[[0,0],[10,0],[10,5]], kind:DOUBLE, router:DIJKSTRA, target:CPU})"
+      "line({path:[[0,0],[5,6],[2,2]], kind:FAT,\n router:mikami, target:GPU})",
+      "line({path:[[0,0],[10,0],[10,5]], kind:DOUBLE,\n router:DIJKSTRA, target:CPU})"
     ],
     unitTests: [
      "oASC.clear();",

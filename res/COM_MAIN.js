@@ -365,6 +365,14 @@ this.interpolateColors = function(col_arr, rangeLen)
     xhttp.send();
   }
 
+  this.Markdown2HTML = function(text)
+  {
+    return text.replace(
+      /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      '<a href="$2">$1</a>'
+    );
+  }
+
   this.Download = function(fileName, data)
   {
     if(data.length===undefined) return;

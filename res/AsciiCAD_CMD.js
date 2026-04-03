@@ -391,6 +391,27 @@ function TERMINAL(props)
       return;
     }
 
+    if(fmt=="literal")
+    {
+      var s = obj.toString().replace(/\"/g,"\\\"").replace(/\n/g,"\\n\"\n+\"");
+      this.output("<pre>\""+oCOM.escapeHTML(s)+"\"</pre>");
+      return;
+    }
+
+    if(fmt=="html")
+    {
+      var s = obj.toString()
+      this.output(s);
+      return;
+    }
+
+    if(fmt=="URL")
+    {
+      var s = obj.toString()
+      this.output("<pre><a href="+s+" target=_blank>URL</a></pre>");
+      return;
+    }
+
     s = String(obj ?? "");
     // If it looks like "grid text" (newlines or leading/trailing spaces), render in <pre>
     if (s.includes("\n") || /^\s/.test(s) || /\s$/.test(s)) {
@@ -1782,7 +1803,7 @@ function CMD()
     oTERM.output(
       oCOM.escapeHTML("Terminal commands:\n" +
         "  <cmd> -h  - detailed help\n" +
-        "  CADScript - run CADScript\n" +
+        "  CADScript - run CADScript command\n" +
         "  clear     - clear terminal screen\n" +
         "  exit      - exit CLI\n"+
         "  help      - terminal help\n" +
