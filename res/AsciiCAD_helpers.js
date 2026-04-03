@@ -1657,18 +1657,45 @@ function ASC()
   };
 
 
-// TODO ADD A UNIT TEST ON LINE ROUTING
+// TODO: rename "kind:" to "wire:" (more intelligable)
 
 
   this.line.help =
   {
     type: "CADScript_FN",
     usage: "line({path:\n [[<i>c</i>,<i>r</i>],[<i>c</i>,<i>r</i>],[<i>c</i>,<i>r</i>]],\n kind:</i>enum</i>,\n router:</i>enum</i>,\n target:CPU|GPU,\n cont:true|false})",
-    summary: "Draw a polyline through multiple waypoints. path tuples use [c,r] order. ORTHO is default.",
+    syntax: "line({path:[[<c>,<r>],[<c>,<r>],...], kind:[enumK], router:[enumR], target:[processor], cont:[lineC]})",
+    summary: "Draw a polyline through multiple waypoints. Path tuples use [c,r] order, requiring minimum 2 tuples.",
+    parameters: [
+        {
+          name: "<c>",
+          description: "Path waypoint column"
+        },
+        {
+          name: "<r>",
+          description: "Path waypoint row"
+        },
+        {
+          name: "[enumK]",
+          description: "Optional enumerator for line wire: **SIGNLE**|FAT|DOUBLE"
+        },
+        {
+          name: "[enumR]",
+          description: "Optional enumerator for line routing algorithm: **ORTHO**|MIKAMI|DIJKSTRA|ASTAR"
+        },
+        {
+          name: "[processor]",
+          description: "Optional enumerator for processing target: **CPU**|GPU"
+        },
+        {
+          name: "[lineC]",
+          description: "Optional flag enabling line continuation: **true**|false"
+        }
+      ],
     examples: [
       "line({path:[[0,0],[5,6]], kind:SINGLE})",
-      "line({path:[[0,0],[5,6],[2,2]], kind:FAT,\n router:mikami, target:GPU})",
-      "line({path:[[0,0],[10,0],[10,5]], kind:DOUBLE,\n router:DIJKSTRA, target:CPU})"
+      "line({path:[[0,0],[5,6],[2,2]], kind:FAT, router:MIKAMI, target:GPU})",
+      "line({path:[[0,0],[10,0],[10,5]], kind:DOUBLE, router:DIJKSTRA, target:CPU})"
     ],
     unitTests: [
      "oASC.clear();",
@@ -1697,7 +1724,7 @@ function ASC()
 
 
 
-
+/*
 this.input = function() {}
 this.input.help = 
 {
@@ -1747,7 +1774,7 @@ this.input.help =
   ]
 
 };
-
+*/
 
 
 

@@ -1323,6 +1323,12 @@ function __cliHandleTerminal(line,ctx)
           const name = searchBindings[i].trim();
           const obj = oCMD._bindings[name];
 
+          if (!obj)
+          {
+            list.push("[ERROR] Unknown object: " + name);
+            continue;
+          }
+
           if (helpVarsOnly)
           {
             list.push("<u>" + name + " variable details:</u>");
@@ -1332,6 +1338,10 @@ function __cliHandleTerminal(line,ctx)
               "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
               "sort":0,"max":[null,null,null],"align":"LLL","Halign":"CCC"});
             list.push(str);
+          }
+          else if (markdownOpt)
+          {
+            list.push(oCOM.JShelpMarkdownCollector(obj, {"sort":true,"headingLevel":1}));
           }
           else
           {
@@ -1346,9 +1356,11 @@ function __cliHandleTerminal(line,ctx)
           }
         }
 
-        oTERM.output(oCOM.escapeHTML(list.join("\n")));
+        oTERM.output(oCOM.escapeHTML(
+          list.join(markdownOpt ? "\n\n---\n\n" : "\n")
+        ));
+      }      
 
-      }
       return true;
     }
 
