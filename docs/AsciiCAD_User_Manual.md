@@ -225,11 +225,13 @@ AsciiCAD> CADScript { oTERM.printJSON(oASC.qryLocate({type:"M.U"})) }
 #### Run a query command + JSON printing from CADScript
 
 ```text
-CADScript {cell(0,0,"ABCDE\nFGHIJ\nKLMNO\nPQRST\nUVWXY")}
-CADScript {oTERM.print(getCell(2,2))}         // returns "M"
-CADScript {oTERM.print(getCell(2,2,2))}       // returns "GHI\nLMN\nQRS"
-CADScript {env.STR = getCell(0,2,3,E); }
-CADScript {oTERM.print(env.STR)}           // returns "KLM"
+AsciiCAD> CADScript {oTERM.pushPrompt("CADScript")}
+CADScript> cell(0,0,"ABCDE\nFGHIJ\nKLMNO\nPQRST\nUVWXY");
+CADScript> oTERM.print(getCell(2,2));                  // returns "M"
+CADScript> oTERM.print(getCell(2,2,2));                // returns "GHI\nLMN\nQRS"
+CADScript> env.STR = getCell(0,2,3,E);
+CADScript> oTERM.print(env.STR); oTERM.popPrompt();    // returns "KLM"
+AsciiCAD>
 ```
 
 #### CADScript input prompt
