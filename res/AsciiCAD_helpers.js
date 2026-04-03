@@ -249,7 +249,7 @@ function ASC()
   {
     type: "CADScript_FN",
     usage: "glyph2mask(<i>glyph</i>)",
-    desc:
+    summary:
       "Translate a wire glyph into an 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). " +
       "Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.  " +
       "Alias glyphs are alternative glyphs for the same (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.",
@@ -275,7 +275,7 @@ function ASC()
   this.mask2glyph.help = {
     type: "CADScript_FN",
     usage: "mask2glyph(<i>m</i>)",
-    desc: "Reverse of glyph2mask: map extended 8-bit mask (fat<<4 | thin) back to a wire glyph. Returns ' ' if unknown. " +
+    summary: "Reverse of glyph2mask: map extended 8-bit mask (fat<<4 | thin) back to a wire glyph. Returns ' ' if unknown. " +
     "Stand-in mappings are required when e.g. a fat wire glyph for '╞' does not exist, so when E|(N|S|E)<<4 is requested, a close-enough stand-in glyph like '┣' or '╞' will be returned (better than nothing). " +
     "By policy, stand-in glyphs must prioritise correct rendering of single and fat wires over double wires, because double wires are primarily used for drawing boxes not lines.",
     examples: [
@@ -300,7 +300,7 @@ function ASC()
   {
     type: "CADScript_FN",
     usage: "glyph2dir(<i>ch</i>)",
-    desc: "Return 4-bit wire direction mask for a glyph (N|E|S|W). Unknown glyph returns 0. "+
+    summary: "Return 4-bit wire direction mask for a glyph (N|E|S|W). Unknown glyph returns 0. "+
     "Stand-in glyphs fullfil a inexistent (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.",
     examples: ["printJSON(glyph2dir('┼'))", "printJSON(glyph2dir('╵'))"],
     unitTests: [
@@ -460,7 +460,7 @@ function ASC()
   this.rotateMask.help = {
     type: "CADScript_FN",
     usage: "rotateMask(<i>m</i>)",
-    desc: "Rotate an 8-bit wire mask 90 degrees clockwise. Low nibble (thin) and high nibble (fat) are rotated independently.",
+    summary: "Rotate an 8-bit wire mask 90 degrees clockwise. Low nibble (thin) and high nibble (fat) are rotated independently.",
     examples: [
       "oTERM.printJSON(rotateMask(\nglyph2mask('╆')))",
       "oTERM.print(mask2glyph(\nrotateMask(glyph2mask('╆'))))"
@@ -489,7 +489,7 @@ function ASC()
   {
     type: "CADScript_FN",
     usage: "mirrorMask(<i>m</i>,<i>bVertAxis</i>)",
-    desc: "Mirror an 8-bit wire mask. bVertAxis=true mirrors around vertical axis (E<->W). bVertAxis=false mirrors around horizontal axis (N<->S). Thin and fat nibbles are mirrored independently.",
+    summary: "Mirror an 8-bit wire mask. bVertAxis=true mirrors around vertical axis (E<->W). bVertAxis=false mirrors around horizontal axis (N<->S). Thin and fat nibbles are mirrored independently.",
     examples: [
       "oTERM.print(mask2glyph(\nmirrorMask(glyph2mask('╆'), true)))",
       "oTERM.print(mask2glyph(\nmirrorMask(glyph2mask('╆'), false)))"
@@ -702,7 +702,7 @@ function ASC()
   {
     type:  "AsciiCAD_CMD",
     usage: "CADScript {<i>expression</i>}",
-    desc:  "Run a CADScript expression",
+    summary:  "Run a CADScript expression",
     examples: ["CADScript {clear();stack(\"undo\")}"]
   }
 
@@ -711,7 +711,7 @@ function ASC()
   {
     type:  "AsciiCAD_Var",
     usage: "env.my_variable = <i>expression<i>;",
-    desc:  "assign a session persistent environment variable",
+    summary:  "assign a session persistent environment variable",
     examples: ["oASC.env.my_variable = 123","oASC.env.my_variable = \"ABC\""]
   }
 
@@ -875,7 +875,7 @@ function ASC()
   {
     type: "CADScript_FN",
     usage: "cell(<i>c</i>,<i>r</i>,<i>string</i>)",
-    desc: "",
+    summary: "",
     examples: ["oASC.cell(0,0,\"ABC\\nDEF\\nGHI\")"],
     unitTests:
     ["oASC.cell(0,0,\"ABC\\nDEF\\nGHI\");",
@@ -926,7 +926,7 @@ function ASC()
   {
     type: "CADScript_FN",
     usage: "getCell(c,r,len,dir)",
-    desc:
+    summary:
       "Windowing-only grid getter. Returns a rectangular text block (\\n separated) in grid order. " +
       "len controls radius: len=1 origin only; len=2 one cell outward; ... " +
       "dir is a mask (N|E|S|W) selecting which sides extend from the origin. Omitted dir => N|E|S|W. " +
@@ -983,7 +983,7 @@ function ASC()
   {
     type: "CADScript_CMD",
     usage: "cat(<i>c</i>,<i>r</i>,<i>angle</i>,<i>uid</i>)",
-    desc: "",
+    summary: "",
     examples: ["oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")"],
     unitTests:
     [
@@ -1009,7 +1009,7 @@ function ASC()
   {
     type: "CADScript_FN",
     usage: "printCat()",
-    desc: "list all catalog item UIDs",
+    summary: "list all catalog item UIDs",
     examples: ["oASC.printCat()"]
   }
 
@@ -1664,7 +1664,7 @@ function ASC()
   {
     type: "CADScript_FN",
     usage: "line({path:\n [[<i>c</i>,<i>r</i>],[<i>c</i>,<i>r</i>],[<i>c</i>,<i>r</i>]],\n kind:</i>enum</i>,\n router:</i>enum</i>,\n target:CPU|GPU,\n cont:true|false})",
-    desc: "Draw a polyline through multiple waypoints. path tuples use [c,r] order. ORTHO is default.",
+    summary: "Draw a polyline through multiple waypoints. path tuples use [c,r] order. ORTHO is default.",
     examples: [
       "line({path:[[0,0],[5,6]], kind:SINGLE})",
       "line({path:[[0,0],[5,6],[2,2]], kind:FAT,\n router:mikami, target:GPU})",
@@ -1699,14 +1699,16 @@ function ASC()
 
 
 this.input = function() {}
-this.input.help = {
-  kind: "command",
+this.input.help = 
+{
   title: "input",
+  kind: "command",
+  type: "CADScript_FN",
+  usage: "TEST",
+
   summary: "Prompt the user and store the answer in oTERM._o.env[varName].",
   appliesTo: ["AsciiCAD CLI", "CADScript"],
-  syntax: [
-    "input(<varName>, <question>, [prefill], [overwriteMode])"
-  ],
+  syntax: ["input(<varName>, <question>, [prefill], [overwriteMode])"],
   parameters: [
     {
       name: "<varName>",
@@ -1743,6 +1745,7 @@ this.input.help = {
     { title: "getenv", href: "#getenv" },
     { title: "setenv", href: "#setenv" }
   ]
+
 };
 
 
@@ -3082,7 +3085,7 @@ this.mikamiPath = function(from, to, modifiers)
   {
     type: "CADScript_Fn",
     usage: "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)",
-    desc: "Draw a box in line style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
+    summary: "Draw a box in line style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
     examples:  ["oASC.box(1,0,3,2,BOX_SINGLE)","oASC.box(1,0,3,2,BOX_FAT)","oASC.box(1,0,3,2,BOX_DOUBLE)"],
     unitTests: [
      "oASC.box(0,0,2,2,{kind:BOX_SINGLE});oASC.box(3,0,5,2,{kind:BOX_FAT});oASC.box(6,0,8,2,{kind:BOX_DOUBLE});",
@@ -3110,7 +3113,7 @@ this.mikamiPath = function(from, to, modifiers)
   {
     type: "CADScript_CMD",
     usage: "clear()",
-    desc: "Clears the grid and pushes a single undo stroke.",
+    summary: "Clears the grid and pushes a single undo stroke.",
     examples: ["oASC.clear()"]
   }
 
@@ -3202,7 +3205,7 @@ this.mikamiPath = function(from, to, modifiers)
   {
     type: "CADScript_FN",
     usage: "blank(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>)",
-    desc: "",
+    summary: "",
     examples: ["oASC.blank()"]
   }
 
@@ -3232,7 +3235,7 @@ this.mikamiPath = function(from, to, modifiers)
   this.isWireGlyph.help = {
     type: "CADScript_FN",
     usage: "isWireGlyph(<i>ch</i>)",
-    desc: "True if ch is a known wire glyph in the glyph mask table.",
+    summary: "True if ch is a known wire glyph in the glyph mask table.",
     examples: ["oTERM.printJSON(isWireGlyph('┼'))", "oTERM.printJSON(isWireGlyph('A'))"]
   }
 
@@ -3856,7 +3859,7 @@ this.startPasteWithText = function(text)
   {
     type: "CADScript_FN",
     usage: "qryLocate({<i>key</i>:<i>regexp</i>})",
-    desc: "Locate matching catalog components and BOX rectangles with regular expressions; returns bounding rectangles with tl/br coordinates.",
+    summary: "Locate matching catalog components and BOX rectangles with regular expressions; returns bounding rectangles with tl/br coordinates.",
     examples: [
       "oASC.qryLocate({ref:'CAT.+'})",
       "oASC.qryLocate({type:'BOX'})",
@@ -4333,7 +4336,7 @@ this.startPasteWithText = function(text)
   {
     type: "CADScript_FN",
     usage: "computeNetlist()",
-    desc: "Compute netlist including Line Ends (LE) and Component Ends (CE)",
+    summary: "Compute netlist including Line Ends (LE) and Component Ends (CE)",
     examples: [
       "oTERM.printJSON(oASC.computeNetlist())"
     ],
@@ -4389,7 +4392,7 @@ this.startPasteWithText = function(text)
   {
     type: "Tool",
     usage: "printNetlist()",
-    desc: "Extract connected wire lines (endpoints + junctions), excluding valid double-box boundaries/interiors.",
+    summary: "Extract connected wire lines (endpoints + junctions), excluding valid double-box boundaries/interiors.",
     examples: ["oASC.printNetlist()"]
   }
 
@@ -4829,7 +4832,7 @@ this.startPasteWithText = function(text)
   this.getLabel.help = {
     type: "CADScript_FN",
     usage: "getLabel(c,r,<i>env_retval</i>)",
-    desc: "Find nearest label near (c,r). Returns {c:<originCol>, r:<row>, str:<labelString>} and optionally stores it into oASC.env[env_retval].",
+    summary: "Find nearest label near (c,r). Returns {c:<originCol>, r:<row>, str:<labelString>} and optionally stores it into oASC.env[env_retval].",
     examples: [
       "oTERM.printJSON(getLabel(10,5,'ret'))",
       "oTERM.printJSON(oASC.env.ret)"
@@ -4873,7 +4876,7 @@ this.startPasteWithText = function(text)
   this.setLabel.help = {
     type: "CADScript_FN",
     usage: "setLabel(c,r,<i>label_str</i>)",
-    desc: "Write label_str at (c,r). If an old label exists starting at (c,r) and is longer, clears the remainder with spaces.",
+    summary: "Write label_str at (c,r). If an old label exists starting at (c,r) and is longer, clears the remainder with spaces.",
     examples: [
       "setLabel(5,3,'Net_1')",
       "oTERM.printJSON(getLabel(5,3,'ret'))"
