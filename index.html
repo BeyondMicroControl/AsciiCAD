@@ -1204,7 +1204,7 @@ function __cliHandleTerminal(line,ctx)
           continue;
 
         case "m":
-          markdownOpt = true
+          markdownOpt = true;
           continue;
       }
     }
@@ -1250,18 +1250,50 @@ function __cliHandleTerminal(line,ctx)
         }
         else
         {
-          if(markdownOpt == false)
+          var list = [];
+          var searchBindings = String(helpTarget || "").split(",");
+
+          for (var i = 0; i < searchBindings.length; i++)
           {
-            var tokenlist = oCOM.JShelpCollector(oASC, {"sort":true,"filter":["usage"]});
-            str = oCOM.AsciiTable(tokenlist,
-            {"header":false,"rowLine":false,"colLine":false,
-            "style":"─│├┼┤└┴┘┏┳┓ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
-            "sort":null,"max":[null,null],"align":"LL","Halign":"CC"});
+            const name = searchBindings[i].trim();
+            const obj = oCMD._bindings[name];
+
+            if (!obj)
+            {
+              list.push("[ERROR] Unknown object: " + name);
+              continue;
+            }
+
+            if (helpVarsOnly)
+            {
+              list.push("<u>" + name + " variable details:</u>");
+              var tokenlist = [["NAME","TYPE","VALUE"]].concat(__JSvarCollector(obj));
+              var str = oCOM.AsciiTable(tokenlist,
+                {"header":true,"rowLine":true,"colLine":true,
+                "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
+                "sort":0,"max":[null,null,null],"align":"LLL","Halign":"CCC"});
+              list.push(str);
+            }
+            else if (markdownOpt)
+            {
+              list.push(oCOM.JShelpMarkdownCollector(obj, {"sort":true,"headingLevel":1}));
+            }
+            else
+            {
+              list.push("<u>" + name + " token details:</u>");
+              var tokenlist = [["SYNTAX","EXAMPLES"]]
+                .concat(oCOM.JShelpCollector(obj, {"sort":true,"filter":["usage","examples"]}));
+              var str = oCOM.AsciiTable(tokenlist,
+                {"header":true,"rowLine":true,"colLine":true,
+                "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
+                "sort":0,"max":[null,null],"align":"LL","Halign":"CC"});
+              list.push(str);
+            }
           }
-          else
-          {
-            str = oCOM.JShelpMarkdownCollector(oASC, {"sort":true,"headingLevel":1});
-          }
+
+          oTERM.output(oCOM.escapeHTML(
+            list.join(markdownOpt ? "\n\n---\n\n" : "\n")
+          ));
         }
 
         oTERM.output(oCOM.escapeHTML(
