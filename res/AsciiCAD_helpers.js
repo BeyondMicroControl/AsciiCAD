@@ -1692,6 +1692,74 @@ function ASC()
   }
 
 
+
+
+
+
+
+
+this.input = function() {}
+this.input.help = {
+  kind: "command",
+  title: "input",
+  summary: "Prompt the user and store the answer in oTERM._o.env[varName].",
+  appliesTo: ["AsciiCAD CLI", "CADScript"],
+  syntax: [
+    "input(<varName>, <question>, [prefill], [overwriteMode])"
+  ],
+  parameters: [
+    {
+      name: "<varName>",
+      description: "Environment variable name where the answer is stored."
+    },
+    {
+      name: "<question>",
+      description: "Prompt text shown in the terminal."
+    },
+    {
+      name: "[prefill]",
+      description: "Optional initial value inserted into the input field."
+    },
+    {
+      name: "[overwriteMode]",
+      description: "When true, typing overwrites existing characters terminal-style."
+    }
+  ],
+  remarks: [
+    "The answer is stored in oTERM._o.env[varName].",
+    "When overwriteMode is true, printable input replaces existing characters at the caret."
+  ],
+  examples: [
+    {
+      title: "Prompt with insert mode",
+      code: 'oTERM.input("label", "Enter", "1234", false)'
+    },
+    {
+      title: "Prompt with overwrite mode",
+      code: 'oTERM.input("label", "Enter", "1234", true)'
+    }
+  ],
+  references: [
+    { title: "getenv", href: "#getenv" },
+    { title: "setenv", href: "#setenv" }
+  ]
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   ////////////////////////////////////////////////////
   // routing subsection
 
