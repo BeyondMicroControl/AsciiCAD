@@ -476,6 +476,189 @@ this.interpolateColors = function(col_arr, rangeLen)
     );
   }
 
+
+  this.toArray = function(v)
+  {
+    if (v == null) return [];
+    return Array.isArray(v) ? v.slice() : [v];
+  }
+
+  this.markdownEscape = function(str)
+  {
+    return String(str ?? "")
+      .replace(/\\/g, "\\\\")
+      .replace(/\|/g, "\\|");
+  }
+
+  this.normalizeHelpEntry = function(name, help)
+  {
+    // Backward compatible with current flat help objects.
+    if (typeof help === "string") help = { usage: help };
+    help = help || {};
+
+    const syntax = this.toArray(help.syntax || help.usage).filter(Boolean);
+
+    const parameters = this.toArray(help.parameters).map((p) =>
+    {
+      if (typeof p === "string")
+        return { name: p, description: "" };
+
+      if (Array.isArray(p))
+        return { name: String(p[0] ?? ""), description: String(p[1] ?? "") };
+
+      return {
+        name: String(p?.name ?? ""),
+        description: String(p?.description ?? p?.desc ?? "")
+      };
+    });
+
+    const remarks = this.toArray(help.remarks || help.notes).map(String);
+
+    const examples = this.toArray(help.examples).map((ex) =>
+    {
+      if (typeof ex === "string")
+        return { title: "", code: ex, description: "" };
+
+      if (Array.isArray(ex))
+        return {
+          title: String(ex[0] ?? ""),
+          code: String(ex[1] ?? ""),
+          description: String(ex[2] ?? "")
+        };
+
+      return {
+        title: String(ex?.title ?? ex?.caption ?? ""),
+        code: String(ex?.code ?? ex?.cmd ?? ""),
+        description: String(ex?.description ?? ex?.desc ?? "")
+      };
+    });
+
+    const references = this.toArray(help.references || help.related || help.seeAlso);
+
+    return {
+      kind: String(help.kind || help.type || "command"),
+      title: String(help.title || name),
+      summary: String(help.summary || help.desc || ""),
+      appliesTo: this.toArray(help.appliesTo).map(String),
+      syntax,
+      parameters,
+      remarks,
+      examples,
+      references
+    };
+  };
+
+  this.helpEntryToMarkdown = function(name, help, opts)
+  {
+    opts = opts || {};
+    const h = this.normalizeHelpEntry(name, help);
+    const out = [];
+
+    const headingLevel = Math.max(1, Number(opts.headingLevel || 1));
+    const H1 = "#".repeat(headingLevel);
+    const H2 = "#".repeat(headingLevel + 1);
+
+    out.push(H1 + " " + h.title);
+
+    if (h.appliesTo.length)
+      out.push("", "**Applies to:** " + h.appliesTo.join(", "));
+
+    if (h.summary)
+      out.push("", h.summary);
+
+    if (h.syntax.length)
+    {
+      out.push("", H2 + " Syntax", "");
+      for (let i = 0; i < h.syntax.length; i++)
+      {
+        out.push("```txt");
+        out.push(String(h.syntax[i]));
+        out.push("```");
+      }
+    }
+
+    if (h.parameters.length)
+    {
+      out.push("", H2 + " Parameters", "");
+      out.push("| Parameter | Description |");
+      out.push("|---|---|");
+      for (let i = 0; i < h.parameters.length; i++)
+      {
+        const p = h.parameters[i];
+        out.push(
+          "| " +
+          this.markdownEscape(p.name) +
+          " | " +
+          this.markdownEscape(p.description) +
+          " |"
+        );
+      }
+    }
+
+    if (h.remarks.length)
+    {
+      out.push("", H2 + " Remarks", "");
+      for (let i = 0; i < h.remarks.length; i++)
+        out.push("- " + h.remarks[i]);
+    }
+
+    if (h.examples.length)
+    {
+      out.push("", H2 + " Examples", "");
+      for (let i = 0; i < h.examples.length; i++)
+      {
+        const ex = h.examples[i];
+        if (ex.title) out.push("### " + ex.title, "");
+        if (ex.description) out.push(ex.description, "");
+        if (ex.code)
+        {
+          out.push("```txt");
+          out.push(ex.code);
+          out.push("```");
+        }
+      }
+    }
+
+    if (h.references.length)
+    {
+      out.push("", H2 + " Additional references", "");
+      for (let i = 0; i < h.references.length; i++)
+      {
+        const ref = h.references[i];
+        if (typeof ref === "string") out.push("- " + ref);
+        else if (ref && ref.href) out.push("- [" + ref.title + "](" + ref.href + ")");
+        else if (ref && ref.title) out.push("- " + ref.title);
+      }
+    }
+
+    return out.join("\n");
+  };
+
+  this.JShelpMarkdownCollector = function(JSContainer, param)
+  {
+    param = param || {};
+
+    const entries = [];
+    for (const [name, val] of Object.entries(JSContainer))
+    {
+      if (typeof val !== "function") continue;
+      if (!val.help) continue;
+
+      entries.push({
+        name: name,
+        markdown: this.helpEntryToMarkdown(name, val.help, {
+          headingLevel: param.headingLevel || 1
+        })
+      });
+    }
+
+    if (param.sort === true)
+      entries.sort((a, b) => a.name.localeCompare(b.name));
+
+    return entries.map(e => e.markdown).join("\n\n---\n\n");
+  };
+
+
   this.Download = function(fileName, data)
   {
     if(data.length===undefined) return;
@@ -2919,6 +3102,74 @@ function ASC()
      "oASC.stack(\"undo\")"
     ]
   }
+
+
+
+
+
+
+
+
+this.input = function() {}
+this.input.help = {
+  kind: "command",
+  title: "input",
+  summary: "Prompt the user and store the answer in oTERM._o.env[varName].",
+  appliesTo: ["AsciiCAD CLI", "CADScript"],
+  syntax: [
+    "input(<varName>, <question>, [prefill], [overwriteMode])"
+  ],
+  parameters: [
+    {
+      name: "<varName>",
+      description: "Environment variable name where the answer is stored."
+    },
+    {
+      name: "<question>",
+      description: "Prompt text shown in the terminal."
+    },
+    {
+      name: "[prefill]",
+      description: "Optional initial value inserted into the input field."
+    },
+    {
+      name: "[overwriteMode]",
+      description: "When true, typing overwrites existing characters terminal-style."
+    }
+  ],
+  remarks: [
+    "The answer is stored in oTERM._o.env[varName].",
+    "When overwriteMode is true, printable input replaces existing characters at the caret."
+  ],
+  examples: [
+    {
+      title: "Prompt with insert mode",
+      code: 'oTERM.input("label", "Enter", "1234", false)'
+    },
+    {
+      title: "Prompt with overwrite mode",
+      code: 'oTERM.input("label", "Enter", "1234", true)'
+    }
+  ],
+  references: [
+    { title: "getenv", href: "#getenv" },
+    { title: "setenv", href: "#setenv" }
+  ]
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
   ////////////////////////////////////////////////////
@@ -13698,9 +13949,9 @@ function __cliHandleTerminal(line,ctx)
         }
         else
         {
-          if(markDownOpt==false)
+          if(markdownOpt == false)
           {
-            var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["usage"]});
+            var tokenlist = oCOM.JShelpCollector(oASC, {"sort":true,"filter":["usage"]});
             str = oCOM.AsciiTable(tokenlist,
             {"header":false,"rowLine":false,"colLine":false,
             "style":"─│├┼┤└┴┘┏┳┓ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
@@ -13708,9 +13959,7 @@ function __cliHandleTerminal(line,ctx)
           }
           else
           {
-            // TODO: WRITE OUT COMMAND REFERENCE IN MARKDOWN
-            var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["type","usage","desc","examples","unitTests"]});
-            
+            str = oCOM.JShelpMarkdownCollector(oASC, {"sort":true,"headingLevel":1});
           }
         }
 
