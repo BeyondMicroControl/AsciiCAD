@@ -1250,9 +1250,9 @@ function __cliHandleTerminal(line,ctx)
         }
         else
         {
-          if(markDownOpt==false)
+          if(markdownOpt == false)
           {
-            var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["usage"]});
+            var tokenlist = oCOM.JShelpCollector(oASC, {"sort":true,"filter":["usage"]});
             str = oCOM.AsciiTable(tokenlist,
             {"header":false,"rowLine":false,"colLine":false,
             "style":"─│├┼┤└┴┘┏┳┓ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
@@ -1260,9 +1260,7 @@ function __cliHandleTerminal(line,ctx)
           }
           else
           {
-            // TODO: WRITE OUT COMMAND REFERENCE IN MARKDOWN
-            var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["type","usage","desc","examples","unitTests"]});
-            
+            str = oCOM.JShelpMarkdownCollector(oASC, {"sort":true,"headingLevel":1});
           }
         }
 
