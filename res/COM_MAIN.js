@@ -384,7 +384,9 @@ this.interpolateColors = function(col_arr, rangeLen)
   {
     return String(str ?? "")
       .replace(/\\/g, "\\\\")
-      .replace(/\|/g, "\\|");
+      .replace(/\|/g, "\\|")
+      .replace(/</g, "\\<")
+      .replace(/>/g, "\\>");
   }
 
   this.normalizeHelpEntry = function(name, help)
