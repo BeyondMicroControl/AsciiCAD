@@ -468,6 +468,14 @@ this.interpolateColors = function(col_arr, rangeLen)
     xhttp.send();
   }
 
+  this.Markdown2HTML = function(text)
+  {
+    return text.replace(
+      /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      '<a href="$2">$1</a>'
+    );
+  }
+
   this.Download = function(fileName, data)
   {
     if(data.length===undefined) return;
@@ -2884,12 +2892,12 @@ function ASC()
   this.line.help =
   {
     type: "CADScript_FN",
-    usage: "line({path:[[0,0],[10,0],[10,5]], kind:DOUBLE, router:DIJKSTRA, target:CPU, cont:false})",
+    usage: "line({path:\n [[<i>c</i>,<i>r</i>],[<i>c</i>,<i>r</i>],[<i>c</i>,<i>r</i>]],\n kind:</i>enum</i>,\n router:</i>enum</i>,\n target:CPU|GPU,\n cont:true|false})",
     desc: "Draw a polyline through multiple waypoints. path tuples use [c,r] order. ORTHO is default.",
     examples: [
       "line({path:[[0,0],[5,6]], kind:SINGLE})",
-      "line({path:[[0,0],[5,6],[2,2]], kind:SINGLE, router:mikami, target:GPU})",
-      "line({path:[[0,0],[10,0],[10,5]], kind:DOUBLE, router:DIJKSTRA, target:CPU})"
+      "line({path:[[0,0],[5,6],[2,2]], kind:FAT,\n router:mikami, target:GPU})",
+      "line({path:[[0,0],[10,0],[10,5]], kind:DOUBLE,\n router:DIJKSTRA, target:CPU})"
     ],
     unitTests: [
      "oASC.clear();",
@@ -8236,6 +8244,27 @@ function TERMINAL(props)
       return;
     }
 
+    if(fmt=="literal")
+    {
+      var s = obj.toString().replace(/\"/g,"\\\"").replace(/\n/g,"\\n\"\n+\"");
+      this.output("<pre>\""+oCOM.escapeHTML(s)+"\"</pre>");
+      return;
+    }
+
+    if(fmt=="html")
+    {
+      var s = obj.toString()
+      this.output(s);
+      return;
+    }
+
+    if(fmt=="URL")
+    {
+      var s = obj.toString()
+      this.output("<pre><a href="+s+" target=_blank>URL</a></pre>");
+      return;
+    }
+
     s = String(obj ?? "");
     // If it looks like "grid text" (newlines or leading/trailing spaces), render in <pre>
     if (s.includes("\n") || /^\s/.test(s) || /\s$/.test(s)) {
@@ -9627,7 +9656,7 @@ function CMD()
     oTERM.output(
       oCOM.escapeHTML("Terminal commands:\n" +
         "  <cmd> -h  - detailed help\n" +
-        "  CADScript - run CADScript\n" +
+        "  CADScript - run CADScript command\n" +
         "  clear     - clear terminal screen\n" +
         "  exit      - exit CLI\n"+
         "  help      - terminal help\n" +
@@ -12484,7 +12513,7 @@ const PICKER_TABS =
           <div class="row">
 
             <button id="lineStyle" class="btn" data-hint="Line styles">LineStyle ⇅</button>
-            <button id="lineRoute" class="btn" data-hint="Line routing options">LineRoute ⇅</button> <!-- RouteSpan / RouteCorner / RouteBridge / MultiLine -->
+            <button id="lineRoute" class="btn" data-hint="Line routing options">LineRoute ⇅</button> <!-- RouteSpan / RouteCorner / RouteBridge / Ortho -->
             <button id="modeLine" class="btn" data-hint="Drag: press to place a new line section, hold 'shift' for horizontal origin. Use 'Esc' to complete section.">Line</button>
             <button id="modeBox" class="btn" data-hint="Drag: press to set start, move to preview, press to place single line box.">Box</button>
             <button id="modeFreetext" class="btn" data-hint="Move cursor to text origin (not click), enter free text preview, press enter to commit.">Text</button>
@@ -12717,7 +12746,7 @@ let lineStyles = ["single","fat","double"];
 let lineStyleSym = ["│","▌","││"];
 let lineStyleSel = 0;
 
-let lineRoutes = ["MultiLine","Mikami⧉","Mikami","MikamiBridge","MikamiWorker","A*Span","A*Corner","A*Bridge","Dijkstra⧉","DijkstraSpan","DijkstraCorner","DijkstraBridge"];
+let lineRoutes = ["LineRoute","Mikami ┏ ⧉","Mikami ┏","Mikami ╋","Mikami ┏ ⚒","Dijkstra ⧉","Dijkstra","Dijkstra ┏","Dijkstra ╋","AStar","AStar ┏","AStar ╋"];
 let lineRouteSel = 0;
 
 let schemaHighlightOn = false;
@@ -13049,6 +13078,72 @@ function updateToggleButtonUI(onoff,mode_el,hint)
   if(onoff) { mode_el.classList.add("primary"); hint.textContent = schemaHighlightBtn.dataset.hint; }
   else { mode_el.classList.remove("primary"); hint.textContent = ""; }
   return onoff;
+}
+
+const HOLD_REPEAT_DELAY_MS = 750;
+const HOLD_REPEAT_INTERVAL_MS = 50;
+
+function bindHoldRepeatButton(el, action, opts = {})
+{
+  const delay = opts.delay ?? HOLD_REPEAT_DELAY_MS;
+  const interval = opts.interval ?? HOLD_REPEAT_INTERVAL_MS;
+
+  let pressed = false;
+  let holdTimer = 0;
+  let repeatTimer = 0;
+  let lastMouseTriggerTs = -Infinity;
+
+  function trigger(evt)
+  {
+    if (!el || el.disabled) return;
+    action(evt);
+    lastMouseTriggerTs = performance.now();
+  }
+
+  function stop()
+  {
+    pressed = false;
+    if (holdTimer)   { clearTimeout(holdTimer);  holdTimer = 0; }
+    if (repeatTimer) { clearInterval(repeatTimer); repeatTimer = 0; }
+  }
+
+  // Mouse: fire immediately, then auto-repeat after delay
+  el.addEventListener("mousedown", (e) =>
+  {
+    if (e.button !== 0 || el.disabled) return;
+    e.preventDefault();
+
+    pressed = true;
+    trigger(e);
+
+    holdTimer = window.setTimeout(() =>
+    {
+      if (!pressed || el.disabled) return;
+
+      repeatTimer = window.setInterval(() =>
+      {
+        if (!pressed || el.disabled) { stop(); return; }
+        trigger(e);
+      }, interval);
+    }, delay);
+  });
+  // Keyboard / accessibility activation should still work once via click.
+  // Suppress the synthetic click that follows a mouse press we already handled.
+  el.addEventListener("click", (e) =>
+  {
+
+    if (performance.now() - lastMouseTriggerTs < 500)
+    {
+      e.preventDefault();
+      return;
+    }
+    action(e);
+  });
+
+  el.addEventListener("mouseup", stop);
+  el.addEventListener("mouseleave", stop);
+  window.addEventListener("mouseup", stop);
+  window.addEventListener("blur", stop);
 }
 
 function updateUI()
@@ -13515,6 +13610,7 @@ function __cliHandleTerminal(line,ctx)
     // ...
     const options = script_node.options;
     var helpVarsOnly = false;
+    var markdownOpt = false;
     var helpOpt = null;
 
     function __JSvarCollector(obj, opts)
@@ -13554,6 +13650,10 @@ function __cliHandleTerminal(line,ctx)
         case "h":
           helpOpt = options[oi];
           continue;
+
+        case "m":
+          markdownOpt = true
+          continue;
       }
     }
 
@@ -13566,7 +13666,8 @@ function __cliHandleTerminal(line,ctx)
     {
       if (typeof helpOpt.value === "string") {
         helpTarget = helpOpt.value;
-      } else if (helpOpt.value === true) {
+      } else if (helpOpt.value === true)
+      {
         const arg = String(script_node.arguments?.raw || "").trim();
         // If user provided an objName after -h/-hv, use it
         if (arg.length > 0) helpTarget = arg;
@@ -13597,16 +13698,26 @@ function __cliHandleTerminal(line,ctx)
         }
         else
         {
-          var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["usage"]});
-          str = oCOM.AsciiTable(tokenlist,
-          {"header":false,"rowLine":false,"colLine":false,
-          "style":"─│├┼┤└┴┘┏┳┓ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
-          "sort":null,"max":[null,null],"align":"LL","Halign":"CC"});
+          if(markDownOpt==false)
+          {
+            var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["usage"]});
+            str = oCOM.AsciiTable(tokenlist,
+            {"header":false,"rowLine":false,"colLine":false,
+            "style":"─│├┼┤└┴┘┏┳┓ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
+            "sort":null,"max":[null,null],"align":"LL","Halign":"CC"});
+          }
+          else
+          {
+            // TODO: WRITE OUT COMMAND REFERENCE IN MARKDOWN
+            var tokenlist = oCOM.JShelpCollector(oASC,{"sort":true,"filter":["type","usage","desc","examples","unitTests"]});
+            
+          }
         }
 
         oTERM.output(oCOM.escapeHTML(
           "<u>Options:</u>\n"+
           "-h  [<i>objName</i>] - list objTokens\n"+
+          "-hm [<i>objName</i>] - command reference in markdown\n"+
           "-hv [<i>objName</i>] - list objVariables\n"
         ));
 
@@ -13922,8 +14033,10 @@ if(oCOM.URL.filename == "AsciiCAD.html")
 
 // Picker/catalog
 
-lineStyle.addEventListener("click", lineStyleSelector);
-lineRoute.addEventListener("click", lineModeSelector);
+//lineStyle.addEventListener("click", lineStyleSelector);
+//lineRoute.addEventListener("click", lineModeSelector);
+bindHoldRepeatButton(lineStyle, lineStyleSelector);
+bindHoldRepeatButton(lineRoute, lineModeSelector);
 
 document.getElementById("copyGlyphBtn").addEventListener("click", async function () {
   const text = this.textContent.trim();
@@ -14021,8 +14134,17 @@ flipPanBtn.addEventListener("click", () =>
 })
 
 // Undo/redo
-undoBtn.addEventListener("click", () =>  {oASC.stack("undo"); if (bDebug && netTraceOn) __refreshNetlistDebugCE(); });
-redoBtn.addEventListener("click", () =>  {oASC.stack("redo"); if (bDebug && netTraceOn) __refreshNetlistDebugCE(); });
+bindHoldRepeatButton(undoBtn, () =>
+{
+  oASC.stack("undo");
+  if (bDebug && netTraceOn) __refreshNetlistDebugCE();
+});
+
+bindHoldRepeatButton(redoBtn, () =>
+{
+  oASC.stack("redo");
+  if (bDebug && netTraceOn) __refreshNetlistDebugCE();
+});
 
 // Save/load
 saveBtn.addEventListener("click", () => 
@@ -14285,11 +14407,12 @@ function lineConfig(name)  // translate UI naming into modifiers
 
   switch(name)
   {
-    case "MultiLine":
+
+    case "LineRoute":
       obj.route = false;
     break;
 
-    case "Mikami⧉":
+    case "Mikami ┏ ⧉":
       obj.route = true;
       obj.routeMethod = "mikami";
       obj.routeImpl = "gpu";
@@ -14297,7 +14420,7 @@ function lineConfig(name)  // translate UI naming into modifiers
       obj.leastBridges = false;
     break;
 
-    case "Mikami":
+    case "Mikami ┏":
       obj.route = true;
       obj.routeMethod = "mikami";
       obj.routeImpl = "cpu";
@@ -14305,7 +14428,7 @@ function lineConfig(name)  // translate UI naming into modifiers
       obj.leastBridges = false;
     break;
 
-    case "MikamiBridge":
+    case "Mikami ╋":
       obj.route = true;
       obj.routeMethod = "mikami";
       obj.routeImpl = "cpu";
@@ -14313,7 +14436,7 @@ function lineConfig(name)  // translate UI naming into modifiers
       obj.leastBridges = true;
     break;
 
-    case "MikamiWorker":
+    case "Mikami ┏ ⚒":
       obj.route = true;
       obj.routeMethod = "mikami-mw";
       obj.routeImpl = "cpu";
@@ -14321,31 +14444,7 @@ function lineConfig(name)  // translate UI naming into modifiers
       obj.leastBridges = false;
     break;
 
-    case "A*Span":
-      obj.route = true;
-      obj.routeMethod = "astar";
-      obj.routeImpl = "cpu";
-      obj.leastCorners = false;
-      obj.leastBridges = false;
-    break;
-
-    case "A*Corner":
-      obj.route = true;
-      obj.routeMethod = "astar";
-      obj.routeImpl = "cpu";
-      obj.leastCorners = true;
-      obj.leastBridges = false;
-    break;
-
-    case "A*Bridge":
-      obj.route = true;
-      obj.routeMethod = "astar";
-      obj.routeImpl = "cpu";
-      obj.leastCorners = true;
-      obj.leastBridges = true;
-    break;
-
-    case "Dijkstra⧉":
+    case "Dijkstra ━ ⧉":
       obj.route = true;
       obj.routeMethod = "dijkstra";
       obj.routeImpl = "gpu";
@@ -14353,7 +14452,7 @@ function lineConfig(name)  // translate UI naming into modifiers
       obj.leastBridges = false;
     break;
 
-    case "DijkstraSpan":
+    case "Dijkstra ━":
       obj.route = true;
       obj.routeMethod = "dijkstra";
       obj.routeImpl = "cpu";
@@ -14361,7 +14460,7 @@ function lineConfig(name)  // translate UI naming into modifiers
       obj.leastBridges = false;
     break;
 
-    case "DijkstraCorner":
+    case "Dijkstra ┏":
       obj.route = true;
       obj.routeMethod = "dijkstra";
       obj.routeImpl = "cpu";
@@ -14369,13 +14468,38 @@ function lineConfig(name)  // translate UI naming into modifiers
       obj.leastBridges = false;
     break;
 
-    case "DijkstraBridge":
+    case "Dijkstra ╋":
       obj.route = true;
       obj.routeMethod = "dijkstra";
       obj.routeImpl = "cpu";
       obj.leastCorners = true;
       obj.leastBridges = true;
     break;
+
+    case "A* ━":
+      obj.route = true;
+      obj.routeMethod = "astar";
+      obj.routeImpl = "cpu";
+      obj.leastCorners = false;
+      obj.leastBridges = false;
+    break;
+
+    case "A* ┏":
+      obj.route = true;
+      obj.routeMethod = "astar";
+      obj.routeImpl = "cpu";
+      obj.leastCorners = true;
+      obj.leastBridges = false;
+    break;
+
+    case "A* ╋":
+      obj.route = true;
+      obj.routeMethod = "astar";
+      obj.routeImpl = "cpu";
+      obj.leastCorners = true;
+      obj.leastBridges = true;
+    break;
+
   }
 
   console.log("lineModeSelector: " + JSON.stringify(obj));
