@@ -982,7 +982,7 @@ this.glyph2dir.help =
     summary: "Write text starting at (c,r). Newlines advance to the next row.",
     returns: {
       type: "void",
-      description: "No JS value is returned."
+      //description: "No JS value is returned."
     },
     output: {
       channel: "canvas",
@@ -1130,7 +1130,7 @@ this.glyph2dir.help =
     summary: "Place a catalog item at top-left cell (c,r) using the selected rotation variant.",
     returns: {
       type: "void",
-      description: "No JS value is returned."
+      //description: "No JS value is returned."
     },
     output: {
       channel: "canvas",
@@ -1180,7 +1180,7 @@ this.glyph2dir.help =
     summary: "List all catalog item UIDs.",
     returns: {
       type: "void",
-      description: "No JS value is returned."
+      //description: "No JS value is returned."
     },
     output: {
       channel: "terminal",
@@ -1838,7 +1838,7 @@ this.glyph2dir.help =
     summary: "Draw a polyline through multiple waypoints. Path tuples use [c,r] order, requiring minimum 2 tuples.",
     returns: {
       type: "void",
-      description: "No JS value is returned."
+      //description: "No JS value is returned."
     },
     output: {
       channel: "canvas",
@@ -3218,7 +3218,7 @@ this.mikamiPath = function(from, to, modifiers)
     summary: "Draw a box using BOX_SINGLE, BOX_FAT, or BOX_DOUBLE contours.",
     returns: {
       type: "void",
-      description: "No JS value is returned."
+      //description: "No JS value is returned."
     },
     output: {
       channel: "canvas",
@@ -3275,7 +3275,7 @@ this.mikamiPath = function(from, to, modifiers)
     summary: "Clear the grid and push a single undo stroke.",
     returns: {
       type: "void",
-      description: "No JS value is returned."
+      //description: "No JS value is returned."
     },
     output: {
       channel: "canvas",
@@ -3384,7 +3384,7 @@ this.mikamiPath = function(from, to, modifiers)
     summary: "Blank a rectangular region by replacing its cells with spaces.",
     returns: {
       type: "void",
-      description: "No JS value is returned."
+      //description: "No JS value is returned."
     },
     output: {
       channel: "canvas",
@@ -4640,7 +4640,7 @@ this.startPasteWithText = function(text)
     summary: "Compute and print the current netlist as formatted JSON.",
     returns: {
       type: "void",
-      description: "No JS value is returned."
+      //description: "No JS value is returned."
     },
     output: {
       channel: "terminal",
@@ -5159,7 +5159,7 @@ this.startPasteWithText = function(text)
     summary: "Write label_str at (c,r). If an old label exists starting at (c,r) and is longer, clear the remainder with spaces.",
     returns: {
       type: "void",
-      description: "No JS value is returned."
+      //description: "No JS value is returned."
     },
     output: {
       channel: "canvas",
