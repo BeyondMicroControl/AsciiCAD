@@ -578,7 +578,7 @@ this.interpolateColors = function(col_arr, rangeLen)
 
     if (h.effects.length)
     {
-      out.push("", H2 + " Side effects", "");
+      out.push("", H2 + " Effects", "");
       for (let i = 0; i < h.effects.length; i++)
         out.push("- " + h.effects[i]);
     }
