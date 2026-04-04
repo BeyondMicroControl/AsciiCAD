@@ -187,7 +187,7 @@ AsciiCAD is designed so the global paste-to-grid behavior does **not** break nor
 
 ---
 
-### Terminal mode reference
+### Terminal mode
 
 Prompt: `AsciiCAD>`
 
@@ -202,6 +202,11 @@ Prompt: `AsciiCAD>`
 | `exit` | Exit CLI and return to UI sidebar |
 
 ---
+
+### Examples
+
+### CADScript mode
+
 
 ### Examples
 
@@ -246,6 +251,8 @@ oTERM.print(oTERM.getenv("label"));           // print the content of environmen
 ```text
 AsciiCAD> exit
 ```
+
+
 
 ---
 
