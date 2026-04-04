@@ -31,6 +31,7 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
       - [CLI Sidebar zone](#CLI-Sidebar-Zone)
       - [Modal dialogs zone](#modal-dialogs-zone)
       - [Behaviors that affect all zones](#behaviors-that-affect-all-zones)
+   - [CADScript command reference](#CADScript-command-reference)    
 
 ---
 
@@ -396,9 +397,9 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 | **Sidebar resizing**                                     | Mouse          | resize handle mousedown → drag → mouseup                                                    | `resizeHandle*.mousedown` + `document.mousemove/mouseup`                                                                             | Width clamped to min 180px and max 50% window width  |
 
 
-### Terminal command reference
+### CADScript command reference
 
-### line
+
 
 
 
