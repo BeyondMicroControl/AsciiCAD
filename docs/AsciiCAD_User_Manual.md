@@ -400,7 +400,467 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 ### CADScript command reference
 
 
+# blank()
 
+## Syntax
+
+```txt
+blank(c0,r0,c1,r1)
+```
+
+## Examples
+
+```txt
+oASC.blank()
+```
+
+---
+
+# box()
+
+Draw a box in line style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE
+
+## Syntax
+
+```txt
+box(c0,r0,c1,r1,style)
+```
+
+## Examples
+
+```txt
+oASC.box(1,0,3,2,BOX_SINGLE)
+```
+```txt
+oASC.box(1,0,3,2,BOX_FAT)
+```
+```txt
+oASC.box(1,0,3,2,BOX_DOUBLE)
+```
+
+---
+
+# CADScript()
+
+Run a CADScript expression
+
+## Syntax
+
+```txt
+CADScript {expression}
+```
+
+## Examples
+
+```txt
+CADScript {clear();stack("undo")}
+```
+
+---
+
+# cat()
+
+## Syntax
+
+```txt
+cat(c,r,angle,uid)
+```
+
+## Examples
+
+```txt
+oASC.cat(0,0,0,"ATTinyX12_MCU_ATTINY412")
+```
+
+---
+
+# cell()
+
+## Syntax
+
+```txt
+cell(c,r,string)
+```
+
+## Examples
+
+```txt
+oASC.cell(0,0,"ABC\nDEF\nGHI")
+```
+
+---
+
+# clear()
+
+Clears the grid and pushes a single undo stroke.
+
+## Syntax
+
+```txt
+clear()
+```
+
+## Examples
+
+```txt
+oASC.clear()
+```
+
+---
+
+# computeNetlist()
+
+Compute netlist including Line Ends (LE) and Component Ends (CE)
+
+## Syntax
+
+```txt
+computeNetlist()
+```
+
+## Examples
+
+```txt
+oTERM.printJSON(oASC.computeNetlist())
+```
+
+---
+
+# getCell()
+
+Windowing-only grid getter. Returns a rectangular text block (\n separated) in grid order. len controls radius: len=1 origin only; len=2 one cell outward; ... dir is a mask (N|E|S|W) selecting which sides extend from the origin. Omitted dir => N|E|S|W. Off-grid cells are padded with spaces.
+
+## Syntax
+
+```txt
+getCell(c,r,len,dir)
+```
+
+## Examples
+
+```txt
+oTERM.print(getCell(2,2))
+```
+```txt
+oTERM.print(getCell(1,1,2,N|E|S|W))
+```
+```txt
+oTERM.print(getCell(1,1,2,W|N|S))
+```
+```txt
+oTERM.print(getCell(0,0,2,N|W|E|S))
+```
+
+---
+
+# getLabel()
+
+Find nearest label near (c,r). Returns {c:<originCol>, r:<row>, str:<labelString>} and optionally stores it into oASC.env[env_retval].
+
+## Syntax
+
+```txt
+getLabel(c,r,env_retval)
+```
+
+## Examples
+
+```txt
+oTERM.printJSON(getLabel(10,5,'ret'))
+```
+```txt
+oTERM.printJSON(oASC.env.ret)
+```
+
+---
+
+# glyph2dir()
+
+Return 4-bit wire direction mask for a glyph (N|E|S|W). Unknown glyph returns 0. Stand-in glyphs fullfil a inexistent (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.
+
+## Syntax
+
+```txt
+glyph2dir(ch)
+```
+
+## Examples
+
+```txt
+printJSON(glyph2dir('┼'))
+```
+```txt
+printJSON(glyph2dir('╵'))
+```
+
+---
+
+# glyph2mask()
+
+Translate a wire glyph into an 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.  Alias glyphs are alternative glyphs for the same (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.
+
+## Syntax
+
+```txt
+glyph2mask(glyph)
+```
+
+## Examples
+
+```txt
+oTERM.printJSON(oASC.glyph2mask('╇'))
+```
+```txt
+oTERM.printJSON(oASC.glyph2mask('╧'))
+```
+
+## Returns
+
+- Type: `number`
+- What the JS call returns to the caller.
+
+---
+
+# isWireGlyph()
+
+True if ch is a known wire glyph in the glyph mask table.
+
+## Syntax
+
+```txt
+isWireGlyph(ch)
+```
+
+## Examples
+
+```txt
+oTERM.printJSON(isWireGlyph('┼'))
+```
+```txt
+oTERM.printJSON(isWireGlyph('A'))
+```
+
+---
+
+# line()
+
+Draw a polyline through multiple waypoints. Path tuples use [c,r] order, requiring minimum 2 tuples.
+
+## Syntax
+
+```txt
+line({path:[[<c>,<r>],[<c>,<r>],...], wire:[enumW], router:[enumR], target:[processor], cont:[lineC]})
+```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<c\> | Path waypoint column |
+| \<r\> | Path waypoint row |
+| [enumW] | Optional enumerator for line wire: **SINGLE**\|FAT\|DOUBLE |
+| [enumR] | Optional enumerator for line routing algorithm: **ORTHO**\|MIKAMI\|DIJKSTRA\|ASTAR |
+| [processor] | Optional enumerator for processing target: **CPU**\|GPU |
+| [lineC] | Optional flag enabling line continuation: **true**\|false |
+
+## Remarks
+
+- Only MIKAMI & DIJKSTRA have a GPU implementation.
+- When line continuation is switched off, the first drawn wire glyph is not merged but supraposed with any pre-existing wire glyph in this cell.
+
+## Examples
+
+```txt
+line({path:[[0,0],[5,6]], wire:SINGLE})
+```
+```txt
+line({path:[[0,0],[5,6],[2,2]], wire:FAT, router:MIKAMI, target:GPU})
+```
+```txt
+line({path:[[0,0],[10,0],[10,5]], wire:DOUBLE, router:DIJKSTRA, target:CPU})
+```
+
+## Returns
+
+- Type: `void`
+- No JS value is returned.
+
+## Output
+
+- Channel: `canvas`
+- Format: `ASCII grid`
+- The resulting line is drawn onto the grid.
+
+## Effects
+
+- Modifies grid cells along the routed path.
+- Pushes one undo history stroke.
+- Invalidates derived overlay caches.
+
+---
+
+# mask2glyph()
+
+Reverse of glyph2mask: map extended 8-bit mask (fat<<4 | thin) back to a wire glyph. Returns ' ' if unknown. Stand-in mappings are required when e.g. a fat wire glyph for '╞' does not exist, so when E|(N|S|E)<<4 is requested, a close-enough stand-in glyph like '┣' or '╞' will be returned (better than nothing). By policy, stand-in glyphs must prioritise correct rendering of single and fat wires over double wires, because double wires are primarily used for drawing boxes not lines.
+
+## Syntax
+
+```txt
+mask2glyph(m)
+```
+
+## Examples
+
+```txt
+oTERM.print(mask2glyph(
+(N|E|S|W)<<4))
+```
+```txt
+oTERM.print(mask2glyph(
+(N|E|S|W) | ((N|E|S|W)<<4)))
+```
+
+---
+
+# mirrorMask()
+
+Mirror an 8-bit wire mask. bVertAxis=true mirrors around vertical axis (E<->W). bVertAxis=false mirrors around horizontal axis (N<->S). Thin and fat nibbles are mirrored independently.
+
+## Syntax
+
+```txt
+mirrorMask(m,bVertAxis)
+```
+
+## Examples
+
+```txt
+oTERM.print(mask2glyph(
+mirrorMask(glyph2mask('╆'), true)))
+```
+```txt
+oTERM.print(mask2glyph(
+mirrorMask(glyph2mask('╆'), false)))
+```
+
+---
+
+# printCat()
+
+list all catalog item UIDs
+
+## Syntax
+
+```txt
+printCat()
+```
+
+## Examples
+
+```txt
+oASC.printCat()
+```
+
+---
+
+# printNetlist
+
+Extract connected wire lines (endpoints + junctions), excluding valid double-box boundaries/interiors.
+
+## Syntax
+
+```txt
+printNetlist()
+```
+
+## Examples
+
+```txt
+oASC.printNetlist()
+```
+
+## Returns
+
+- Type: `void`
+- No JS value is returned.
+
+## Output
+
+- Channel: `terminal`
+- Format: `formatted JSON`
+- Prints the extracted netlist to the terminal using oTERM.output().
+
+---
+
+# qryLocate()
+
+Locate matching catalog components and BOX rectangles with regular expressions; returns bounding rectangles with tl/br coordinates.
+
+## Syntax
+
+```txt
+qryLocate({key:regexp})
+```
+
+## Examples
+
+```txt
+oASC.qryLocate({ref:'CAT.+'})
+```
+```txt
+oASC.qryLocate({type:'BOX'})
+```
+```txt
+oASC.qryLocate({name:'ATTiny85'})
+```
+```txt
+oASC.qryLocate({name:'ATTiny85'
+,MFR:'ATTINY85V-10PU'})
+```
+
+---
+
+# rotateMask()
+
+Rotate an 8-bit wire mask 90 degrees clockwise. Low nibble (thin) and high nibble (fat) are rotated independently.
+
+## Syntax
+
+```txt
+rotateMask(m)
+```
+
+## Examples
+
+```txt
+oTERM.printJSON(rotateMask(
+glyph2mask('╆')))
+```
+```txt
+oTERM.print(mask2glyph(
+rotateMask(glyph2mask('╆'))))
+```
+
+---
+
+# setLabel()
+
+Write label_str at (c,r). If an old label exists starting at (c,r) and is longer, clears the remainder with spaces.
+
+## Syntax
+
+```txt
+setLabel(c,r,label_str)
+```
+
+## Examples
+
+```txt
+setLabel(5,3,'Net_1')
+```
+```txt
+oTERM.printJSON(getLabel(5,3,'ret'))
+```
 
 
 
