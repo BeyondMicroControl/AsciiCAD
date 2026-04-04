@@ -219,7 +219,7 @@ AsciiCAD> CADScript {cell(0,2,'+'); cell(1,2,'+'); cell(1,3,'+')};
 
 #### Run a terminal command from CADScript
 ```text
-AsciiCAD> CADScript {oCMD.run("clear")};
+AsciiCAD> CADScript {oCMD.run("clear")};            // clears the terminal window
 ```
 
 #### Run a query command + JSON printing from CADScript
