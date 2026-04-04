@@ -14005,7 +14005,6 @@ function __cliHandleTerminal(line,ctx)
           "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
           "sort":0,"max":[null,null,null],"align":"LLL","Halign":"CCC"});
         }
-   
 
         oTERM.output(oCOM.escapeHTML(
           "<u>Options:</u>\n"+
@@ -14057,8 +14056,11 @@ function __cliHandleTerminal(line,ctx)
           else
           {
             list.push("<u>" + name + " token details:</u>");
+            var vobj = {};
+            for(var i in obj) vobj[i] = obj[i]?.syntax?.replace(/, /g,",\n");
+
             var tokenlist = [["SYNTAX","EXAMPLES"]]
-              .concat(oCOM.JShelpCollector(obj, {"sort":true,"filter":["syntax","examples"]}));
+              .concat(oCOM.JShelpCollector(vobj, {"sort":true,"filter":["syntax","examples"]}));
             var str = oCOM.AsciiTable(tokenlist,
               {"header":true,"rowLine":true,"colLine":true,
               "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
