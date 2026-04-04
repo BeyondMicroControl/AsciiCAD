@@ -1299,8 +1299,22 @@ function __cliHandleTerminal(line,ctx)
           else
           {
             list.push("<u>" + name + " token details:</u>");
+
+            // TODO: refactor quick & dirty solution
             var vobj = {};
-            for(var i in obj) vobj[i] = obj[i]?.syntax?.replace(/, /g,",\n");
+            for(var i in obj) 
+            {
+              vobj[i] = obj[i];
+              if(typeof(vobj[i]?.help?.syntax)=="string")
+                  vobj[i].help.syntax = vobj[i].help.syntax.replace(/, /g,",\n");
+              if(typeof(vobj[i]?.help?.examples)=="array")
+              {
+                for(var j in vobj[i].help.examples)
+                  vobj[i].help.examples[j] = vobj[i].help.examples[j].replace(/, /g,",\n");
+              }
+                  
+
+            }
 
             var tokenlist = [["SYNTAX","EXAMPLES"]]
               .concat(oCOM.JShelpCollector(vobj, {"sort":true,"filter":["syntax","examples"]}));
