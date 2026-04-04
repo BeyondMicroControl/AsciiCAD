@@ -391,7 +391,6 @@ this.interpolateColors = function(col_arr, rangeLen)
 
   this.normalizeHelpEntry = function(name, help)
   {
-    // Backward compatible with current flat help objects.
     if (typeof help === "string") help = { usage: help };
     help = help || {};
 
@@ -412,6 +411,7 @@ this.interpolateColors = function(col_arr, rangeLen)
     });
 
     const remarks = this.toArray(help.remarks || help.notes).map(String);
+    const effects = this.toArray(help.effects || help.sideEffects || help.mutates).map(String);
 
     const examples = this.toArray(help.examples).map((ex) =>
     {
@@ -432,6 +432,8 @@ this.interpolateColors = function(col_arr, rangeLen)
       };
     });
 
+    const ret = help.returns || help.returnValue || help.return || null;
+    const out = help.output || help.outputs || null;
     const references = this.toArray(help.references || help.related || help.seeAlso);
 
     return {
@@ -442,8 +444,26 @@ this.interpolateColors = function(col_arr, rangeLen)
       syntax,
       parameters,
       remarks,
+      effects,
       examples,
-      references
+      references,
+
+      returns: (ret == null) ? null :
+      (typeof ret === "string"
+        ? { type: ret, description: "" }
+        : {
+            type: String(ret.type ?? ret.kind ?? ""),
+            description: String(ret.description ?? ret.desc ?? "")
+          }),
+
+      output: (out == null) ? null :
+      (typeof out === "string"
+        ? { channel: "", format: "", description: out }
+        : {
+            channel: String(out.channel ?? out.target ?? ""),
+            format: String(out.format ?? out.kind ?? ""),
+            description: String(out.description ?? out.desc ?? "")
+          })
     };
   };
 
@@ -540,6 +560,30 @@ this.interpolateColors = function(col_arr, rangeLen)
         else if (ref && ref.title) out.push("- " + ref.title);
       }
     }
+
+    if (h.returns && (h.returns.type || h.returns.description))
+    {
+      out.push("", H2 + " Returns", "");
+      if (h.returns.type) out.push("- Type: `" + h.returns.type + "`");
+      if (h.returns.description) out.push("- " + h.returns.description);
+    }
+
+    if (h.output && (h.output.channel || h.output.format || h.output.description))
+    {
+      out.push("", H2 + " Output", "");
+      if (h.output.channel) out.push("- Channel: `" + h.output.channel + "`");
+      if (h.output.format) out.push("- Format: `" + h.output.format + "`");
+      if (h.output.description) out.push("- " + h.output.description);
+    }
+
+    if (h.effects.length)
+    {
+      out.push("", H2 + " Side effects", "");
+      for (let i = 0; i < h.effects.length; i++)
+        out.push("- " + h.effects[i]);
+    }
+
+
 
     return out.join("\n");
   };

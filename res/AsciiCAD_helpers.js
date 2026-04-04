@@ -253,6 +253,11 @@ function ASC()
       "Translate a wire glyph into an 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). " +
       "Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.  " +
       "Alias glyphs are alternative glyphs for the same (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.",
+    returns: 
+    {
+      type: "number",
+      description: "What the JS call returns to the caller."
+    },
     examples: [
       "oTERM.printJSON(oASC.glyph2mask('╇'))",
       "oTERM.printJSON(oASC.glyph2mask('╧'))",
@@ -265,6 +270,13 @@ function ASC()
       "oASC.assert('oASC.glyph2mask(\\'┣\\')', oASC.glyph2mask('┣') , (N|E|S)<<4 )"           // canonical mapping (ignoring stand-in)
     ]
   }
+
+
+
+
+
+
+
 
   this.mask2glyph = function(m) 
   {
@@ -1664,39 +1676,40 @@ function ASC()
   this.line.help =
   {
     type: "CADScript_FN",
-    usage: "line({path:\n [[<i>c</i>,<i>r</i>],[<i>c</i>,<i>r</i>],[<i>c</i>,<i>r</i>]],\n kind:</i>enum</i>,\n router:</i>enum</i>,\n target:CPU|GPU,\n cont:true|false})",
     syntax: "line({path:[[<c>,<r>],[<c>,<r>],...], kind:[enumK], router:[enumR], target:[processor], cont:[lineC]})",
     summary: "Draw a polyline through multiple waypoints. Path tuples use [c,r] order, requiring minimum 2 tuples.",
-    parameters: [
-        {
-          name: "<c>",
-          description: "Path waypoint column"
-        },
-        {
-          name: "<r>",
-          description: "Path waypoint row"
-        },
-        {
-          name: "[enumK]",
-          description: "Optional enumerator for line wire: **SINGLE**|FAT|DOUBLE"
-        },
-        {
-          name: "[enumR]",
-          description: "Optional enumerator for line routing algorithm: **ORTHO**|MIKAMI|DIJKSTRA|ASTAR"
-        },
-        {
-          name: "[processor]",
-          description: "Optional enumerator for processing target: **CPU**|GPU"
-        },
-        {
-          name: "[lineC]",
-          description: "Optional flag enabling line continuation: **true**|false"
-        }
-      ],
-    remarks: [
-      "Only MIKAMI & DIJKSTRA have a GPU implementation. The ASTAR algorithm is a classic sparse search with a heap, gBest, parent, and (r,c,dir) state keys. That is irregular, branchy, and queue-driven — good on CPU, poor on GPU.",
-      "When line continuation is switched off, the first drawn wire glyph is not merged but supraposed with any pre-existing wire glyph in this cell.",
+
+    returns: {
+      type: "void",
+      description: "No JS value is returned."
+    },
+
+    output: {
+      channel: "canvas",
+      format: "ASCII grid",
+      description: "The resulting line is drawn onto the grid."
+    },
+
+    effects: [
+      "Modifies grid cells along the routed path.",
+      "Pushes one undo history stroke.",
+      "Invalidates derived overlay caches."
     ],
+
+    parameters: [
+      { name: "<c>", description: "Path waypoint column" },
+      { name: "<r>", description: "Path waypoint row" },
+      { name: "[enumK]", description: "Optional enumerator for line wire: **SINGLE**|FAT|DOUBLE" },
+      { name: "[enumR]", description: "Optional enumerator for line routing algorithm: **ORTHO**|MIKAMI|DIJKSTRA|ASTAR" },
+      { name: "[processor]", description: "Optional enumerator for processing target: **CPU**|GPU" },
+      { name: "[lineC]", description: "Optional flag enabling line continuation: **true**|false" }
+    ],
+
+    remarks: [
+      "Only MIKAMI & DIJKSTRA have a GPU implementation.",
+      "When line continuation is switched off, the first drawn wire glyph is not merged but supraposed with any pre-existing wire glyph in this cell."
+    ],
+
     examples: [
       "line({path:[[0,0],[5,6]], kind:SINGLE})",
       "line({path:[[0,0],[5,6],[2,2]], kind:FAT, router:MIKAMI, target:GPU})",
@@ -1722,76 +1735,6 @@ function ASC()
      "oASC.stack(\"undo\")"
     ]
   }
-
-
-
-
-
-
-
-/*
-this.input = function() {}
-this.input.help = 
-{
-  title: "input",
-  kind: "command",
-  type: "CADScript_FN",
-  usage: "TEST",
-
-  summary: "Prompt the user and store the answer in oTERM._o.env[varName].",
-  appliesTo: ["AsciiCAD CLI", "CADScript"],
-  syntax: ["input(<varName>, <question>, [prefill], [overwriteMode])"],
-  parameters: [
-    {
-      name: "<varName>",
-      description: "Environment variable name where the answer is stored."
-    },
-    {
-      name: "<question>",
-      description: "Prompt text shown in the terminal."
-    },
-    {
-      name: "[prefill]",
-      description: "Optional initial value inserted into the input field."
-    },
-    {
-      name: "[overwriteMode]",
-      description: "When true, typing overwrites existing characters terminal-style."
-    }
-  ],
-  remarks: [
-    "The answer is stored in oTERM._o.env[varName].",
-    "When overwriteMode is true, printable input replaces existing characters at the caret."
-  ],
-  examples: [
-    {
-      title: "Prompt with insert mode",
-      code: 'oTERM.input("label", "Enter", "1234", false)'
-    },
-    {
-      title: "Prompt with overwrite mode",
-      code: 'oTERM.input("label", "Enter", "1234", true)'
-    }
-  ],
-  references: [
-    { title: "getenv", href: "#getenv" },
-    { title: "setenv", href: "#setenv" }
-  ]
-
-};
-*/
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -4425,8 +4368,21 @@ this.startPasteWithText = function(text)
     type: "Tool",
     usage: "printNetlist()",
     summary: "Extract connected wire lines (endpoints + junctions), excluding valid double-box boundaries/interiors.",
+
+    returns: {
+      type: "void",
+      description: "No JS value is returned."
+    },
+
+    output: {
+      channel: "terminal",
+      format: "formatted JSON",
+      description: "Prints the extracted netlist to the terminal using oTERM.output()."
+    },
+
+    effects: [],
     examples: ["oASC.printNetlist()"]
-  }
+  };
 
 
   function pushUnique(out, r, c)
