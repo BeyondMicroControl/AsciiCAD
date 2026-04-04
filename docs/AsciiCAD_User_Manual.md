@@ -19,7 +19,7 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
 3. [CLI manual](#cli-manual)
    - [Opening the CLI](#opening-the-cli)
    - [Terminal mode](#terminal-mode)
-   - [CADScript mode](#terminal-mode)
+   - [CADScript mode](#CADScript-mode)
    - [Examples](#examples)
 4. [Concepts](#concepts)
 5. [Troubleshooting](#troubleshooting)
