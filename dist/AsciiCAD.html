@@ -1736,7 +1736,7 @@ function ASC()
   this.glyph2mask.help =   
   {
     type: "CADScript_FN",
-    usage: "glyph2mask(<i>glyph</i>)",
+    syntax: "glyph2mask(<i>glyph</i>)",
     summary:
       "Translate a wire glyph into an 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). " +
       "Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.  " +
@@ -1774,7 +1774,7 @@ function ASC()
   }
   this.mask2glyph.help = {
     type: "CADScript_FN",
-    usage: "mask2glyph(<i>m</i>)",
+    syntax: "mask2glyph(<i>m</i>)",
     summary: "Reverse of glyph2mask: map extended 8-bit mask (fat<<4 | thin) back to a wire glyph. Returns ' ' if unknown. " +
     "Stand-in mappings are required when e.g. a fat wire glyph for '╞' does not exist, so when E|(N|S|E)<<4 is requested, a close-enough stand-in glyph like '┣' or '╞' will be returned (better than nothing). " +
     "By policy, stand-in glyphs must prioritise correct rendering of single and fat wires over double wires, because double wires are primarily used for drawing boxes not lines.",
@@ -1799,7 +1799,7 @@ function ASC()
   this.glyph2dir.help = 
   {
     type: "CADScript_FN",
-    usage: "glyph2dir(<i>ch</i>)",
+    syntax: "glyph2dir(<i>ch</i>)",
     summary: "Return 4-bit wire direction mask for a glyph (N|E|S|W). Unknown glyph returns 0. "+
     "Stand-in glyphs fullfil a inexistent (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.",
     examples: ["printJSON(glyph2dir('┼'))", "printJSON(glyph2dir('╵'))"],
@@ -1959,7 +1959,7 @@ function ASC()
 
   this.rotateMask.help = {
     type: "CADScript_FN",
-    usage: "rotateMask(<i>m</i>)",
+    syntax: "rotateMask(<i>m</i>)",
     summary: "Rotate an 8-bit wire mask 90 degrees clockwise. Low nibble (thin) and high nibble (fat) are rotated independently.",
     examples: [
       "oTERM.printJSON(rotateMask(\nglyph2mask('╆')))",
@@ -1988,7 +1988,7 @@ function ASC()
   this.mirrorMask.help = 
   {
     type: "CADScript_FN",
-    usage: "mirrorMask(<i>m</i>,<i>bVertAxis</i>)",
+    syntax: "mirrorMask(<i>m</i>,<i>bVertAxis</i>)",
     summary: "Mirror an 8-bit wire mask. bVertAxis=true mirrors around vertical axis (E<->W). bVertAxis=false mirrors around horizontal axis (N<->S). Thin and fat nibbles are mirrored independently.",
     examples: [
       "oTERM.print(mask2glyph(\nmirrorMask(glyph2mask('╆'), true)))",
@@ -2201,7 +2201,7 @@ function ASC()
   this.CADScript.help = 
   {
     type:  "AsciiCAD_CMD",
-    usage: "CADScript {<i>expression</i>}",
+    syntax: "CADScript {<i>expression</i>}",
     summary:  "Run a CADScript expression",
     examples: ["CADScript {clear();stack(\"undo\")}"]
   }
@@ -2210,7 +2210,7 @@ function ASC()
   this.env.help = 
   {
     type:  "AsciiCAD_Var",
-    usage: "env.my_variable = <i>expression<i>;",
+    syntax: "env.my_variable = <i>expression<i>;",
     summary:  "assign a session persistent environment variable",
     examples: ["oASC.env.my_variable = 123","oASC.env.my_variable = \"ABC\""]
   }
@@ -2374,7 +2374,7 @@ function ASC()
   this.cell.help = 
   {
     type: "CADScript_FN",
-    usage: "cell(<i>c</i>,<i>r</i>,<i>string</i>)",
+    syntax: "cell(<i>c</i>,<i>r</i>,<i>string</i>)",
     summary: "",
     examples: ["oASC.cell(0,0,\"ABC\\nDEF\\nGHI\")"],
     unitTests:
@@ -2425,7 +2425,7 @@ function ASC()
   this.getCell.help = 
   {
     type: "CADScript_FN",
-    usage: "getCell(c,r,len,dir)",
+    syntax: "getCell(c,r,len,dir)",
     summary:
       "Windowing-only grid getter. Returns a rectangular text block (\\n separated) in grid order. " +
       "len controls radius: len=1 origin only; len=2 one cell outward; ... " +
@@ -2482,7 +2482,7 @@ function ASC()
   this.cat.help = 
   {
     type: "CADScript_CMD",
-    usage: "cat(<i>c</i>,<i>r</i>,<i>angle</i>,<i>uid</i>)",
+    syntax: "cat(<i>c</i>,<i>r</i>,<i>angle</i>,<i>uid</i>)",
     summary: "",
     examples: ["oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")"],
     unitTests:
@@ -2508,7 +2508,7 @@ function ASC()
   this.printCat.help = 
   {
     type: "CADScript_FN",
-    usage: "printCat()",
+    syntax: "printCat()",
     summary: "list all catalog item UIDs",
     examples: ["oASC.printCat()"]
   }
@@ -3150,10 +3150,6 @@ function ASC()
     this.draw("line");
   };
 
-
-// TODO: rename "kind:" to "wire:" (more intelligable)
-// TODO: remove "usage:" -> replace by "syntax:"
-// TODO: add round brackets to title: to list functions in md documentation
 
   this.line.help =
   {
@@ -4542,7 +4538,7 @@ this.mikamiPath = function(from, to, modifiers)
   this.box.help = 
   {
     type: "CADScript_Fn",
-    usage: "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)",
+    syntax: "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)",
     summary: "Draw a box in line style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
     examples:  ["oASC.box(1,0,3,2,BOX_SINGLE)","oASC.box(1,0,3,2,BOX_FAT)","oASC.box(1,0,3,2,BOX_DOUBLE)"],
     unitTests: [
@@ -4570,7 +4566,7 @@ this.mikamiPath = function(from, to, modifiers)
   this.clear.help = 
   {
     type: "CADScript_CMD",
-    usage: "clear()",
+    syntax: "clear()",
     summary: "Clears the grid and pushes a single undo stroke.",
     examples: ["oASC.clear()"]
   }
@@ -4662,7 +4658,7 @@ this.mikamiPath = function(from, to, modifiers)
   this.blank.help = 
   {
     type: "CADScript_FN",
-    usage: "blank(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>)",
+    syntax: "blank(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>)",
     summary: "",
     examples: ["oASC.blank()"]
   }
@@ -4692,7 +4688,7 @@ this.mikamiPath = function(from, to, modifiers)
   // or: return this.glyphMask(ch) !== 0;
   this.isWireGlyph.help = {
     type: "CADScript_FN",
-    usage: "isWireGlyph(<i>ch</i>)",
+    syntax: "isWireGlyph(<i>ch</i>)",
     summary: "True if ch is a known wire glyph in the glyph mask table.",
     examples: ["oTERM.printJSON(isWireGlyph('┼'))", "oTERM.printJSON(isWireGlyph('A'))"]
   }
@@ -5316,7 +5312,7 @@ this.startPasteWithText = function(text)
   this.qryLocate.help =
   {
     type: "CADScript_FN",
-    usage: "qryLocate({<i>key</i>:<i>regexp</i>})",
+    syntax: "qryLocate({<i>key</i>:<i>regexp</i>})",
     summary: "Locate matching catalog components and BOX rectangles with regular expressions; returns bounding rectangles with tl/br coordinates.",
     examples: [
       "oASC.qryLocate({ref:'CAT.+'})",
@@ -5793,7 +5789,7 @@ this.startPasteWithText = function(text)
   this.computeNetlist.help =
   {
     type: "CADScript_FN",
-    usage: "computeNetlist()",
+    syntax: "computeNetlist()",
     summary: "Compute netlist including Line Ends (LE) and Component Ends (CE)",
     examples: [
       "oTERM.printJSON(oASC.computeNetlist())"
@@ -5849,7 +5845,7 @@ this.startPasteWithText = function(text)
   this.printNetlist.help =
   {
     type: "Tool",
-    usage: "printNetlist()",
+    syntax: "printNetlist()",
     summary: "Extract connected wire lines (endpoints + junctions), excluding valid double-box boundaries/interiors.",
 
     returns: {
@@ -6302,7 +6298,7 @@ this.startPasteWithText = function(text)
 
   this.getLabel.help = {
     type: "CADScript_FN",
-    usage: "getLabel(c,r,<i>env_retval</i>)",
+    syntax: "getLabel(c,r,<i>env_retval</i>)",
     summary: "Find nearest label near (c,r). Returns {c:<originCol>, r:<row>, str:<labelString>} and optionally stores it into oASC.env[env_retval].",
     examples: [
       "oTERM.printJSON(getLabel(10,5,'ret'))",
@@ -6346,7 +6342,7 @@ this.startPasteWithText = function(text)
 
   this.setLabel.help = {
     type: "CADScript_FN",
-    usage: "setLabel(c,r,<i>label_str</i>)",
+    syntax: "setLabel(c,r,<i>label_str</i>)",
     summary: "Write label_str at (c,r). If an old label exists starting at (c,r) and is longer, clears the remainder with spaces.",
     examples: [
       "setLabel(5,3,'Net_1')",
@@ -12796,7 +12792,7 @@ const PICKER_TABS =
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.177</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.178</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
 
