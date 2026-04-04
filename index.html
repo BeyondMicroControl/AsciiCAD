@@ -1938,24 +1938,26 @@ canvas.addEventListener("mousedown", async (e) =>
 
   if (tool === "modeFreehand")      oASC.beginFreeform(cell);
   else if (tool === "modeSelect" || tool === "modeCopy" || tool === "modeBlank") oASC.beginSelect(cell);
-  else if (tool === "modeLine")     oASC.beginLine(cell, lineConfig(lineRoutes[lineRouteSel]));
-  else if (tool === "modeBox")      oASC.beginBox(cell, lineConfig());
+  else if (tool === "modeLine")     oASC.beginLine(cell, lineConfig(lineRoutes[lineRouteSel], false));
+  else if (tool === "modeBox")      oASC.beginBox(cell, lineConfig(null, true));
   else if (tool === "modeFreetext") oASC.beginFreetext(cell);
   else console.error("tool mismatch (begin)");
 });
 
 
-function lineConfig(name)  // translate UI naming into modifiers
+function lineConfig(name, forBox)
 {
   var obj = {};
   var lineStyle = lineStyles[lineStyleSel];
-  obj.kind = lineStyle === "double" ? oASC.BOX_DOUBLE
-          : (lineStyle === "fat"    ? oASC.BOX_FAT
-          : (lineStyle === "single" ? oASC.BOX_SINGLE : oASC.BOX_SINGLE));
+  var styleObj = lineStyle === "double" ? oASC.BOX_DOUBLE
+              : (lineStyle === "fat"    ? oASC.BOX_FAT
+              : oASC.BOX_SINGLE);
+
+  if (forBox) obj.kind = styleObj;
+  else        obj.wire = styleObj;
 
   switch(name)
   {
-
     case "LineRoute":
       obj.route = false;
     break;
@@ -2047,10 +2049,8 @@ function lineConfig(name)  // translate UI naming into modifiers
       obj.leastCorners = true;
       obj.leastBridges = true;
     break;
-
   }
 
-  console.log("lineModeSelector: " + JSON.stringify(obj));
   return obj;
 }
 
@@ -2119,7 +2119,7 @@ window.addEventListener("keydown", (e) =>
   if (String(e.key || "").toLowerCase() === "o") oDown = true;
   if (lineDrag && (e.key === "Shift" || String(e.key || "").toLowerCase() === "o"))
   {
-    Object.assign(lineDrag.modifiers, lineConfig(lineRoutes[lineRouteSel]));
+    Object.assign(lineDrag.modifiers, lineConfig(lineRoutes[lineRouteSel], false));
     lineDrag.modifiers.flip = !shiftDown;
     lineDrag.modifiers.merge = !oDown;
 
@@ -2200,7 +2200,7 @@ window.addEventListener("keyup", (e) =>
   if (String(e.key || "").toLowerCase() === "o") oDown = false;
   if (lineDrag)
   {
-    Object.assign(lineDrag.modifiers, lineConfig(lineRoutes[lineRouteSel]));
+    Object.assign(lineDrag.modifiers, lineConfig(lineRoutes[lineRouteSel], false));
     lineDrag.modifiers.flip = !shiftDown;
     lineDrag.modifiers.merge = !oDown;
 
