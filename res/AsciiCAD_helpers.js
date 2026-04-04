@@ -1675,7 +1675,7 @@ function ASC()
     ,
     returns: {
       type: "void",
-      description: "No JS value is returned."
+      //description: "No JS value is returned."
     }
     ,
     output: {
@@ -4366,7 +4366,7 @@ this.startPasteWithText = function(text)
 
     returns: {
       type: "void",
-      description: "No JS value is returned."
+      //description: "No JS value is returned."
     },
 
     output: {
