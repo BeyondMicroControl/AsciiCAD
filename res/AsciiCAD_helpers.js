@@ -245,22 +245,34 @@ function ASC()
     const codec = getGlyph3Codec();
     return codec.g2m[g];
   }
-  this.glyph2mask.help =   
+ this.glyph2mask.help =   
   {
     type: "CADScript_FN",
-    syntax: "glyph2mask(<i>glyph</i>)",
+    syntax: "glyph2mask(<glyph>)",
     summary:
-      "Translate a wire glyph into an 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). " +
-      "Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.  " +
-      "Alias glyphs are alternative glyphs for the same (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.",
-    returns: 
+      "Translate a wire glyph into a packed 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). " +
+      "Double wires set both nibbles. Mixed glyphs split directions between thin and fat using a lookup table.",
+    returns:
     {
       type: "number",
-      description: "What the JS call returns to the caller."
+      description: "Packed 8-bit wire mask. Returns 0 for falsy or empty input."
     },
+    output:
+    {
+      channel: "none",
+      description: "Does not print or draw anything."
+    },
+    effects: [],
+    parameters: [
+      { name: "<glyph>", description: "Wire glyph to translate into a packed mask." }
+    ],
+    remarks: [
+      "The low nibble stores thin(single/light) directions and the high nibble stores fat(single/heavy) directions.",
+      "Alias glyphs are allowed to map to the same mask, for example '┼' and '+' both map to N|E|S|W."
+    ],
     examples: [
       "oTERM.printJSON(oASC.glyph2mask('╇'))",
-      "oTERM.printJSON(oASC.glyph2mask('╧'))",
+      "oTERM.printJSON(oASC.glyph2mask('╧'))"
     ],
     unitTests: [
       "oASC.assert('oASC.glyph2mask(\\'┼\\')', oASC.glyph2mask('┼') , N|E|S|W)",              // unitype-glyph canonical mapping (ignoring alias)
@@ -308,12 +320,27 @@ function ASC()
     const m8 = codec.g2m[String(g ?? "")] ?? 0;
     return (m8 & 0xF) | ((m8 >> 4) & 0xF);  // collapse to 4-bit mask
   }
-  this.glyph2dir.help = 
+this.glyph2dir.help = 
   {
     type: "CADScript_FN",
-    syntax: "glyph2dir(<i>ch</i>)",
-    summary: "Return 4-bit wire direction mask for a glyph (N|E|S|W). Unknown glyph returns 0. "+
-    "Stand-in glyphs fullfil a inexistent (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.",
+    syntax: "glyph2dir(<ch>)",
+    summary: "Return the collapsed 4-bit direction mask (N|E|S|W) for a glyph. Unknown glyph returns 0.",
+    returns: {
+      type: "number",
+      description: "Collapsed 4-bit direction mask with thin and fat information merged together."
+    },
+    output: {
+      channel: "none",
+      description: "Does not print or draw anything."
+    },
+    effects: [],
+    parameters: [
+      { name: "<ch>", description: "Wire glyph to translate into a 4-bit direction mask." }
+    ],
+    remarks: [
+      "Thin and fat information are collapsed into one 4-bit direction result.",
+      "Alias and stand-in glyphs may still resolve to the same direction mask, for example '┼' and '+' both map to N|E|S|W."
+    ],
     examples: ["printJSON(glyph2dir('┼'))", "printJSON(glyph2dir('╵'))"],
     unitTests: [
       "oASC.assert('oASC.glyph2dir(\\'┼\\')', oASC.glyph2dir('┼') , N|E|S|W)",  // unitype-glyph canonical mapping (ignoring alias)
@@ -471,8 +498,23 @@ function ASC()
 
   this.rotateMask.help = {
     type: "CADScript_FN",
-    syntax: "rotateMask(<i>m</i>)",
-    summary: "Rotate an 8-bit wire mask 90 degrees clockwise. Low nibble (thin) and high nibble (fat) are rotated independently.",
+    syntax: "rotateMask(<m>)",
+    summary: "Rotate a packed 8-bit wire mask 90 degrees clockwise.",
+    returns: {
+      type: "number",
+      description: "Rotated packed 8-bit wire mask."
+    },
+    output: {
+      channel: "none",
+      description: "Does not print or draw anything."
+    },
+    effects: [],
+    parameters: [
+      { name: "<m>", description: "Packed 8-bit wire mask to rotate." }
+    ],
+    remarks: [
+      "The low nibble (thin) and high nibble (fat) are rotated independently before being packed back together."
+    ],
     examples: [
       "oTERM.printJSON(rotateMask(\nglyph2mask('╆')))",
       "oTERM.print(mask2glyph(\nrotateMask(glyph2mask('╆'))))"
@@ -500,8 +542,24 @@ function ASC()
   this.mirrorMask.help = 
   {
     type: "CADScript_FN",
-    syntax: "mirrorMask(<i>m</i>,<i>bVertAxis</i>)",
-    summary: "Mirror an 8-bit wire mask. bVertAxis=true mirrors around vertical axis (E<->W). bVertAxis=false mirrors around horizontal axis (N<->S). Thin and fat nibbles are mirrored independently.",
+    syntax: "mirrorMask(<m>,<bVertAxis>)",
+    summary: "Mirror a packed 8-bit wire mask around either the vertical or horizontal axis.",
+    returns: {
+      type: "number",
+      description: "Mirrored packed 8-bit wire mask."
+    },
+    output: {
+      channel: "none",
+      description: "Does not print or draw anything."
+    },
+    effects: [],
+    parameters: [
+      { name: "<m>", description: "Packed 8-bit wire mask to mirror." },
+      { name: "<bVertAxis>", description: "true mirrors around the vertical axis (E<->W); false mirrors around the horizontal axis (N<->S)." }
+    ],
+    remarks: [
+      "Thin and fat nibbles are mirrored independently before being packed back together."
+    ],
     examples: [
       "oTERM.print(mask2glyph(\nmirrorMask(glyph2mask('╆'), true)))",
       "oTERM.print(mask2glyph(\nmirrorMask(glyph2mask('╆'), false)))"
@@ -713,8 +771,27 @@ function ASC()
   this.CADScript.help = 
   {
     type:  "AsciiCAD_CMD",
-    syntax: "CADScript {<i>expression</i>}",
-    summary:  "Run a CADScript expression",
+    syntax: "CADScript {<expression>}",
+    summary:  "Run a CADScript expression.",
+    returns: {
+      type: "void",
+      description: "No direct JS value is returned to the terminal command line."
+    },
+    output: {
+      channel: "depends",
+      format: "depends",
+      description: "Any visible output depends on the invoked expression, for example terminal text or grid changes."
+    },
+    effects: [
+      "Evaluates the supplied expression in the AsciiCAD command scope.",
+      "May mutate the grid, session environment, history, or terminal depending on the expression."
+    ],
+    parameters: [
+      { name: "<expression>", description: "CADScript expression block to execute." }
+    ],
+    remarks: [
+      "Use this command wrapper when entering CADScript directly from the terminal command line."
+    ],
     examples: ["CADScript {clear();stack(\"undo\")}"]
   }
 
@@ -722,8 +799,22 @@ function ASC()
   this.env.help = 
   {
     type:  "AsciiCAD_Var",
-    syntax: "env.my_variable = <i>expression<i>;",
-    summary:  "assign a session persistent environment variable",
+    syntax: "env.my_variable = <expression>;",
+    summary:  "Assign a session-persistent environment variable.",
+    output: {
+      channel: "none",
+      description: "Assignment itself does not print or draw anything."
+    },
+    effects: [
+      "Stores the assigned value in oASC.env for the current session."
+    ],
+    parameters: [
+      { name: "my_variable", description: "Environment variable name to assign." },
+      { name: "<expression>", description: "Value expression stored under the given name." }
+    ],
+    remarks: [
+      "Stored values can be read back later from oASC.env within the same session."
+    ],
     examples: ["oASC.env.my_variable = 123","oASC.env.my_variable = \"ABC\""]
   }
 
@@ -883,12 +974,36 @@ function ASC()
 
     this.pushStrokeIfNonEmpty(this._currentStroke);     // feed undo buffer
   }
+
   this.cell.help = 
   {
     type: "CADScript_FN",
-    syntax: "cell(<i>c</i>,<i>r</i>,<i>string</i>)",
-    summary: "",
-    examples: ["oASC.cell(0,0,\"ABC\\nDEF\\nGHI\")"],
+    syntax: "cell(<c>,<r>,<string>)",
+    summary: "Write text starting at (c,r). Newlines advance to the next row.",
+    returns: {
+      type: "void",
+      description: "No JS value is returned."
+    },
+    output: {
+      channel: "canvas",
+      format: "ASCII grid",
+      description: "The provided text is written onto the grid."
+    },
+    effects: [
+      "Modifies addressed grid cells.",
+      "Pushes one undo history stroke if at least one cell changes.",
+      "Invalidates derived board caches through the history path."
+    ],
+    parameters: [
+      { name: "<c>", description: "Start column for the text write." },
+      { name: "<r>", description: "Start row for the text write." },
+      { name: "<string>", description: "Text to write. Newline characters advance to the next row." }
+    ],
+    remarks: [
+      "Writing is clipped at the right grid edge.",
+      "Positions outside the grid bounds raise an error before writing begins."
+    ],
+    examples: ["oASC.cell(0,0,\"ABC\\nDEF\\nGHI\")"],  
     unitTests:
     ["oASC.cell(0,0,\"ABC\\nDEF\\nGHI\");",
      "oASC.assert('cell(0,0,\"ABC\\nDEF\\nGHI\")',oASC.getCell(0,0,3,S),'A\\nD\\nG');",
@@ -937,13 +1052,30 @@ function ASC()
   this.getCell.help = 
   {
     type: "CADScript_FN",
-    syntax: "getCell(c,r,len,dir)",
+    syntax: "getCell(<c>,<r>,[len],[dir])",
     summary:
       "Windowing-only grid getter. Returns a rectangular text block (\\n separated) in grid order. " +
-      "len controls radius: len=1 origin only; len=2 one cell outward; ... " +
-      "dir is a mask (N|E|S|W) selecting which sides extend from the origin. Omitted dir => N|E|S|W. " +
-      "Off-grid cells are padded with spaces.",
-    examples: [
+      "len controls radius: len=1 origin only; len=2 one cell outward; ...",
+    returns: {
+      type: "string",
+      description: "Rectangular text block in grid order, with rows separated by newline characters."
+    },
+    output: {
+      channel: "none",
+      description: "Does not print or draw anything unless the caller prints the returned string."
+    },
+    effects: [],
+    parameters: [
+      { name: "<c>", description: "Origin column of the requested window." },
+      { name: "<r>", description: "Origin row of the requested window." },
+      { name: "[len]", description: "Optional radius. len=1 returns only the origin cell; len=2 extends one cell outward; and so on." },
+      { name: "[dir]", description: "Optional direction mask (N|E|S|W) selecting which sides extend from the origin." }
+    ],
+    remarks: [
+      "Omitted dir defaults to N|E|S|W.",
+      "Off-grid cells are padded with spaces so the returned block keeps its rectangular shape."
+    ],
+    examples: [ 
       "oTERM.print(getCell(2,2))",
       "oTERM.print(getCell(1,1,2,N|E|S|W))",
       "oTERM.print(getCell(1,1,2,W|N|S))",
@@ -994,8 +1126,31 @@ function ASC()
   this.cat.help = 
   {
     type: "CADScript_CMD",
-    syntax: "cat(<i>c</i>,<i>r</i>,<i>angle</i>,<i>uid</i>)",
-    summary: "",
+    syntax: "cat(<c>,<r>,<angle>,<uid>)",
+    summary: "Place a catalog item at top-left cell (c,r) using the selected rotation variant.",
+    returns: {
+      type: "void",
+      description: "No JS value is returned."
+    },
+    output: {
+      channel: "canvas",
+      format: "ASCII grid",
+      description: "The selected catalog item is placed onto the grid."
+    },
+    effects: [
+      "Looks up the catalog item by UID.",
+      "Expands wide characters and replaces wildcard placeholders with spaces for placement.",
+      "Commits the catalog footprint to the grid and pushes one undo history stroke."
+    ],
+    parameters: [
+      { name: "<c>", description: "Top-left placement column." },
+      { name: "<r>", description: "Top-left placement row." },
+      { name: "<angle>", description: "Rotation variant index to use from the item's text_data." },
+      { name: "<uid>", description: "Catalog item UID, typically name_type_MFR." }
+    ],
+    remarks: [
+      "The scripted placement path forces the requested cell to be the top-left anchor of the pasted block."
+    ],
     examples: ["oASC.cat(0,0,0,\"ATTinyX12_MCU_ATTINY412\")"],
     unitTests:
     [
@@ -1017,14 +1172,27 @@ function ASC()
     tokenlist.sort();
     oTERM.output(oCOM.escapeHTML( "CATALOG ITEMS:\n\n"+tokenlist.join("\n") ));
   }
+  
   this.printCat.help = 
   {
     type: "CADScript_FN",
     syntax: "printCat()",
-    summary: "list all catalog item UIDs",
+    summary: "List all catalog item UIDs.",
+    returns: {
+      type: "void",
+      description: "No JS value is returned."
+    },
+    output: {
+      channel: "terminal",
+      format: "plain text",
+      description: "Prints the sorted catalog item UIDs to the terminal."
+    },
+    effects: [],
+    remarks: [
+      "Uses the current CATALOG contents and sorts the resulting UID list alphabetically before printing."
+    ],
     examples: ["oASC.printCat()"]
   }
-
 
 
   // subsection: lines
@@ -1666,48 +1834,41 @@ function ASC()
   this.line.help =
   {
     type: "CADScript_FN",
-    syntax: "line({path:[[<c>,<r>], [<c>,<r>],...], wire:[enumW], router:[enumR], target:[processor], cont:[lineC]})",
-    summary: "Draw a polyline through multiple waypoints. Path tuples use [c,r] order, requiring minimum 2 tuples."
-    ,
+    syntax: "line({path:[[<c>,<r>],[<c>,<r>],...], wire:[enumW], router:[enumR], target:[processor], cont:[lineC]})",
+    summary: "Draw a polyline through multiple waypoints. Path tuples use [c,r] order, requiring minimum 2 tuples.",
     returns: {
       type: "void",
-      //description: "No JS value is returned."
-    }
-    ,
+      description: "No JS value is returned."
+    },
     output: {
       channel: "canvas",
       format: "ASCII grid",
       description: "The resulting line is drawn onto the grid."
-    }
-    ,
+    },
     effects: [
       "Modifies grid cells along the routed path.",
       "Pushes one undo history stroke.",
       "Invalidates derived overlay caches."
-    ]
-    ,
+    ],
     parameters: [
-      { name: "<c>", description: "Path waypoint column" },
-      { name: "<r>", description: "Path waypoint row" },
-      { name: "[enumW]", description: "Optional enumerator for line wire: **SINGLE**|FAT|DOUBLE" },
-      { name: "[enumR]", description: "Optional enumerator for line routing algorithm: **ORTHO**|MIKAMI|DIJKSTRA|ASTAR" },
-      { name: "[processor]", description: "Optional enumerator for processing target: **CPU**|GPU" },
-      { name: "[lineC]", description: "Optional flag enabling line continuation: **true**|false" }
-    ]
-    ,
+      { name: "path", description: "Ordered list of waypoints. At least two points are required." },
+      { name: "<c>", description: "Path waypoint column." },
+      { name: "<r>", description: "Path waypoint row." },
+      { name: "[enumW]", description: "Optional line wire family: **SINGLE**|FAT|DOUBLE." },
+      { name: "[enumR]", description: "Optional routing algorithm: **ORTHO**|MIKAMI|DIJKSTRA|ASTAR." },
+      { name: "[processor]", description: "Optional routing target: **CPU**|GPU." },
+      { name: "[lineC]", description: "Optional flag enabling line continuation: **true**|false." }
+    ],
     remarks: [
-      "Only MIKAMI & DIJKSTRA have a GPU implementation.",
+      "Waypoints may be supplied as [c,r] tuples or as objects with {c,r} fields.",
+      "Only MIKAMI and DIJKSTRA have a GPU implementation.",
       "When line continuation is switched off, the first drawn wire glyph is not merged but supraposed with any pre-existing wire glyph in this cell."
-    ]
-        /*
-    ,
+    ],
     examples: [
       "line({path:[[0,0],[5,6]], wire:SINGLE})",
       "line({path:[[0,0],[5,6],[2,2]], wire:FAT, router:MIKAMI, target:GPU})",
       "line({path:[[0,0],[10,0],[10,5]], wire:DOUBLE, router:DIJKSTRA, target:CPU})"
-    ]
-    */
-    ,
+    ],
     unitTests: [
      "oASC.clear();",
      "oASC.line({path:[[0,0],[1,1]]});",
@@ -3049,12 +3210,42 @@ this.mikamiPath = function(from, to, modifiers)
     }
     this.pushStrokeIfNonEmpty(this._currentStroke);   // commit undo buffer 
   }
+
   this.box.help = 
   {
-    type: "CADScript_Fn",
-    syntax: "box(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>,<i>style</i>)",
-    summary: "Draw a box in line style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE",
-    examples:  ["oASC.box(1,0,3,2,BOX_SINGLE)","oASC.box(1,0,3,2,BOX_FAT)","oASC.box(1,0,3,2,BOX_DOUBLE)"],
+    type: "CADScript_FN",
+    syntax: "box(<c0>,<r0>,<c1>,<r1>,{kind:[boxStyle]})",
+    summary: "Draw a box using BOX_SINGLE, BOX_FAT, or BOX_DOUBLE contours.",
+    returns: {
+      type: "void",
+      description: "No JS value is returned."
+    },
+    output: {
+      channel: "canvas",
+      format: "ASCII grid",
+      description: "The requested box outline is drawn onto the grid."
+    },
+    effects: [
+      "Modifies grid cells along the box outline.",
+      "Pushes one undo history stroke if at least one cell changes.",
+      "Invalidates derived board caches through the history path."
+    ],
+    parameters: [
+      { name: "<c0>", description: "First corner column." },
+      { name: "<r0>", description: "First corner row." },
+      { name: "<c1>", description: "Opposite corner column." },
+      { name: "<r1>", description: "Opposite corner row." },
+      { name: "{kind:[boxStyle]}", description: "Style object selecting BOX_SINGLE, BOX_FAT, or BOX_DOUBLE." }
+    ],
+    remarks: [
+      "Corner cells overwrite edge cells during path deduplication.",
+      "Degenerate one-cell boxes still place a visible corner glyph."
+    ],
+    examples:  [
+      "oASC.box(1,0,3,2,{kind:BOX_SINGLE})",
+      "oASC.box(1,0,3,2,{kind:BOX_FAT})",
+      "oASC.box(1,0,3,2,{kind:BOX_DOUBLE})"
+    ],
     unitTests: [
      "oASC.box(0,0,2,2,{kind:BOX_SINGLE});oASC.box(3,0,5,2,{kind:BOX_FAT});oASC.box(6,0,8,2,{kind:BOX_DOUBLE});",
      "oASC.assert('box',oASC.getCell(0,0,9,E),'┌─┐┏━┓╔═╗');",
@@ -3081,7 +3272,24 @@ this.mikamiPath = function(from, to, modifiers)
   {
     type: "CADScript_CMD",
     syntax: "clear()",
-    summary: "Clears the grid and pushes a single undo stroke.",
+    summary: "Clear the grid and push a single undo stroke.",
+    returns: {
+      type: "void",
+      description: "No JS value is returned."
+    },
+    output: {
+      channel: "canvas",
+      format: "ASCII grid",
+      description: "All non-space cells are cleared from the grid."
+    },
+    effects: [
+      "Replaces all non-space grid cells with spaces.",
+      "Pushes one undo history stroke if at least one cell changes.",
+      "Invalidates derived board caches through the history path."
+    ],
+    remarks: [
+      "Only cells that actually change are recorded in the undo stroke."
+    ],
     examples: ["oASC.clear()"]
   }
 
@@ -3172,9 +3380,32 @@ this.mikamiPath = function(from, to, modifiers)
   this.blank.help = 
   {
     type: "CADScript_FN",
-    syntax: "blank(<i>c0</i>,<i>r0</i>,<i>c1</i>,<i>r1</i>)",
-    summary: "",
-    examples: ["oASC.blank()"]
+    syntax: "blank(<c0>,<r0>,<c1>,<r1>)",
+    summary: "Blank a rectangular region by replacing its cells with spaces.",
+    returns: {
+      type: "void",
+      description: "No JS value is returned."
+    },
+    output: {
+      channel: "canvas",
+      format: "ASCII grid",
+      description: "The selected rectangular region is cleared on the grid."
+    },
+    effects: [
+      "Clears all non-space cells inside the rectangle.",
+      "Pushes one undo history stroke if at least one cell changes.",
+      "Invalidates derived board caches through the history path."
+    ],
+    parameters: [
+      { name: "<c0>", description: "First rectangle column." },
+      { name: "<r0>", description: "First rectangle row." },
+      { name: "<c1>", description: "Opposite rectangle column." },
+      { name: "<r1>", description: "Opposite rectangle row." }
+    ],
+    remarks: [
+      "Coordinates are treated as the rectangle bounds forwarded to applyBlankRect()."
+    ],
+    examples: ["oASC.blank(1,1,3,2)"]
   }
 
   this.applyBlankRect = function(rect)
@@ -3202,8 +3433,23 @@ this.mikamiPath = function(from, to, modifiers)
   // or: return this.glyphMask(ch) !== 0;
   this.isWireGlyph.help = {
     type: "CADScript_FN",
-    syntax: "isWireGlyph(<i>ch</i>)",
+    syntax: "isWireGlyph(<ch>)",
     summary: "True if ch is a known wire glyph in the glyph mask table.",
+    returns: {
+      type: "boolean",
+      description: "true when the glyph exists in the wire lookup table and is not a space."
+    },
+    output: {
+      channel: "none",
+      description: "Does not print or draw anything."
+    },
+    effects: [],
+    parameters: [
+      { name: "<ch>", description: "Character to test." }
+    ],
+    remarks: [
+      "This helper checks membership in the glyph mask table rather than general text renderability."
+    ],
     examples: ["oTERM.printJSON(isWireGlyph('┼'))", "oTERM.printJSON(isWireGlyph('A'))"]
   }
 
@@ -3826,8 +4072,25 @@ this.startPasteWithText = function(text)
   this.qryLocate.help =
   {
     type: "CADScript_FN",
-    syntax: "qryLocate({<i>key</i>:<i>regexp</i>})",
-    summary: "Locate matching catalog components and BOX rectangles with regular expressions; returns bounding rectangles with tl/br coordinates.",
+    syntax: "qryLocate({<key>:<regexp>})",
+    summary: "Locate matching catalog components, BOX rectangles, and labels with regular expressions; returns bounding rectangles with tl/br coordinates.",
+    returns: {
+      type: "Array<object>",
+      description: "Array of hits containing ref/type/name metadata together with tl/br coordinates."
+    },
+    output: {
+      channel: "none",
+      description: "Does not print or draw anything unless the caller prints the returned array."
+    },
+    effects: [],
+    parameters: [
+      { name: "<key>", description: "One of ref, type, name, or MFR." },
+      { name: "<regexp>", description: "Regular-expression text matched against the selected field." }
+    ],
+    remarks: [
+      "BOX and LABEL queries target definition hits, while other type filters target catalog items.",
+      "Returned objects use tl and br coordinate objects rather than flattened r0/c0/r1/c1 fields."
+    ],
     examples: [
       "oASC.qryLocate({ref:'CAT.+'})",
       "oASC.qryLocate({type:'BOX'})",
@@ -4304,7 +4567,21 @@ this.startPasteWithText = function(text)
   {
     type: "CADScript_FN",
     syntax: "computeNetlist()",
-    summary: "Compute netlist including Line Ends (LE) and Component Ends (CE)",
+    summary: "Compute the current netlist including line ends (LE), line junctions (LJ), and component ends (CE).",
+    returns: {
+      type: "Array<object>",
+      description: "Array of net objects, each containing LE, LJ, and CE arrays with {c,r} coordinates."
+    },
+    output: {
+      channel: "none",
+      description: "Does not print or draw anything unless the caller prints the returned netlist."
+    },
+    effects: [],
+    remarks: [
+      "Valid double-box boundaries and interiors are excluded from the extracted wire graph.",
+      "Matched catalog footprints are excluded through the banned-set logic.",
+      "Nets may be logically merged when connected through catalog items of type Net."
+    ],
     examples: [
       "oTERM.printJSON(oASC.computeNetlist())"
     ],
@@ -4360,20 +4637,20 @@ this.startPasteWithText = function(text)
   {
     type: "Tool",
     syntax: "printNetlist()",
-    summary: "Extract connected wire lines (endpoints + junctions), excluding valid double-box boundaries/interiors.",
-
+    summary: "Compute and print the current netlist as formatted JSON.",
     returns: {
       type: "void",
-      //description: "No JS value is returned."
+      description: "No JS value is returned."
     },
-
     output: {
       channel: "terminal",
       format: "formatted JSON",
       description: "Prints the extracted netlist to the terminal using oTERM.output()."
     },
-
     effects: [],
+    remarks: [
+      "Uses computeNetlist() as its data source and pretty-prints the result for terminal display."
+    ],
     examples: ["oASC.printNetlist()"]
   };
 
@@ -4810,10 +5087,31 @@ this.startPasteWithText = function(text)
     return best;
   }
 
-  this.getLabel.help = {
+  this.getLabel.help = 
+  {
     type: "CADScript_FN",
-    syntax: "getLabel(c,r,<i>env_retval</i>)",
-    summary: "Find nearest label near (c,r). Returns {c:<originCol>, r:<row>, str:<labelString>} and optionally stores it into oASC.env[env_retval].",
+    syntax: "getLabel(<c>,<r>,[env_retval])",
+    summary: "Find the nearest label near (c,r). Returns {c:<originCol>, r:<row>, str:<labelString>} and optionally stores it into oASC.env[env_retval].",
+    returns: {
+      type: "object|null",
+      description: "Nearest label object, or null when no label can be found."
+    },
+    output: {
+      channel: "none",
+      description: "Does not print or draw anything unless the caller prints the returned object."
+    },
+    effects: [
+      "Optionally stores the returned label object in oASC.env[env_retval]."
+    ],
+    parameters: [
+      { name: "<c>", description: "Search origin column." },
+      { name: "<r>", description: "Search origin row." },
+      { name: "[env_retval]", description: "Optional environment variable name that receives the returned object." }
+    ],
+    remarks: [
+      "Search expands ring by ring around the origin and prefers the nearest label origin by Euclidean distance.",
+      "The label character policy includes the wildcard character used for catalog text."
+    ],
     examples: [
       "oTERM.printJSON(getLabel(10,5,'ret'))",
       "oTERM.printJSON(oASC.env.ret)"
@@ -4854,10 +5152,33 @@ this.startPasteWithText = function(text)
     }
   }
 
-  this.setLabel.help = {
+  this.setLabel.help = 
+  {
     type: "CADScript_FN",
-    syntax: "setLabel(c,r,<i>label_str</i>)",
-    summary: "Write label_str at (c,r). If an old label exists starting at (c,r) and is longer, clears the remainder with spaces.",
+    syntax: "setLabel(<c>,<r>,<label_str>)",
+    summary: "Write label_str at (c,r). If an old label exists starting at (c,r) and is longer, clear the remainder with spaces.",
+    returns: {
+      type: "void",
+      description: "No JS value is returned."
+    },
+    output: {
+      channel: "canvas",
+      format: "ASCII grid",
+      description: "The label text is written onto the grid."
+    },
+    effects: [
+      "Writes the label on the grid at (c,r).",
+      "Clears leftover characters when the previous label at that origin was longer.",
+      "Pushes undo history through the underlying cell() calls."
+    ],
+    parameters: [
+      { name: "<c>", description: "Label start column." },
+      { name: "<r>", description: "Label row." },
+      { name: "<label_str>", description: "Single-line label text to write." }
+    ],
+    remarks: [
+      "Label replacement is row-local and uses the same label-character policy as getLabel()."
+    ],
     examples: [
       "setLabel(5,3,'Net_1')",
       "oTERM.printJSON(getLabel(5,3,'ret'))"
