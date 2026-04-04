@@ -160,10 +160,16 @@ function sanityHelpMeta(objName, obj)
       return;
     }
 
-    if (typeof h.usage !== "string" || !h.usage.length) {
-      console.error(`[SANITY] ${objName}.${name} missing help.usage`, h);
+    const hasUsage =
+      (typeof h.usage === "string" && h.usage.length > 0) ||
+      (typeof h.syntax === "string" && h.syntax.length > 0) ||
+      (Array.isArray(h.syntax) && h.syntax.length > 0);
+
+    if (!hasUsage) {
+      console.error(`[SANITY] ${objName}.${name} missing help.usage/help.syntax`, h);
       return;
     }
+
   });
 
   return fns;
@@ -190,19 +196,19 @@ function HlineSEQ(o)
   var co;
   o.rc++; co = 1;
 
-  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],kind:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
-  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],kind:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
-  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],kind:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
-  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],kind:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
-  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],kind:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],wire:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],wire:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],wire:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],wire:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co,o.rc],[o.cc+co+2,o.rc]],wire:o.lkind}); oASC.cell(o.cc+4,o.rc,"▶"); o.rc++; co--;
 
   o.rc++; co = 1; 
 
-  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],kind:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
-  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],kind:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
-  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],kind:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
-  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],kind:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
-  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],kind:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],wire:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],wire:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],wire:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],wire:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
+  oASC.line({path:[[o.cc+co+2,o.rc],[o.cc+co,o.rc]],wire:o.lkind}); oASC.cell(o.cc-4,o.rc,"◀"); o.rc++; co--;
   return o.rc;
 }
 
@@ -211,19 +217,19 @@ function VlineSEQ(o)
   var co;
   o.rc++; co = 1;
 
-  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],wire:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],wire:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],wire:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],wire:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co],[o.rc,o.cc+co+2]],wire:o.lkind,cont:false}); oASC.cell(o.rc,o.cc+4,"▼"); o.rc++; co--;
 
   o.rc++; co = 1; 
 
-  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
-  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],kind:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],wire:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],wire:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],wire:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],wire:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
+  oASC.line({path:[[o.rc,o.cc+co+2],[o.rc,o.cc+co]],wire:o.lkind,cont:false}); oASC.cell(o.rc,o.cc-4,"▲"); o.rc++; co--;
  
   return o.rc;
 }
@@ -290,19 +296,19 @@ function runWorkerThreadSmokeTests()
         // TEST HORIZONTAL LINE CROSSINGS
         var rc = 0, cc = 4;
         
-        oASC.line({path:[[cc,rc],[cc,rc+35]],kind:oASC.SINGLE});
+        oASC.line({path:[[cc,rc],[cc,rc+35]],wire:oASC.SINGLE});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.SINGLE});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.FAT});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.DOUBLE});
 
         var rc = 0, cc = 14;
-        oASC.line({path:[[cc,rc],[cc,rc+35]],kind:oASC.FAT});
+        oASC.line({path:[[cc,rc],[cc,rc+35]],wire:oASC.FAT});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.SINGLE});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.FAT});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.DOUBLE});
 
         var rc = 0, cc = 24;
-        oASC.line({path:[[cc,rc],[cc,rc+35]],kind:oASC.DOUBLE});
+        oASC.line({path:[[cc,rc],[cc,rc+35]],wire:oASC.DOUBLE});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.SINGLE});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.FAT});
         rc = HlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.DOUBLE});
@@ -364,19 +370,19 @@ function runWorkerThreadSmokeTests()
         // TEST VERTICAL LINE CROSSINGS
 
         var rc = 0, cc = 4;
-        oASC.line({path:[[rc,cc],[rc+35,cc]],kind:oASC.SINGLE});
+        oASC.line({path:[[rc,cc],[rc+35,cc]],wire:oASC.SINGLE});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.SINGLE});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.FAT});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.DOUBLE});
 
         var rc = 0, cc = 14;
-         oASC.line({path:[[rc,cc],[rc+35,cc]],kind:oASC.FAT});
+         oASC.line({path:[[rc,cc],[rc+35,cc]],wire:oASC.FAT});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.SINGLE});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.FAT});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.DOUBLE});
          
         var rc = 0, cc = 24;
-        oASC.line({path:[[rc,cc],[rc+35,cc]],kind:oASC.DOUBLE});
+        oASC.line({path:[[rc,cc],[rc+35,cc]],wire:oASC.DOUBLE});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.SINGLE});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.FAT});
         rc = VlineSEQ({"cc":cc,"rc":rc,"lkind":oASC.DOUBLE});

@@ -1671,25 +1671,25 @@ function ASC()
   {
     type: "CADScript_FN",
     syntax: "line({path:[[<c>,<r>],[<c>,<r>],...], wire:[enumW], router:[enumR], target:[processor], cont:[lineC]})",
-    summary: "Draw a polyline through multiple waypoints. Path tuples use [c,r] order, requiring minimum 2 tuples.",
-
+    summary: "Draw a polyline through multiple waypoints. Path tuples use [c,r] order, requiring minimum 2 tuples."
+    ,
     returns: {
       type: "void",
       description: "No JS value is returned."
-    },
-
+    }
+    ,
     output: {
       channel: "canvas",
       format: "ASCII grid",
       description: "The resulting line is drawn onto the grid."
-    },
-
+    }
+    ,
     effects: [
       "Modifies grid cells along the routed path.",
       "Pushes one undo history stroke.",
       "Invalidates derived overlay caches."
-    ],
-
+    ]
+    ,
     parameters: [
       { name: "<c>", description: "Path waypoint column" },
       { name: "<r>", description: "Path waypoint row" },
@@ -1697,18 +1697,19 @@ function ASC()
       { name: "[enumR]", description: "Optional enumerator for line routing algorithm: **ORTHO**|MIKAMI|DIJKSTRA|ASTAR" },
       { name: "[processor]", description: "Optional enumerator for processing target: **CPU**|GPU" },
       { name: "[lineC]", description: "Optional flag enabling line continuation: **true**|false" }
-    ],
-
+    ]
+    ,
     remarks: [
       "Only MIKAMI & DIJKSTRA have a GPU implementation.",
       "When line continuation is switched off, the first drawn wire glyph is not merged but supraposed with any pre-existing wire glyph in this cell."
-    ],
-
+    ]
+    ,
     examples: [
       "line({path:[[0,0],[5,6]], wire:SINGLE})",
       "line({path:[[0,0],[5,6],[2,2]], wire:FAT, router:MIKAMI, target:GPU})",
       "line({path:[[0,0],[10,0],[10,5]], wire:DOUBLE, router:DIJKSTRA, target:CPU})"
-    ],
+    ]
+    ,
     unitTests: [
      "oASC.clear();",
      "oASC.line({path:[[0,0],[1,1]]});",
