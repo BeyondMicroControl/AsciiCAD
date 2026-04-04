@@ -1029,22 +1029,19 @@ function ASC()
 
   // subsection: lines
 
-  this.beginLine = function(cell,modifiers) 
+  this.beginLine = function(cell,modifiers)
   {
     if (!cell) return;
-    if(bDebug) console.log("beginLine()");
 
-    // hide selection box when starting a line tool action
     selection = null; selectDrag = null; moveDrag = null;
-    lineDrag = 
+    lineDrag =
     {
-      kind: modifiers.kind,         // TODO: use modifiers below instead and remove this one
-      flip: !shiftDown,             // Shift held => flip orthogonal direction (against dominant direction)
-      merge: !oDown,                // 'o' held => override (no merge)
-      modifiers: modifiers,         // routing is opt-in; keep legacy orthogonal preview by default
+      flip: !shiftDown,
+      merge: !oDown,
+      modifiers: modifiers,
       start: { r: cell.r, c: cell.c },
       cur:   { r: cell.r, c: cell.c }
-    }
+    };
 
     this.draw("beginLine");
   }
@@ -1092,22 +1089,20 @@ function ASC()
   {
     var start_vleg = modifiers.startVertical === undefined ? !!modifiers.flip : modifiers.startVertical;
 
-    console.log("this.buildOrthogonalPath("+start+","+end+","+JSON.stringify(modifiers)+")");
-
     var watchMatrix = this.getCell(start.c,start.r,2);
     var vector = {"c":end.c-start.c,"r":end.r-start.r};
     var bInv = this.dominantDir(watchMatrix,vector);
     if(bInv) start_vleg = !start_vleg;
-    
-    var cornerChar = function(r0, c0, r1, c1, v_leg, chset)          // private helper for buildOrthogonalPath
+
+    var cornerChar = function(r0, c0, r1, c1, v_leg, chset)
     {
-      if ( (c1 > c0) &&  (r1 > r0)) return v_leg?chset.bl:chset.tr;  // left + down  | up + right
-      if ( (c1 > c0) && !(r1 > r0)) return v_leg?chset.tl:chset.br;  // left + up    | up + left
-      if (!(c1 > c0) &&  (r1 > r0)) return v_leg?chset.br:chset.tl;  // right + down | down + right
-      return v_leg?chset.tr:chset.bl;                                // right + up   | down + left
+      if ( (c1 > c0) &&  (r1 > r0)) return v_leg?chset.bl:chset.tr;
+      if ( (c1 > c0) && !(r1 > r0)) return v_leg?chset.tl:chset.br;
+      if (!(c1 > c0) &&  (r1 > r0)) return v_leg?chset.br:chset.tl;
+      return v_leg?chset.tr:chset.bl;
     }
 
-    var chset = modifiers.kind;
+    var chset = modifiers.wire;
     const r0  = start.r, c0 = start.c;
     const r1  = end.r, c1 = end.c;
     const out = [];
@@ -1394,7 +1389,7 @@ function ASC()
 
     let modifiers = lineArg.modifiers || {};
     if (typeof modifiers !== "object") modifiers = { flip: !!modifiers };
-    if (modifiers.kind === undefined) modifiers.kind = this.BOX_SINGLE;
+    if (modifiers.wire === undefined) modifiers.wire = this.BOX_SINGLE;
 
     const merge   = modifiers.merge === undefined ? true : modifiers.merge;
     const rawPath = await this.buildLinePathAsync(from, to, modifiers);
@@ -1530,7 +1525,7 @@ function ASC()
     const existingMask = this.connectedMaskAtCell16(p0.r, p0.c, m16);
     if (!existingMask) return path;
 
-    const newMask = this.lineKindMaskForDir(dirOut, modifiers?.kind || this.BOX_SINGLE);
+    const newMask = this.lineKindMaskForDir(dirOut, modifiers?.wire || this.BOX_SINGLE);
     const merged = (existingMask | newMask) & 0xFF;
     const ch = this.mask2glyph(merged);
 
@@ -1600,7 +1595,7 @@ function ASC()
     return {
       points,
       modifiers: {
-        kind: this.resolveLineKind(s.kind),
+        wire: this.resolveLineKind(s.wire),
         route: router.route,
         routeMethod: router.routeMethod,
         routeImpl: this.resolveLineTarget(s.target),
@@ -1609,7 +1604,6 @@ function ASC()
         flip: !!s.flip,
         cont: s.cont === undefined ? true : !!s.cont,
 
-        // future-facing, already accepted by current routers
         leastCorners: !!s.leastCorners,
         leastBridges: !!s.leastBridges
       }
@@ -1676,7 +1670,7 @@ function ASC()
   this.line.help =
   {
     type: "CADScript_FN",
-    syntax: "line({path:[[<c>,<r>],[<c>,<r>],...], kind:[enumK], router:[enumR], target:[processor], cont:[lineC]})",
+    syntax: "line({path:[[<c>,<r>],[<c>,<r>],...], wire:[enumW], router:[enumR], target:[processor], cont:[lineC]})",
     summary: "Draw a polyline through multiple waypoints. Path tuples use [c,r] order, requiring minimum 2 tuples.",
 
     returns: {
@@ -1699,7 +1693,7 @@ function ASC()
     parameters: [
       { name: "<c>", description: "Path waypoint column" },
       { name: "<r>", description: "Path waypoint row" },
-      { name: "[enumK]", description: "Optional enumerator for line wire: **SINGLE**|FAT|DOUBLE" },
+      { name: "[enumW]", description: "Optional enumerator for line wire: **SINGLE**|FAT|DOUBLE" },
       { name: "[enumR]", description: "Optional enumerator for line routing algorithm: **ORTHO**|MIKAMI|DIJKSTRA|ASTAR" },
       { name: "[processor]", description: "Optional enumerator for processing target: **CPU**|GPU" },
       { name: "[lineC]", description: "Optional flag enabling line continuation: **true**|false" }
@@ -1711,9 +1705,9 @@ function ASC()
     ],
 
     examples: [
-      "line({path:[[0,0],[5,6]], kind:SINGLE})",
-      "line({path:[[0,0],[5,6],[2,2]], kind:FAT, router:MIKAMI, target:GPU})",
-      "line({path:[[0,0],[10,0],[10,5]], kind:DOUBLE, router:DIJKSTRA, target:CPU})"
+      "line({path:[[0,0],[5,6]], wire:SINGLE})",
+      "line({path:[[0,0],[5,6],[2,2]], wire:FAT, router:MIKAMI, target:GPU})",
+      "line({path:[[0,0],[10,0],[10,5]], wire:DOUBLE, router:DIJKSTRA, target:CPU})"
     ],
     unitTests: [
      "oASC.clear();",
@@ -2139,7 +2133,7 @@ this.routeExpandWaypointStates = function(states)
 
   this.routeStatesToPath = function(states, modifiers)
   {
-    const chset = modifiers.kind;
+    const chset = modifiers.wire;
     const out = [];
 
     if (!states || states.length <= 1) return out;
