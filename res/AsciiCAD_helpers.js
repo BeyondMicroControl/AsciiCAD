@@ -1666,7 +1666,7 @@ function ASC()
   this.line.help =
   {
     type: "CADScript_FN",
-    syntax: "line({path:[[<c>,<r>],[<c>,<r>],...], wire:[enumW], router:[enumR], target:[processor], cont:[lineC]})",
+    syntax: "line({path:[[<c>,<r>], [<c>,<r>],...], wire:[enumW], router:[enumR], target:[processor], cont:[lineC]})",
     summary: "Draw a polyline through multiple waypoints. Path tuples use [c,r] order, requiring minimum 2 tuples."
     ,
     returns: {
@@ -1699,12 +1699,14 @@ function ASC()
       "Only MIKAMI & DIJKSTRA have a GPU implementation.",
       "When line continuation is switched off, the first drawn wire glyph is not merged but supraposed with any pre-existing wire glyph in this cell."
     ]
+        /*
     ,
     examples: [
       "line({path:[[0,0],[5,6]], wire:SINGLE})",
       "line({path:[[0,0],[5,6],[2,2]], wire:FAT, router:MIKAMI, target:GPU})",
       "line({path:[[0,0],[10,0],[10,5]], wire:DOUBLE, router:DIJKSTRA, target:CPU})"
     ]
+    */
     ,
     unitTests: [
      "oASC.clear();",
