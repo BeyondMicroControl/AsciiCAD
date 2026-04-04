@@ -432,7 +432,6 @@ oASC.blank(1,1,3,2)
 ## Returns
 
 - Type: `void`
-- No JS value is returned.
 
 ## Output
 
@@ -488,7 +487,6 @@ oASC.box(1,0,3,2,{kind:BOX_DOUBLE})
 ## Returns
 
 - Type: `void`
-- No JS value is returned.
 
 ## Output
 
@@ -580,7 +578,6 @@ oASC.cat(0,0,0,"ATTinyX12_MCU_ATTINY412")
 ## Returns
 
 - Type: `void`
-- No JS value is returned.
 
 ## Output
 
@@ -628,7 +625,6 @@ oASC.cell(0,0,"ABC\nDEF\nGHI")
 ## Returns
 
 - Type: `void`
-- No JS value is returned.
 
 ## Output
 
@@ -667,7 +663,6 @@ oASC.clear()
 ## Returns
 
 - Type: `void`
-- No JS value is returned.
 
 ## Output
 
@@ -984,7 +979,6 @@ line({path:[[0,0],[10,0],[10,5]], wire:DOUBLE, router:DIJKSTRA, target:CPU})
 ## Returns
 
 - Type: `void`
-- No JS value is returned.
 
 ## Output
 
@@ -1090,7 +1084,6 @@ oASC.printCat()
 ## Returns
 
 - Type: `void`
-- No JS value is returned.
 
 ## Output
 
@@ -1123,7 +1116,6 @@ oASC.printNetlist()
 ## Returns
 
 - Type: `void`
-- No JS value is returned.
 
 ## Output
 
@@ -1260,7 +1252,6 @@ oTERM.printJSON(getLabel(5,3,'ret'))
 ## Returns
 
 - Type: `void`
-- No JS value is returned.
 
 ## Output
 
@@ -1274,11 +1265,9 @@ oTERM.printJSON(getLabel(5,3,'ret'))
 - Clears leftover characters when the previous label at that origin was longer.
 - Pushes undo history through the underlying cell() calls.
 
-
-
 ---
 
-## Reference
+## Other references
 
 - Project overview and features: see the project README.
 - Design decisions and rationale: see <a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/docs/decisions.md">`docs/decisions.md`</a>.
