@@ -3154,7 +3154,7 @@ function ASC()
   this.line.help =
   {
     type: "CADScript_FN",
-    syntax: "line({path:[[<c>,<r>],[<c>,<r>],...], wire:[enumW], router:[enumR], target:[processor], cont:[lineC]})",
+    syntax: "line({path:[[<c>,<r>], [<c>,<r>],...], wire:[enumW], router:[enumR], target:[processor], cont:[lineC]})",
     summary: "Draw a polyline through multiple waypoints. Path tuples use [c,r] order, requiring minimum 2 tuples."
     ,
     returns: {
@@ -3187,12 +3187,14 @@ function ASC()
       "Only MIKAMI & DIJKSTRA have a GPU implementation.",
       "When line continuation is switched off, the first drawn wire glyph is not merged but supraposed with any pre-existing wire glyph in this cell."
     ]
+        /*
     ,
     examples: [
       "line({path:[[0,0],[5,6]], wire:SINGLE})",
       "line({path:[[0,0],[5,6],[2,2]], wire:FAT, router:MIKAMI, target:GPU})",
       "line({path:[[0,0],[10,0],[10,5]], wire:DOUBLE, router:DIJKSTRA, target:CPU})"
     ]
+    */
     ,
     unitTests: [
      "oASC.clear();",
@@ -14056,8 +14058,22 @@ function __cliHandleTerminal(line,ctx)
           else
           {
             list.push("<u>" + name + " token details:</u>");
+
+            // TODO: refactor quick & dirty solution
             var vobj = {};
-            for(var i in obj) vobj[i] = obj[i]?.syntax?.replace(/, /g,",\n");
+            for(var i in obj) 
+            {
+              vobj[i] = obj[i];
+              if(typeof(vobj[i]?.help?.syntax)=="string")
+                  vobj[i].help.syntax = vobj[i].help.syntax.replace(/, /g,",\n");
+              if(typeof(vobj[i]?.help?.examples)=="array")
+              {
+                for(var j in vobj[i].help.examples)
+                  vobj[i].help.examples[j] = vobj[i].help.examples[j].replace(/, /g,",\n");
+              }
+                  
+
+            }
 
             var tokenlist = [["SYNTAX","EXAMPLES"]]
               .concat(oCOM.JShelpCollector(vobj, {"sort":true,"filter":["syntax","examples"]}));

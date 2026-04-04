@@ -402,53 +402,127 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 
 # blank()
 
+Blank a rectangular region by replacing its cells with spaces.
+
 ## Syntax
 
 ```txt
-blank(c0,r0,c1,r1)
+blank(<c0>,<r0>,<c1>,<r1>)
 ```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<c0\> | First rectangle column. |
+| \<r0\> | First rectangle row. |
+| \<c1\> | Opposite rectangle column. |
+| \<r1\> | Opposite rectangle row. |
+
+## Remarks
+
+- Coordinates are treated as the rectangle bounds forwarded to applyBlankRect().
 
 ## Examples
 
 ```txt
-oASC.blank()
+oASC.blank(1,1,3,2)
 ```
+
+## Returns
+
+- Type: `void`
+- No JS value is returned.
+
+## Output
+
+- Channel: `canvas`
+- Format: `ASCII grid`
+- The selected rectangular region is cleared on the grid.
+
+## Effects
+
+- Clears all non-space cells inside the rectangle.
+- Pushes one undo history stroke if at least one cell changes.
+- Invalidates derived board caches through the history path.
 
 ---
 
 # box()
 
-Draw a box in line style BOX_DOUBLE|BOX_FAT|BOX_DOUBLE
+Draw a box using BOX_SINGLE, BOX_FAT, or BOX_DOUBLE contours.
 
 ## Syntax
 
 ```txt
-box(c0,r0,c1,r1,style)
+box(<c0>,<r0>,<c1>,<r1>,{kind:[boxStyle]})
 ```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<c0\> | First corner column. |
+| \<r0\> | First corner row. |
+| \<c1\> | Opposite corner column. |
+| \<r1\> | Opposite corner row. |
+| {kind:[boxStyle]} | Style object selecting BOX_SINGLE, BOX_FAT, or BOX_DOUBLE. |
+
+## Remarks
+
+- Corner cells overwrite edge cells during path deduplication.
+- Degenerate one-cell boxes still place a visible corner glyph.
 
 ## Examples
 
 ```txt
-oASC.box(1,0,3,2,BOX_SINGLE)
+oASC.box(1,0,3,2,{kind:BOX_SINGLE})
 ```
 ```txt
-oASC.box(1,0,3,2,BOX_FAT)
+oASC.box(1,0,3,2,{kind:BOX_FAT})
 ```
 ```txt
-oASC.box(1,0,3,2,BOX_DOUBLE)
+oASC.box(1,0,3,2,{kind:BOX_DOUBLE})
 ```
+
+## Returns
+
+- Type: `void`
+- No JS value is returned.
+
+## Output
+
+- Channel: `canvas`
+- Format: `ASCII grid`
+- The requested box outline is drawn onto the grid.
+
+## Effects
+
+- Modifies grid cells along the box outline.
+- Pushes one undo history stroke if at least one cell changes.
+- Invalidates derived board caches through the history path.
 
 ---
 
 # CADScript()
 
-Run a CADScript expression
+Run a CADScript expression.
 
 ## Syntax
 
 ```txt
-CADScript {expression}
+CADScript {<expression>}
 ```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<expression\> | CADScript expression block to execute. |
+
+## Remarks
+
+- Use this command wrapper when entering CADScript directly from the terminal command line.
 
 ## Examples
 
@@ -456,15 +530,46 @@ CADScript {expression}
 CADScript {clear();stack("undo")}
 ```
 
+## Returns
+
+- Type: `void`
+- No direct JS value is returned to the terminal command line.
+
+## Output
+
+- Channel: `depends`
+- Format: `depends`
+- Any visible output depends on the invoked expression, for example terminal text or grid changes.
+
+## Effects
+
+- Evaluates the supplied expression in the AsciiCAD command scope.
+- May mutate the grid, session environment, history, or terminal depending on the expression.
+
 ---
 
 # cat()
 
+Place a catalog item at top-left cell (c,r) using the selected rotation variant.
+
 ## Syntax
 
 ```txt
-cat(c,r,angle,uid)
+cat(<c>,<r>,<angle>,<uid>)
 ```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<c\> | Top-left placement column. |
+| \<r\> | Top-left placement row. |
+| \<angle\> | Rotation variant index to use from the item's text_data. |
+| \<uid\> | Catalog item UID, typically name_type_MFR. |
+
+## Remarks
+
+- The scripted placement path forces the requested cell to be the top-left anchor of the pasted block.
 
 ## Examples
 
@@ -472,15 +577,47 @@ cat(c,r,angle,uid)
 oASC.cat(0,0,0,"ATTinyX12_MCU_ATTINY412")
 ```
 
+## Returns
+
+- Type: `void`
+- No JS value is returned.
+
+## Output
+
+- Channel: `canvas`
+- Format: `ASCII grid`
+- The selected catalog item is placed onto the grid.
+
+## Effects
+
+- Looks up the catalog item by UID.
+- Expands wide characters and replaces wildcard placeholders with spaces for placement.
+- Commits the catalog footprint to the grid and pushes one undo history stroke.
+
 ---
 
 # cell()
 
+Write text starting at (c,r). Newlines advance to the next row.
+
 ## Syntax
 
 ```txt
-cell(c,r,string)
+cell(<c>,<r>,<string>)
 ```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<c\> | Start column for the text write. |
+| \<r\> | Start row for the text write. |
+| \<string\> | Text to write. Newline characters advance to the next row. |
+
+## Remarks
+
+- Writing is clipped at the right grid edge.
+- Positions outside the grid bounds raise an error before writing begins.
 
 ## Examples
 
@@ -488,11 +625,28 @@ cell(c,r,string)
 oASC.cell(0,0,"ABC\nDEF\nGHI")
 ```
 
+## Returns
+
+- Type: `void`
+- No JS value is returned.
+
+## Output
+
+- Channel: `canvas`
+- Format: `ASCII grid`
+- The provided text is written onto the grid.
+
+## Effects
+
+- Modifies addressed grid cells.
+- Pushes one undo history stroke if at least one cell changes.
+- Invalidates derived board caches through the history path.
+
 ---
 
 # clear()
 
-Clears the grid and pushes a single undo stroke.
+Clear the grid and push a single undo stroke.
 
 ## Syntax
 
@@ -500,17 +654,38 @@ Clears the grid and pushes a single undo stroke.
 clear()
 ```
 
+## Remarks
+
+- Only cells that actually change are recorded in the undo stroke.
+
 ## Examples
 
 ```txt
 oASC.clear()
 ```
 
+## Returns
+
+- Type: `void`
+- No JS value is returned.
+
+## Output
+
+- Channel: `canvas`
+- Format: `ASCII grid`
+- All non-space cells are cleared from the grid.
+
+## Effects
+
+- Replaces all non-space grid cells with spaces.
+- Pushes one undo history stroke if at least one cell changes.
+- Invalidates derived board caches through the history path.
+
 ---
 
 # computeNetlist()
 
-Compute netlist including Line Ends (LE) and Component Ends (CE)
+Compute the current netlist including line ends (LE), line junctions (LJ), and component ends (CE).
 
 ## Syntax
 
@@ -518,23 +693,53 @@ Compute netlist including Line Ends (LE) and Component Ends (CE)
 computeNetlist()
 ```
 
+## Remarks
+
+- Valid double-box boundaries and interiors are excluded from the extracted wire graph.
+- Matched catalog footprints are excluded through the banned-set logic.
+- Nets may be logically merged when connected through catalog items of type Net.
+
 ## Examples
 
 ```txt
 oTERM.printJSON(oASC.computeNetlist())
 ```
 
+## Returns
+
+- Type: `Array<object>`
+- Array of net objects, each containing LE, LJ, and CE arrays with {c,r} coordinates.
+
+## Output
+
+- Channel: `none`
+- Does not print or draw anything unless the caller prints the returned netlist.
+
 ---
 
 # getCell()
 
-Windowing-only grid getter. Returns a rectangular text block (\n separated) in grid order. len controls radius: len=1 origin only; len=2 one cell outward; ... dir is a mask (N|E|S|W) selecting which sides extend from the origin. Omitted dir => N|E|S|W. Off-grid cells are padded with spaces.
+Windowing-only grid getter. Returns a rectangular text block (\n separated) in grid order. len controls radius: len=1 origin only; len=2 one cell outward; ...
 
 ## Syntax
 
 ```txt
-getCell(c,r,len,dir)
+getCell(<c>,<r>,[len],[dir])
 ```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<c\> | Origin column of the requested window. |
+| \<r\> | Origin row of the requested window. |
+| [len] | Optional radius. len=1 returns only the origin cell; len=2 extends one cell outward; and so on. |
+| [dir] | Optional direction mask (N\|E\|S\|W) selecting which sides extend from the origin. |
+
+## Remarks
+
+- Omitted dir defaults to N|E|S|W.
+- Off-grid cells are padded with spaces so the returned block keeps its rectangular shape.
 
 ## Examples
 
@@ -551,17 +756,40 @@ oTERM.print(getCell(1,1,2,W|N|S))
 oTERM.print(getCell(0,0,2,N|W|E|S))
 ```
 
+## Returns
+
+- Type: `string`
+- Rectangular text block in grid order, with rows separated by newline characters.
+
+## Output
+
+- Channel: `none`
+- Does not print or draw anything unless the caller prints the returned string.
+
 ---
 
 # getLabel()
 
-Find nearest label near (c,r). Returns {c:<originCol>, r:<row>, str:<labelString>} and optionally stores it into oASC.env[env_retval].
+Find the nearest label near (c,r). Returns {c:<originCol>, r:<row>, str:<labelString>} and optionally stores it into oASC.env[env_retval].
 
 ## Syntax
 
 ```txt
-getLabel(c,r,env_retval)
+getLabel(<c>,<r>,[env_retval])
 ```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<c\> | Search origin column. |
+| \<r\> | Search origin row. |
+| [env_retval] | Optional environment variable name that receives the returned object. |
+
+## Remarks
+
+- Search expands ring by ring around the origin and prefers the nearest label origin by Euclidean distance.
+- The label character policy includes the wildcard character used for catalog text.
 
 ## Examples
 
@@ -572,17 +800,42 @@ oTERM.printJSON(getLabel(10,5,'ret'))
 oTERM.printJSON(oASC.env.ret)
 ```
 
+## Returns
+
+- Type: `object|null`
+- Nearest label object, or null when no label can be found.
+
+## Output
+
+- Channel: `none`
+- Does not print or draw anything unless the caller prints the returned object.
+
+## Effects
+
+- Optionally stores the returned label object in oASC.env[env_retval].
+
 ---
 
 # glyph2dir()
 
-Return 4-bit wire direction mask for a glyph (N|E|S|W). Unknown glyph returns 0. Stand-in glyphs fullfil a inexistent (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.
+Return the collapsed 4-bit direction mask (N|E|S|W) for a glyph. Unknown glyph returns 0.
 
 ## Syntax
 
 ```txt
-glyph2dir(ch)
+glyph2dir(<ch>)
 ```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<ch\> | Wire glyph to translate into a 4-bit direction mask. |
+
+## Remarks
+
+- Thin and fat information are collapsed into one 4-bit direction result.
+- Alias and stand-in glyphs may still resolve to the same direction mask, for example '┼' and '+' both map to N|E|S|W.
 
 ## Examples
 
@@ -593,17 +846,38 @@ printJSON(glyph2dir('┼'))
 printJSON(glyph2dir('╵'))
 ```
 
+## Returns
+
+- Type: `number`
+- Collapsed 4-bit direction mask with thin and fat information merged together.
+
+## Output
+
+- Channel: `none`
+- Does not print or draw anything.
+
 ---
 
 # glyph2mask()
 
-Translate a wire glyph into an 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.  Alias glyphs are alternative glyphs for the same (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.
+Translate a wire glyph into a packed 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). Double wires set both nibbles. Mixed glyphs split directions between thin and fat using a lookup table.
 
 ## Syntax
 
 ```txt
-glyph2mask(glyph)
+glyph2mask(<glyph>)
 ```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<glyph\> | Wire glyph to translate into a packed mask. |
+
+## Remarks
+
+- The low nibble stores thin(single/light) directions and the high nibble stores fat(single/heavy) directions.
+- Alias glyphs are allowed to map to the same mask, for example '┼' and '+' both map to N|E|S|W.
 
 ## Examples
 
@@ -617,7 +891,12 @@ oTERM.printJSON(oASC.glyph2mask('╧'))
 ## Returns
 
 - Type: `number`
-- What the JS call returns to the caller.
+- Packed 8-bit wire mask. Returns 0 for falsy or empty input.
+
+## Output
+
+- Channel: `none`
+- Does not print or draw anything.
 
 ---
 
@@ -628,8 +907,18 @@ True if ch is a known wire glyph in the glyph mask table.
 ## Syntax
 
 ```txt
-isWireGlyph(ch)
+isWireGlyph(<ch>)
 ```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<ch\> | Character to test. |
+
+## Remarks
+
+- This helper checks membership in the glyph mask table rather than general text renderability.
 
 ## Examples
 
@@ -639,6 +928,16 @@ oTERM.printJSON(isWireGlyph('┼'))
 ```txt
 oTERM.printJSON(isWireGlyph('A'))
 ```
+
+## Returns
+
+- Type: `boolean`
+- true when the glyph exists in the wire lookup table and is not a space.
+
+## Output
+
+- Channel: `none`
+- Does not print or draw anything.
 
 ---
 
@@ -656,16 +955,18 @@ line({path:[[<c>,<r>],[<c>,<r>],...], wire:[enumW], router:[enumR], target:[proc
 
 | Parameter | Description |
 |---|---|
-| \<c\> | Path waypoint column |
-| \<r\> | Path waypoint row |
-| [enumW] | Optional enumerator for line wire: **SINGLE**\|FAT\|DOUBLE |
-| [enumR] | Optional enumerator for line routing algorithm: **ORTHO**\|MIKAMI\|DIJKSTRA\|ASTAR |
-| [processor] | Optional enumerator for processing target: **CPU**\|GPU |
-| [lineC] | Optional flag enabling line continuation: **true**\|false |
+| path | Ordered list of waypoints. At least two points are required. |
+| \<c\> | Path waypoint column. |
+| \<r\> | Path waypoint row. |
+| [enumW] | Optional line wire family: **SINGLE**\|FAT\|DOUBLE. |
+| [enumR] | Optional routing algorithm: **ORTHO**\|MIKAMI\|DIJKSTRA\|ASTAR. |
+| [processor] | Optional routing target: **CPU**\|GPU. |
+| [lineC] | Optional flag enabling line continuation: **true**\|false. |
 
 ## Remarks
 
-- Only MIKAMI & DIJKSTRA have a GPU implementation.
+- Waypoints may be supplied as [c,r] tuples or as objects with {c,r} fields.
+- Only MIKAMI and DIJKSTRA have a GPU implementation.
 - When line continuation is switched off, the first drawn wire glyph is not merged but supraposed with any pre-existing wire glyph in this cell.
 
 ## Examples
@@ -724,13 +1025,24 @@ oTERM.print(mask2glyph(
 
 # mirrorMask()
 
-Mirror an 8-bit wire mask. bVertAxis=true mirrors around vertical axis (E<->W). bVertAxis=false mirrors around horizontal axis (N<->S). Thin and fat nibbles are mirrored independently.
+Mirror a packed 8-bit wire mask around either the vertical or horizontal axis.
 
 ## Syntax
 
 ```txt
-mirrorMask(m,bVertAxis)
+mirrorMask(<m>,<bVertAxis>)
 ```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<m\> | Packed 8-bit wire mask to mirror. |
+| \<bVertAxis\> | true mirrors around the vertical axis (E\<-\>W); false mirrors around the horizontal axis (N\<-\>S). |
+
+## Remarks
+
+- Thin and fat nibbles are mirrored independently before being packed back together.
 
 ## Examples
 
@@ -743,11 +1055,21 @@ oTERM.print(mask2glyph(
 mirrorMask(glyph2mask('╆'), false)))
 ```
 
+## Returns
+
+- Type: `number`
+- Mirrored packed 8-bit wire mask.
+
+## Output
+
+- Channel: `none`
+- Does not print or draw anything.
+
 ---
 
 # printCat()
 
-list all catalog item UIDs
+List all catalog item UIDs.
 
 ## Syntax
 
@@ -755,23 +1077,42 @@ list all catalog item UIDs
 printCat()
 ```
 
+## Remarks
+
+- Uses the current CATALOG contents and sorts the resulting UID list alphabetically before printing.
+
 ## Examples
 
 ```txt
 oASC.printCat()
 ```
 
+## Returns
+
+- Type: `void`
+- No JS value is returned.
+
+## Output
+
+- Channel: `terminal`
+- Format: `plain text`
+- Prints the sorted catalog item UIDs to the terminal.
+
 ---
 
 # printNetlist
 
-Extract connected wire lines (endpoints + junctions), excluding valid double-box boundaries/interiors.
+Compute and print the current netlist as formatted JSON.
 
 ## Syntax
 
 ```txt
 printNetlist()
 ```
+
+## Remarks
+
+- Uses computeNetlist() as its data source and pretty-prints the result for terminal display.
 
 ## Examples
 
@@ -794,13 +1135,25 @@ oASC.printNetlist()
 
 # qryLocate()
 
-Locate matching catalog components and BOX rectangles with regular expressions; returns bounding rectangles with tl/br coordinates.
+Locate matching catalog components, BOX rectangles, and labels with regular expressions; returns bounding rectangles with tl/br coordinates.
 
 ## Syntax
 
 ```txt
-qryLocate({key:regexp})
+qryLocate({<key>:<regexp>})
 ```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<key\> | One of ref, type, name, or MFR. |
+| \<regexp\> | Regular-expression text matched against the selected field. |
+
+## Remarks
+
+- BOX and LABEL queries target definition hits, while other type filters target catalog items.
+- Returned objects use tl and br coordinate objects rather than flattened r0/c0/r1/c1 fields.
 
 ## Examples
 
@@ -818,17 +1171,37 @@ oASC.qryLocate({name:'ATTiny85'
 ,MFR:'ATTINY85V-10PU'})
 ```
 
+## Returns
+
+- Type: `Array<object>`
+- Array of hits containing ref/type/name metadata together with tl/br coordinates.
+
+## Output
+
+- Channel: `none`
+- Does not print or draw anything unless the caller prints the returned array.
+
 ---
 
 # rotateMask()
 
-Rotate an 8-bit wire mask 90 degrees clockwise. Low nibble (thin) and high nibble (fat) are rotated independently.
+Rotate a packed 8-bit wire mask 90 degrees clockwise.
 
 ## Syntax
 
 ```txt
-rotateMask(m)
+rotateMask(<m>)
 ```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<m\> | Packed 8-bit wire mask to rotate. |
+
+## Remarks
+
+- The low nibble (thin) and high nibble (fat) are rotated independently before being packed back together.
 
 ## Examples
 
@@ -841,17 +1214,39 @@ oTERM.print(mask2glyph(
 rotateMask(glyph2mask('╆'))))
 ```
 
+## Returns
+
+- Type: `number`
+- Rotated packed 8-bit wire mask.
+
+## Output
+
+- Channel: `none`
+- Does not print or draw anything.
+
 ---
 
 # setLabel()
 
-Write label_str at (c,r). If an old label exists starting at (c,r) and is longer, clears the remainder with spaces.
+Write label_str at (c,r). If an old label exists starting at (c,r) and is longer, clear the remainder with spaces.
 
 ## Syntax
 
 ```txt
-setLabel(c,r,label_str)
+setLabel(<c>,<r>,<label_str>)
 ```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<c\> | Label start column. |
+| \<r\> | Label row. |
+| \<label_str\> | Single-line label text to write. |
+
+## Remarks
+
+- Label replacement is row-local and uses the same label-character policy as getLabel().
 
 ## Examples
 
@@ -861,6 +1256,23 @@ setLabel(5,3,'Net_1')
 ```txt
 oTERM.printJSON(getLabel(5,3,'ret'))
 ```
+
+## Returns
+
+- Type: `void`
+- No JS value is returned.
+
+## Output
+
+- Channel: `canvas`
+- Format: `ASCII grid`
+- The label text is written onto the grid.
+
+## Effects
+
+- Writes the label on the grid at (c,r).
+- Clears leftover characters when the previous label at that origin was longer.
+- Pushes undo history through the underlying cell() calls.
 
 
 
