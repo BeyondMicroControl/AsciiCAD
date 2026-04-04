@@ -161,12 +161,11 @@ function sanityHelpMeta(objName, obj)
     }
 
     const hasUsage =
-      (typeof h.usage === "string" && h.usage.length > 0) ||
       (typeof h.syntax === "string" && h.syntax.length > 0) ||
       (Array.isArray(h.syntax) && h.syntax.length > 0);
 
     if (!hasUsage) {
-      console.error(`[SANITY] ${objName}.${name} missing help.usage/help.syntax`, h);
+      console.error(`[SANITY] ${objName}.${name} missing help.syntax`, h);
       return;
     }
 

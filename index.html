@@ -1301,7 +1301,7 @@ function __cliHandleTerminal(line,ctx)
           {
             list.push("<u>" + name + " token details:</u>");
             var tokenlist = [["SYNTAX","EXAMPLES"]]
-              .concat(oCOM.JShelpCollector(obj, {"sort":true,"filter":["usage","examples"]}));
+              .concat(oCOM.JShelpCollector(obj, {"sort":true,"filter":["syntax","examples"]}));
             var str = oCOM.AsciiTable(tokenlist,
               {"header":true,"rowLine":true,"colLine":true,
               "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",

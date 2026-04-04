@@ -281,7 +281,7 @@ function TERMINAL(props)
   this.clear.help = 
   {
     type:  "TERMINAL_Fn",
-    usage: "clear()",
+    syntax: "clear()",
     desc:  "clear terminal screen",
     examples:  ["oTERM.clear()"]
   };
@@ -305,7 +305,7 @@ function TERMINAL(props)
   this.idle.help = 
   {
     type: "TERMINAL_Fn",
-    usage: "idle()",
+    syntax: "idle()",
     desc: "toggle the terminal busy (call a second time to reset to available)",
     examples: ["oTERM.idle();"]    
   }
@@ -339,7 +339,7 @@ function TERMINAL(props)
   };
   this.input.help = {
     type: "TERMINAL_Fn",
-    usage: "input(<i>varName</i>,<i>question</i>\n,<i>prefill</i>,<i>overwriteMode</i>)",
+    syntax: "input(<i>varName</i>,<i>question</i>\n,<i>prefill</i>,<i>overwriteMode</i>)",
     desc: "Prompt user and store answer in oTERM.env[varName]. overwriteMode=true enables terminal-like overwrite editing.",
     examples: [
       "oTERM.input(\"label\",\"Enter\",\"1234\",false)",
@@ -424,7 +424,7 @@ function TERMINAL(props)
   this.print.help = 
   {
     type: "TERMINAL_Fn",
-    usage: "print(<i>str</i>,<i>fmt</i>)",
+    syntax: "print(<i>str</i>,<i>fmt</i>)",
     desc: "",
     examples: ["oTERM.print(\"DONE\")","oTERM.print([0,1,2,3,4],\"array\")","oTERM.print([0,1,2,3,4],\"array_hex\")"]    
   }
@@ -482,7 +482,7 @@ function TERMINAL(props)
   this.printJSON.help = 
   {
     type: "TERMINAL_Fn",
-    usage: "printJSON(<i>obj</i>)",
+    syntax: "printJSON(<i>obj</i>)",
     desc: "",
     examples: ["oTERM.printJSON({so:true})"]    
   }
@@ -520,7 +520,7 @@ function TERMINAL(props)
   this.pushPrompt.help = 
   {
     type: "TERMINAL_Fn",
-    usage: "pushPrompt(<i>str</i>,<i>opts</i>)",
+    syntax: "pushPrompt(<i>str</i>,<i>opts</i>)",
     desc: "",
     examples: ["oTERM.pushPrompt(\"CADScript\")"]    
   }
@@ -566,7 +566,7 @@ function TERMINAL(props)
   this.popPrompt.help = 
   {
     type: "TERMINAL_Fn",
-    usage: "popPrompt(<i>opts</i>)",
+    syntax: "popPrompt(<i>opts</i>)",
     desc: "",
     examples: ["oTERM.popPrompt()"]    
   }
@@ -1884,7 +1884,7 @@ function CMD()
         return true;
       }
 
-      oTERM.output("[ERROR] CADScript usage: CADScript { ... } or CADScript -h");
+      oTERM.output("[ERROR] CADScript syntax: CADScript { ... } or CADScript -h");
       return true;
     }
 
@@ -1894,21 +1894,21 @@ function CMD()
     if (cmd === "help") { this.CMDHelp(); return true; }
     if (cmd === "clear")
     {
-      const usage = "Usage:\n" +
+      const syntax = "Syntax:\n" +
       "<bare> - clear terminal screen\n" +
       " -h    - <command> help\n"
 
       const opt = rest.trim();
-      if (opt === "-h") oTERM.output(oCOM.escapeHTML(usage));
+      if (opt === "-h") oTERM.output(oCOM.escapeHTML(syntax));
       else if (opt == "") oTERM.clear();
-      else  oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
+      else  oTERM.output("[ERROR] "+oCOM.escapeHTML(syntax));
       return true;
     }
 
     if (cmd === "history") 
     {
       const opt = rest.trim();
-      const usage = "Usage:\n" +
+      const syntax = "Syntax:\n" +
         "Navigate command history\n" +
         "by pushing arrow up/down.\n\n" +
         "<bare> - show command history\n" +
@@ -1928,7 +1928,7 @@ function CMD()
       }
 
       if (opt === "-h") {
-        oTERM.output(oCOM.escapeHTML(usage));
+        oTERM.output(oCOM.escapeHTML(syntax));
         return true;
       }
 
@@ -1942,7 +1942,7 @@ function CMD()
         return true;
       }
 
-      oTERM.output("[ERROR] "+oCOM.escapeHTML(usage));
+      oTERM.output("[ERROR] "+oCOM.escapeHTML(syntax));
       return true;
     }
 
@@ -1959,7 +1959,7 @@ function CMD()
   this.run.help =   
   {
     type: "AsciiCAD_CMD",
-    usage: "run(<i>CMD</i>)",
+    syntax: "run(<i>CMD</i>)",
     desc: "",
     examples: ["oCMD.run(\"clear\")"]
   }

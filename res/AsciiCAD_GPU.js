@@ -129,7 +129,7 @@ function GASC()
     this.glyph2mask.help =   
     {
         type: "CADScript_FN",
-        usage: "glyph2mask()",
+        syntax: "glyph2mask()",
         desc:
         "Translate a wire glyph into an 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). " +
         "Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.  " +
@@ -642,7 +642,7 @@ this.routeBuildBannedBits = function(ctx)
     this.routePathDijkstra.help =
     {
         type: "CADScript_FN",
-        usage: "routePathDijkstra(from,to,modifiers)",
+        syntax: "routePathDijkstra(from,to,modifiers)",
         desc:
             "Tentative GPU.js Dijkstra reimplementation. " +
             "Uses the same outer signature as the CPU router and returns a path array when successful; " +
@@ -967,7 +967,7 @@ this.routePathDijkstraProbe16.kScript = function(distState, cfg16)
     this.mikamiPath.help =
     {
         type: "CADScript_FN",
-        usage: "mikamiPath(from,to,modifiers)",
+        syntax: "mikamiPath(from,to,modifiers)",
         desc:
             "Tentative GPU.js Mikami-style router. " +
             "Uses the same outer signature as the CPU Mikami router and is intentionally limited to least-bends-first behavior in this first GPU pass."

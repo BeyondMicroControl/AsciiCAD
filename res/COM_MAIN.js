@@ -391,10 +391,10 @@ this.interpolateColors = function(col_arr, rangeLen)
 
   this.normalizeHelpEntry = function(name, help)
   {
-    if (typeof help === "string") help = { usage: help };
+    if (typeof help === "string") help = { syntax: help };
     help = help || {};
 
-    const syntax = this.toArray(help.syntax || help.usage).filter(Boolean);
+    const syntax = this.toArray(help.syntax).filter(Boolean);
 
     const parameters = this.toArray(help.parameters).map((p) =>
     {
@@ -787,7 +787,7 @@ this.interpolateColors = function(col_arr, rangeLen)
       if (typeof val.help === "object" && val.help !== null)
         content = { ...val.help };
       else
-        content = { usage: val.help };
+        content = { syntax: val.help };
 
       for (var k in content)
       {
