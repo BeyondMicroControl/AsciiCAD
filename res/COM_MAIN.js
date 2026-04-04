@@ -457,7 +457,18 @@ this.interpolateColors = function(col_arr, rangeLen)
     const H1 = "#".repeat(headingLevel);
     const H2 = "#".repeat(headingLevel + 1);
 
-    out.push(H1 + " " + h.title);
+    let headingTitle = h.title;
+    const kind = String(h.kind || "").toUpperCase();
+    const isCallable =
+      kind.indexOf("FN") >= 0 ||
+      kind.indexOf("CMD") >= 0 ||
+      kind === "FUNCTION" ||
+      kind === "COMMAND";
+
+    if (isCallable && headingTitle === name && !/[()]/.test(headingTitle))
+      headingTitle += "()";
+
+    out.push(H1 + " " + headingTitle);
 
     if (h.appliesTo.length)
       out.push("", "**Applies to:** " + h.appliesTo.join(", "));

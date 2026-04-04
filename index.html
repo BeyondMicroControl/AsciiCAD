@@ -1248,53 +1248,7 @@ function __cliHandleTerminal(line,ctx)
           "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
           "sort":0,"max":[null,null,null],"align":"LLL","Halign":"CCC"});
         }
-        else
-        {
-          var list = [];
-          var searchBindings = String(helpTarget || "").split(",");
-
-          for (var i = 0; i < searchBindings.length; i++)
-          {
-            const name = searchBindings[i].trim();
-            const obj = oCMD._bindings[name];
-
-            if (!obj)
-            {
-              list.push("[ERROR] Unknown object: " + name);
-              continue;
-            }
-
-            if (helpVarsOnly)
-            {
-              list.push("<u>" + name + " variable details:</u>");
-              var tokenlist = [["NAME","TYPE","VALUE"]].concat(__JSvarCollector(obj));
-              var str = oCOM.AsciiTable(tokenlist,
-                {"header":true,"rowLine":true,"colLine":true,
-                "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
-                "sort":0,"max":[null,null,null],"align":"LLL","Halign":"CCC"});
-              list.push(str);
-            }
-            else if (markdownOpt)
-            {
-              list.push(oCOM.JShelpMarkdownCollector(obj, {"sort":true,"headingLevel":1}));
-            }
-            else
-            {
-              list.push("<u>" + name + " token details:</u>");
-              var tokenlist = [["SYNTAX","EXAMPLES"]]
-                .concat(oCOM.JShelpCollector(obj, {"sort":true,"filter":["usage","examples"]}));
-              var str = oCOM.AsciiTable(tokenlist,
-                {"header":true,"rowLine":true,"colLine":true,
-                "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
-                "sort":0,"max":[null,null],"align":"LL","Halign":"CC"});
-              list.push(str);
-            }
-          }
-
-          oTERM.output(oCOM.escapeHTML(
-            list.join(markdownOpt ? "\n\n---\n\n" : "\n")
-          ));
-        }
+   
 
         oTERM.output(oCOM.escapeHTML(
           "<u>Options:</u>\n"+

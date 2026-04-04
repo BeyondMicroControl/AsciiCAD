@@ -1659,6 +1659,7 @@ function ASC()
 
 // TODO: rename "kind:" to "wire:" (more intelligable)
 // TODO: remove "usage:" -> replace by "syntax:"
+// TODO: add round brackets to title: to list functions in md documentation
 
   this.line.help =
   {
