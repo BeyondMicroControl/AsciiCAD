@@ -6,9 +6,6 @@
 //    ██   ██ ███████  ██████ ██ ██  ██████ ██   ██ ██████      ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
 
 
-// TODO UPDATE CELL WHEN PANNING !!!
-
-
 //     █████  ███████  ██████                                                                                           
 //    ██   ██ ██      ██                                                                                                
 //    ███████ ███████ ██                                                                                                
@@ -1163,8 +1160,6 @@ this.glyph2dir.help =
 
   this.printCat = function() 
   {
-
-    // TODO : list catalog items
     const items = (typeof CATALOG !== "undefined") ? CATALOG : [];
     var tokenlist = [];
     for (let i = 0; i < items.length; i++) 
@@ -3510,7 +3505,7 @@ this.mikamiPath = function(from, to, modifiers)
     for (const s of stroke) ascii[s.r][s.c] = s.next;
 
     textDrag = null;
-    this.pushStrokeIfNonEmpty(stroke);  // TODO: check out what it fixes
+    this.pushStrokeIfNonEmpty(stroke);  // add stroke to undo stack
     this.draw("commitFreetext");
   }
 
@@ -4812,7 +4807,7 @@ this.startPasteWithText = function(text)
   }
 
 
-  this.lineMatchesAt = function(gridLine, c0, patLine) // helper for computeMatchOverlay (TODO: useful to privatise or not?)
+  this.lineMatchesAt = function(gridLine, c0, patLine) // helper for computeMatchOverlay
   {
     // gridLine is a string of length COLS
     // patLine is a string; must fit fully
