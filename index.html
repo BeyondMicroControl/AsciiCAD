@@ -1155,15 +1155,7 @@ function __cliHandleTerminal(line,ctx)
   var script_node = plan.plan.groups[0].pipeline[0];
   if (script_node.token == "CADScript")                    // CADScript launcher
   {
-    const names = Object.keys(oASC);
-    const values = Object.values(oASC);
-    const types = values.map(v => v === null ? "null" : Array.isArray(v) ? "array" : typeof v);
 
-    // ...
-    const options = script_node.options;
-    var helpVarsOnly = false;
-    var markdownOpt = false;
-    var helpOpt = null;
 
     function __JSvarCollector(obj, opts)
     {
@@ -1191,196 +1183,203 @@ function __cliHandleTerminal(line,ctx)
       return rows;
     }
 
-    for (var oi = 0; oi < options.length; oi++)
-    {
-      switch(options[oi]?.key)
+    function parseHelpRequest(node)
+     {
+      const req =
       {
-        case "v":
-          helpVarsOnly = true;
-          continue;
-
-        case "h":
-          helpOpt = options[oi];
-          continue;
-
-        case "m":
-          markdownOpt = true;
-          continue;
+          helpOpt: null,
+         varsOnly: false,
+         markdown: false,
+         target: ""
       }
+
+      const opts = Array.isArray(node?.options) ? node.options : [];
+      for (let oi = 0; oi < opts.length; oi++)
+      {
+        switch(opts[oi]?.key)
+        {
+          case "v":
+            req.varsOnly = true;
+            break;
+
+          case "h":
+            req.helpOpt = opts[oi];
+            break;
+
+          case "m":
+            req.markdown = true;
+            break;
+        }
+      }
+
+      if (!req.helpOpt) return null;
+
+      if (typeof req.helpOpt.value === "string")
+      {
+        req.target = req.helpOpt.value.trim();
+      }
+      else if (req.helpOpt.value === true)
+      {
+        req.target = String(node?.arguments?.raw || "").trim();
+      }
+
+      return req;
+    }
+
+ function renderVarTable(obj)
+    {
+      var tokenlist = [["NAME","TYPE","VALUE"]].concat(__JSvarCollector(obj));
+      return oCOM.AsciiTable(tokenlist,
+      {"header":true,"rowLine":true,"colLine":true,
+      "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
+      "sort":0,"max":[null,null,null],"align":"LLL","Halign":"CCC"});
+    }
+
+    function prepareAsciiHelpObject(obj)
+    {
+      var vobj = {};
+      for (var key in obj)
+      {
+        vobj[key] = obj[key];
+        if (typeof(vobj[key]?.help?.syntax) == "string")
+          vobj[key].help.syntax = vobj[key].help.syntax.replace(/, /g, ",\n");
+
+        if (Array.isArray(vobj[key]?.help?.examples))
+        {
+          for (var j = 0; j < vobj[key].help.examples.length; j++)
+            vobj[key].help.examples[j] = vobj[key].help.examples[j].replace(/, /g, ",\n");
+        }
+      }
+      return vobj;
+    }
+
+    function renderTokenTable(obj)
+    {
+      var vobj = prepareAsciiHelpObject(obj);
+      var tokenlist = [["SYNTAX","EXAMPLES"]]
+        .concat(oCOM.JShelpCollector(vobj, {"sort":true,"filter":["syntax","examples"]}));
+
+      return oCOM.AsciiTable(tokenlist,
+      {"header":true,"rowLine":true,"colLine":true,
+      "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
+      "sort":0,"max":[null,null],"align":"LL","Halign":"CC"});
+    }
+
+    function renderMarkdownDoc(name, obj)
+    {
+      return oCOM.JShelpMarkdownCollector(obj,
+      {
+        "sort": true,
+        "headingLevel": 1,
+        "objectName": name
+      });
+    }
+
+    function renderOtherObjectNames()
+    {
+      var list = ["<u>Other object names:</u>"];
+      for (var bn in oCMD._bindings)
+        if (bn !== "oASC") list.push(bn);
+      return list.join("\n");
+    }
+
+    function renderHelpOverview(req)
+    {
+      if (req.markdown && !req.varsOnly)
+      {
+        var sections = [];
+        var names = Object.keys(oCMD._bindings).sort();
+
+        names = names.filter(name => name !== "oASC");
+        if (oCMD._bindings.oASC) names.unshift("oASC");
+
+        for (var ni = 0; ni < names.length; ni++)
+        {
+          const name = names[ni];
+          const obj = oCMD._bindings[name];
+          if (!obj) continue;
+
+          const md = renderMarkdownDoc(name, obj);
+          if (md && md.trim().length) sections.push(md);
+        }
+
+        return sections.join("\n\n---\n\n");
+      }
+
+      var builtInTitle = req.varsOnly
+        ? "<u>BuiltIn (oASC) variable scope:</u>"
+        : "<u>BuiltIn (oASC) token scope:</u>";
+
+      var builtInBody = req.varsOnly ? renderVarTable(oASC) : renderTokenTable(oASC);
+
+      return [
+        "<u>Options:</u>",
+        "-h  [<i>objName</i>] - list objTokens",
+        "-hm [<i>objName</i>] - command reference in markdown",
+        "-hv [<i>objName</i>] - list objVariables",
+        "",
+        builtInTitle,
+        builtInBody,
+        "",
+        renderOtherObjectNames()
+      ].join("\n");
+    }
+
+    function renderNamedTargets(req)
+    {
+      var list = [];
+      var searchBindings = String(req.target || "").split(",");
+
+      for (var bi = 0; bi < searchBindings.length; bi++)
+      {
+        const name = searchBindings[bi].trim();
+        if (!name) continue;
+
+        const obj = oCMD._bindings[name];
+        if (!obj)
+        {
+          list.push("[ERROR] Unknown object: " + name);
+          continue;
+        }
+
+        if (req.varsOnly)
+        {
+          list.push("<u>" + name + " variable details:</u>");
+          list.push(renderVarTable(obj));
+          continue;
+        }
+
+        if (req.markdown)
+        {
+          list.push(renderMarkdownDoc(name, obj));
+          continue;
+        }
+
+        list.push("<u>" + name + " token details:</u>");
+        list.push(renderTokenTable(obj));
+      }
+
+      return list.join(req.markdown ? "\n\n---\n\n" : "\n");
     }
 
 
-    // Normalize: allow "CADScript -h oTERM" even when parser keeps -h as boolean and
-    // puts "oTERM" in arguments.raw.
-    var helpTarget = null;
 
+    const helpReq = parseHelpRequest(script_node);
 
-    // Render help once (order-independent)
-    if (helpOpt)
+    if (helpReq)
     {
-      if (typeof helpOpt.value === "string") {
-        helpTarget = helpOpt.value;
-      } else if (helpOpt.value === true)
-      {
-        const arg = String(script_node.arguments?.raw || "").trim();
-        // If user provided an objName after -h/-hv, use it
-        if (arg.length > 0) helpTarget = arg;
-      }
+      window.__dbg("cli:helpPrinted", {
+        varsOnly: helpReq.varsOnly,
+        markdown: helpReq.markdown,
+        target: helpReq.target,
+        prompt: oTERM?._o?.shell?.prompt
+      });
 
-        window.__dbg("cli:helpPrinted", {
-          varsOnly: helpVarsOnly,
-          target: helpTarget,
-          prompt: oTERM?._o?.shell?.prompt
-        });
+      var helpText = helpReq.target
+        ? renderNamedTargets(helpReq)
+        : renderHelpOverview(helpReq);
 
-      // --- This is your existing "case h" body, but reading helpOpt and helpVarsOnly ---
-
-      if (!helpTarget)
-      {
-        // Markdown reference for all active objects
-        if (markdownOpt && !helpVarsOnly)
-        {
-          var sections = [];
-          var _names = Object.keys(oCMD._bindings).sort();
-
-          // Keep oASC first if present
-          _names = _names.filter(n => n !== "oASC");
-          if (oCMD._bindings.oASC) _names.unshift("oASC");
-
-          for (var ni = 0; ni < _names.length; ni++)
-          {
-            const name = _names[ni];
-            const obj = oCMD._bindings[name];
-            if (!obj) continue;
-
-            const md = oCOM.JShelpMarkdownCollector(obj, {
-              sort: true,
-              headingLevel: 1,
-              objectName: name
-            });
-
-            if (md && md.trim().length) sections.push(md);
-          }
-
-          oTERM.output(oCOM.escapeHTML(sections.join("\n\n---\n\n")));
-          return true;
-        }
-
-        var str;
-        if (helpVarsOnly)
-        {
-          var tokenlist = [["NAME","TYPE","VALUE"]].concat(__JSvarCollector(oASC));
-          str = oCOM.AsciiTable(tokenlist,
-          {"header":true,"rowLine":true,"colLine":true,
-          "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
-          "sort":0,"max":[null,null,null],"align":"LLL","Halign":"CCC"});
-        }
-        else
-        {
-          var vobj = {};
-          for (var k in oASC)
-          {
-            vobj[k] = oASC[k];
-            if (typeof(vobj[k]?.help?.syntax) == "string")
-              vobj[k].help.syntax = vobj[k].help.syntax.replace(/, /g, ",\n");
-            if (Array.isArray(vobj[k]?.help?.examples))
-            {
-              for (var j in vobj[k].help.examples)
-                vobj[k].help.examples[j] = vobj[k].help.examples[j].replace(/, /g, ",\n");
-            }
-          }
-
-          var tokenlist = [["SYNTAX","EXAMPLES"]]
-            .concat(oCOM.JShelpCollector(vobj, {"sort":true,"filter":["syntax","examples"]}));
-          str = oCOM.AsciiTable(tokenlist,
-          {"header":true,"rowLine":true,"colLine":true,
-          "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
-          "sort":0,"max":[null,null],"align":"LL","Halign":"CC"});
-        }
-
-        oTERM.output(oCOM.escapeHTML(
-          "<u>Options:</u>\n"+
-          "-h  [<i>objName</i>] - list objTokens\n"+
-          "-hm [<i>objName</i>] - command reference in markdown\n"+
-          "-hv [<i>objName</i>] - list objVariables\n"
-        ));
-
-        oTERM.output(oCOM.escapeHTML(
-          (helpVarsOnly ? "<u>BuiltIn (oASC) variable scope:</u>\n"
-                        : "<u>BuiltIn (oASC) token scope:</u>\n") + str
-        ));
-
-        var list = [];
-        list.push("<u>Other object names:</u>");
-        for (var bn in oCMD._bindings)
-          if (bn !== "oASC") list.push(bn);
-        oTERM.output(oCOM.escapeHTML(list.join("\n")));
-      }      
-      else
-      {
-        var list = [];
-        var searchBindings = String(helpTarget || "").split(",");
-
-        for (var i = 0; i < searchBindings.length; i++)
-        {
-          const name = searchBindings[i].trim();
-          const obj = oCMD._bindings[name];
-
-          if (!obj)
-          {
-            list.push("[ERROR] Unknown object: " + name);
-            continue;
-          }
-
-          if (helpVarsOnly)
-          {
-            list.push("<u>" + name + " variable details:</u>");
-            var tokenlist = [["NAME","TYPE","VALUE"]].concat(__JSvarCollector(obj));
-            var str = oCOM.AsciiTable(tokenlist,
-              {"header":true,"rowLine":true,"colLine":true,
-              "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
-              "sort":0,"max":[null,null,null],"align":"LLL","Halign":"CCC"});
-            list.push(str);
-          }
-          else if (markdownOpt)
-          {
-            list.push(oCOM.JShelpMarkdownCollector(obj, {"sort":true,"headingLevel":1}));
-          }
-          else
-          {
-            list.push("<u>" + name + " token details:</u>");
-
-            // TODO: refactor quick & dirty solution
-            var vobj = {};
-            for(var i in obj) 
-            {
-              vobj[i] = obj[i];
-              if(typeof(vobj[i]?.help?.syntax)=="string")
-                  vobj[i].help.syntax = vobj[i].help.syntax.replace(/, /g,",\n");
-              if(typeof(vobj[i]?.help?.examples)=="array")
-              {
-                for(var j in vobj[i].help.examples)
-                  vobj[i].help.examples[j] = vobj[i].help.examples[j].replace(/, /g,",\n");
-              }
-                  
-
-            }
-
-            var tokenlist = [["SYNTAX","EXAMPLES"]]
-              .concat(oCOM.JShelpCollector(vobj, {"sort":true,"filter":["syntax","examples"]}));
-            var str = oCOM.AsciiTable(tokenlist,
-              {"header":true,"rowLine":true,"colLine":true,
-              "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
-              "sort":0,"max":[null,null],"align":"LL","Halign":"CC"});
-            list.push(str);
-          }
-        }
-
-        oTERM.output(oCOM.escapeHTML(
-          list.join(markdownOpt ? "\n\n---\n\n" : "\n")
-        ));
-      }      
-
+      oTERM.output(oCOM.escapeHTML(helpText));
       return true;
     }
 
