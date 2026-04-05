@@ -865,24 +865,15 @@ this.interpolateColors = function(col_arr, rangeLen)
       └────────┴─────────────────┘
 */
 
-function stripHTML(s) {
+function stripHTML(s)
+{
   s = String(s ?? "");
   s = s.replace(/&nbsp;/ig, " ");
-  return s.replace(/<[^>]*>/g, "");
+
+  // Only strip the formatting tags that AsciiCAD intentionally emits.
+  return s.replace(/<\/?(?:b|i|u)\s*>|<br\s*\/?>/ig, "");
 }
 
-
-/* DROP-IN FIX: replace ONLY truncateHTMLByVisible() with this version.
-
-Fixes your center-align bugs:
-- No more “EXEX” / mingled text when content does NOT overflow.
-- No more false overflow flags on both sides for "C".
-- Correct center-truncation: keeps the *middle* visible slice (not prefix+suffix concat).
-
-Also improves HTML re-opening:
-- When we need to re-open tags after slicing, we re-open using the *original opening tag*
-  (preserving attributes), not just `<tagname>`.
-*/
 
 function truncateHTMLByVisible(input, maxVisible, align = "L") {
   const s = String(input ?? "");
@@ -906,13 +897,15 @@ function truncateHTMLByVisible(input, maxVisible, align = "L") {
     return { html: "", visible: "", truncL: fullVisible.length > 0, truncR: fullVisible.length > 0 };
   }
 
-  const tokens = s.match(/<\/?[^>]+>|[^<]+/g) || [];
+  const tokens = s.match(/<\/?(?:b|i|u)\s*>|<br\s*\/?>|[^<]+|<[^<]*/ig) || [];
   const VOID_TAGS = new Set(["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]);
 
-  function tagName(tag) {
-    const m = tag.match(/^<\/?\s*([a-zA-Z0-9:-]+)/);
+  function tagName(tag)
+  {
+    const m = tag.match(/^<\s*\/?\s*(b|i|u|br)\b/i);
     return m ? m[1].toLowerCase() : null;
   }
+
   function isClosing(tag) { return /^<\s*\//.test(tag); }
   function isSelfClosing(tag) {
     if (/\/\s*>$/.test(tag)) return true;

@@ -1941,7 +1941,17 @@ function CMD()
         "  clear     - clear terminal screen\n" +
         "  exit      - exit CLI\n"+
         "  help      - terminal help\n" +
-        "  history   - show command history\n")
+        "  history   - show command history\n" +
+        "\n" +
+        "Cheat sheet:\n" +
+        " CADScript {oTERM.pushPrompt(\"CADScript\")}\n" +
+        " oCMD.run(\"CADScript -h\");\n" +
+        " cell(0,0,\"ABC\\nDEF\\nGHI\");\n" +
+        " oTERM.print(getCell(0,0,2,E|S));\n" +
+        " stack(\"undo\"); oTERM.popPrompt();\n" +
+        " history\n" +
+        " clear\n"
+      )
     );
   }
 
@@ -2187,7 +2197,7 @@ function CMD()
     oTERM = new TERMINAL(
     {
       // We handle all input via oTERM.onInput; commands are kept for discoverability.
-      welcome: sbTitle.querySelector("big").textContent + " terminal - type <u>help</u><br>CADScript {oTERM.pushPrompt(\"CADScript\")}<br>oCMD.run(\"CADScript -h oASC\");",
+      welcome: sbTitle.querySelector("big").textContent + " terminal - type <u>help</u>",
       prompt: "AsciiCAD",
       separator: '>',
     });

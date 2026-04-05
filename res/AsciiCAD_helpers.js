@@ -1829,7 +1829,7 @@ this.glyph2dir.help =
   this.line.help =
   {
     type: "CADScript_FN",
-    syntax: "line({path:[[<c>,<r>],[<c>,<r>],...], wire:[enumW], router:[enumR], target:[processor], cont:[lineC]})",
+    syntax: "line({path:[[<c>,<r>], [<c>,<r>],...], wire:[enumW], router:[enumR], target:[processor], cont:[lineC]})",
     summary: "Draw a polyline through multiple waypoints. Path tuples use [c,r] order, requiring minimum 2 tuples.",
     returns: {
       type: "void",
@@ -3209,7 +3209,7 @@ this.mikamiPath = function(from, to, modifiers)
   this.box.help = 
   {
     type: "CADScript_FN",
-    syntax: "box(<c0>,<r0>,<c1>,<r1>,{kind:[boxStyle]})",
+    syntax: "box(<c0>,<r0>,<c1>,<r1>, {kind:[boxStyle]})",
     summary: "Draw a box using BOX_SINGLE, BOX_FAT, or BOX_DOUBLE contours.",
     returns: {
       type: "void",
