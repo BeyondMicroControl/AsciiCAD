@@ -321,10 +321,10 @@ this.glyph2dir.help =
   {
     type: "CADScript_FN",
     syntax: "glyph2dir(<ch>)",
-    summary: "Return the collapsed 4-bit direction mask (N|E|S|W) for a glyph. Unknown glyph returns 0.",
+    summary: "Return the [collapsed 4-bit direction mask](#direction-mask) (N|E|S|W) for a glyph. Unknown glyph returns 0.",
     returns: {
       type: "number",
-      description: "Collapsed 4-bit direction mask with thin and fat information merged together."
+      description: "[Collapsed 4-bit direction mask](#direction-mask) with thin and fat information merged together."
     },
     output: {
       channel: "none",
