@@ -32,8 +32,9 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
       - [Modal dialogs zone](#modal-dialogs-zone)
       - [Behaviors that affect all zones](#behaviors-that-affect-all-zones)
    - [CADScript command reference](#CADScript-command-reference)
-      - [oASC object](#oASC-object)   
-
+      - [oASC object](#oASC-object)
+      - [oCMD object](#oCMD-object)
+      - [oTERM object](#oTERM-object)
 ---
 
 # Quick start
@@ -1291,6 +1292,8 @@ oTERM.printJSON(getLabel(5,3,'ret'))
 
 ---
 
+### oCMD Object
+
 ### oCMD.run()
 
 Execute a terminal command line through the AsciiCAD command dispatcher.
@@ -1338,6 +1341,9 @@ oCMD.run("history -h")
 - May route CADScript command lines into the shared CLI handler and worker pipeline.
 
 ---
+
+### oTERM Object
+
 
 ### oTERM.clear()
 
