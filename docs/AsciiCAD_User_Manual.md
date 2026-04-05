@@ -31,7 +31,8 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
       - [CLI Sidebar zone](#CLI-Sidebar-Zone)
       - [Modal dialogs zone](#modal-dialogs-zone)
       - [Behaviors that affect all zones](#behaviors-that-affect-all-zones)
-   - [CADScript command reference](#CADScript-command-reference)    
+   - [CADScript command reference](#CADScript-command-reference)
+      - [oASC object](#oASC-object)   
 
 ---
 
@@ -763,6 +764,9 @@ oTERM.print(getCell(0,0,2,N|W|E|S))
 - Does not print or draw anything unless the caller prints the returned string.
 
 ---
+### oASC object
+
+This object contains Javascript functions interacting with or perform relevant operations for the Ascii grid.
 
 ### oASC.getLabel()
 
