@@ -1214,7 +1214,9 @@ function __cliHandleTerminal(line,ctx)
     // puts "oTERM" in arguments.raw.
     var helpTarget = null;
 
-    if (helpOpt) 
+
+    // Render help once (order-independent)
+    if (helpOpt)
     {
       if (typeof helpOpt.value === "string") {
         helpTarget = helpOpt.value;
@@ -1224,12 +1226,7 @@ function __cliHandleTerminal(line,ctx)
         // If user provided an objName after -h/-hv, use it
         if (arg.length > 0) helpTarget = arg;
       }
-    }
 
-
-    // Render help once (order-independent)
-    if (helpOpt)
-    {
         window.__dbg("cli:helpPrinted", {
           varsOnly: helpVarsOnly,
           target: helpTarget,
@@ -1237,8 +1234,38 @@ function __cliHandleTerminal(line,ctx)
         });
 
       // --- This is your existing "case h" body, but reading helpOpt and helpVarsOnly ---
+
       if (!helpTarget)
       {
+        // Markdown reference for all active objects
+        if (markdownOpt && !helpVarsOnly)
+        {
+          var sections = [];
+          var _names = Object.keys(oCMD._bindings).sort();
+
+          // Keep oASC first if present
+          _names = _names.filter(n => n !== "oASC");
+          if (oCMD._bindings.oASC) _names.unshift("oASC");
+
+          for (var ni = 0; ni < _names.length; ni++)
+          {
+            const name = _names[ni];
+            const obj = oCMD._bindings[name];
+            if (!obj) continue;
+
+            const md = oCOM.JShelpMarkdownCollector(obj, {
+              sort: true,
+              headingLevel: 1,
+              objectName: name
+            });
+
+            if (md && md.trim().length) sections.push(md);
+          }
+
+          oTERM.output(oCOM.escapeHTML(sections.join("\n\n---\n\n")));
+          return true;
+        }
+
         var str;
         if (helpVarsOnly)
         {
@@ -1247,6 +1274,28 @@ function __cliHandleTerminal(line,ctx)
           {"header":true,"rowLine":true,"colLine":true,
           "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
           "sort":0,"max":[null,null,null],"align":"LLL","Halign":"CCC"});
+        }
+        else
+        {
+          var vobj = {};
+          for (var k in oASC)
+          {
+            vobj[k] = oASC[k];
+            if (typeof(vobj[k]?.help?.syntax) == "string")
+              vobj[k].help.syntax = vobj[k].help.syntax.replace(/, /g, ",\n");
+            if (Array.isArray(vobj[k]?.help?.examples))
+            {
+              for (var j in vobj[k].help.examples)
+                vobj[k].help.examples[j] = vobj[k].help.examples[j].replace(/, /g, ",\n");
+            }
+          }
+
+          var tokenlist = [["SYNTAX","EXAMPLES"]]
+            .concat(oCOM.JShelpCollector(vobj, {"sort":true,"filter":["syntax","examples"]}));
+          str = oCOM.AsciiTable(tokenlist,
+          {"header":true,"rowLine":true,"colLine":true,
+          "style":"─│├┼┤└┴┘┌┬┐ ┃","Hstyle":"━┃┡╇┩┗┻┛┏┳┓ ║",
+          "sort":0,"max":[null,null],"align":"LL","Halign":"CC"});
         }
 
         oTERM.output(oCOM.escapeHTML(
@@ -1263,9 +1312,10 @@ function __cliHandleTerminal(line,ctx)
 
         var list = [];
         list.push("<u>Other object names:</u>");
-        for (var bn in oCMD._bindings) list.push(bn);
+        for (var bn in oCMD._bindings)
+          if (bn !== "oASC") list.push(bn);
         oTERM.output(oCOM.escapeHTML(list.join("\n")));
-      }
+      }      
       else
       {
         var list = [];
