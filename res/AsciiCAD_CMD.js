@@ -274,7 +274,8 @@ function TERMINAL(props)
   // ---- public API (instance methods defined here) ---------------------------
 
   
-  this.clear = function () {
+  this.clear = function () 
+  {
     this._o.DOM.output.innerHTML = "";
     resetCommand();
   };
@@ -282,7 +283,21 @@ function TERMINAL(props)
   {
     type:  "TERMINAL_Fn",
     syntax: "clear()",
-    desc:  "clear terminal screen",
+    summary: "Clear the terminal output area and restore the live input line.",
+    returns: {
+      type: "void",
+      description: "No JavaScript value is returned."
+    },
+    output: {
+      channel: "terminal",
+      format: "cleared output",
+      description: "Removes all rendered terminal output lines."
+    },
+    effects: [
+      "Clears the terminal output DOM.",
+      "Resets the live command input visibility and scroll position."
+    ],
+    remarks: ["This affects only the terminal view and does not clear command history or environment values."],
     examples:  ["oTERM.clear()"]
   };
 
@@ -302,13 +317,30 @@ function TERMINAL(props)
     }
 
   };
-  this.idle.help = 
-  {
-    type: "TERMINAL_Fn",
-    syntax: "idle()",
-    desc: "toggle the terminal busy (call a second time to reset to available)",
-    examples: ["oTERM.idle();"]    
-  }
+   this.idle.help = 
+   {
+     type: "TERMINAL_Fn",
+     syntax: "idle()",
+    summary: "Toggle the terminal busy state.",
+    returns: {
+      type: "void",
+      description: "No JavaScript value is returned."
+    },
+    output: {
+      channel: "terminal",
+      format: "prompt state",
+      description: "Shows a spinner while busy and restores the normal prompt when toggled back."
+    },
+    effects: [
+      "Toggles oTERM._o.state.idle.",
+      "Switches the prompt between busy and interactive modes.",
+      "Refocuses the input when returning to interactive mode."
+    ],
+    remarks: [
+      "Call a second time to return the terminal to the available state."
+    ],
+     examples: ["oTERM.idle();"]    
+   }
 
   this.input = function (varName, question, prefill, overwriteMode)
   {
@@ -337,15 +369,39 @@ function TERMINAL(props)
       this._o.DOM.input.focus();
     }
   };
-  this.input.help = {
-    type: "TERMINAL_Fn",
-    syntax: "input(<i>varName</i>,<i>question</i>\n,<i>prefill</i>,<i>overwriteMode</i>)",
-    desc: "Prompt user and store answer in oTERM.env[varName]. overwriteMode=true enables terminal-like overwrite editing.",
-    examples: [
-      "oTERM.input(\"label\",\"Enter\",\"1234\",false)",
-      "oTERM.input(\"label\",\"Enter\",\"1234\",true)"
-    ]
-  };
+  this.input.help = 
+  {
+      type: "TERMINAL_Fn",
+      syntax: "input(<varName>,<question>\n,[prefill],[overwriteMode])",
+      summary: "Prompt the user and store the answer in oTERM._o.env[varName].",
+      returns: {
+        type: "void",
+        description: "No JavaScript value is returned."
+      },
+      output: {
+        channel: "terminal",
+        format: "interactive prompt",
+        description: "Shows the supplied question as the active prompt and waits for the next submitted line."
+      },
+      effects: [
+        "Pushes the current prompt onto the prompt stack.",
+        "Enables prompt mode for the next Enter key submission.",
+        "Stores the answer in oTERM._o.env[varName]."
+      ],
+      parameters: [
+        { name: "<varName>", description: "Environment variable name used to store the answer." },
+        { name: "<question>", description: "Prompt text shown while waiting for the answer." },
+        { name: "[prefill]", description: "Optional initial input value inserted into the live command line." },
+        { name: "[overwriteMode]", description: "Optional flag enabling terminal-like overwrite editing while prompting." }
+      ],
+      remarks: [
+        "overwriteMode=true enables terminal-like overwrite editing instead of pure insert behavior."
+      ],
+      examples: [
+        "oTERM.input(\"label\",\"Enter\",\"1234\",false)",
+        "oTERM.input(\"label\",\"Enter\",\"1234\",true)"
+      ]
+  }
 
   this.getenv = function(key) 
   {
@@ -424,8 +480,28 @@ function TERMINAL(props)
   this.print.help = 
   {
     type: "TERMINAL_Fn",
-    syntax: "print(<i>str</i>,<i>fmt</i>)",
-    desc: "",
+    syntax: "print(<obj>,[fmt])",
+    summary: "Format a value and write it to the terminal.",
+    returns: {
+    type: "void",
+    description: "No JavaScript value is returned."
+    },
+    output: {
+      channel: "terminal",
+      format: "plain text|preformatted text|HTML",
+      description: "Writes the formatted value to the terminal output."
+    },
+    effects: [
+      "Appends a new terminal output line."
+    ],
+    parameters: [
+      { name: "<obj>", description: "Value to format and print." },
+      { name: "[fmt]", description: "Optional formatter: array, array_hex, literal, html, or URL." }
+    ],
+    remarks: [
+      "Without a formatter, multiline or space-sensitive strings are wrapped in <pre> output.",
+      "fmt=\"html\" writes the string directly as HTML."
+    ],
     examples: ["oTERM.print(\"DONE\")","oTERM.print([0,1,2,3,4],\"array\")","oTERM.print([0,1,2,3,4],\"array_hex\")"]    
   }
 
@@ -482,10 +558,29 @@ function TERMINAL(props)
   this.printJSON.help = 
   {
     type: "TERMINAL_Fn",
-    syntax: "printJSON(<i>obj</i>)",
-    desc: "",
-    examples: ["oTERM.printJSON({so:true})"]    
-  }
+    syntax: "printJSON(<obj>)",
+    summary: "Pretty-print a value as JSON-like terminal output.",
+    returns: {
+      type: "void",
+      description: "No JavaScript value is returned."
+    },
+    output: {
+      channel: "terminal",
+      format: "formatted JSON",
+      description: "Writes the value as pretty-printed JSON inside preformatted terminal output."
+    },
+    effects: [
+      "Appends a new terminal output line."
+    ],
+    parameters: [
+      { name: "<obj>", description: "Value to format for terminal display." }
+    ],
+    remarks: [
+      "Error objects are rendered from stack or message text.",
+      "Non-serializable objects fall back to their string representation."
+    ],
+     examples: ["oTERM.printJSON({so:true})"]    
+   }
 
   this.pushPrompt = function(newPrompt, opts)
   {
@@ -520,9 +615,29 @@ function TERMINAL(props)
   this.pushPrompt.help = 
   {
     type: "TERMINAL_Fn",
-    syntax: "pushPrompt(<i>str</i>,<i>opts</i>)",
-    desc: "",
-    examples: ["oTERM.pushPrompt(\"CADScript\")"]    
+    syntax: "pushPrompt(<newPrompt>,[opts])",
+    summary: "Push the current prompt onto the prompt stack and replace it with a new prompt.",
+    returns: {
+      type: "void",
+      description: "No JavaScript value is returned."
+    },
+    output: {
+      channel: "terminal",
+      format: "prompt state",
+      description: "Updates the visible prompt unless opts.render is false."
+    },
+    effects: [
+      "Pushes the current prompt and separator onto oTERM._o.promptStack unless opts.replace is true.",
+      "Replaces the active prompt configuration."
+    ],
+    parameters: [
+      { name: "<newPrompt>", description: "Prompt label to make active." },
+      { name: "[opts]", description: "Optional configuration object supporting separator, render, and replace." }
+    ],
+    remarks: [
+      "Use opts.replace=true to avoid pushing the previous prompt onto the stack."
+    ],
+      examples: ["oTERM.pushPrompt(\"CADScript\")"]    
   }
 
   this.popPrompt = function(opts)
@@ -565,11 +680,30 @@ function TERMINAL(props)
   }
   this.popPrompt.help = 
   {
-    type: "TERMINAL_Fn",
-    syntax: "popPrompt(<i>opts</i>)",
-    desc: "",
-    examples: ["oTERM.popPrompt()"]    
-  }
+      type: "TERMINAL_Fn",
+      syntax: "popPrompt([opts])",
+      summary: "Restore the previous prompt from the prompt stack.",
+      returns: {
+        type: "object|null",
+        description: "Returns the restored prompt object, or null when the prompt stack is empty."
+      },
+      output: {
+        channel: "terminal",
+        format: "prompt state",
+        description: "Updates the visible prompt unless opts.render is false."
+      },
+      effects: [
+        "Pops one prompt record from oTERM._o.promptStack when available.",
+        "Restores the active prompt configuration."
+      ],
+      parameters: [
+        { name: "[opts]", description: "Optional configuration object supporting render." }
+      ],
+      remarks: [
+        "When the prompt stack is empty, the current prompt remains active and null is returned."
+      ],
+      examples: ["oTERM.popPrompt()"]    
+   }
 
   // ---- listeners -----------------------------------------------------------
 
@@ -1956,13 +2090,33 @@ function CMD()
     window.__dbg?.("oCMD.run:return", { line, ret });
     return true;
   }
-  this.run.help =   
-  {
-    type: "AsciiCAD_CMD",
-    syntax: "run(<i>CMD</i>)",
-    desc: "",
-    examples: ["oCMD.run(\"clear\")"]
-  }
+   this.run.help =   
+   {
+      type: "AsciiCAD_CMD",
+      syntax: "run(<CMD>)",
+      summary: "Execute a terminal command line through the AsciiCAD command dispatcher.",
+      returns: {
+        type: "boolean",
+        description: "Returns true once the command line has been handled or rejected."
+      },
+      output: {
+        channel: "terminal",
+        format: "plain text|HTML",
+        description: "Writes command feedback, help text, or errors to the terminal depending on the dispatched command."
+      },
+      effects: [
+        "May dispatch terminal built-ins such as help, clear, history, and exit.",
+        "May route CADScript command lines into the shared CLI handler and worker pipeline."
+      ],
+      parameters: [
+        { name: "<CMD>", description: "Complete command line string to dispatch." }
+      ],
+      remarks: [
+        "CADScript command lines are normalized through the same CLI handling path used by the interactive terminal.",
+        "Unknown commands print an error to the terminal."
+      ],
+      examples: ["oCMD.run(\"clear\")","oCMD.run(\"history -h\")"]
+   }
 
    ////////////////////////////
    // OTHER HELPER FUNCTIONS //
