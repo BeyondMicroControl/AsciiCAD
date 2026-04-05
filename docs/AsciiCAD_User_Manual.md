@@ -400,7 +400,7 @@ Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible w
 ### CADScript command reference
 
 
-# blank()
+# oASC.blank()
 
 Blank a rectangular region by replacing its cells with spaces.
 
@@ -447,7 +447,7 @@ oASC.blank(1,1,3,2)
 
 ---
 
-# box()
+# oASC.box()
 
 Draw a box using BOX_SINGLE, BOX_FAT, or BOX_DOUBLE contours.
 
@@ -502,7 +502,7 @@ oASC.box(1,0,3,2,{kind:BOX_DOUBLE})
 
 ---
 
-# CADScript()
+# oASC.CADScript()
 
 Run a CADScript expression.
 
@@ -546,7 +546,7 @@ CADScript {clear();stack("undo")}
 
 ---
 
-# cat()
+# oASC.cat()
 
 Place a catalog item at top-left cell (c,r) using the selected rotation variant.
 
@@ -593,7 +593,7 @@ oASC.cat(0,0,0,"ATTinyX12_MCU_ATTINY412")
 
 ---
 
-# cell()
+# oASC.cell()
 
 Write text starting at (c,r). Newlines advance to the next row.
 
@@ -640,7 +640,7 @@ oASC.cell(0,0,"ABC\nDEF\nGHI")
 
 ---
 
-# clear()
+# oASC.clear()
 
 Clear the grid and push a single undo stroke.
 
@@ -678,7 +678,7 @@ oASC.clear()
 
 ---
 
-# computeNetlist()
+# oASC.computeNetlist()
 
 Compute the current netlist including line ends (LE), line junctions (LJ), and component ends (CE).
 
@@ -712,7 +712,7 @@ oTERM.printJSON(oASC.computeNetlist())
 
 ---
 
-# getCell()
+# oASC.getCell()
 
 Windowing-only grid getter. Returns a rectangular text block (\n separated) in grid order. len controls radius: len=1 origin only; len=2 one cell outward; ...
 
@@ -763,7 +763,7 @@ oTERM.print(getCell(0,0,2,N|W|E|S))
 
 ---
 
-# getLabel()
+# oASC.getLabel()
 
 Find the nearest label near (c,r). Returns {c:<originCol>, r:<row>, str:<labelString>} and optionally stores it into oASC.env[env_retval].
 
@@ -811,7 +811,7 @@ oTERM.printJSON(oASC.env.ret)
 
 ---
 
-# glyph2dir()
+# oASC.glyph2dir()
 
 Return the collapsed 4-bit direction mask (N|E|S|W) for a glyph. Unknown glyph returns 0.
 
@@ -853,7 +853,7 @@ printJSON(glyph2dir('╵'))
 
 ---
 
-# glyph2mask()
+# oASC.glyph2mask()
 
 Translate a wire glyph into a packed 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). Double wires set both nibbles. Mixed glyphs split directions between thin and fat using a lookup table.
 
@@ -895,7 +895,7 @@ oTERM.printJSON(oASC.glyph2mask('╧'))
 
 ---
 
-# isWireGlyph()
+# oASC.isWireGlyph()
 
 True if ch is a known wire glyph in the glyph mask table.
 
@@ -936,14 +936,18 @@ oTERM.printJSON(isWireGlyph('A'))
 
 ---
 
-# line()
+# oASC.line()
 
 Draw a polyline through multiple waypoints. Path tuples use [c,r] order, requiring minimum 2 tuples.
 
 ## Syntax
 
 ```txt
-line({path:[[<c>,<r>],[<c>,<r>],...], wire:[enumW], router:[enumR], target:[processor], cont:[lineC]})
+line({path:[[<c>,<r>],[<c>,<r>],...],
+wire:[enumW],
+router:[enumR],
+target:[processor],
+cont:[lineC]})
 ```
 
 ## Parameters
@@ -967,13 +971,20 @@ line({path:[[<c>,<r>],[<c>,<r>],...], wire:[enumW], router:[enumR], target:[proc
 ## Examples
 
 ```txt
-line({path:[[0,0],[5,6]], wire:SINGLE})
+line({path:[[0,0],[5,6]],
+wire:SINGLE})
 ```
 ```txt
-line({path:[[0,0],[5,6],[2,2]], wire:FAT, router:MIKAMI, target:GPU})
+line({path:[[0,0],[5,6],[2,2]],
+wire:FAT,
+router:MIKAMI,
+target:GPU})
 ```
 ```txt
-line({path:[[0,0],[10,0],[10,5]], wire:DOUBLE, router:DIJKSTRA, target:CPU})
+line({path:[[0,0],[10,0],[10,5]],
+wire:DOUBLE,
+router:DIJKSTRA,
+target:CPU})
 ```
 
 ## Returns
@@ -994,7 +1005,7 @@ line({path:[[0,0],[10,0],[10,5]], wire:DOUBLE, router:DIJKSTRA, target:CPU})
 
 ---
 
-# mask2glyph()
+# oASC.mask2glyph()
 
 Reverse of glyph2mask: map extended 8-bit mask (fat<<4 | thin) back to a wire glyph. Returns ' ' if unknown. Stand-in mappings are required when e.g. a fat wire glyph for '╞' does not exist, so when E|(N|S|E)<<4 is requested, a close-enough stand-in glyph like '┣' or '╞' will be returned (better than nothing). By policy, stand-in glyphs must prioritise correct rendering of single and fat wires over double wires, because double wires are primarily used for drawing boxes not lines.
 
@@ -1017,7 +1028,7 @@ oTERM.print(mask2glyph(
 
 ---
 
-# mirrorMask()
+# oASC.mirrorMask()
 
 Mirror a packed 8-bit wire mask around either the vertical or horizontal axis.
 
@@ -1042,11 +1053,13 @@ mirrorMask(<m>,<bVertAxis>)
 
 ```txt
 oTERM.print(mask2glyph(
-mirrorMask(glyph2mask('╆'), true)))
+mirrorMask(glyph2mask('╆'),
+true)))
 ```
 ```txt
 oTERM.print(mask2glyph(
-mirrorMask(glyph2mask('╆'), false)))
+mirrorMask(glyph2mask('╆'),
+false)))
 ```
 
 ## Returns
@@ -1061,7 +1074,7 @@ mirrorMask(glyph2mask('╆'), false)))
 
 ---
 
-# printCat()
+# oASC.printCat()
 
 List all catalog item UIDs.
 
@@ -1093,7 +1106,7 @@ oASC.printCat()
 
 ---
 
-# printNetlist
+# oASC.printNetlist
 
 Compute and print the current netlist as formatted JSON.
 
@@ -1125,7 +1138,7 @@ oASC.printNetlist()
 
 ---
 
-# qryLocate()
+# oASC.qryLocate()
 
 Locate matching catalog components, BOX rectangles, and labels with regular expressions; returns bounding rectangles with tl/br coordinates.
 
@@ -1175,7 +1188,7 @@ oASC.qryLocate({name:'ATTiny85'
 
 ---
 
-# rotateMask()
+# oASC.rotateMask()
 
 Rotate a packed 8-bit wire mask 90 degrees clockwise.
 
@@ -1218,7 +1231,7 @@ rotateMask(glyph2mask('╆'))))
 
 ---
 
-# setLabel()
+# oASC.setLabel()
 
 Write label_str at (c,r). If an old label exists starting at (c,r) and is longer, clear the remainder with spaces.
 
@@ -1264,6 +1277,367 @@ oTERM.printJSON(getLabel(5,3,'ret'))
 - Writes the label on the grid at (c,r).
 - Clears leftover characters when the previous label at that origin was longer.
 - Pushes undo history through the underlying cell() calls.
+
+---
+
+# oCMD.run()
+
+Execute a terminal command line through the AsciiCAD command dispatcher.
+
+## Syntax
+
+```txt
+run(<CMD>)
+```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<CMD\> | Complete command line string to dispatch. |
+
+## Remarks
+
+- CADScript command lines are normalized through the same CLI handling path used by the interactive terminal.
+- Unknown commands print an error to the terminal.
+
+## Examples
+
+```txt
+oCMD.run("clear")
+```
+```txt
+oCMD.run("history -h")
+```
+
+## Returns
+
+- Type: `boolean`
+- Returns true once the command line has been handled or rejected.
+
+## Output
+
+- Channel: `terminal`
+- Format: `plain text|HTML`
+- Writes command feedback, help text, or errors to the terminal depending on the dispatched command.
+
+## Effects
+
+- May dispatch terminal built-ins such as help, clear, history, and exit.
+- May route CADScript command lines into the shared CLI handler and worker pipeline.
+
+---
+
+# oTERM.clear()
+
+Clear the terminal output area and restore the live input line.
+
+## Syntax
+
+```txt
+clear()
+```
+
+## Remarks
+
+- This affects only the terminal view and does not clear command history or environment values.
+
+## Examples
+
+```txt
+oTERM.clear()
+```
+
+## Returns
+
+- Type: `void`
+- No JavaScript value is returned.
+
+## Output
+
+- Channel: `terminal`
+- Format: `cleared output`
+- Removes all rendered terminal output lines.
+
+## Effects
+
+- Clears the terminal output DOM.
+- Resets the live command input visibility and scroll position.
+
+---
+
+# oTERM.idle()
+
+Toggle the terminal busy state.
+
+## Syntax
+
+```txt
+idle()
+```
+
+## Remarks
+
+- Call a second time to return the terminal to the available state.
+
+## Examples
+
+```txt
+oTERM.idle();
+```
+
+## Returns
+
+- Type: `void`
+- No JavaScript value is returned.
+
+## Output
+
+- Channel: `terminal`
+- Format: `prompt state`
+- Shows a spinner while busy and restores the normal prompt when toggled back.
+
+## Effects
+
+- Toggles oTERM._o.state.idle.
+- Switches the prompt between busy and interactive modes.
+- Refocuses the input when returning to interactive mode.
+
+---
+
+# oTERM.input()
+
+Prompt the user and store the answer in oTERM._o.env[varName].
+
+## Syntax
+
+```txt
+input(<varName>,<question>
+,[prefill],[overwriteMode])
+```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<varName\> | Environment variable name used to store the answer. |
+| \<question\> | Prompt text shown while waiting for the answer. |
+| [prefill] | Optional initial input value inserted into the live command line. |
+| [overwriteMode] | Optional flag enabling terminal-like overwrite editing while prompting. |
+
+## Remarks
+
+- overwriteMode=true enables terminal-like overwrite editing instead of pure insert behavior.
+
+## Examples
+
+```txt
+oTERM.input("label","Enter","1234",false)
+```
+```txt
+oTERM.input("label","Enter","1234",true)
+```
+
+## Returns
+
+- Type: `void`
+- No JavaScript value is returned.
+
+## Output
+
+- Channel: `terminal`
+- Format: `interactive prompt`
+- Shows the supplied question as the active prompt and waits for the next submitted line.
+
+## Effects
+
+- Pushes the current prompt onto the prompt stack.
+- Enables prompt mode for the next Enter key submission.
+- Stores the answer in oTERM._o.env[varName].
+
+---
+
+# oTERM.popPrompt()
+
+Restore the previous prompt from the prompt stack.
+
+## Syntax
+
+```txt
+popPrompt([opts])
+```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| [opts] | Optional configuration object supporting render. |
+
+## Remarks
+
+- When the prompt stack is empty, the current prompt remains active and null is returned.
+
+## Examples
+
+```txt
+oTERM.popPrompt()
+```
+
+## Returns
+
+- Type: `object|null`
+- Returns the restored prompt object, or null when the prompt stack is empty.
+
+## Output
+
+- Channel: `terminal`
+- Format: `prompt state`
+- Updates the visible prompt unless opts.render is false.
+
+## Effects
+
+- Pops one prompt record from oTERM._o.promptStack when available.
+- Restores the active prompt configuration.
+
+---
+
+# oTERM.print()
+
+Format a value and write it to the terminal.
+
+## Syntax
+
+```txt
+print(<obj>,[fmt])
+```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<obj\> | Value to format and print. |
+| [fmt] | Optional formatter: array, array_hex, literal, html, or URL. |
+
+## Remarks
+
+- Without a formatter, multiline or space-sensitive strings are wrapped in <pre> output.
+- fmt="html" writes the string directly as HTML.
+
+## Examples
+
+```txt
+oTERM.print("DONE")
+```
+```txt
+oTERM.print([0,1,2,3,4],"array")
+```
+```txt
+oTERM.print([0,1,2,3,4],"array_hex")
+```
+
+## Returns
+
+- Type: `void`
+- No JavaScript value is returned.
+
+## Output
+
+- Channel: `terminal`
+- Format: `plain text|preformatted text|HTML`
+- Writes the formatted value to the terminal output.
+
+## Effects
+
+- Appends a new terminal output line.
+
+---
+
+# oTERM.printJSON()
+
+Pretty-print a value as JSON-like terminal output.
+
+## Syntax
+
+```txt
+printJSON(<obj>)
+```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<obj\> | Value to format for terminal display. |
+
+## Remarks
+
+- Error objects are rendered from stack or message text.
+- Non-serializable objects fall back to their string representation.
+
+## Examples
+
+```txt
+oTERM.printJSON({so:true})
+```
+
+## Returns
+
+- Type: `void`
+- No JavaScript value is returned.
+
+## Output
+
+- Channel: `terminal`
+- Format: `formatted JSON`
+- Writes the value as pretty-printed JSON inside preformatted terminal output.
+
+## Effects
+
+- Appends a new terminal output line.
+
+---
+
+# oTERM.pushPrompt()
+
+Push the current prompt onto the prompt stack and replace it with a new prompt.
+
+## Syntax
+
+```txt
+pushPrompt(<newPrompt>,[opts])
+```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| \<newPrompt\> | Prompt label to make active. |
+| [opts] | Optional configuration object supporting separator, render, and replace. |
+
+## Remarks
+
+- Use opts.replace=true to avoid pushing the previous prompt onto the stack.
+
+## Examples
+
+```txt
+oTERM.pushPrompt("CADScript")
+```
+
+## Returns
+
+- Type: `void`
+- No JavaScript value is returned.
+
+## Output
+
+- Channel: `terminal`
+- Format: `prompt state`
+- Updates the visible prompt unless opts.render is false.
+
+## Effects
+
+- Pushes the current prompt and separator onto oTERM._o.promptStack unless opts.replace is true.
+- Replaces the active prompt configuration.
 
 ---
 
