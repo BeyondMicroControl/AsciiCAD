@@ -49,7 +49,7 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
 1. **Pick a drawing tool** in the UI sidebar:
    - Use **Line** tools to route orthogonal wires.
    - Use **Box** tools to frame modules/components.
-   - Use **Freeform** to place individual characters/symbols.
+   - Use **Free** to place individual characters/symbols.
 2. **Draw on the canvas** by click‑dragging (or click‑click depending on the tool).
 3. **Add labels** using the Text tool (for net names, pin labels, etc.).
 4. Use **Undo/Redo** to iterate quickly.
@@ -103,7 +103,7 @@ AsciiCAD supports working on large diagrams:
 
 ## Drawing tools
 
-### Freeform
+### Free
 Place individual characters on the grid.
 - Choose a character (often via a picker organized by categories).
 - Click or drag to place repeatedly.
@@ -111,7 +111,7 @@ Place individual characters on the grid.
 
 ### Line routing
 Draw orthogonal wires with automatic merging at intersections.
-- Usually available in **single-line** and **double-line** styles.
+- Usually available in **single-line**, **fat-line**and **double-line** styles.
 - As one drags, the tool chooses corners, T-junctions, and crossings automatically.
 
 ### Box drawing
