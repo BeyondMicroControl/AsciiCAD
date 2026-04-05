@@ -477,7 +477,7 @@ this.interpolateColors = function(col_arr, rangeLen)
     const H1 = "#".repeat(headingLevel);
     const H2 = "#".repeat(headingLevel + 1);
 
-    let headingTitle = h.title;
+    let headingTitle = String(opts.displayName || h.title || name);
     const kind = String(h.kind || "").toUpperCase();
     const isCallable =
       kind.indexOf("FN") >= 0 ||
@@ -485,7 +485,7 @@ this.interpolateColors = function(col_arr, rangeLen)
       kind === "FUNCTION" ||
       kind === "COMMAND";
 
-    if (isCallable && headingTitle === name && !/[()]/.test(headingTitle))
+    if (isCallable && !/[()]/.test(headingTitle))
       headingTitle += "()";
 
     out.push(H1 + " " + headingTitle);
@@ -583,8 +583,6 @@ this.interpolateColors = function(col_arr, rangeLen)
         out.push("- " + h.effects[i]);
     }
 
-
-
     return out.join("\n");
   };
 
@@ -593,6 +591,8 @@ this.interpolateColors = function(col_arr, rangeLen)
     param = param || {};
 
     const entries = [];
+    const prefix = param.objectName ? String(param.objectName) : "";
+
     for (const [name, val] of Object.entries(JSContainer))
     {
       if (typeof val !== "function") continue;
@@ -601,7 +601,8 @@ this.interpolateColors = function(col_arr, rangeLen)
       entries.push({
         name: name,
         markdown: this.helpEntryToMarkdown(name, val.help, {
-          headingLevel: param.headingLevel || 1
+          headingLevel: param.headingLevel || 1,
+          displayName: prefix ? (prefix + "." + name) : name
         })
       });
     }
