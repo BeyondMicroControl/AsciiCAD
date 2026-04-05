@@ -126,16 +126,38 @@ function GASC()
         return null;
         }
     };
-    this.glyph2mask.help =   
+    this.glyph2mask.help =
     {
         type: "CADScript_FN",
-        syntax: "glyph2mask()",
-        desc:
-        "Translate a wire glyph into an 8-bit mask: low nibble=thin(single/light), high nibble=fat(single/heavy). " +
-        "Double wires set both nibbles. Mixed glyphs split directions between thin/fat using a lookup table.  " +
-        "Alias glyphs are alternative glyphs for the same (bit)mapping, e.g. '┼' and '+' both map to N|E|S|W.",
+        syntax: "glyph2mask([pack])",
+        summary:
+            "Translate the current grid into an 8-bit wire-mask raster. " +
+            "Low nibble encodes thin/single directions and high nibble encodes fat directions. " +
+            "Double wires set both nibbles.",
+        returns: {
+            type: "Uint8Array|null",
+            description:
+                "Returns one byte per grid cell in row-major order, or null when GPU execution is unavailable or fails."
+        },
+        output: {
+            channel: "none",
+            format: "",
+            description: "No terminal output is produced."
+        },
+        effects: [
+            "Reads the current AsciiCAD board state.",
+            "Initializes and reuses GPU kernels on first successful execution."
+        ],
+        parameters: [
+            { name: "[pack]", description: "Optional packing width in columns per GPU output word. Supported values are 1, 2, or 3." }
+        ],
+        remarks: [
+            "Alias glyphs are alternative glyphs for the same mapping, for example '┼' and '+' both map to N|E|S|W.",
+            "Packed GPU output is unpacked back into one byte per board cell before being returned."
+        ],
         examples: [
-        "oTERM.print(oGASC.glyph2mask(),\"array\")"
+            "oTERM.print(oGASC.glyph2mask(),\"array\")",
+            "oTERM.print(oGASC.glyph2mask(2),\"array\")"
         ]
     }
 
@@ -643,10 +665,34 @@ this.routeBuildBannedBits = function(ctx)
     {
         type: "CADScript_FN",
         syntax: "routePathDijkstra(from,to,modifiers)",
-        desc:
-            "Tentative GPU.js Dijkstra reimplementation. " +
-            "Uses the same outer signature as the CPU router and returns a path array when successful; " +
-            "returns null when unavailable or when modifiers require the exact CPU tie-break behavior."
+        summary:
+            "Run the tentative GPU.js Dijkstra router using the same outer signature as the CPU router.",
+        returns: {
+            type: "Array<object>|null",
+            description:
+                "Returns a routed path array on success, or null when GPU routing is unavailable, unsupported by the requested modifiers, or no path is found."
+        },
+        output: {
+            channel: "none",
+            format: "",
+            description: "No terminal output is produced."
+        },
+        effects: [
+            "Reads the current board state and routing context.",
+            "May populate and reuse the cached 16-bit route mask."
+        ],
+        parameters: [
+            { name: "from", description: "Start cell as an object with row and column coordinates." },
+            { name: "to", description: "Target cell as an object with row and column coordinates." },
+            { name: "modifiers", description: "Routing modifiers using the same shape as the CPU router." }
+        ],
+        remarks: [
+            "The first GPU pass does not support least-corners or least-bridges tie-break behavior and will return null in those cases.",
+            "When GPU compilation or execution fails, callers are expected to fall back to the CPU implementation."
+        ],
+        examples: [
+            "oTERM.printJSON(oGASC.routePathDijkstra({r:0,c:0},{r:0,c:5},{}))"
+        ]
     };
 
 
@@ -968,9 +1014,34 @@ this.routePathDijkstraProbe16.kScript = function(distState, cfg16)
     {
         type: "CADScript_FN",
         syntax: "mikamiPath(from,to,modifiers)",
-        desc:
-            "Tentative GPU.js Mikami-style router. " +
-            "Uses the same outer signature as the CPU Mikami router and is intentionally limited to least-bends-first behavior in this first GPU pass."
+        summary:
+            "Run the tentative GPU.js Mikami-style router using the same outer signature as the CPU Mikami router.",
+        returns: {
+            type: "Array<object>|null",
+            description:
+                "Returns a routed path array on success, or null when GPU routing is unavailable, unsupported by the requested modifiers, or no path is found."
+        },
+        output: {
+            channel: "none",
+            format: "",
+            description: "No terminal output is produced."
+        },
+        effects: [
+            "Reads the current board state and routing context.",
+            "Caches successful path results and reuses them while the board revision and request stay unchanged."
+        ],
+        parameters: [
+            { name: "from", description: "Start cell as an object with row and column coordinates." },
+            { name: "to", description: "Target cell as an object with row and column coordinates." },
+            { name: "modifiers", description: "Routing modifiers using the same shape as the CPU Mikami router." }
+        ],
+        remarks: [
+            "This first GPU pass is intentionally limited to least-bends-first behavior.",
+            "leastBridges is not supported and causes the function to return null so the caller can fall back to CPU routing."
+        ],
+        examples: [
+            "oTERM.printJSON(oGASC.mikamiPath({r:0,c:0},{r:4,c:8},{}))"
+        ]
     };
 
     this.mikamiInitH = function() {};
