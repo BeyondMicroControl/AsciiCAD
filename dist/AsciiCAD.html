@@ -968,24 +968,15 @@ this.interpolateColors = function(col_arr, rangeLen)
       └────────┴─────────────────┘
 */
 
-function stripHTML(s) {
+function stripHTML(s)
+{
   s = String(s ?? "");
   s = s.replace(/&nbsp;/ig, " ");
-  return s.replace(/<[^>]*>/g, "");
+
+  // Only strip the formatting tags that AsciiCAD intentionally emits.
+  return s.replace(/<\/?(?:b|i|u)\s*>|<br\s*\/?>/ig, "");
 }
 
-
-/* DROP-IN FIX: replace ONLY truncateHTMLByVisible() with this version.
-
-Fixes your center-align bugs:
-- No more “EXEX” / mingled text when content does NOT overflow.
-- No more false overflow flags on both sides for "C".
-- Correct center-truncation: keeps the *middle* visible slice (not prefix+suffix concat).
-
-Also improves HTML re-opening:
-- When we need to re-open tags after slicing, we re-open using the *original opening tag*
-  (preserving attributes), not just `<tagname>`.
-*/
 
 function truncateHTMLByVisible(input, maxVisible, align = "L") {
   const s = String(input ?? "");
@@ -1009,13 +1000,15 @@ function truncateHTMLByVisible(input, maxVisible, align = "L") {
     return { html: "", visible: "", truncL: fullVisible.length > 0, truncR: fullVisible.length > 0 };
   }
 
-  const tokens = s.match(/<\/?[^>]+>|[^<]+/g) || [];
+  const tokens = s.match(/<\/?(?:b|i|u)\s*>|<br\s*\/?>|[^<]+|<[^<]*/ig) || [];
   const VOID_TAGS = new Set(["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]);
 
-  function tagName(tag) {
-    const m = tag.match(/^<\/?\s*([a-zA-Z0-9:-]+)/);
+  function tagName(tag)
+  {
+    const m = tag.match(/^<\s*\/?\s*(b|i|u|br)\b/i);
     return m ? m[1].toLowerCase() : null;
   }
+
   function isClosing(tag) { return /^<\s*\//.test(tag); }
   function isSelfClosing(tag) {
     if (/\/\s*>$/.test(tag)) return true;
@@ -3318,7 +3311,7 @@ this.glyph2dir.help =
   this.line.help =
   {
     type: "CADScript_FN",
-    syntax: "line({path:[[<c>,<r>],[<c>,<r>],...], wire:[enumW], router:[enumR], target:[processor], cont:[lineC]})",
+    syntax: "line({path:[[<c>,<r>], [<c>,<r>],...], wire:[enumW], router:[enumR], target:[processor], cont:[lineC]})",
     summary: "Draw a polyline through multiple waypoints. Path tuples use [c,r] order, requiring minimum 2 tuples.",
     returns: {
       type: "void",
@@ -4698,7 +4691,7 @@ this.mikamiPath = function(from, to, modifiers)
   this.box.help = 
   {
     type: "CADScript_FN",
-    syntax: "box(<c0>,<r0>,<c1>,<r1>,{kind:[boxStyle]})",
+    syntax: "box(<c0>,<r0>,<c1>,<r1>, {kind:[boxStyle]})",
     summary: "Draw a box using BOX_SINGLE, BOX_FAT, or BOX_DOUBLE contours.",
     returns: {
       type: "void",
@@ -10493,7 +10486,17 @@ function CMD()
         "  clear     - clear terminal screen\n" +
         "  exit      - exit CLI\n"+
         "  help      - terminal help\n" +
-        "  history   - show command history\n")
+        "  history   - show command history\n" +
+        "\n" +
+        "Cheat sheet:\n" +
+        " CADScript {oTERM.pushPrompt(\"CADScript\")}\n" +
+        " oCMD.run(\"CADScript -h\");\n" +
+        " cell(0,0,\"ABC\\nDEF\\nGHI\");\n" +
+        " oTERM.print(getCell(0,0,2,E|S));\n" +
+        " stack(\"undo\"); oTERM.popPrompt();\n" +
+        " history\n" +
+        " clear\n"
+      )
     );
   }
 
@@ -10739,7 +10742,7 @@ function CMD()
     oTERM = new TERMINAL(
     {
       // We handle all input via oTERM.onInput; commands are kept for discoverability.
-      welcome: sbTitle.querySelector("big").textContent + " terminal - type <u>help</u><br>CADScript {oTERM.pushPrompt(\"CADScript\")}<br>oCMD.run(\"CADScript -h oASC\");",
+      welcome: sbTitle.querySelector("big").textContent + " terminal - type <u>help</u>",
       prompt: "AsciiCAD",
       separator: '>',
     });
@@ -13336,7 +13339,7 @@ const PICKER_TABS =
        <div class="resize-handle" id="resizeHandle"></div>
       <div class="sb-top">
         <button id="toggleSidebar" class="btn" title="Switch to CLI" aria-label="Toggle sidebar">⌘</button>
-        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.178</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
+        <div id="sbTitle" class="sb-title"><big>AsciiCAD v1.18</big><br><small><a href="https://github.com/BeyondMicroControl/AsciiCAD/blob/main/LICENSE.md" target="_bank">Author's notes and license</a></small></div>
       </div>
       <div class="sb-content">
 
