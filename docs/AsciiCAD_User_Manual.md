@@ -276,6 +276,9 @@ Saved diagrams are plain text:
 ## Why UTF‑8
 Using UTF‑8 (box-drawing, arrows, symbols) makes compact schematics possible while remaining plain text.
 
+## Direction mask
+TODO
+
 ---
 
 # Troubleshooting
@@ -764,9 +767,12 @@ oTERM.print(getCell(0,0,2,N|W|E|S))
 - Does not print or draw anything unless the caller prints the returned string.
 
 ---
+
 ### oASC object
 
 This object contains Javascript functions interacting with or perform relevant operations for the Ascii grid.
+
+
 
 ### oASC.getLabel()
 
@@ -818,7 +824,7 @@ oTERM.printJSON(oASC.env.ret)
 
 ### oASC.glyph2dir()
 
-Return the collapsed 4-bit direction mask (N|E|S|W) for a glyph. Unknown glyph returns 0.
+Return the [collapsed 4-bit direction mask](#direction-mask) (N|E|S|W) for a glyph. Unknown glyph returns 0.
 
 #### Syntax
 
