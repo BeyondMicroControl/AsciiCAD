@@ -999,32 +999,308 @@ Introduce an explicit **Debug vs Production** workflow split:
 
 ---
 
+## ADR-035: CADScript runtime consolidation and terminal/CADScript interoperability
+
+**Date:** v1.10–v1.14  
+**Status:** Accepted  
+**Context:** After the initial CLI split (ADR-032), command execution logic was still partially duplicated between `index.html` and the command helper layer. CADScript also needed a more reliable bridge back into terminal commands and a more consistent runtime model for prompts, environment values, and command dispatch.
+
+### Decision
+
+Consolidate the CADScript runtime around the command helper subsystem and make terminal and CADScript explicitly interoperable:
+
+1. **Decommission the old CADScript parser**
+   - Retire the previous ad-hoc CADScript parsing path.
+   - Standardize command parsing and dispatch around the newer command/compiler pipeline.
+
+2. **Move terminal command handling out of `index.html`**
+   - Relocate the terminal command handler logic from the page shell into the command helper module.
+   - Keep `index.html` focused on UI/event orchestration, while command semantics live in one place.
+
+3. **Allow CADScript to invoke terminal commands**
+   - Support calls such as:
+     - `CADScript { oCMD.run("clear") }`
+   - This makes terminal commands scriptable without mode switching hacks.
+
+4. **Normalize asynchronous function-call precedence**
+   - Ensure CADScript execution handles `await` and nested function calls predictably.
+   - This removes precedence-related surprises in expressions that combine querying and terminal output.
+
+5. **Replace undo/redo helper fragmentation with a single stack API**
+   - Replace separate helpers such as `doUndo`, `doRedo`, `resetUndo`, and `getUndoRedo` with:
+     - `stack("undo")`
+     - `stack("redo")`
+     - `stack("reset")`
+     - `stack("get")`
+
+6. **Add terminal-side environment and prompt-stack primitives**
+   - Support:
+     - `oTERM.getenv(...)`
+     - `oTERM.setenv(...)`
+     - `oTERM.input(...)`
+     - `oTERM.pushPrompt(...)`
+     - `oTERM.popPrompt(...)`
+   - This enables true nested prompt workflows and persistent script-visible terminal state.
+
+### Rationale
+
+- A single command/runtime path reduces drift between interactive CLI behavior and scripted behavior.
+- CADScript needs to be able to call terminal commands directly to support automation, demos, and mixed workflows.
+- Nested prompts and terminal environment values are important for interactive CADScript flows such as label/value collection.
+- A single `stack(...)` API is easier to document, remember, and test.
+
+### Consequences
+
+- (+) One consistent execution model for terminal input and CADScript.
+- (+) Less duplicated command-handling logic.
+- (+) CADScript can automate terminal workflows directly.
+- (+) Prompt nesting and environment values enable richer interactive scripts.
+- (+) Undo/redo API becomes simpler and more uniform.
+- (-) Runtime responsibilities in the command helper become broader.
+- (-) More care is needed to keep UI concerns and execution concerns separated.
+
+### Examples
+
+- `CADScript { oCMD.run("clear") }`
+- `CADScript { oTERM.setenv("cell", getCell(0,2,3,E)); oTERM.print(oTERM.getenv("cell")) }`
+- `CADScript { stack("undo") }`
+
+---
+
+## ADR-036: Expanded CADScript surface and self-documenting command reference
+
+**Date:** v1.11–v1.15  
+**Status:** Accepted  
+**Context:** Once CADScript became the main scripting surface, it needed broader coverage of core editing operations and stronger self-help. The original CLI help was too narrow for the number of supported functions and objects.
+
+### Decision
+
+Expand CADScript into a first-class automation layer and generate its documentation from structured function metadata:
+
+1. **Add higher-level CADScript drawing and editing functions**
+   - Integrate scriptable functions for:
+     - catalog listing
+     - catalog item placement
+     - blank-box/blank-region operations
+     - text placement
+     - line drawing with override/configuration support
+
+2. **Add direct grid read/write helpers**
+   - Support helpers such as:
+     - `cell(c,r,"...")`
+     - `getCell(c,r,len,dir)`
+
+3. **Add query/report helpers**
+   - Support structured queries such as:
+     - `qryLocate(...)`
+   - Support direct terminal JSON output via:
+     - `oTERM.printJSON(...)`
+
+4. **Generate self-help from function metadata**
+   - Extend command/function metadata so help can be rendered as:
+     - human-readable ASCII tables in the terminal
+     - markdown reference output via `CADScript -hm`
+
+5. **Treat help rendering utilities as generic infrastructure**
+   - Generalize the table/help rendering machinery (for example `AsciiTable`) so it is reusable outside one narrow help screen.
+
+6. **Add gentle per-command sanity checks**
+   - Provide lightweight sanity validation for CADScript commands to catch obvious misuse without making the scripting model heavy or brittle.
+
+### Rationale
+
+- The value of CADScript depends on being able to script real editor operations, not just a few primitives.
+- Structured self-help is essential once the command surface becomes too large to memorize.
+- Markdown export makes the command reference reusable in docs, issues, and lab tooling.
+- Grid read/write helpers make scripting deterministic and testable.
+
+### Consequences
+
+- (+) CADScript becomes useful for real drawing, querying, and automation workflows.
+- (+) Users can discover features from inside the app instead of relying only on external docs.
+- (+) Markdown doc generation reduces documentation drift.
+- (+) Structured metadata makes future commands easier to add consistently.
+- (-) Help metadata must be maintained alongside implementation.
+- (-) The command surface becomes broader, which increases testing/documentation burden.
+
+### Examples
+
+- `CADScript { cell(0,0,"TEST\nABCD") }`
+- `CADScript { oTERM.print(getCell(2,2,2)) }`
+- `CADScript { printCat() }`
+- `CADScript -hm`
+
+---
+
+## ADR-037: Unified zone-sensitive paste system with centered preview anchoring
+
+**Date:** v1.12–v1.14  
+**Status:** Accepted  
+**Context:** Clipboard handling had become fragmented across multiple event handlers, and paste behavior could interfere with sidebar text interaction. At the same time, paste-preview ergonomics on the grid needed to feel predictable during navigation and near edges.
+
+### Decision
+
+Replace the older fragmented paste handling with a single zone-sensitive paste system:
+
+1. **Use one central paste sink**
+   - Replace multiple overlapping paste handlers with one coherent paste-capture flow.
+
+2. **Make clipboard hijacking zone-sensitive**
+   - Paste-to-grid remains available when the user is operating on the canvas.
+   - Native paste behavior is preserved when the user is interacting with the UI sidebar, CLI sidebar, or other text-editing areas.
+
+3. **Anchor paste preview around the pointer**
+   - Newly pasted content is previewed with a centered anchor relative to the active pointer/grid position.
+
+4. **Clip only at commit time**
+   - The preview may conceptually extend beyond visible/grid boundaries.
+   - Actual placement is clipped against the grid when committed.
+
+5. **Support Esc to abort paste preview**
+   - `Esc` cancels `pasteDrag` without committing changes.
+
+### Rationale
+
+- Paste is a core workflow both for grid editing and for terminal/sidebar text input, so one mode must not break the other.
+- A single paste path is easier to reason about and debug than several overlapping handlers.
+- Centered anchoring feels more natural for “paste, preview, place” than always treating the pointer as the top-left cell.
+- Esc-to-cancel is standard behavior for transient previews.
+
+### Consequences
+
+- (+) Predictable clipboard behavior across canvas and sidebars.
+- (+) Less confusing paste event architecture.
+- (+) Better paste ergonomics near edges and during pan/zoom navigation.
+- (+) Easy cancellation of accidental paste previews.
+- (-) Requires more explicit pointer-zone tracking.
+- (-) Preview anchoring logic is slightly more complex than simple top-left placement.
+
+---
+
+## ADR-038: Netlist extraction and interactive net inspection overlays
+
+**Date:** v1.15  
+**Status:** Accepted  
+**Context:** AsciiCAD had become capable of representing more realistic schematics, but there was still no integrated way to inspect connectivity directly from the drawing surface. Users needed a lightweight netlist view and live visual net feedback.
+
+### Decision
+
+Add an integrated net-tracing toolchain consisting of:
+
+1. **Netlist extraction**
+   - Compute nets from the current ASCII drawing.
+   - Report each net in JSON form in the terminal.
+
+2. **Live hover-based net highlighting**
+   - When net tracing is enabled, hovering a wire highlights the full connected net on the canvas.
+
+3. **Real-time net identifier in the Canvas card**
+   - Display the current hovered net number in the button/sidebar UI.
+
+4. **Respect existing structural exclusions**
+   - Net extraction continues to respect the project’s distinction between routable wires, component footprints, and enclosed double-box areas.
+
+### Rationale
+
+- A schematic editor benefits from immediate connectivity feedback, not just static drawing.
+- JSON output is portable and easy to inspect, compare, and post-process.
+- Hover highlighting lets users understand local connectivity without switching tools or exporting data.
+- Showing the active net number in the UI improves orientation during inspection.
+
+### Consequences
+
+- (+) Connectivity becomes inspectable directly inside the editor.
+- (+) Terminal JSON output supports debugging and future tooling.
+- (+) Hover highlighting improves understanding of dense schematics.
+- (+) Bridges interactive editing and analysis without changing the file format.
+- (-) Net extraction adds computational complexity on large grids.
+- (-) Hover/overlay logic requires careful cache invalidation after edits.
+
+---
+
+## ADR-039: Mask-based routing core with multi-algorithm CPU/GPU backends
+
+**Date:** v1.14–v1.18  
+**Status:** Accepted  
+**Context:** Earlier line-drawing logic was sufficient for orthogonal/manual workflows, but advanced routing and large-grid performance required a more explicit internal representation of wire geometry and a broader routing toolkit.
+
+### Decision
+
+Modernize routing around a mask-based geometry core and multiple routing algorithms:
+
+1. **Introduce modular path post-processing with `solveIntersect()`**
+   - Use a dedicated intersection-resolution stage to improve continuity and line-shape correction after path generation.
+
+2. **Represent glyph geometry as packed masks**
+   - Add `glyph2mask()` and related helpers so glyph orientation/style can be represented as a compact bitmask.
+   - This becomes the internal bridge between visible ASCII glyphs and routing logic.
+
+3. **Add CPU routing backends**
+   - Support CPU implementations of:
+     - Dijkstra
+     - A*
+     - Mikami
+
+4. **Add GPU routing backends where appropriate**
+   - Support GPU implementations of:
+     - Dijkstra
+     - Mikami
+   - Do not treat A* as the preferred GPU path because it was found too sub-optimal for that processing model.
+
+5. **Add GPU mask conversion helpers**
+   - Provide GPU-side conversion of the ASCII grid into compact routing-relevant masks to avoid repeated heavyweight CPU interpretation.
+
+6. **Expose routing choices through scriptable line configuration**
+   - Allow line drawing to specify routing method, target, corner preference, bridge preference, and continuation behavior.
+
+### Rationale
+
+- Routing performance and route quality both matter once the editor is used for larger schematics.
+- A packed mask representation is simpler and faster for algorithmic processing than repeatedly re-interpreting glyphs as strings.
+- Different routing algorithms have different strengths; no single method is best for every case.
+- GPU offload is valuable, but only where the algorithm structure benefits from it.
+
+### Consequences
+
+- (+) Better routing flexibility and performance.
+- (+) Clear separation between visible glyphs and routing geometry.
+- (+) Scripted line drawing can select the best backend for the task.
+- (+) Intersection handling becomes more modular.
+- (-) Routing subsystem becomes significantly more sophisticated.
+- (-) CPU and GPU implementations must remain behaviorally aligned.
+- (-) More internal abstractions make debugging harder without good tooling.
+
+---
+
+## ADR-040: Distribution and permalink compression migrated from Pako to LZSS
+
+**Date:** v1.12  
+**Status:** Accepted  
+**Context:** URL/permalink and one-file distribution size had become more important as the application accumulated more features. The previous compression choice was functional, but heavier than necessary for the project’s needs.
+
+### Decision
+
+Replace the prior default compression/decompression path based on Pako with LZSS for permalink and distribution-oriented use cases.
+
+### Rationale
+
+- LZSS was found to produce a materially smaller implementation footprint for the app while remaining readable and maintainable.
+- For a static, self-contained browser tool, code size and readability matter as much as raw compression capability.
+- Smaller distribution size supports the project’s portability goals.
+
+### Consequences
+
+- (+) Smaller shipped code footprint.
+- (+) Simpler and more readable codec implementation.
+- (+) Better fit for one-file/offline distribution goals.
+- (-) Requires migration/compatibility handling for older encoded links where relevant.
+- (-) Compression choice becomes another internal format decision that must remain stable once shared links exist.
+
+---
+
+
 ### Work in progress
-- [x] 1. Decommission old CADScript parser
-- [x] 2. Mode 'TERMINAL COMMAND HANDLER' from index.html --> CMD_helpers.js (prep for nr 3)
-- [x] 3. Allow calling terminal commands in CADScript <pre>CADScript {oCMD.run("clear")}</pre>
-- [x] 4. Use by less heavy compression/decompression codec than Pako --> found LZSS after experimentation with <a href="../tools/codecTool.html">codecTool</a>, turns out almost 38KB smaller and code is more readable
-- [x] 5. Integrate new CADScript functions:  catalog list, place catalog item, blank box, text(string)  - v1.13
-- [x] 6. Integrate new CADScript functions: line(override)
-- [x] 7. Extend self-help documentation: display syntax and usage in an Ascii table - AsciiTable() became factually a generic function 
-- [x] 8. One single zone-sensitive pasteSink (instead of 3 confusing event handlers), pasteSink anchor placed in the center and clipped when navigating over the grid edges
-- [x] 9. Netlist builder: report netlist in JSON format in Terminal, color nets onmouseover and identify real-time the net number in button sidebar (canvas card). v1.15
-- [x] 11. CADScript { oTERM.printJSON( oASC.qryLocate(_regexp_) ); }  (also fixing function call precedence with await)
-- [x] 12. CADScript {oASC.cell(0,0,"TEST\nABCD")}
-- [x] 13. CADScript {oTERM.print(getCell(2,2,2))}
-- [x] 14. CADScript {oTERM.setenv("cell",getCell(0,2,3,E)); oTERM.print(oTERM.getenv("cell"))}
-- [x] 15. abort pasteDrag when user is pressing the 'esc' key
-- [x] 16. Extend oASC.cat() parameter to prefill wildcard characters in labels
-         example:   cat(0,0,0,'ATTiny85_MCU_ATTINY85V-10PU'); (getLabel(0,0,"label>>","loc>>")) oTERM.prompt("?",">>label","####",true); (setLabel("label",">>loc"))
-- [x] 17. oTERM.input() -> demonstrate how to process user input
-- [x] 18. oTERM.pushPrompt() / oTERM.pushPrompt() -> True nested prompt behavior
-- [x] 19. Write a gentle sanityCheck for each CADScript command
-- [x] 20. Replace doUndo, doRedo, resetUndo and getUndoRedo by stack(<arg>)  - "undo", "redo" , "reset", "get"
-- [x] 21. New line modular path routing algorithm with solveIntersect()
-- [x] 22. glyph2mask() GPU function for fast conversion of entire ASCII grid to 8-bit mask indicating glyph orientation and other features
-- [x] 23. CPU routing algorithms: Dijkstra, A*, Mikami
-- [x] 24. GPU routing algorithms: Dijkstra, Mikami (A* was found by large sub-optimal for GPU processing)
-- [x] 25. Extended self-help documentation data incl. markdown doc generation by "CADScript -hm"
+
 
 ---
 
