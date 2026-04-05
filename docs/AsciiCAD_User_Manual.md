@@ -771,7 +771,7 @@ oTERM.print(getCell(0,0,2,N|W|E|S))
 
 ### oASC object
 
-This object contains Javascript functions interacting with or perform relevant operations for the Ascii grid.
+The oASC object contains Javascript functions interacting with or perform relevant operations for the Ascii grid.
 
 
 
@@ -1289,6 +1289,149 @@ oTERM.printJSON(getLabel(5,3,'ret'))
 - Writes the label on the grid at (c,r).
 - Clears leftover characters when the previous label at that origin was longer.
 - Pushes undo history through the underlying cell() calls.
+
+---
+### oGASC Object
+
+The oGASC object contains GPU-specific Javascript functions interacting with or perform relevant operations for the Ascii grid.
+
+
+# oGASC.glyph2mask()
+
+Translate the current grid into an 8-bit wire-mask raster. Low nibble encodes thin/single directions and high nibble encodes fat directions. Double wires set both nibbles.
+
+## Syntax
+
+```txt
+glyph2mask([pack])
+```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| [pack] | Optional packing width in columns per GPU output word. Supported values are 1, 2, or 3. |
+
+## Remarks
+
+- Alias glyphs are alternative glyphs for the same mapping, for example '┼' and '+' both map to N|E|S|W.
+- Packed GPU output is unpacked back into one byte per board cell before being returned.
+
+## Examples
+
+```txt
+oTERM.print(oGASC.glyph2mask(),"array")
+```
+```txt
+oTERM.print(oGASC.glyph2mask(2),"array")
+```
+
+## Returns
+
+- Type: `Uint8Array|null`
+- Returns one byte per grid cell in row-major order, or null when GPU execution is unavailable or fails.
+
+## Output
+
+- Channel: `none`
+- No terminal output is produced.
+
+## Effects
+
+- Reads the current AsciiCAD board state.
+- Initializes and reuses GPU kernels on first successful execution.
+
+---
+
+# oGASC.mikamiPath()
+
+Run the tentative GPU.js Mikami-style router using the same outer signature as the CPU Mikami router.
+
+## Syntax
+
+```txt
+mikamiPath(from,to,modifiers)
+```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| from | Start cell as an object with row and column coordinates. |
+| to | Target cell as an object with row and column coordinates. |
+| modifiers | Routing modifiers using the same shape as the CPU Mikami router. |
+
+## Remarks
+
+- This first GPU pass is intentionally limited to least-bends-first behavior.
+- leastBridges is not supported and causes the function to return null so the caller can fall back to CPU routing.
+
+## Examples
+
+```txt
+oTERM.printJSON(oGASC.mikamiPath({r:0,c:0},{r:4,c:8},{}))
+```
+
+## Returns
+
+- Type: `Array<object>|null`
+- Returns a routed path array on success, or null when GPU routing is unavailable, unsupported by the requested modifiers, or no path is found.
+
+## Output
+
+- Channel: `none`
+- No terminal output is produced.
+
+## Effects
+
+- Reads the current board state and routing context.
+- Caches successful path results and reuses them while the board revision and request stay unchanged.
+
+---
+
+# oGASC.routePathDijkstra()
+
+Run the tentative GPU.js Dijkstra router using the same outer signature as the CPU router.
+
+## Syntax
+
+```txt
+routePathDijkstra(from,to,modifiers)
+```
+
+## Parameters
+
+| Parameter | Description |
+|---|---|
+| from | Start cell as an object with row and column coordinates. |
+| to | Target cell as an object with row and column coordinates. |
+| modifiers | Routing modifiers using the same shape as the CPU router. |
+
+## Remarks
+
+- The first GPU pass does not support least-corners or least-bridges tie-break behavior and will return null in those cases.
+- When GPU compilation or execution fails, callers are expected to fall back to the CPU implementation.
+
+## Examples
+
+```txt
+oTERM.printJSON(oGASC.routePathDijkstra({r:0,c:0},{r:0,c:5},{}))
+```
+
+## Returns
+
+- Type: `Array<object>|null`
+- Returns a routed path array on success, or null when GPU routing is unavailable, unsupported by the requested modifiers, or no path is found.
+
+## Output
+
+- Channel: `none`
+- No terminal output is produced.
+
+## Effects
+
+- Reads the current board state and routing context.
+- May populate and reuse the cached 16-bit route mask.
 
 ---
 
