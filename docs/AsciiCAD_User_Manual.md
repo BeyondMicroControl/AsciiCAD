@@ -33,6 +33,7 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
       - [Behaviors that affect all zones](#behaviors-that-affect-all-zones)
    - [CADScript command reference](#CADScript-command-reference)
       - [oASC object](#oASC-object)
+      - [oGASC object](#oGASC-object)
       - [oCMD object](#oCMD-object)
       - [oTERM object](#oTERM-object)
 ---
