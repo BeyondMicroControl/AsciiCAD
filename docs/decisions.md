@@ -1021,6 +1021,11 @@ Introduce an explicit **Debug vs Production** workflow split:
 - [x] 19. Write a gentle sanityCheck for each CADScript command
 - [x] 20. Replace doUndo, doRedo, resetUndo and getUndoRedo by stack(<arg>)  - "undo", "redo" , "reset", "get"
 - [x] 21. New line modular path routing algorithm with solveIntersect()
+- [x] 22. glyph2mask() GPU function for fast conversion of entire ASCII grid to 8-bit mask indicating glyph orientation and other features
+- [x] 23. CPU routing algorithms: Dijkstra, A*, Mikami
+- [x] 24. GPU routing algorithms: Dijkstra, Mikami (A* was found by large sub-optimal for GPU processing)
+- [x] 25. Extended self-help documentation data incl. markdown doc generation by "CADScript -hm"
+
 ---
 
 ## Summary of Key Design Principles
