@@ -16,14 +16,22 @@ AsciiCAD is a browser-based ASCII/UTF‑8 schematic editor designed to embed ele
    - [Analysis tools](#analysis-tools)
    - [History and persistence](#history-and-persistence)
    - [Clipboard and paste-to-grid](#clipboard-and-paste-to-grid)
-3. [CLI manual](#cli-manual)
+3. [Table mode (draft)](#table-mode-draft)
+   - [Purpose](#purpose)
+   - [Plain-text table representation](#plain-text-table-representation)
+   - [Interaction model](#interaction-model)
+   - [Body editing and navigation](#body-editing-and-navigation)
+   - [Data and structural rules](#data-and-structural-rules)
+   - [Future spreadsheet layer](#future-spreadsheet-layer)
+   - [Open questions](#open-questions)
++4. [CLI manual](#cli-manual)
    - [Opening the CLI](#opening-the-cli)
    - [Terminal mode](#terminal-mode)
    - [CADScript mode](#CADScript-mode)
    - [Examples](#examples)
-4. [Concepts](#concepts)
-5. [Troubleshooting](#troubleshooting)
-6. [Appendix](#appendix)
+5. [Concepts](#concepts)
+6. [Troubleshooting](#troubleshooting)
+7. [Appendix](#appendix)
    - [User Interaction zones](#user-interaction-zones)
    - [User interactions per feature](#user-interactions-per-feature)
       - [Grid zone](#grid-zone)
@@ -107,7 +115,7 @@ AsciiCAD supports working on large diagrams:
 
 ### Free
 Place individual characters on the grid.
-- Choose a character (often via a picker organized by categories).
+- Choose a character (often via a picker organised by categories).
 - Click or drag to place repeatedly.
 - Useful for: symbols, junction markers, custom glyphs, annotations.
 
@@ -146,7 +154,7 @@ Visual feedback:
 AsciiCAD includes a component catalog for common schematic symbols:
 - Browse by category.
 - Insert a component into the grid with one action.
-- Catalog items may be parameterized (labels/values).
+- Catalog items may be parameterised (labels/values).
 
 ## Analysis tools
 
@@ -181,6 +189,225 @@ AsciiCAD supports two paste workflows:
    - Normal browser copy/paste should work (select, right-click paste, Cmd/Ctrl+V).
 
 AsciiCAD is designed so the global paste-to-grid behavior does **not** break normal text copy/paste inside the sidebars.
+
+---
+
+
+# Table mode (draft)
+
+## Purpose
+
+Table mode introduces a plain-text table editor inside the AsciiCAD grid. It is intended to stay faithful to AsciiCAD’s core model: one visible character per cell, readable source text, and direct editing on the canvas.
+
+The initial goal is to support:
+
+- placing a table anchor directly on the grid
+- editing a pipe-delimited header row
+- generating a separator row and body rows automatically
+- navigating between body fields with keyboard control
+- reserving a formula line directly below the table for later spreadsheet features
+
+This chapter describes the currently discussed functional specification. The formula parser and evaluator are explicitly left for a later phase.
+
+## Plain-text table representation
+
+Table mode uses a plain-text layout inspired by traditional ASCII tables.
+
+### Header row
+
+The first row is the header row and is entered as a pipe-delimited line, for example:
+
+```text
+| n | n^2 | n^3 | n^4 | sqrt(n) |
+```
+
+### Separator row
+
+When the header is committed, a separator row is generated directly below it. The separator uses `+` at column boundaries and spans the full width of the table.
+
+Example:
+
+```text
+| n | n^2 | n^3 |
++---+-----+-----+
+```
+
+### Body rows
+
+Body rows reuse the same pipe positions as the header:
+
+```text
+| 1 |  1  |  1  |
+| 2 |  4  |  8  |
+```
+
+### Formula row
+
+A single formula row is reserved directly below the last body row. It uses `[` and `]` and has exactly the same width as the table.
+
+Example:
+
+```text
+[                     ]
+```
+
+At this stage the formula row is only a reserved editing area.
+
+## Interaction model
+
+### Entering Table mode
+
+A new draw mode named **Table** is available in the Draw mode toolbar. It behaves like the other draw modes and acts as a radio-style mode button.
+
+### Travelling cursor before placement
+
+While Table mode is active but no table has been placed yet, a travelling cursor follows the mouse over the grid, similar in spirit to Text mode.
+
+### Table anchor
+
+Clicking a grid cell in Table mode defines the **top-left corner** of the table and starts header editing.
+
+### Header editing
+
+After the anchor is placed, the user enters the header row as plain text using `|` characters as field separators.
+
+During header editing:
+
+- `Left Arrow` moves the cursor left
+- `Right Arrow` moves the cursor right
+- printable characters overwrite existing characters in place
+- `Backspace` clears the previous editable position
+- `Escape` cancels table editing
+- `Return` commits the header structure and switches to body editing
+
+### Pipe-boundary rule
+
+When editing the header row, a field boundary is determined by the next valid `|` character on the right.
+
+To reduce ambiguity, pipes enclosing **more than 8 spaces** are treated as **not forming a valid column end** for this purpose.
+
+This rule is specific to AsciiCAD and is meant to avoid misinterpreting distant pipes as intentional field boundaries.
+
+### Header commit
+
+When the user presses `Return` in header-editing phase:
+
+1. the header row is finalised
+2. column boundaries are parsed from the header row
+3. a separator row is generated directly below it
+4. the first empty body row is generated below the separator
+5. the formula row is generated below the first body row
+6. the logical cursor moves to the first field of the first body row
+
+## Body editing and navigation
+
+### Initial body position
+
+After the header is committed, editing begins at:
+
+- body row `0`
+- column `0`
+
+### Horizontal movement
+
+Inside the body:
+
+- `Left Arrow` moves left within the current field, then into the previous field when needed
+- `Right Arrow` moves right within the current field, then into the next field when needed
+- `Tab` may behave like move-right in body editing
+- printable characters overwrite the current character position
+
+The vertical pipe positions remain fixed once the table structure has been derived from the header row.
+
+### Vertical movement
+
+- `Down Arrow` moves to the same logical column in the next body row
+- `Up Arrow` moves to the same logical column in the previous body row
+- `Return` may behave like move-down in body editing
+
+### Auto-create row on downward expansion
+
+If the user moves down while already positioned on the last existing body row, the editor shall:
+
+1. create a new empty body row with the same pipe positions
+2. move the formula row down by one line so it remains directly below the last body row
+3. move the cursor into the newly created body row
+
+### Auto-remove trailing empty row
+
+If the user moves back up from the last body row and that row is still completely empty, the editor shall remove that row using the existing undo stack.
+
+The intended behavior is:
+
+- the last row must have been auto-created
+- the row must contain no user text in any editable field
+- moving away upward from that row triggers an `undo`
+
+This keeps trailing empty rows from accumulating.
+
+## Data and structural rules
+
+### Column boundaries
+
+Once the header is committed, the table’s column structure is defined by the header row’s pipe positions. All generated body rows reuse those exact positions.
+
+### Table width
+
+The table width is the width of the committed header row, from its first character through its last character.
+
+That width governs:
+
+- the separator row
+- every body row
+- the formula row
+
+### Body row emptiness
+
+A body row is considered empty when all editable positions between its pipes contain only spaces.
+
+### Formula row placement
+
+The formula row is always positioned:
+
+- directly below the last body row
+- at the same left column as the table anchor
+- at exactly the same width as the table
+
+## Future spreadsheet layer
+
+The spreadsheet layer is not yet implemented, but the formula row is intended to support a later syntax for:
+
+- field formulas
+- row formulas
+- column formulas
+- range formulas
+
+The guiding idea is that spreadsheet semantics should remain layered on top of a still-readable plain-text table, rather than replacing the table with a separate hidden model.
+
+## Open questions
+
+The following items remain intentionally open for later design:
+
+- formula syntax and parser design
+- whether `Tab` and `Return` should have field-only or row-creation side effects
+- how strictly malformed header rows should be normalised
+- whether the formula row is a free-form line, a per-cell formula editor, or a compact mini-language
+
+## Reference inspiration
+
+The current design direction is informed by plain-text table editing patterns such as:
+
+- pipe-delimited fields
+- a distinct separator row between header and body
+- row creation through navigation
+- spreadsheet semantics layered on top of readable text tables
+
+Useful reference material:
+
+- [Org Manual: Built-in Table Editor](https://orgmode.org/manual/Built_002din-Table-Editor.html)
+- [Org Manual: The Spreadsheet](https://orgmode.org/manual/The-Spreadsheet.html)
+- [Org tutorial: Tables](https://orgmode.org/worg/org-tutorials/tables.html)
+- [Org tutorial: Spreadsheet introduction](https://orgmode.org/worg/org-tutorials/org-spreadsheet-intro.html)
 
 ---
 
@@ -343,7 +570,7 @@ TODO
 | **Zoom (pinch)**                              | Trackpad              | pinch gesture                                                           | `canvas.wheel` with `e.ctrlKey` (browser pinch heuristic) → `__zoomAtCanvasPoint(mx,my, zoomFactor)`                                                                                                        | —                                            | Zoom anchor is the **pointer position** (mouse location in canvas coords)                                                    |
 | **Zoom (wheel)**                              | Mouse wheel           | wheel up/down                                                           | `canvas.wheel` (not trackpad-like) → `__zoomAtCanvasPoint(mx,my, zoomFactor)`                                                                                                                               | —                                            | Wheel zooms; anchor is pointer position; clamped after zoom                                                                  |
 | **Freeform draw (modeFreeform)**              | Mouse                 | left-down → drag → release                                              | `canvas.mousedown` (left) → `oASC.beginFreeform(cell)` → `canvas.mousemove` → `oASC.moveFreeform(cell)` → `window.mouseup` → `oASC.endFreeform()`                                                           | —                                            | Draw cell-by-cell; stroke is pushed for undo on end                                                                          |
-| **Select / Move (modeSelect)**                | Mouse                 | left-down → drag select → release                                       | `canvas.mousedown` → `oASC.beginSelect(cell)` → `canvas.mousemove` → `oASC.moveSelect(cell)` → `window.mouseup` → `oASC.endSelect()`                                                                        | —                                            | Drag makes selection rectangle; release finalizes. If starting inside an existing selection, it turns into a move-drag.      |
+| **Select / Move (modeSelect)**                | Mouse                 | left-down → drag select → release                                       | `canvas.mousedown` → `oASC.beginSelect(cell)` → `canvas.mousemove` → `oASC.moveSelect(cell)` → `window.mouseup` → `oASC.endSelect()`                                                                        | —                                            | Drag makes selection rectangle; release finalises. If starting inside an existing selection, it turns into a move-drag.      |
 | **Copy (modeCopy)**                           | Mouse                 | same as Select/Move                                                     | same chain as Select                                                                                                                                                                                        | —                                            | Same mechanics, but moveDrag action becomes `"copy"` and source remains                                                      |
 | **Blank (modeBlank)**                         | Mouse                 | left-down → drag select → release                                       | Select chain                                                                                                                                                                                                | —                                            | On endSelect, selected area is blanked and overlay cleared                                                                   |
 | **Lines (modeSLine / TLine / DLine)**         | Mouse                 | left-down set start → move preview → release commit                     | `canvas.mousedown` → `oASC.beginLine(cell, kind)` → `canvas.mousemove` → `oASC.moveLine(cell)` → `window.mouseup` → `oASC.commitLineWithOptionalMerge(lineDrag.merge, lineDrag.kind)`                       | `Shift` and `o` affect preview+commit (live) | `Shift` toggles “flip” behavior and `o` toggles merge/override; updates during drag on keydown/keyup                         |
@@ -1340,7 +1567,7 @@ oTERM.print(oGASC.glyph2mask(2),"array")
 ## Effects
 
 - Reads the current AsciiCAD board state.
-- Initializes and reuses GPU kernels on first successful execution.
+- Initialises and reuses GPU kernels on first successful execution.
 
 ---
 
@@ -1456,7 +1683,7 @@ run(<CMD>)
 
 #### Remarks
 
-- CADScript command lines are normalized through the same CLI handling path used by the interactive terminal.
+- CADScript command lines are normalised through the same CLI handling path used by the interactive terminal.
 - Unknown commands print an error to the terminal.
 
 #### Examples
