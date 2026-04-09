@@ -340,6 +340,7 @@ let pasteDrag = null;  // {lines,w,h,anchor,transparentSpaces}
 let lineDrag = null;   // { start:{r,c}, cur:{r,c} }
 let boxDrag = null;;   // { start:{r,c}, cur:{r,c}, type:'SBox'|'DBox' }
 let textDrag = null;   // { anchor:{r,c}, text:"" }
+let tableDrag = null;  // { phase, anchor, hover, ... }
 let modeRECALL = null;
 
 let shiftDown = false;
@@ -578,7 +579,7 @@ for(var i in mode_el)
   mode_el[i].addEventListener("click", (e) => 
   {
       setMode(e.currentTarget.id);
-      selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null;  textDrag = null;
+      selection = null; selectDrag = null; moveDrag = null; lineDrag = null; boxDrag = null; textDrag = null; tableDrag = null;
       oASC.cancelPaste?.();
       updateUI(); oASC.draw("init");
   });
@@ -1567,6 +1568,7 @@ function update_data_to_grid()
             selectDrag = null;
             moveDrag = null;
             textDrag = null;
+            tableDrag = null;
             boxDrag = null;
             oASC.cancelPaste();
             oASC.pushStrokeIfNonEmpty(stroke);
@@ -1967,6 +1969,7 @@ canvas.addEventListener("mousemove", (e) =>
   else if (tool === "modeLine")     oASC.moveLine(cell);
   else if (tool === "modeBox")      oASC.moveBox(cell);
   else if (tool === "modeFreetext") oASC.beginFreetext(cell);
+  else if (tool === "modeTable")    oASC.moveTable(cell);
   else console.error("tool mismatch (move)");
 });
 
@@ -2006,6 +2009,7 @@ canvas.addEventListener("mousedown", async (e) =>
   else if (tool === "modeLine")     oASC.beginLine(cell, lineConfig(lineRoutes[lineRouteSel], false));
   else if (tool === "modeBox")      oASC.beginBox(cell, lineConfig(null, true));
   else if (tool === "modeFreetext") oASC.beginFreetext(cell);
+  else if (tool === "modeTable")    oASC.beginTable(cell);
   else console.error("tool mismatch (begin)");
 });
 
@@ -2205,6 +2209,13 @@ window.addEventListener("keydown", (e) =>
   }
 
   //  If FreeText preview is active, handle ALL typing here and stop.
+
+  if (tableDrag)
+  {
+    oASC.handleTableKeydown(e);
+    return;
+  }
+
   if (textDrag) 
   {
     if (e.key === "Escape") { e.preventDefault(); oASC.cancelFreetext(); return; }     // Cancel
