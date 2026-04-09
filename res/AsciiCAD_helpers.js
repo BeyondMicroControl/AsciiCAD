@@ -3554,7 +3554,8 @@ this.mikamiPath = function(from, to, modifiers)
     const r0 = td?.anchor?.r ?? td?.hover?.r ?? 0;
     const c0 = td?.anchor?.c ?? td?.hover?.c ?? 0;
     const w = this.tableWidth(td);
-    const c1 = c0 + Math.max(0, w - 1);
+    const extraRight = (td.phase === "body") ? 1 : 0;
+    const c1 = Math.min(COLS - 1, c0 + Math.max(0, w - 1) + extraRight);
 
     let r1 = r0;
     if (td.phase === "anchor") r1 = r0;
@@ -3610,6 +3611,7 @@ this.mikamiPath = function(from, to, modifiers)
     if (!td) return null;
 
     const rel = absCol - td.anchor.c;
+    const lastCol = td.pipeIdx.length - 2;
     for (let col = 0; col < td.pipeIdx.length - 1; col++)
     {
       const b = this.tableBodyCellBounds(col);
@@ -3631,6 +3633,15 @@ this.mikamiPath = function(from, to, modifiers)
         };
       }
 
+      // Allow one extra cell beyond the utmost-right divider,
+      // but only as a potential header-extension position.
+      if (col === lastCol && rel === b.rightPipe + 1)
+      {
+        return {
+          bodyCol: col,
+          bodyPos: b.width + 1
+        };
+      }
 
     }
 
@@ -3672,6 +3683,23 @@ this.mikamiPath = function(from, to, modifiers)
           bestD = dividerD;
           best = { editRowIndex: rowIdx, bodyCol: col, bodyPos: b.width };
         }
+
+
+        // One extra header-only extension cell beyond the outermost divider.
+        if (rowIdx === 0 && col === td.pipeIdx.length - 2)
+        {
+          const extC = td.anchor.c + b.rightPipe + 1;
+          if (extC >= 0 && extC < COLS)
+          {
+            const extD = Math.abs(rr - cell.r) + Math.abs(extC - cell.c);
+            if (extD < bestD)
+            {
+              bestD = extD;
+              best = { editRowIndex: rowIdx, bodyCol: col, bodyPos: b.width + 1 };
+            }
+          }
+        }
+
       }
     }
 
@@ -3684,6 +3712,17 @@ this.mikamiPath = function(from, to, modifiers)
     const b = this.tableBodyCellBounds(tableDrag.bodyCol);
     if (!b) return false;
     return tableDrag.bodyPos === b.width;
+  }
+
+  this.tableCursorIsOnHeaderExtend = function()
+  {
+    if (!tableDrag) return false;
+    if ((tableDrag.editRowIndex ?? 1) !== 0) return false;
+    const lastCol = (tableDrag.pipeIdx?.length ?? 0) - 2;
+    if (tableDrag.bodyCol !== lastCol) return false;
+    const b = this.tableBodyCellBounds(tableDrag.bodyCol);
+    if (!b) return false;
+    return tableDrag.bodyPos === (b.width + 1);
   }
 
   this.tablePushStrokeCell = function(stroke, r, c, next)
@@ -3853,13 +3892,68 @@ this.mikamiPath = function(from, to, modifiers)
   }
 
 
+  this.tableAppendTrailingPipe = function()
+  {
+    if (!tableDrag || tableDrag.phase !== "body") return false;
+    if (!this.tableCursorIsOnHeaderExtend()) return false;
+
+    const width = this.tableWidth(tableDrag);
+    const oldRightAbs = tableDrag.anchor.c + width - 1;
+    const newRightAbs = oldRightAbs + 1;
+    if (newRightAbs >= COLS) return false;
+
+    const stroke = [];
+
+    // Header row: old right pipe stays as the new inner divider, append a new outer pipe.
+    this.tablePushStrokeCell(stroke, this.tableHeaderRow(tableDrag), newRightAbs, "|");
+
+    // Separator row: append a new outer '+' while the old one becomes the inner divider.
+    this.tablePushStrokeCell(stroke, this.tableSeparatorRow(tableDrag), newRightAbs, "+");
+
+    // Every body row gets a new outer right pipe.
+    for (let bodyRow = 0; bodyRow < tableDrag.rowCount; bodyRow++)
+    {
+      const rr = tableDrag.bodyStartRow + bodyRow;
+      this.tablePushStrokeCell(stroke, rr, newRightAbs, "|");
+    }
+
+    // Formula row grows by one cell: move ']' one step right and leave a blank behind.
+    this.tablePushStrokeCell(stroke, tableDrag.formulaRow, oldRightAbs, " ");
+    this.tablePushStrokeCell(stroke, tableDrag.formulaRow, newRightAbs, "]");
+
+    this.tableApplyStroke(stroke);
+
+    const newPipeRel = tableDrag.pipeIdx[tableDrag.pipeIdx.length - 1] + 1;
+    tableDrag.pipeIdx.push(newPipeRel);
+    tableDrag.width = width + 1;
+
+    // Place cursor on the new last column's right divider.
+    tableDrag.bodyCol = tableDrag.pipeIdx.length - 2;
+    tableDrag.bodyPos = 0;
+    tableDrag.editRowIndex = 0;
+    tableDrag.bodyRow = 0;
+    return true;
+  }
+
+
   this.beginTable = function(cell)
   {
     if (!cell) return;
 
     if (tableDrag)
     {
-
+      // First try to resume a real table under the clicked cell,
+      // even when Table mode currently only has a travelling anchor preview.
+      const found = this.tableLocateExisting(cell);
+      if (found)
+      {
+        tableDrag = found;
+        const target = this.tableFindNearestEditable(tableDrag, cell);
+        if (target) this.tableSetCursor(target);
+        canvas.focus?.();
+        this.draw("beginTable.locateExistingFirst");
+        return;
+      }
 
       // Clicking the travelling preview anchor starts a brand new header edit.
       // Do NOT try to "resume" an anchor-only preview as if it were an existing table.
@@ -4127,6 +4221,8 @@ this.mikamiPath = function(from, to, modifiers)
     const rr = this.tableEditAbsRow(tableDrag);
     const cc = (tableDrag.bodyPos === b.width)
       ? (tableDrag.anchor.c + b.rightPipe)
+      : (tableDrag.bodyPos === b.width + 1)
+        ? (tableDrag.anchor.c + b.rightPipe + 1)
       : (tableDrag.anchor.c + b.textStart + tableDrag.bodyPos);
     return { r: rr, c: cc };
   }
@@ -4136,7 +4232,9 @@ this.mikamiPath = function(from, to, modifiers)
     if (!tableDrag) return;
     const b = this.tableBodyCellBounds(tableDrag.bodyCol);
     if (!b) return;
-    const maxPos = Math.max(0, b.width);
+    let maxPos = Math.max(0, b.width);
+    if ((tableDrag.editRowIndex ?? 1) === 0 && tableDrag.bodyCol === tableDrag.pipeIdx.length - 2)
+      maxPos = b.width + 1;
     let pos = tableDrag.bodyPos + dir;
 
     if (pos < 0)
@@ -4434,6 +4532,7 @@ this.mikamiPath = function(from, to, modifiers)
       if (!e.ctrlKey && !e.metaKey && e.key && e.key.length === 1)
       {
         e.preventDefault();
+
         const arr = Array.from(tableDrag.headerText);
         const idx = tableDrag.headerCursor;
 
@@ -4483,6 +4582,19 @@ this.mikamiPath = function(from, to, modifiers)
       if (!e.ctrlKey && !e.metaKey && e.key && e.key.length === 1)
       {
         e.preventDefault();
+
+        // One-cell extension beyond the current right edge of the header:
+        // only a trailing pipe is allowed there, because without it the table
+        // perimeter would become ambiguous.
+        if (this.tableCursorIsOnHeaderExtend())
+        {
+          if (e.key === "|")
+          {
+            this.tableAppendTrailingPipe();
+            this.draw("table.body.appendTrailingPipe");
+          }
+          return;
+        }
         this.tableWriteBodyChar(e.key);
         this.tableMoveHoriz(1);
         this.draw("table.body.print");
