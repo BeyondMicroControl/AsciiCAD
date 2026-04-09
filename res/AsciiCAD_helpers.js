@@ -3935,6 +3935,52 @@ this.mikamiPath = function(from, to, modifiers)
     return true;
   }
 
+  this.tableRefreshActiveFromGrid = function()
+  {
+    if (!tableDrag || tableDrag.phase !== "body") return;
+
+    const probe =
+      this.tableBodyAbsCell?.()
+      ?? { r: tableDrag.anchor?.r ?? 0, c: tableDrag.anchor?.c ?? 0 };
+
+    const found =
+      this.tableLocateExisting(probe)
+      || this.tableLocateExisting(tableDrag.anchor)
+      || null;
+
+    if (!found)
+    {
+      tableDrag = null;
+      return;
+    }
+
+    tableDrag = found;
+
+    const target = this.tableFindNearestEditable(tableDrag, probe);
+    if (target) this.tableSetCursor(target);
+  }
+
+  this.tableHandlePrintableKey = function(ch)
+  {
+    if (!tableDrag || tableDrag.phase !== "body") return false;
+
+    // One-cell extension beyond the current right edge of the header:
+    // only a trailing pipe is allowed there, because without it the table
+    // perimeter would become ambiguous.
+    if (this.tableCursorIsOnHeaderExtend())
+    {
+      if (ch === "|")
+      {
+        this.tableAppendTrailingPipe();
+        return true;
+      }
+      return false;
+    }
+
+    this.tableWriteBodyChar(ch);
+    this.tableMoveHoriz(1);
+    return true;
+  }
 
   this.beginTable = function(cell)
   {
@@ -4427,10 +4473,6 @@ this.mikamiPath = function(from, to, modifiers)
         )
         {
           this.stack("undo");
-          tableDrag.rowCount = Math.max(1, tableDrag.rowCount - 1);
-          tableDrag.formulaRow = tableDrag.bodyStartRow + tableDrag.rowCount;
-          tableDrag.editRowIndex = Math.max(0, tableDrag.editRowIndex - 1);
-          tableDrag.bodyRow = Math.max(0, tableDrag.editRowIndex - 1);
           return;
         }
 
@@ -4614,32 +4656,10 @@ this.mikamiPath = function(from, to, modifiers)
         return;
       }
 
-      if (e.key === " ")
-      {
-        e.preventDefault();
-        this.tableDeleteAtCursor();
-        this.draw("table.body.space");
-        return;
-      }
-
       if (!e.ctrlKey && !e.metaKey && e.key && e.key.length === 1)
       {
         e.preventDefault();
-
-        // One-cell extension beyond the current right edge of the header:
-        // only a trailing pipe is allowed there, because without it the table
-        // perimeter would become ambiguous.
-        if (this.tableCursorIsOnHeaderExtend())
-        {
-          if (e.key === "|")
-          {
-            this.tableAppendTrailingPipe();
-            this.draw("table.body.appendTrailingPipe");
-          }
-          return;
-        }
-        this.tableWriteBodyChar(e.key);
-        this.tableMoveHoriz(1);
+        this.tableHandlePrintableKey(e.key);
         this.draw("table.body.print");
         return;
       }
@@ -6074,6 +6094,7 @@ this.startPasteWithText = function(text)
 
           updateUI();
         }
+        if (tableDrag) this.tableRefreshActiveFromGrid();
         this.draw("stack."+command); 
       break;
       case "redo":
@@ -6089,6 +6110,7 @@ this.startPasteWithText = function(text)
         hoverNetIndex = -1;
 
         updateUI();
+        if (tableDrag) this.tableRefreshActiveFromGrid();
         this.draw("stack."+command); 
       break;
       case "reset":
