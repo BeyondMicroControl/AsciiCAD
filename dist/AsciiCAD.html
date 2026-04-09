@@ -5103,7 +5103,19 @@ this.mikamiPath = function(from, to, modifiers)
           bodyPos: rel - b.textStart
         };
       }
+      // Allow landing on a field's right divider.
+      // This naturally excludes the utmost-left divider because it is not any field's rightPipe.
+      if (rel === b.rightPipe)
+      {
+        return {
+          bodyCol: col,
+          bodyPos: b.width
+        };
+      }
+
+
     }
+
     return null;
   }
 
@@ -5133,10 +5145,27 @@ this.mikamiPath = function(from, to, modifiers)
             best = { editRowIndex: rowIdx, bodyCol: col, bodyPos: pos };
           }
         }
+
+        // Right divider of this field is also a valid cursor target.
+        const dividerC = td.anchor.c + b.rightPipe;
+        const dividerD = Math.abs(rr - cell.r) + Math.abs(dividerC - cell.c);
+        if (dividerD < bestD)
+        {
+          bestD = dividerD;
+          best = { editRowIndex: rowIdx, bodyCol: col, bodyPos: b.width };
+        }
       }
     }
 
     return best;
+  }
+
+  this.tableCursorIsOnDivider = function()
+  {
+    if (!tableDrag) return false;
+    const b = this.tableBodyCellBounds(tableDrag.bodyCol);
+    if (!b) return false;
+    return tableDrag.bodyPos === b.width;
   }
 
   this.tablePushStrokeCell = function(stroke, r, c, next)
@@ -5578,7 +5607,9 @@ this.mikamiPath = function(from, to, modifiers)
     const b = this.tableBodyCellBounds(tableDrag.bodyCol);
     if (!b) return null;
     const rr = this.tableEditAbsRow(tableDrag);
-    const cc = tableDrag.anchor.c + b.textStart + tableDrag.bodyPos;
+    const cc = (tableDrag.bodyPos === b.width)
+      ? (tableDrag.anchor.c + b.rightPipe)
+      : (tableDrag.anchor.c + b.textStart + tableDrag.bodyPos);
     return { r: rr, c: cc };
   }
 
@@ -5587,8 +5618,7 @@ this.mikamiPath = function(from, to, modifiers)
     if (!tableDrag) return;
     const b = this.tableBodyCellBounds(tableDrag.bodyCol);
     if (!b) return;
-    const rr = tableDrag.bodyStartRow + tableDrag.bodyRow;
-    const maxPos = Math.max(0, b.width - 1);
+    const maxPos = Math.max(0, b.width);
     let pos = tableDrag.bodyPos + dir;
 
     if (pos < 0)
@@ -5597,7 +5627,7 @@ this.mikamiPath = function(from, to, modifiers)
       {
         tableDrag.bodyCol--;
         const pb = this.tableBodyCellBounds(tableDrag.bodyCol);
-        tableDrag.bodyPos = Math.max(0, (pb?.width ?? 1) - 1);
+        tableDrag.bodyPos = Math.max(0, pb?.width ?? 0);
       }
       else tableDrag.bodyPos = 0;
       return;
@@ -5631,6 +5661,49 @@ this.mikamiPath = function(from, to, modifiers)
         if (ch !== " ") return false;
       }
     }
+    return true;
+  }
+
+  this.tableLastNonEmptyBodyRow = function()
+  {
+    if (!tableDrag) return -1;
+    for (let row = tableDrag.rowCount - 1; row >= 0; row--)
+      if (!this.tableRowIsEmpty(row)) return row;
+    return -1;
+  }
+
+  this.tableTrimTrailingEmptyRows = function(minKeepRows = 1)
+  {
+    if (!tableDrag) return false;
+
+    const lastNonEmpty = this.tableLastNonEmptyBodyRow();
+    const keepRows = Math.max(minKeepRows, lastNonEmpty + 1);
+    if (keepRows >= tableDrag.rowCount) return false;
+
+    const width = tableDrag.pipeIdx[tableDrag.pipeIdx.length - 1] + 1;
+    const oldFormulaAbs = tableDrag.formulaRow;
+    const newFormulaAbs = tableDrag.bodyStartRow + keepRows;
+
+    const formulaChars = [];
+    for (let i = 0; i < width; i++)
+    {
+      const c = tableDrag.anchor.c + i;
+      formulaChars.push((ascii?.[oldFormulaAbs]?.[c] ?? " "));
+    }
+
+    const stroke = [];
+    this.tableCollectLineStroke(newFormulaAbs, tableDrag.anchor.c, formulaChars.join(""), stroke);
+
+    for (let r = newFormulaAbs + 1; r <= oldFormulaAbs; r++)
+      this.tableCollectLineStroke(r, tableDrag.anchor.c, " ".repeat(width), stroke);
+
+    this.tableApplyStroke(stroke);
+
+    tableDrag.rowCount = keepRows;
+    tableDrag.formulaRow = newFormulaAbs;
+    tableDrag.editRowIndex = Math.min(tableDrag.editRowIndex, tableDrag.rowCount);
+    tableDrag.bodyRow = Math.max(0, tableDrag.editRowIndex - 1);
+    tableDrag.dirtyRows = new Set(Array.from(tableDrag.dirtyRows).filter(i => i < keepRows));
     return true;
   }
 
@@ -5716,15 +5789,17 @@ this.mikamiPath = function(from, to, modifiers)
 
     const stroke = [];
     const dividerAbs = tableDrag.anchor.c + b.rightPipe;
-    const dividerOnRight = (abs.c + 1) === dividerAbs;
+    const cursorOnDivider = this.tableCursorIsOnDivider();
 
-    if (dividerOnRight && !this.tableIsDividerGlyph(ch))
+    // New rule: enlarge only when the cursor is ON the divider glyph,
+    // not when the divider merely sits to the right of the cursor.
+    if (cursorOnDivider && !this.tableIsDividerGlyph(ch))
     {
       if (this.tableCollectShiftRightStroke(tableDrag, dividerAbs, stroke))
       {
         for (let i = tableDrag.bodyCol + 1; i < tableDrag.pipeIdx.length; i++)
           tableDrag.pipeIdx[i] += 1;
-        tableDrag.width = this.tableWidth(tableDrag) + 1;
+        tableDrag.width = (tableDrag.width | 0) + 1;
       }
     }
 
@@ -5746,11 +5821,13 @@ this.mikamiPath = function(from, to, modifiers)
 
     const dividerAbs = tableDrag.anchor.c + b.rightPipe;
     const dividerOnRight = (abs.c + 1) === dividerAbs;
+    const cursorOnDivider = this.tableCursorIsOnDivider();
 
     const stroke = [];
     let shrunk = false;
 
-    if (dividerOnRight && this.tableColumnSliceIsClear(tableDrag, abs.c, { r: abs.r, c: abs.c }))
+    // Do not treat the divider cell itself as clearable text.
+    if (!cursorOnDivider && dividerOnRight && this.tableColumnSliceIsClear(tableDrag, abs.c, { r: abs.r, c: abs.c }))
     {
       if (this.tableCollectShiftLeftStroke(tableDrag, abs.c, stroke))
       {
@@ -5763,10 +5840,15 @@ this.mikamiPath = function(from, to, modifiers)
     }
     else
     {
-      this.tablePushStrokeCell(stroke, abs.r, abs.c, " ");
+      if (!cursorOnDivider)
+        this.tablePushStrokeCell(stroke, abs.r, abs.c, " ");
     }
 
     this.tableApplyStroke(stroke);
+
+    // When clearing turns the current row into the new trailing empty region,
+    // collapse all empty rows from the bottom upward until a non-empty row remains.
+    this.tableTrimTrailingEmptyRows(1);    
 
     if (backspace && !shrunk)
       this.tableMoveHoriz(-1);   
