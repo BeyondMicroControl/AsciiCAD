@@ -4472,7 +4472,7 @@ this.mikamiPath = function(from, to, modifiers)
       tableDrag.dirtyRows.add(tableDrag.editRowIndex - 1);
   }
 
-  this.tableDeleteAtCursor = function(backspace)
+ this.tableDeleteAtCursor = function()
   {
     if (!tableDrag) return;
     const abs = this.tableBodyAbsCell();
@@ -4496,7 +4496,6 @@ this.mikamiPath = function(from, to, modifiers)
         for (let i = tableDrag.bodyCol + 1; i < tableDrag.pipeIdx.length; i++)
           tableDrag.pipeIdx[i] -= 1;
         tableDrag.width = Math.max(2, this.tableWidth(tableDrag) - 1);
-        tableDrag.bodyPos = Math.max(0, tableDrag.bodyPos - 1);
         shrunk = true;
       }
     }
@@ -4510,10 +4509,7 @@ this.mikamiPath = function(from, to, modifiers)
 
     // When clearing turns the current row into the new trailing empty region,
     // collapse all empty rows from the bottom upward until a non-empty row remains.
-    this.tableTrimTrailingEmptyRows(1);    
-
-    if (backspace && !shrunk)
-      this.tableMoveHoriz(-1);   
+    this.tableTrimTrailingEmptyRows(1);
   }
 
   this.handleTableKeydown = function(e)
@@ -4613,7 +4609,7 @@ this.mikamiPath = function(from, to, modifiers)
       {
         e.preventDefault();
         if (this.tableMoveToBackspaceTarget())
-          this.tableDeleteAtCursor(false);
+          this.tableDeleteAtCursor();
         this.draw("table.body.backspace");
         return;
       }
@@ -4621,7 +4617,7 @@ this.mikamiPath = function(from, to, modifiers)
       if (e.key === " ")
       {
         e.preventDefault();
-        this.tableDeleteAtCursor(false);
+        this.tableDeleteAtCursor();
         this.draw("table.body.space");
         return;
       }
