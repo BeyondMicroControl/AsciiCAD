@@ -5745,6 +5745,52 @@ this.mikamiPath = function(from, to, modifiers)
     tableDrag.bodyPos = pos;
   }
 
+
+
+  this.tableCursorState = function()
+  {
+    if (!tableDrag) return null;
+    return {
+      editRowIndex: tableDrag.editRowIndex,
+      bodyCol: tableDrag.bodyCol,
+      bodyPos: tableDrag.bodyPos
+    };
+  }
+
+  this.tableCursorStateEq = function(a, b)
+  {
+    if (!a || !b) return false;
+    return a.editRowIndex === b.editRowIndex
+        && a.bodyCol === b.bodyCol
+        && a.bodyPos === b.bodyPos;
+  }
+
+  // Backspace should target the previous editable character, not the cell in place.
+  // This helper walks left until it lands on a real text position, skipping divider
+  // cursor positions and the header-extension cursor position.
+  this.tableMoveToBackspaceTarget = function()
+  {
+    if (!tableDrag) return false;
+
+    const start = this.tableCursorState();
+    this.tableMoveHoriz(-1);
+
+    let cur = this.tableCursorState();
+    if (this.tableCursorStateEq(start, cur)) return false;
+
+    // Skip divider/extension cursor positions until we reach a text cell,
+    // or until no further movement is possible.
+    while (this.tableCursorIsOnDivider() || this.tableCursorIsOnHeaderExtend())
+    {
+      const prev = this.tableCursorState();
+      this.tableMoveHoriz(-1);
+      cur = this.tableCursorState();
+      if (this.tableCursorStateEq(prev, cur)) break;
+    }
+
+    return true;
+  }
+
   this.tableRowIsEmpty = function(bodyRow)
   {
     if (!tableDrag) return true;
@@ -6048,7 +6094,8 @@ this.mikamiPath = function(from, to, modifiers)
       if (e.key === "Backspace")
       {
         e.preventDefault();
-        this.tableDeleteAtCursor(true);
+        if (this.tableMoveToBackspaceTarget())
+          this.tableDeleteAtCursor(false);
         this.draw("table.body.backspace");
         return;
       }
