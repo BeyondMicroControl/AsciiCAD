@@ -1298,9 +1298,8 @@ Replace the prior default compression/decompression path based on Pako with LZSS
 
 ---
 
-
 ### Work in progress
-
+- [ ]  Table detection / editing / formulas (in label)
 
 ---
 
