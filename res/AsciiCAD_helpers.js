@@ -3629,6 +3629,7 @@ this.mikamiPath = function(from, to, modifiers)
   {
     td = td || tableDrag;
     if (!td || !cell) return null;
+    if (!Array.isArray(td.pipeIdx) || td.pipeIdx.length < 2) return null;
 
     let best = null;
     let bestD = Infinity;
@@ -3829,6 +3830,38 @@ this.mikamiPath = function(from, to, modifiers)
 
     if (tableDrag)
     {
+
+
+      // Clicking the travelling preview anchor starts a brand new header edit.
+      // Do NOT try to "resume" an anchor-only preview as if it were an existing table.
+      if (tableDrag.phase === "anchor")
+      {
+        tableDrag =
+        {
+          phase: "header",
+          anchor: { r: cell.r, c: cell.c },
+          hover:  { r: cell.r, c: cell.c },
+          headerText: "|  |",
+          headerCursor: 2,
+          width: 4,
+          pipeIdx: [],
+          rowCount: 0,
+          editRowIndex: 0,
+          bodyRow: 0,
+          bodyCol: 0,
+          bodyPos: 0,
+          bodyStartRow: cell.r + 2,
+          formulaRow: cell.r + 3,
+          dirtyRows: new Set()
+        };
+
+        canvas.focus?.();
+        this.draw("beginTable.anchorToHeader");
+        return;
+      }
+
+
+
       const rect = this.tableGetRect(tableDrag);
 
       if (this.tableCellInRect(cell, rect))
@@ -4062,7 +4095,7 @@ this.mikamiPath = function(from, to, modifiers)
     if (!tableDrag) return null;
     const b = this.tableBodyCellBounds(tableDrag.bodyCol);
     if (!b) return null;
-    
+    const rr = this.tableEditAbsRow(tableDrag);
     const cc = tableDrag.anchor.c + b.textStart + tableDrag.bodyPos;
     return { r: rr, c: cc };
   }
@@ -6360,7 +6393,9 @@ this.startPasteWithText = function(text)
 
       ctx.fillStyle = old;
 
-      const rect = this.tableGetRect(tableDrag);
+      // Only show the red perimeter once a real table structure exists.
+      // Anchor preview and initial header preview should not show a perimeter box.
+      const rect = (tableDrag.phase === "body") ? this.tableGetRect(tableDrag) : null;
       if (rect)
       {
         ctx.save();
