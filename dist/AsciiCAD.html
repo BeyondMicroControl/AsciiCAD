@@ -5640,7 +5640,6 @@ this.mikamiPath = function(from, to, modifiers)
 
     const width = tableDrag.pipeIdx[tableDrag.pipeIdx.length - 1] + 1;
     const rowText = this.tableBuildBodyText(tableDrag.pipeIdx, width);
-    const formulaText = this.tableBuildFormulaText(width);
 
     const newRowAbs = tableDrag.bodyStartRow + tableDrag.rowCount;
     const oldFormulaAbs = tableDrag.formulaRow;
@@ -5654,10 +5653,12 @@ this.mikamiPath = function(from, to, modifiers)
     }
 
     const stroke = [];
-    this.tableCollectLineStroke(newRowAbs,     tableDrag.anchor.c, rowText,              stroke);
-    this.tableCollectLineStroke(oldFormulaAbs, tableDrag.anchor.c, " ".repeat(width),    stroke);
-    this.tableCollectLineStroke(newFormulaAbs, tableDrag.anchor.c, oldFormula.join(""),   stroke);
-
+    // The old formula row becomes the new body row.
+    // Do NOT blank oldFormulaAbs afterwards, or the old '[' and ']'
+    // will overwrite the new outer pipes.
+    this.tableCollectLineStroke(newRowAbs,   tableDrag.anchor.c, rowText,            stroke);
+    this.tableCollectLineStroke(newFormulaAbs, tableDrag.anchor.c, oldFormula.join(""), stroke);
+ 
     this.tableApplyStroke(stroke);
 
     tableDrag.rowCount++;
