@@ -3519,11 +3519,362 @@ this.mikamiPath = function(from, to, modifiers)
 
   // subsection: table
 
+  this.tableWidth = function(td)
+  {
+    td = td || tableDrag;
+    if (!td) return 0;
+    if (typeof td.width === "number" && td.width > 0) return td.width;
+    if (td.phase === "header") return this.tableHeaderNormalize(td.headerText).length;
+    if (td.pipeIdx && td.pipeIdx.length) return (td.pipeIdx[td.pipeIdx.length - 1] + 1);
+    return 1;
+  }
+
+  this.tableHeaderRow = function(td)
+  {
+    td = td || tableDrag;
+    return td?.anchor?.r ?? td?.hover?.r ?? 0;
+  }
+
+  this.tableSeparatorRow = function(td)
+  {
+    return this.tableHeaderRow(td) + 1;
+  }
+
+  this.tableBodyEndRow = function(td)
+  {
+    td = td || tableDrag;
+    return (td?.bodyStartRow ?? 0) + Math.max(0, (td?.rowCount ?? 0) - 1);
+  }
+
+  this.tableGetRect = function(td)
+  {
+    td = td || tableDrag;
+    if (!td) return null;
+
+    const r0 = td?.anchor?.r ?? td?.hover?.r ?? 0;
+    const c0 = td?.anchor?.c ?? td?.hover?.c ?? 0;
+    const w = this.tableWidth(td);
+    const c1 = c0 + Math.max(0, w - 1);
+
+    let r1 = r0;
+    if (td.phase === "anchor") r1 = r0;
+    else if (td.phase === "header") r1 = r0;
+    else r1 = td.formulaRow ?? this.tableBodyEndRow(td);
+
+    return { r0, c0, r1, c1 };
+  }
+
+  this.tableCellInRect = function(cell, rect)
+  {
+    if (!cell || !rect) return false;
+    return cell.r >= rect.r0 && cell.r <= rect.r1 && cell.c >= rect.c0 && cell.c <= rect.c1;
+  }
+
+  this.tableEditableRowAbsToIndex = function(td, absRow)
+  {
+    td = td || tableDrag;
+    if (!td) return -1;
+    const headerRow = this.tableHeaderRow(td);
+    if (absRow === headerRow) return 0;
+    if (absRow >= td.bodyStartRow && absRow < td.bodyStartRow + td.rowCount)
+      return 1 + (absRow - td.bodyStartRow);
+    return -1;
+  }
+
+  this.tableIndexToAbsRow = function(td, idx)
+  {
+    td = td || tableDrag;
+    if (!td) return 0;
+    return idx === 0 ? this.tableHeaderRow(td) : (td.bodyStartRow + idx - 1);
+  }
+
+  this.tableEditAbsRow = function(td)
+  {
+    td = td || tableDrag;
+    if (!td) return 0;
+    return this.tableIndexToAbsRow(td, td.editRowIndex ?? 1);
+  }
+
+  this.tableSetCursor = function(target)
+  {
+    if (!tableDrag || !target) return;
+    tableDrag.editRowIndex = target.editRowIndex;
+    tableDrag.bodyCol = target.bodyCol;
+    tableDrag.bodyPos = target.bodyPos;
+    tableDrag.bodyRow = Math.max(0, (target.editRowIndex ?? 1) - 1);
+  }
+
+  this.tableFieldFromAbsCol = function(td, absCol)
+  {
+    td = td || tableDrag;
+    if (!td) return null;
+
+    const rel = absCol - td.anchor.c;
+    for (let col = 0; col < td.pipeIdx.length - 1; col++)
+    {
+      const b = this.tableBodyCellBounds(col);
+      if (!b) continue;
+      if (rel >= b.textStart && rel <= b.textEnd)
+      {
+        return {
+          bodyCol: col,
+          bodyPos: rel - b.textStart
+        };
+      }
+    }
+    return null;
+  }
+
+  this.tableFindNearestEditable = function(td, cell)
+  {
+    td = td || tableDrag;
+    if (!td || !cell) return null;
+
+    let best = null;
+    let bestD = Infinity;
+
+    for (let rowIdx = 0; rowIdx <= td.rowCount; rowIdx++)
+    {
+      const rr = this.tableIndexToAbsRow(td, rowIdx);
+      for (let col = 0; col < td.pipeIdx.length - 1; col++)
+      {
+        const b = this.tableBodyCellBounds(col);
+        if (!b) continue;
+        for (let pos = 0; pos < b.width; pos++)
+        {
+          const cc = td.anchor.c + b.textStart + pos;
+          const d = Math.abs(rr - cell.r) + Math.abs(cc - cell.c);
+          if (d < bestD)
+          {
+            bestD = d;
+            best = { editRowIndex: rowIdx, bodyCol: col, bodyPos: pos };
+          }
+        }
+      }
+    }
+
+    return best;
+  }
+
+  this.tablePushStrokeCell = function(stroke, r, c, next)
+  {
+    if (!stroke) return;
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+    const prev = ascii[r][c];
+    if (prev === next) return;
+    stroke.push({ r, c, prev, next });
+  }
+
+  this.tableIsDividerGlyph = function(ch)
+  {
+    return ch === "|" || ch === "+";
+  }
+
+  this.tableCollectShiftRightStroke = function(td, absCol, stroke)
+  {
+    td = td || tableDrag;
+    const rect = this.tableGetRect(td);
+    if (!td || !rect) return false;
+    if (rect.c1 + 1 >= COLS) return false;
+
+    for (let r = rect.r0; r <= rect.r1; r++)
+    {
+      for (let c = rect.c1; c >= absCol; c--)
+        this.tablePushStrokeCell(stroke, r, c + 1, ascii[r][c]);
+
+      const fill = (r === this.tableSeparatorRow(td)) ? "-" : " ";
+      this.tablePushStrokeCell(stroke, r, absCol, fill);
+    }
+
+    return true;
+  }
+
+  this.tableCollectShiftLeftStroke = function(td, absCol, stroke)
+  {
+    td = td || tableDrag;
+    const rect = this.tableGetRect(td);
+    if (!td || !rect) return false;
+
+    for (let r = rect.r0; r <= rect.r1; r++)
+    {
+      for (let c = absCol; c < rect.c1; c++)
+        this.tablePushStrokeCell(stroke, r, c, ascii[r][c + 1]);
+
+      this.tablePushStrokeCell(stroke, r, rect.c1, " ");
+    }
+
+    return true;
+  }
+
+  this.tableColumnSliceIsClear = function(td, absCol, overrideCell)
+  {
+    td = td || tableDrag;
+    const rect = this.tableGetRect(td);
+    if (!td || !rect) return false;
+
+    for (let r = rect.r0; r <= rect.r1; r++)
+    {
+      if (r === this.tableSeparatorRow(td)) continue;
+
+      if (r === td.formulaRow && (absCol === rect.c0 || absCol === rect.c1))
+        return false;
+
+      const ch =
+        (overrideCell && overrideCell.r === r && overrideCell.c === absCol)
+          ? " "
+          : (ascii?.[r]?.[absCol] ?? " ");
+
+      if (ch !== " ") return false;
+    }
+
+    return true;
+  }
+
+  this.tableSeparatorMatches = function(r, c0, pipeIdx, width)
+  {
+    if (r < 0 || r >= ROWS) return false;
+    for (let i = 0; i < width; i++)
+    {
+      const ch = ascii?.[r]?.[c0 + i] ?? " ";
+      const expected = pipeIdx.indexOf(i) >= 0 ? "+" : "-";
+      if (ch !== expected) return false;
+    }
+    return true;
+  }
+
+  this.tableBodyRowMatches = function(r, c0, pipeIdx, width)
+  {
+    if (r < 0 || r >= ROWS) return false;
+    for (let i = 0; i < pipeIdx.length; i++)
+    {
+      const absC = c0 + pipeIdx[i];
+      if ((ascii?.[r]?.[absC] ?? " ") !== "|") return false;
+    }
+    return true;
+  }
+
+  this.tableFormulaMatches = function(r, c0, width)
+  {
+    if (r < 0 || r >= ROWS) return false;
+    if ((ascii?.[r]?.[c0] ?? " ") !== "[") return false;
+    if ((ascii?.[r]?.[c0 + width - 1] ?? " ") !== "]") return false;
+    return true;
+  }
+
+  this.tableLocateExisting = function(cell)
+  {
+    if (!cell) return null;
+
+    const rMin = Math.max(0, cell.r - 48);
+    for (let hr = Math.min(cell.r, ROWS - 4); hr >= rMin; hr--)
+    {
+      const pipesAbs = [];
+      for (let c = 0; c < COLS; c++) if (ascii?.[hr]?.[c] === "|") pipesAbs.push(c);
+      if (pipesAbs.length < 2) continue;
+
+      const left = pipesAbs[0];
+      const right = pipesAbs[pipesAbs.length - 1];
+      if (cell.c < left || cell.c > right) continue;
+
+      const width = right - left + 1;
+      const pipeIdx = pipesAbs.map(c => c - left);
+
+      if (!this.tableSeparatorMatches(hr + 1, left, pipeIdx, width)) continue;
+
+      let rr = hr + 2;
+      let rowCount = 0;
+      let formulaRow = -1;
+
+      while (rr < ROWS)
+      {
+        if (this.tableFormulaMatches(rr, left, width))
+        {
+          formulaRow = rr;
+          break;
+        }
+        if (!this.tableBodyRowMatches(rr, left, pipeIdx, width)) break;
+        rowCount++;
+        rr++;
+      }
+
+      if (formulaRow < 0 || rowCount < 1) continue;
+      if (cell.r < hr || cell.r > formulaRow) continue;
+
+      return {
+        phase: "body",
+        anchor: { r: hr, c: left },
+        hover: { r: cell.r, c: cell.c },
+        headerText: ascii[hr].slice(left, right + 1).join(""),
+        headerCursor: 0,
+        pipeIdx: pipeIdx.slice(),
+        width,
+        rowCount,
+        editRowIndex: 1,
+        bodyRow: 0,
+        bodyCol: 0,
+        bodyPos: 0,
+        bodyStartRow: hr + 2,
+        formulaRow,
+        dirtyRows: new Set(Array.from({ length: rowCount }, (_, i) => i))
+      };
+    }
+
+    return null;
+  }
+
+
   this.beginTable = function(cell)
   {
     if (!cell) return;
 
-    // First click locks the anchor and starts header editing
+    if (tableDrag)
+    {
+      const rect = this.tableGetRect(tableDrag);
+
+      if (this.tableCellInRect(cell, rect))
+      {
+        if (tableDrag.phase === "header")
+        {
+          const txt = this.tableHeaderNormalize(tableDrag.headerText);
+          let idx = Math.max(0, Math.min(txt.length, cell.c - tableDrag.anchor.c));
+
+          if (txt[idx] === "|")
+          {
+            if (idx + 1 < txt.length && txt[idx + 1] !== "|") idx = idx + 1;
+            else if (idx - 1 >= 0 && txt[idx - 1] !== "|") idx = idx - 1;
+          }
+
+          tableDrag.headerCursor = idx;
+        }
+        else
+        {
+          const target = this.tableFindNearestEditable(tableDrag, cell);
+          if (target) this.tableSetCursor(target);
+        }
+
+        canvas.focus?.();
+        this.draw("beginTable.resumeActive");
+        return;
+      }
+
+      if (cell.r < rect.r0 || cell.r > rect.r1)
+      {
+        this.cancelTable();
+        return;
+      }
+    }
+
+    const existing = this.tableLocateExisting(cell);
+    if (existing)
+    {
+      tableDrag = existing;
+      const target = this.tableFindNearestEditable(tableDrag, cell);
+      if (target) this.tableSetCursor(target);
+      canvas.focus?.();
+      this.draw("beginTable.resumeExisting");
+      return;
+    }
+
     tableDrag =
     {
       phase: "header",
@@ -3531,8 +3882,10 @@ this.mikamiPath = function(from, to, modifiers)
       hover:  { r: cell.r, c: cell.c },
       headerText: "|  |",
       headerCursor: 2,
+      width: 4,
       pipeIdx: [],
       rowCount: 0,
+      editRowIndex: 0,
       bodyRow: 0,
       bodyCol: 0,
       bodyPos: 0,
@@ -3680,7 +4033,9 @@ this.mikamiPath = function(from, to, modifiers)
 
     tableDrag.phase = "body";
     tableDrag.pipeIdx = parsed.pipeIdx.slice();
+    tableDrag.width = parsed.width
     tableDrag.rowCount = 1;
+    tableDrag.editRowIndex = 1;
     tableDrag.bodyRow = 0;
     tableDrag.bodyCol = 0;
     tableDrag.bodyPos = 0;
@@ -3707,7 +4062,7 @@ this.mikamiPath = function(from, to, modifiers)
     if (!tableDrag) return null;
     const b = this.tableBodyCellBounds(tableDrag.bodyCol);
     if (!b) return null;
-    const rr = tableDrag.bodyStartRow + tableDrag.bodyRow;
+    
     const cc = tableDrag.anchor.c + b.textStart + tableDrag.bodyPos;
     return { r: rr, c: cc };
   }
@@ -3717,7 +4072,7 @@ this.mikamiPath = function(from, to, modifiers)
     if (!tableDrag) return;
     const b = this.tableBodyCellBounds(tableDrag.bodyCol);
     if (!b) return;
-
+    const rr = tableDrag.bodyStartRow + tableDrag.bodyRow;
     const maxPos = Math.max(0, b.width - 1);
     let pos = tableDrag.bodyPos + dir;
 
@@ -3798,34 +4153,38 @@ this.mikamiPath = function(from, to, modifiers)
   {
     if (!tableDrag) return;
 
+    const maxIdx = tableDrag.rowCount;
+
     if (dir > 0)
     {
-      if (tableDrag.bodyRow === tableDrag.rowCount - 1)
+      if (tableDrag.editRowIndex === maxIdx)
         this.tableAutoAppendRow();
 
-      tableDrag.bodyRow = Math.min(tableDrag.rowCount - 1, tableDrag.bodyRow + 1);
+      tableDrag.editRowIndex = Math.min(tableDrag.rowCount, tableDrag.editRowIndex + 1);
+      tableDrag.bodyRow = Math.max(0, tableDrag.editRowIndex - 1);
       return;
     }
 
     if (dir < 0)
     {
-      if (tableDrag.bodyRow > 0)
+      if (tableDrag.editRowIndex > 0)
       {
-        // If current last row is still empty, undo its auto-creation
         if (
-          tableDrag.bodyRow === tableDrag.rowCount - 1 &&
-          !tableDrag.dirtyRows.has(tableDrag.bodyRow) &&
-          this.tableRowIsEmpty(tableDrag.bodyRow)
+          tableDrag.editRowIndex === tableDrag.rowCount &&
+          !tableDrag.dirtyRows.has(tableDrag.rowCount - 1) &&
+          this.tableRowIsEmpty(tableDrag.rowCount - 1)
         )
         {
           this.stack("undo");
           tableDrag.rowCount = Math.max(1, tableDrag.rowCount - 1);
           tableDrag.formulaRow = tableDrag.bodyStartRow + tableDrag.rowCount;
-          tableDrag.bodyRow = Math.max(0, tableDrag.bodyRow - 1);
+          tableDrag.editRowIndex = Math.max(0, tableDrag.editRowIndex - 1);
+          tableDrag.bodyRow = Math.max(0, tableDrag.editRowIndex - 1);
           return;
         }
 
-        tableDrag.bodyRow--;
+        tableDrag.editRowIndex--;
+        tableDrag.bodyRow = Math.max(0, tableDrag.editRowIndex - 1);
       }
     }
   }
@@ -3836,11 +4195,65 @@ this.mikamiPath = function(from, to, modifiers)
     const abs = this.tableBodyAbsCell();
     if (!abs) return;
 
+    const b = this.tableBodyCellBounds(tableDrag.bodyCol);
+    if (!b) return;
+
     const stroke = [];
-    const prev = ascii[abs.r][abs.c];
-    if (prev !== ch) stroke.push({ r: abs.r, c: abs.c, prev, next: ch });
+    const dividerAbs = tableDrag.anchor.c + b.rightPipe;
+    const dividerOnRight = (abs.c + 1) === dividerAbs;
+
+    if (dividerOnRight && !this.tableIsDividerGlyph(ch))
+    {
+      if (this.tableCollectShiftRightStroke(tableDrag, dividerAbs, stroke))
+      {
+        for (let i = tableDrag.bodyCol + 1; i < tableDrag.pipeIdx.length; i++)
+          tableDrag.pipeIdx[i] += 1;
+        tableDrag.width = this.tableWidth(tableDrag) + 1;
+      }
+    }
+
+    this.tablePushStrokeCell(stroke, abs.r, abs.c, ch);
     this.tableApplyStroke(stroke);
-    tableDrag.dirtyRows.add(tableDrag.bodyRow);
+
+    if (tableDrag.editRowIndex > 0)
+      tableDrag.dirtyRows.add(tableDrag.editRowIndex - 1);
+  }
+
+  this.tableDeleteAtCursor = function(backspace)
+  {
+    if (!tableDrag) return;
+    const abs = this.tableBodyAbsCell();
+    if (!abs) return;
+
+    const b = this.tableBodyCellBounds(tableDrag.bodyCol);
+    if (!b) return;
+
+    const dividerAbs = tableDrag.anchor.c + b.rightPipe;
+    const dividerOnRight = (abs.c + 1) === dividerAbs;
+
+    const stroke = [];
+    let shrunk = false;
+
+    if (dividerOnRight && this.tableColumnSliceIsClear(tableDrag, abs.c, { r: abs.r, c: abs.c }))
+    {
+      if (this.tableCollectShiftLeftStroke(tableDrag, abs.c, stroke))
+      {
+        for (let i = tableDrag.bodyCol + 1; i < tableDrag.pipeIdx.length; i++)
+          tableDrag.pipeIdx[i] -= 1;
+        tableDrag.width = Math.max(2, this.tableWidth(tableDrag) - 1);
+        tableDrag.bodyPos = Math.max(0, tableDrag.bodyPos - 1);
+        shrunk = true;
+      }
+    }
+    else
+    {
+      this.tablePushStrokeCell(stroke, abs.r, abs.c, " ");
+    }
+
+    this.tableApplyStroke(stroke);
+
+    if (backspace && !shrunk)
+      this.tableMoveHoriz(-1);   
   }
 
   this.handleTableKeydown = function(e)
@@ -3938,9 +4351,16 @@ this.mikamiPath = function(from, to, modifiers)
       if (e.key === "Backspace")
       {
         e.preventDefault();
-        this.tableWriteBodyChar(" ");
-        this.tableMoveHoriz(-1);
+        this.tableDeleteAtCursor(true);
         this.draw("table.body.backspace");
+        return;
+      }
+
+      if (e.key === " ")
+      {
+        e.preventDefault();
+        this.tableDeleteAtCursor(false);
+        this.draw("table.body.space");
         return;
       }
 
@@ -5939,8 +6359,22 @@ this.startPasteWithText = function(text)
       }
 
       ctx.fillStyle = old;
-    }
 
+      const rect = this.tableGetRect(tableDrag);
+      if (rect)
+      {
+        ctx.save();
+        ctx.lineWidth = 1 / scale;
+        ctx.strokeStyle = "rgba(239,68,68,0.95)";
+        ctx.strokeRect(
+          snap(rect.c0 * cw),
+          snap(rect.r0 * ch),
+          (rect.c1 - rect.c0 + 1) * cw,
+          (rect.r1 - rect.r0 + 1) * ch
+        );
+        ctx.restore();
+      }
+    }
 
     if(bDebug) console.log("draw(\""+str_reason+"\")")
   }
