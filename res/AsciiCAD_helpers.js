@@ -4025,6 +4025,7 @@ this.mikamiPath = function(from, to, modifiers)
   {
     if (!tableDrag || tableDrag.phase !== "body") return;
 
+    const intent = this.tableCursorState();
     const probe =
       this.tableBodyAbsCell?.()
       ?? { r: tableDrag.anchor?.r ?? 0, c: tableDrag.anchor?.c ?? 0 };
@@ -4043,8 +4044,7 @@ this.mikamiPath = function(from, to, modifiers)
     found.syncRevision = this.boardRevision | 0;
     tableDrag = found;
 
-    const target = this.tableFindNearestEditable(tableDrag, probe);
-    if (target) this.tableSetCursor(target);
+    this.tableClampCursorToState(tableDrag, intent);
   }
 
   this.tableHandlePrintableKey = function(ch)
@@ -4413,7 +4413,8 @@ this.mikamiPath = function(from, to, modifiers)
     return {
       editRowIndex: tableDrag.editRowIndex,
       bodyCol: tableDrag.bodyCol,
-      bodyPos: tableDrag.bodyPos
+      bodyPos: tableDrag.bodyPos,
+      formulaPos: tableDrag.formulaPos
     };
   }
 
@@ -4422,7 +4423,29 @@ this.mikamiPath = function(from, to, modifiers)
     if (!a || !b) return false;
     return a.editRowIndex === b.editRowIndex
         && a.bodyCol === b.bodyCol
-        && a.bodyPos === b.bodyPos;
+        && a.bodyPos === b.bodyPos
+        && a.formulaPos === b.formulaPos;
+  }
+
+  this.tableClampCursorToState = function(td, state)
+  {
+    td = td || tableDrag;
+    if (!td || !state) return;
+
+    const maxIdx = this.tableMaxEditRowIndex(td);
+    td.editRowIndex = Math.max(0, Math.min(maxIdx, state.editRowIndex ?? 1));
+
+    if (td.editRowIndex === maxIdx)
+    {
+      const fw = this.tableFormulaEditableWidth(td);
+      td.formulaPos = Math.max(0, Math.min(Math.max(0, fw - 1), state.formulaPos ?? 0));
+      td.bodyRow = Math.max(0, td.rowCount - 1);
+      return;
+    }
+
+    td.bodyCol = Math.max(0, Math.min(Math.max(0, td.pipeIdx.length - 2), state.bodyCol ?? 0));
+    td.bodyPos = Math.max(0, Math.min(this.tableCellMaxPos(td, td.bodyCol, td.editRowIndex), state.bodyPos ?? 0));
+    td.bodyRow = Math.max(0, Math.min(Math.max(0, td.rowCount - 1), td.editRowIndex - 1));
   }
 
   // Backspace should target the previous editable character, not the cell in place.
@@ -4505,10 +4528,51 @@ this.mikamiPath = function(from, to, modifiers)
 
     tableDrag.rowCount     = keepRows;
     tableDrag.formulaRow   = newFormulaAbs;
-    tableDrag.editRowIndex = Math.min(tableDrag.editRowIndex, tableDrag.rowCount);
-    tableDrag.bodyRow      = Math.max(0, tableDrag.editRowIndex - 1);
     tableDrag.syncRevision = this.boardRevision | 0;
     tableDrag.dirtyRows    = new Set(Array.from(tableDrag.dirtyRows).filter(i => i < keepRows));
+    this.tableClampCursorToState(tableDrag, this.tableCursorState());
+    return true;
+  }
+
+  this.tableDeleteBodyRow = function(bodyRow)
+  {
+    if (!tableDrag) return false;
+    if (bodyRow <= 0 || bodyRow >= tableDrag.rowCount) return false;   // first body row is protected
+
+    const width = this.tableWidth(tableDrag);
+    const delAbs = tableDrag.bodyStartRow + bodyRow;
+    const oldFormulaAbs = tableDrag.formulaRow;
+    const stroke = [];
+
+    for (let r = delAbs; r < oldFormulaAbs; r++)
+    {
+      const nextLine = [];
+      for (let i = 0; i < width; i++)
+      {
+        const c = tableDrag.anchor.c + i;
+        nextLine.push(ascii?.[r + 1]?.[c] ?? " ");
+      }
+      this.tableCollectLineStroke(r, tableDrag.anchor.c, nextLine.join(""), stroke);
+    }
+
+    this.tableCollectLineStroke(oldFormulaAbs, tableDrag.anchor.c, " ".repeat(width), stroke);
+    this.tableApplyStroke(stroke);
+
+    tableDrag.rowCount -= 1;
+    tableDrag.formulaRow -= 1;
+    tableDrag.syncRevision = this.boardRevision | 0;
+
+    const nextDirty = new Set();
+    tableDrag.dirtyRows.forEach(i =>
+    {
+      if (i < bodyRow) nextDirty.add(i);
+      else if (i > bodyRow) nextDirty.add(i - 1);
+    });
+    tableDrag.dirtyRows = nextDirty;
+
+    const keep = this.tableCursorState();
+    keep.editRowIndex = Math.max(1, Math.min(bodyRow + 1, tableDrag.rowCount));
+    this.tableClampCursorToState(tableDrag, keep);
     return true;
   }
 
@@ -4579,8 +4643,9 @@ this.mikamiPath = function(from, to, modifiers)
           return;
         }
 
+        const keep = this.tableCursorState();
         tableDrag.editRowIndex--;
-        tableDrag.bodyRow = Math.max(0, Math.min(Math.max(0, tableDrag.rowCount - 1), tableDrag.editRowIndex - 1));
+        this.tableClampCursorToState(tableDrag, keep);
       }
     }
   }
@@ -4775,6 +4840,21 @@ this.mikamiPath = function(from, to, modifiers)
       if (e.key === "Backspace")
       {
         e.preventDefault();
+
+        // Structural delete: at first editable cell of first column, Backspace
+        // removes the current body row, except for the first body row.
+        if (
+          !this.tableIsFormulaZone(tableDrag) &&
+          (tableDrag.editRowIndex ?? 1) > 1 &&
+          tableDrag.bodyCol === 0 &&
+          tableDrag.bodyPos === 0
+        )
+        {
+          this.tableDeleteBodyRow(tableDrag.editRowIndex - 1);
+          this.draw("table.body.backspace");
+          return;
+        }
+
         if (this.tableMoveToBackspaceTarget())
           this.tableDeleteAtCursor();
         this.draw("table.body.backspace");
