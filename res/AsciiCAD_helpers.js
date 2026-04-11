@@ -4919,9 +4919,9 @@ this.mikamiPath = function(from, to, modifiers)
       const row = tableDrag.formulaRow;
       const endC = tableDrag.anchor.c + this.tableWidth(tableDrag) - 2;
       const stroke = [];
+      this.tablePushStrokeCell(stroke, row, abs.c, " ");
       if (abs.c < endC)
         this.collectMoveStroke(abs.c + 1, row, endC, row, { dir: this.W, len: 1 }, stroke);
-      this.tablePushStrokeCell(stroke, row, endC, " ");
       this.tableApplyStroke(stroke);
       return true;
     }
@@ -4936,9 +4936,9 @@ this.mikamiPath = function(from, to, modifiers)
     const endC = tableDrag.anchor.c + b.textEnd;
     const stroke = [];
 
+    this.tablePushStrokeCell(stroke, row, abs.c, " ");
     if (abs.c < endC)
       this.collectMoveStroke(abs.c + 1, row, endC, row, { dir: this.W, len: 1 }, stroke);
-    this.tablePushStrokeCell(stroke, row, endC, " ");
     this.tableApplyStroke(stroke);
 
     if ((tableDrag.editRowIndex ?? 0) > 0)
