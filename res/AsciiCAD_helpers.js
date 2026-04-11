@@ -4385,7 +4385,8 @@ this.mikamiPath = function(from, to, modifiers)
   {
     td = td || tableDrag;
     const maxIdx = this.tableMaxEditRowIndex(td);
-    if (rowIdx === 0 || rowIdx === 1) return maxIdx; // skip header when wrapping left from first body row
+    if (rowIdx === 0) return maxIdx; // header wraps to formula zone
+    if (rowIdx === 1) return 0;      // first body row wraps to header zone
     return rowIdx - 1;
   }
 
@@ -4695,7 +4696,8 @@ this.mikamiPath = function(from, to, modifiers)
   this.tableDeleteBodyRow = function(bodyRow, preserveFormulaZone)
   {
     if (!tableDrag) return false;
-    if (bodyRow <= 0 || bodyRow >= tableDrag.rowCount) return false;   // first body row is protected
+    if (bodyRow < 0 || bodyRow >= tableDrag.rowCount) return false;
+    if (tableDrag.rowCount <= 1) return false;
     const keepAbsCol = this.tableCursorAbsCol();
 
     const width = this.tableWidth(tableDrag);
@@ -5040,6 +5042,21 @@ this.mikamiPath = function(from, to, modifiers)
       if (e.key === "Backspace")
       {
         e.preventDefault();
+
+        // At the left edge of the first column in the body zone, Backspace
+        // removes the current body row and lifts the trailing part upward.
+        if (
+          !this.tableIsFormulaZone(tableDrag) &&
+          tableDrag.bodyCol === 0 &&
+          tableDrag.bodyPos === 0 &&
+          tableDrag.rowCount > 1
+        )
+        {
+          this.tableDeleteBodyRow((tableDrag.editRowIndex ?? 1) - 1, false);
+          this.draw("table.body.backspace");
+          return;
+        }
+
         this.tableDeleteAtCursor();
         this.tableMoveInline(-1);
         this.draw("table.body.backspace");
