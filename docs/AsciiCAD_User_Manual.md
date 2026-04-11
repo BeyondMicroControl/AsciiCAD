@@ -251,7 +251,20 @@ Example:
 [                     ]
 ```
 
-At this stage the formula row is only a reserved editing area.
+The formula row now supports a compact assignment syntax and explicit recalculation with `Ctrl+R` (or `Cmd+R`).
+
+Current syntax:
+
+- assignments are separated by `::`
+- each assignment is `TARGET=EXPR`
+- targets: single field `@r$c`, column `$c`, row `@r`, range `@r$c..@r$c`
+- expressions support numeric operators and helpers: `SUM`, `AVG`, `MIN`, `MAX`, `COUNT`, `ROUND`, `FIXED`
+
+Example:
+
+```text
+[$3=$1+$2::@3$2=SUM(@1$2..@2$2)]
+```
 
 ## Interaction model
 

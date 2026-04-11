@@ -4261,6 +4261,282 @@ this.mikamiPath = function(from, to, modifiers)
     return "[" + " ".repeat(Math.max(0, width - 2)) + "]";
   }
 
+  this.tableGetFormulaText = function(td)
+  {
+    td = td || tableDrag;
+    if (!td) return "";
+    const width = this.tableWidth(td);
+    const c0 = td.anchor.c;
+    const r = td.formulaRow;
+    let raw = "";
+    for (let i = 0; i < width; i++) raw += (ascii?.[r]?.[c0 + i] ?? " ");
+    if (raw.startsWith("[") && raw.endsWith("]")) raw = raw.slice(1, -1);
+    return raw.trim();
+  }
+
+  this.tableGrabDataMatrix = function(td)
+  {
+    td = td || tableDrag;
+    if (!td || !td.pipeIdx || td.pipeIdx.length < 2) return null;
+
+    const headers = [];
+    const body = [];
+    const widths = [];
+    const headerRow = this.tableHeaderRow(td);
+
+    for (let col = 0; col < td.pipeIdx.length - 1; col++)
+    {
+      const b = this.tableBodyCellBounds(col);
+      if (!b) continue;
+      widths.push(Math.max(0, b.width));
+
+      let h = "";
+      for (let c = b.textStart; c <= b.textEnd; c++)
+        h += (ascii?.[headerRow]?.[td.anchor.c + c] ?? " ");
+      headers.push(h.trim());
+    }
+
+    for (let bodyRow = 0; bodyRow < td.rowCount; bodyRow++)
+    {
+      const rr = td.bodyStartRow + bodyRow;
+      const row = [];
+      for (let col = 0; col < td.pipeIdx.length - 1; col++)
+      {
+        const b = this.tableBodyCellBounds(col);
+        if (!b) continue;
+        let cell = "";
+        for (let c = b.textStart; c <= b.textEnd; c++)
+          cell += (ascii?.[rr]?.[td.anchor.c + c] ?? " ");
+        row.push(cell.trimEnd());
+      }
+      body.push(row);
+    }
+
+    return {
+      headers,
+      body,
+      widths,
+      rowCount: body.length,
+      colCount: headers.length
+    };
+  }
+
+  this.tableParseFormulaAssignments = function(formulaText)
+  {
+    const src = String(formulaText ?? "").trim();
+    if (!src) return [];
+
+    const chunks = src.split("::").map(s => s.trim()).filter(Boolean);
+    const out = [];
+    for (let i = 0; i < chunks.length; i++)
+    {
+      const eq = chunks[i].indexOf("=");
+      if (eq <= 0) continue;
+      const lhs = chunks[i].slice(0, eq).trim();
+      const rhs = chunks[i].slice(eq + 1).trim();
+      if (!lhs || !rhs) continue;
+      out.push({ lhs, rhs, order: i });
+    }
+    return out;
+  }
+
+  this.tableParseTargetShape = function(lhs)
+  {
+    const s = String(lhs ?? "").trim();
+    let m = null;
+    if ((m = s.match(/^@(\d+)\$(\d+)\.\.@(\d+)\$(\d+)$/)))
+      return { kind: "range", r0: (+m[1]) - 1, c0: (+m[2]) - 1, r1: (+m[3]) - 1, c1: (+m[4]) - 1 };
+    if ((m = s.match(/^\$(\d+)$/)))
+      return { kind: "column", c: (+m[1]) - 1 };
+    if ((m = s.match(/^@(\d+)$/)))
+      return { kind: "row", r: (+m[1]) - 1 };
+    if ((m = s.match(/^@(\d+)\$(\d+)$/)))
+      return { kind: "field", r: (+m[1]) - 1, c: (+m[2]) - 1 };
+    return null;
+  }
+
+  this.tableCellsInTarget = function(shape, rowCount, colCount)
+  {
+    const cells = [];
+    if (!shape) return cells;
+    if (shape.kind === "field")
+    {
+      cells.push({ r: shape.r, c: shape.c });
+      return cells;
+    }
+    if (shape.kind === "column")
+    {
+      for (let r = 0; r < rowCount; r++) cells.push({ r, c: shape.c });
+      return cells;
+    }
+    if (shape.kind === "row")
+    {
+      for (let c = 0; c < colCount; c++) cells.push({ r: shape.r, c });
+      return cells;
+    }
+    if (shape.kind === "range")
+    {
+      const r0 = Math.min(shape.r0, shape.r1);
+      const r1 = Math.max(shape.r0, shape.r1);
+      const c0 = Math.min(shape.c0, shape.c1);
+      const c1 = Math.max(shape.c0, shape.c1);
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) cells.push({ r, c });
+    }
+    return cells;
+  }
+
+  this.tableNumeric = function(v)
+  {
+    const n = Number(String(v ?? "").trim());
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  this.tableEvalExpr = function(expr, ctx)
+  {
+    let js = String(expr ?? "");
+
+    const readVal = (r, c) =>
+    {
+      if (r < 0 || c < 0 || r >= ctx.rowCount || c >= ctx.colCount) return "";
+      return (ctx.grid[r][c] ?? "");
+    };
+
+    const readRange = (r0, c0, r1, c1) =>
+    {
+      const out = [];
+      for (let r = Math.min(r0, r1); r <= Math.max(r0, r1); r++)
+        for (let c = Math.min(c0, c1); c <= Math.max(c0, c1); c++)
+          out.push(this.tableNumeric(readVal(r, c)));
+      return out;
+    };
+
+    js = js.replace(/@(\d+)\$(\d+)\.\.@(\d+)\$(\d+)/g, (_, r0, c0, r1, c1) =>
+      `RANGE(${(+r0) - 1},${(+c0) - 1},${(+r1) - 1},${(+c1) - 1})`
+    );
+    js = js.replace(/@(\d+)\$(\d+)/g, (_, r, c) => `CELL(${(+r) - 1},${(+c) - 1})`);
+    js = js.replace(/\$(\d+)/g, (_, c) => `CELL(_r,${(+c) - 1})`);
+    js = js.replace(/@(\d+)/g, (_, r) => `CELL(${(+r) - 1},_c)`);
+
+    const CELL = (r, c) => this.tableNumeric(readVal(r, c));
+    const RANGE = (r0, c0, r1, c1) => readRange(r0, c0, r1, c1);
+    const SUM = (x) => Array.isArray(x) ? x.reduce((a, b) => a + this.tableNumeric(b), 0) : this.tableNumeric(x);
+    const AVG = (x) => (Array.isArray(x) && x.length) ? (SUM(x) / x.length) : 0;
+    const MIN = (x) => (Array.isArray(x) && x.length) ? Math.min(...x.map(v => this.tableNumeric(v))) : 0;
+    const MAX = (x) => (Array.isArray(x) && x.length) ? Math.max(...x.map(v => this.tableNumeric(v))) : 0;
+    const COUNT = (x) => Array.isArray(x) ? x.length : 1;
+    const ROUND = (x, p) => Number(this.tableNumeric(x).toFixed(Math.max(0, this.tableNumeric(p))));
+    const FIXED = (x, p) => this.tableNumeric(x).toFixed(Math.max(0, this.tableNumeric(p)));
+
+    try
+    {
+      const fn = new Function("_r", "_c", "CELL", "RANGE", "SUM", "AVG", "MIN", "MAX", "COUNT", "ROUND", "FIXED", `return (${js});`);
+      return fn(ctx.curRow, ctx.curCol, CELL, RANGE, SUM, AVG, MIN, MAX, COUNT, ROUND, FIXED);
+    }
+    catch (err)
+    {
+      return "#ERROR";
+    }
+  }
+
+  this.tableInterpretFormula = function(formulaText, tableData)
+  {
+    const parsed = this.tableParseFormulaAssignments(formulaText);
+    const grid = tableData.body.map(r => r.slice());
+    const stash = new Map();
+
+    for (let i = 0; i < parsed.length; i++)
+    {
+      const p = parsed[i];
+      const shape = this.tableParseTargetShape(p.lhs);
+      const cells = this.tableCellsInTarget(shape, tableData.rowCount, tableData.colCount);
+
+      for (let k = 0; k < cells.length; k++)
+      {
+        const cell = cells[k];
+        if (cell.r < 0 || cell.c < 0 || cell.r >= tableData.rowCount || cell.c >= tableData.colCount) continue;
+        const value = this.tableEvalExpr(p.rhs, {
+          grid,
+          rowCount: tableData.rowCount,
+          colCount: tableData.colCount,
+          curRow: cell.r,
+          curCol: cell.c
+        });
+        const out = (value === null || value === undefined) ? "" : String(value);
+        grid[cell.r][cell.c] = out;
+        stash.set(cell.r + "," + cell.c, out);
+      }
+    }
+
+    return { grid, stash, parsed };
+  }
+
+  this.tableExpandColumnToWidth = function(td, colIdx, targetWidth, stroke)
+  {
+    td = td || tableDrag;
+    if (!td) return false;
+    const b = this.tableBodyCellBounds(colIdx);
+    if (!b) return false;
+    let delta = Math.max(0, targetWidth - b.width);
+    if (delta <= 0) return true;
+
+    while (delta > 0)
+    {
+      const absCol = td.anchor.c + b.rightPipe;
+      if (!this.tableCollectShiftRightStroke(td, absCol, stroke)) return false;
+      for (let i = colIdx + 1; i < td.pipeIdx.length; i++) td.pipeIdx[i] += 1;
+      td.width = (td.width | 0) + 1;
+      delta--;
+    }
+    return true;
+  }
+
+  this.tableUpdateFromResultGrid = function(td, result, options)
+  {
+    td = td || tableDrag;
+    if (!td || !result) return false;
+    const mode = String(options?.widthMode ?? "truncate");
+    const stroke = [];
+
+    for (let col = 0; col < td.pipeIdx.length - 1; col++)
+    {
+      const need = result.grid.reduce((m, row) => Math.max(m, String(row?.[col] ?? "").length), 0);
+      if (mode === "extend") this.tableExpandColumnToWidth(td, col, need, stroke);
+    }
+
+    for (let r = 0; r < td.rowCount; r++)
+    {
+      const rr = td.bodyStartRow + r;
+      for (let col = 0; col < td.pipeIdx.length - 1; col++)
+      {
+        const b = this.tableBodyCellBounds(col);
+        if (!b) continue;
+        let txt = String(result.grid?.[r]?.[col] ?? "");
+        if (mode === "truncate") txt = txt.slice(0, b.width);
+        if (mode === "shrink") txt = txt.slice(0, b.width);
+        if (txt.length < b.width) txt = txt + " ".repeat(b.width - txt.length);
+        for (let i = 0; i < b.width; i++)
+          this.tablePushStrokeCell(stroke, rr, td.anchor.c + b.textStart + i, txt[i] ?? " ");
+      }
+    }
+
+    this.tableApplyStroke(stroke);
+    td.syncRevision = this.boardRevision | 0;
+    return true;
+  }
+
+  this.tableRecalculateFromFormulaZone = function(opts)
+  {
+    const td = tableDrag;
+    if (!td || td.phase !== "body") return false;
+    const formula = this.tableGetFormulaText(td);
+    if (!formula) return false;
+    const data = this.tableGrabDataMatrix(td);
+    if (!data) return false;
+    const result = this.tableInterpretFormula(formula, data);
+    this.tableUpdateFromResultGrid(td, result, opts || { widthMode: "truncate" });
+    return true;
+  }
+
   this.tableCollectLineStroke = function(r, c0, text, stroke)
   {
     for (let i = 0; i < text.length; i++)
@@ -5045,6 +5321,14 @@ this.mikamiPath = function(from, to, modifiers)
 
     if (tableDrag.phase === "body")
     {
+      if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === "r")
+      {
+        e.preventDefault();
+        this.tableRecalculateFromFormulaZone({ widthMode: "truncate" });
+        this.draw("table.body.recalc");
+        return;
+      }
+
       if (e.key === "Escape")
       {
         e.preventDefault();
@@ -7242,5 +7526,3 @@ this.startPasteWithText = function(text)
   }
 }
 var oASC = new ASC();
-
-
