@@ -2453,7 +2453,6 @@ this.glyph2dir.help =
 
     this.pushStrokeIfNonEmpty(this._currentStroke);     // feed undo buffer
   }
-
   this.cell.help = 
   {
     type: "CADScript_FN",
@@ -5836,6 +5835,107 @@ this.mikamiPath = function(from, to, modifiers)
     return { r: rr, c: cc };
   }
 
+
+  this.tableRowMinAbsCol = function(td, rowIdx)
+  {
+    td = td || tableDrag;
+    if (!td) return 0;
+    if (rowIdx === this.tableMaxEditRowIndex(td)) return td.anchor.c + 1;
+    const b = this.tableBodyCellBounds(0);
+    return td.anchor.c + (b ? b.textStart : 1);
+  }
+
+  this.tableRowMaxAbsCol = function(td, rowIdx)
+  {
+    td = td || tableDrag;
+    if (!td) return 0;
+
+    if (rowIdx === this.tableMaxEditRowIndex(td))
+      return td.anchor.c + Math.max(1, this.tableFormulaEditableWidth(td));
+
+    const lastCol = Math.max(0, td.pipeIdx.length - 2);
+    const b = this.tableBodyCellBounds(lastCol);
+    if (!b) return td.anchor.c + 1;
+
+    const maxPos = this.tableCellMaxPos(td, lastCol, rowIdx);
+    if (maxPos === b.width + 1) return td.anchor.c + b.rightPipe + 1;
+    if (maxPos === b.width)     return td.anchor.c + b.rightPipe;
+    return td.anchor.c + b.textStart + maxPos;
+  }
+
+  this.tableWrapPrevRowIndex = function(td, rowIdx)
+  {
+    td = td || tableDrag;
+    const maxIdx = this.tableMaxEditRowIndex(td);
+    if (rowIdx === 0 || rowIdx === 1) return maxIdx; // skip header when wrapping left from first body row
+    return rowIdx - 1;
+  }
+
+  this.tableWrapNextRowIndex = function(td, rowIdx)
+  {
+    td = td || tableDrag;
+    const maxIdx = this.tableMaxEditRowIndex(td);
+    return (rowIdx === maxIdx) ? 0 : (rowIdx + 1);
+  }
+
+  this.tableMoveInline = function(dir)
+  {
+    if (!tableDrag) return false;
+
+    const rowIdx = tableDrag.editRowIndex ?? 1;
+
+    if (this.tableIsFormulaZone(tableDrag))
+    {
+      const fw = this.tableFormulaEditableWidth(tableDrag);
+      if (fw <= 0) return false;
+
+      if (dir < 0 && (tableDrag.formulaPos | 0) > 0)
+      {
+        tableDrag.formulaPos--;
+        return true;
+      }
+      if (dir > 0 && (tableDrag.formulaPos | 0) < fw - 1)
+      {
+        tableDrag.formulaPos++;
+        return true;
+      }
+
+      const targetRow = dir < 0
+        ? this.tableWrapPrevRowIndex(tableDrag, rowIdx)
+        : this.tableWrapNextRowIndex(tableDrag, rowIdx);
+      const targetAbs = dir < 0
+        ? this.tableRowMaxAbsCol(tableDrag, targetRow)
+        : this.tableRowMinAbsCol(tableDrag, targetRow);
+      this.tableSetCursorForRowAbsCol(tableDrag, targetRow, targetAbs);
+      return true;
+    }
+
+    const lastCol = Math.max(0, tableDrag.pipeIdx.length - 2);
+    const maxPos = this.tableCellMaxPos(tableDrag, tableDrag.bodyCol, rowIdx);
+    const isLeftEdge = tableDrag.bodyCol === 0 && tableDrag.bodyPos === 0;
+    const isRightEdge = tableDrag.bodyCol === lastCol && tableDrag.bodyPos === maxPos;
+
+    if (dir < 0 && !isLeftEdge)
+    {
+      this.tableMoveHoriz(-1);
+      return true;
+    }
+    if (dir > 0 && !isRightEdge)
+    {
+      this.tableMoveHoriz(1);
+      return true;
+    }
+
+    const targetRow = dir < 0
+      ? this.tableWrapPrevRowIndex(tableDrag, rowIdx)
+      : this.tableWrapNextRowIndex(tableDrag, rowIdx);
+    const targetAbs = dir < 0
+      ? this.tableRowMaxAbsCol(tableDrag, targetRow)
+      : this.tableRowMinAbsCol(tableDrag, targetRow);
+    this.tableSetCursorForRowAbsCol(tableDrag, targetRow, targetAbs);
+    return true;
+  }
+
   this.tableMoveHoriz = function(dir)
   {
     if (!tableDrag) return;
@@ -6236,51 +6336,94 @@ this.mikamiPath = function(from, to, modifiers)
   {
     if (!tableDrag) return;
 
-    if (this.tableIsFormulaZone(tableDrag))
-    {
-      const abs = this.tableBodyAbsCell();
-      if (!abs) return;
-      const stroke = [];
-      this.tablePushStrokeCell(stroke, abs.r, abs.c, " ");
-      this.tableApplyStroke(stroke);
-      return;
-    }
-
     const abs = this.tableBodyAbsCell();
     if (!abs) return;
 
-    const b = this.tableBodyCellBounds(tableDrag.bodyCol);
-    if (!b) return;
-
-    const dividerAbs = tableDrag.anchor.c + b.rightPipe;
-    const dividerOnRight = (abs.c + 1) === dividerAbs;
-    const cursorOnDivider = this.tableCursorIsOnDivider();
+    if (!this.tableIsFormulaZone(tableDrag) && (this.tableCursorIsOnDivider() || this.tableCursorIsOnRightExtend()))
+      return;    
 
     const stroke = [];
-    let shrunk = false;
+    
+    this.tablePushStrokeCell(stroke, abs.r, abs.c, " ");
+    this.tableApplyStroke(stroke);
 
-    // Do not treat the divider cell itself as clearable text.
-    if (!cursorOnDivider && dividerOnRight && this.tableColumnSliceIsClear(tableDrag, abs.c, { r: abs.r, c: abs.c }))
+    if (!this.tableIsFormulaZone(tableDrag) && (tableDrag.editRowIndex ?? 0) > 0)
+      tableDrag.dirtyRows.add(tableDrag.editRowIndex - 1);
+  }
+
+  this.tableDeleteColumnAhead = function(dividerCol)
+  {
+    if (!tableDrag) return false;
+    const lastCol = Math.max(0, tableDrag.pipeIdx.length - 2);
+    if (dividerCol < 0 || dividerCol >= lastCol) return false;
+
+    const width = this.tableWidth(tableDrag);
+    const leftAbs = tableDrag.anchor.c + tableDrag.pipeIdx[dividerCol + 1];
+    const rightAbs = tableDrag.anchor.c + tableDrag.pipeIdx[dividerCol + 2];
+    const span = rightAbs - leftAbs;
+    if (span <= 0) return false;
+
+    const tableRightAbs = tableDrag.anchor.c + width - 1;
+    const rect = this.tableGetRect(tableDrag);
+    const stroke = [];
+
+    this.collectMoveStroke(rightAbs, rect.r0, tableRightAbs, rect.r1, { dir: this.W, len: span }, stroke);
+
+    for (let r = rect.r0; r <= rect.r1; r++)
     {
-      if (this.tableCollectShiftLeftStroke(tableDrag, abs.c, stroke))
-      {
-        for (let i = tableDrag.bodyCol + 1; i < tableDrag.pipeIdx.length; i++)
-          tableDrag.pipeIdx[i] -= 1;
-        tableDrag.width = Math.max(2, this.tableWidth(tableDrag) - 1);
-        shrunk = true;
-      }
-    }
-    else
-    {
-      if (!cursorOnDivider)
-        this.tablePushStrokeCell(stroke, abs.r, abs.c, " ");
+      for (let c = tableRightAbs - span + 1; c <= tableRightAbs; c++)
+        this.tablePushStrokeCell(stroke, r, c, " ");
     }
 
     this.tableApplyStroke(stroke);
 
-    // When clearing turns the current row into the new trailing empty region,
-    // collapse all empty rows from the bottom upward until a non-empty row remains.
-    this.tableTrimTrailingEmptyRows(1);
+    tableDrag.pipeIdx = tableDrag.pipeIdx
+      .slice(0, dividerCol + 2)
+      .concat(tableDrag.pipeIdx.slice(dividerCol + 3).map(p => p - span));
+
+    tableDrag.width = width - span;
+    tableDrag.syncRevision = this.boardRevision | 0;
+    this.tableSetCursorForRowAbsCol(tableDrag, tableDrag.editRowIndex, leftAbs);
+    return true;
+  }
+
+  this.tableDeleteForward = function()
+  {
+    if (!tableDrag) return false;
+
+    const abs = this.tableBodyAbsCell();
+    if (!abs) return false;
+
+    if (this.tableIsFormulaZone(tableDrag))
+    {
+      const row = tableDrag.formulaRow;
+      const endC = tableDrag.anchor.c + this.tableWidth(tableDrag) - 2;
+      const stroke = [];
+      if (abs.c < endC)
+        this.collectMoveStroke(abs.c + 1, row, endC, row, { dir: this.W, len: 1 }, stroke);
+      this.tablePushStrokeCell(stroke, row, endC, " ");
+      this.tableApplyStroke(stroke);
+      return true;
+    }
+
+    if (this.tableCursorIsOnRightExtend()) return false;
+    if (this.tableCursorIsOnDivider()) return this.tableDeleteColumnAhead(tableDrag.bodyCol);
+
+    const b = this.tableBodyCellBounds(tableDrag.bodyCol);
+    if (!b) return false;
+
+    const row = this.tableEditAbsRow(tableDrag);
+    const endC = tableDrag.anchor.c + b.textEnd;
+    const stroke = [];
+
+    if (abs.c < endC)
+      this.collectMoveStroke(abs.c + 1, row, endC, row, { dir: this.W, len: 1 }, stroke);
+    this.tablePushStrokeCell(stroke, row, endC, " ");
+    this.tableApplyStroke(stroke);
+
+    if ((tableDrag.editRowIndex ?? 0) > 0)
+      tableDrag.dirtyRows.add(tableDrag.editRowIndex - 1);
+    return true;
   }
 
   this.handleTableKeydown = function(e)
@@ -6369,8 +6512,8 @@ this.mikamiPath = function(from, to, modifiers)
         return;
       }
 
-      if (e.key === "ArrowLeft")  { e.preventDefault(); this.tableMoveHoriz(-1); this.draw("table.body.left");  return; }
-      if (e.key === "ArrowRight") { e.preventDefault(); this.tableMoveHoriz( 1); this.draw("table.body.right"); return; }
+      if (e.key === "ArrowLeft")  { e.preventDefault(); this.tableMoveInline(-1); this.draw("table.body.left");  return; }
+      if (e.key === "ArrowRight") { e.preventDefault(); this.tableMoveInline( 1); this.draw("table.body.right"); return; }
       if (e.key === "Tab")        { e.preventDefault(); this.tableMoveHoriz( 1); this.draw("table.body.tab");   return; }
       if (e.key === "ArrowDown")  { e.preventDefault(); this.tableMoveVert( 1);  this.draw("table.body.down");  return; }
       if (e.key === "ArrowUp")    { e.preventDefault(); this.tableMoveVert(-1);  this.draw("table.body.up");    return; }
@@ -6378,35 +6521,21 @@ this.mikamiPath = function(from, to, modifiers)
 
       if (e.key === "Backspace")
       {
-         e.preventDefault();
-
-        // Structural delete from formula origin: remove exactly one last body row.
-        if (
-          this.tableIsFormulaZone(tableDrag) &&
-          (tableDrag.formulaPos | 0) === 0 &&
-          tableDrag.rowCount > 1)
-        {
-          this.tableDeleteBodyRow(tableDrag.rowCount - 1, true);
-          this.draw("table.body.backspace");
-          return;
-        }
-
-        // In the table body zone, Backspace deletes the current body row
-        // regardless of cursor column/content, except for the first body row.
-        if (
-          (tableDrag.editRowIndex ?? 1) > 1
-        )
-        {
-          this.tableDeleteBodyRow(tableDrag.editRowIndex - 1, false);
-          this.draw("table.body.backspace");
-          return;
-        }
-
-        // First body row remains protected from structural deletion.
-        // Fall back to character-backspace behavior there.
-        if (this.tableMoveToBackspaceTarget())
-          this.tableDeleteAtCursor();
+        e.preventDefault();
+        this.tableDeleteAtCursor();
+        this.tableMoveInline(-1);
         this.draw("table.body.backspace");
+        return;
+      }
+
+      if (
+        e.key === "Delete" ||
+        (e.ctrlKey && !e.metaKey && String(e.key).toLowerCase() === "d")
+      )
+      {
+        e.preventDefault();
+        this.tableDeleteForward();
+        this.draw("table.body.delete");
         return;
       }
 
@@ -6581,6 +6710,106 @@ this.mikamiPath = function(from, to, modifiers)
       }
     }
 
+    this.pushStrokeIfNonEmpty(stroke);
+  }
+
+  this.collectMoveStroke = function(c0, r0, c1, r1, modifiers, stroke)
+  {
+    const rect =
+    {
+      c0: Math.min(c0, c1),
+      r0: Math.min(r0, r1),
+      c1: Math.max(c0, c1),
+      r1: Math.max(r0, r1)
+    };
+
+    const dir = Number(modifiers?.dir ?? this.E) || this.E;
+    const len = Math.max(0, Math.floor(Number(modifiers?.len ?? 0) || 0));
+    const out = stroke || [];
+    if (len <= 0) return out;
+
+    let dr = 0, dc = 0;
+    if (dir & this.N) dr = -len;
+    else if (dir & this.S) dr = len;
+    else if (dir & this.W) dc = -len;
+    else dc = len; // default = E
+
+    const dst =
+    {
+      c0: rect.c0 + dc,
+      r0: rect.r0 + dr,
+      c1: rect.c1 + dc,
+      r1: rect.r1 + dr
+    };
+
+    const a0 = Math.max(0, Math.min(rect.c0, dst.c0));
+    const b0 = Math.max(0, Math.min(rect.r0, dst.r0));
+    const a1 = Math.min(COLS - 1, Math.max(rect.c1, dst.c1));
+    const b1 = Math.min(ROWS - 1, Math.max(rect.r1, dst.r1));
+    if (a0 > a1 || b0 > b1) return out;
+
+    const snap = new Map();
+    for (let r = rect.r0; r <= rect.r1; r++)
+    {
+      if (r < 0 || r >= ROWS) continue;
+      for (let c = rect.c0; c <= rect.c1; c++)
+      {
+        if (c < 0 || c >= COLS) continue;
+        snap.set(keyRC(r, c), ascii[r][c]);
+      }
+    }
+
+    const finalMap = new Map();
+    for (let r = b0; r <= b1; r++)
+      for (let c = a0; c <= a1; c++)
+        finalMap.set(keyRC(r, c), ascii[r][c]);
+
+    for (let r = rect.r0; r <= rect.r1; r++)
+    {
+      if (r < 0 || r >= ROWS) continue;
+      for (let c = rect.c0; c <= rect.c1; c++)
+      {
+        if (c < 0 || c >= COLS) continue;
+        finalMap.set(keyRC(r, c), " ");
+      }
+    }
+
+    for (let r = rect.r0; r <= rect.r1; r++)
+    {
+      if (r < 0 || r >= ROWS) continue;
+      for (let c = rect.c0; c <= rect.c1; c++)
+      {
+        if (c < 0 || c >= COLS) continue;
+        const chx = snap.get(keyRC(r, c)) || " ";
+        if (chx === " ") continue;
+
+        const rr = r + dr;
+        const cc = c + dc;
+        if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+        finalMap.set(keyRC(rr, cc), chx);
+      }
+    }
+
+    for (let r = b0; r <= b1; r++)
+    {
+      for (let c = a0; c <= a1; c++)
+      {
+        const prev = ascii[r][c];
+        const next = finalMap.get(keyRC(r, c)) ?? prev;
+        if (prev !== next) out.push({ r, c, prev, next });
+      }
+    }
+
+    return out;
+  }
+
+  this.move = function(c0, r0, c1, r1, modifiers)
+  {
+    const stroke = [];
+    this.collectMoveStroke(c0, r0, c1, r1, modifiers, stroke);
+    if (!stroke.length) return;
+    for (let i = 0; i < stroke.length; i++)
+      ascii[stroke[i].r][stroke[i].c] = stroke[i].next;
     this.pushStrokeIfNonEmpty(stroke);
   }
 
