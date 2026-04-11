@@ -6391,13 +6391,10 @@ this.mikamiPath = function(from, to, modifiers)
           return;
         }
 
-        // Structural delete: at first editable cell of first column, Backspace
-        // removes the current body row, except for the first body row.
+        // In the table body zone, Backspace deletes the current body row
+        // regardless of cursor column/content, except for the first body row.
         if (
-          !this.tableIsFormulaZone(tableDrag) &&
-          (tableDrag.editRowIndex ?? 1) > 1 &&
-          tableDrag.bodyCol === 0 &&
-          tableDrag.bodyPos === 0
+          (tableDrag.editRowIndex ?? 1) > 1
         )
         {
           this.tableDeleteBodyRow(tableDrag.editRowIndex - 1, false);
@@ -6405,6 +6402,8 @@ this.mikamiPath = function(from, to, modifiers)
           return;
         }
 
+        // First body row remains protected from structural deletion.
+        // Fall back to character-backspace behavior there.
         if (this.tableMoveToBackspaceTarget())
           this.tableDeleteAtCursor();
         this.draw("table.body.backspace");
