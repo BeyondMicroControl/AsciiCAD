@@ -202,7 +202,7 @@ Table mode introduces a plain-text table editor inside the AsciiCAD grid. It is 
 The initial goal is to support:
 
 - placing a table anchor directly on the grid
-- editing a pipe-delimited header row
+- editing a pipe-delimited 
 - generating a separator row and body rows automatically
 - navigating between body fields with keyboard control
 - keeping formulas outside the table perimeter (for example via `#+TBLFM:` metadata)
@@ -213,23 +213,16 @@ This chapter describes the currently discussed functional specification. The for
 
 Table mode uses a plain-text layout inspired by traditional ASCII tables.
 
-### Header row
+### Header
 
-The first row is the header row and is entered as a pipe-delimited line, for example:
+The first row is the header row and is entered as a pipe-delimited line,
+When the header is committed, a separator row is generated directly below it. The separator uses `|` on the left/right perimeter and `+` on internal column boundaries.
+
+For example:
 
 ```text
 | n | n^2 | n^3 | n^4 | sqrt(n) |
-```
-
-### Separator row
-
-When the header is committed, a separator row is generated directly below it. The separator uses `|` on the left/right perimeter and `+` on internal column boundaries.
-
-Example:
-
-```text
-| n | n^2 | n^3 |
-|---+-----+-----|
+|---+-----+-----+-----+---------|
 ```
 
 ### Body rows
