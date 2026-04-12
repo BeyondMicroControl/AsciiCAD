@@ -3549,25 +3549,13 @@ this.mikamiPath = function(from, to, modifiers)
   this.tableMaxEditRowIndex = function(td)
   {
     td = td || tableDrag;
-    return (td?.rowCount ?? 0) + 1;   // header(0) + body(1..rowCount) + formula(rowCount+1)
-  }
-
-  this.tableIsFormulaZone = function(td)
-  {
-    td = td || tableDrag;
-    return !!td && ((td.editRowIndex ?? 1) === this.tableMaxEditRowIndex(td));
+    return (td?.rowCount ?? 0);   // header(0) + body(1..rowCount)
   }
 
   this.tableIsHeaderZone = function(td)
   {
     td = td || tableDrag;
     return !!td && ((td.editRowIndex ?? 0) === 0);
-  }
-
-  this.tableFormulaEditableWidth = function(td)
-  {
-    td = td || tableDrag;
-    return Math.max(0, this.tableWidth(td) - 2);   // exclude '[' and ']'
   }
 
   this.tableRowAllowsRightExtend = function(td, rowIdx)
@@ -3581,9 +3569,6 @@ this.mikamiPath = function(from, to, modifiers)
   {
     td = td || tableDrag;
     if (!td) return 0;
-
-    if (rowIdx === this.tableMaxEditRowIndex(td))
-      return Math.max(0, this.tableFormulaEditableWidth(td) - 1);
 
     const b = this.tableBodyCellBounds(colIdx);
     if (!b) return 0;
@@ -3608,7 +3593,7 @@ this.mikamiPath = function(from, to, modifiers)
     let r1 = r0;
     if (td.phase === "anchor") r1 = r0;
     else if (td.phase === "header") r1 = r0;
-    else r1 = td.formulaRow ?? this.tableBodyEndRow(td);
+    else r1 = this.tableBodyEndRow(td);
 
     return { r0, c0, r1, c1 };
   }
@@ -3625,7 +3610,6 @@ this.mikamiPath = function(from, to, modifiers)
     if (!td) return -1;
     const headerRow = this.tableHeaderRow(td);
     if (absRow === headerRow) return 0;
-    if (absRow === td.formulaRow) return this.tableMaxEditRowIndex(td);
     if (absRow >= td.bodyStartRow && absRow < td.bodyStartRow + td.rowCount)
       return 1 + (absRow - td.bodyStartRow);
     return -1;
@@ -3635,7 +3619,6 @@ this.mikamiPath = function(from, to, modifiers)
   {
     td = td || tableDrag;
     if (!td) return 0;
-    if (idx === this.tableMaxEditRowIndex(td)) return td.formulaRow;
     return idx === 0 ? this.tableHeaderRow(td) : (td.bodyStartRow + idx - 1);
   }
 
@@ -3650,14 +3633,8 @@ this.mikamiPath = function(from, to, modifiers)
   {
     if (!tableDrag || !target) return;
     tableDrag.editRowIndex = target.editRowIndex;
-    if (target.formulaPos !== undefined)
-      tableDrag.formulaPos = target.formulaPos | 0;
-    else
-    {
-      tableDrag.bodyCol = target.bodyCol;
-      tableDrag.bodyPos = target.bodyPos;
-    }
-
+    tableDrag.bodyCol = target.bodyCol;
+    tableDrag.bodyPos = target.bodyPos;
     tableDrag.bodyRow = Math.max(
       0,
       Math.min(Math.max(0, tableDrag.rowCount - 1), (target.editRowIndex ?? 1) - 1)
@@ -3715,27 +3692,11 @@ this.mikamiPath = function(from, to, modifiers)
 
     let best = null;
     let bestD = Infinity;
-    const formulaIdx = this.tableMaxEditRowIndex(td);
+    const maxIdx = this.tableMaxEditRowIndex(td);
 
-    for (let rowIdx = 0; rowIdx <= formulaIdx; rowIdx++)
+    for (let rowIdx = 0; rowIdx <= maxIdx; rowIdx++)
     {
       const rr = this.tableIndexToAbsRow(td, rowIdx);
-
-      if (rowIdx === formulaIdx)
-      {
-        const fw = this.tableFormulaEditableWidth(td);
-        for (let pos = 0; pos < fw; pos++)
-        {
-          const cc = td.anchor.c + 1 + pos;
-          const d = Math.abs(rr - cell.r) + Math.abs(cc - cell.c);
-          if (d < bestD)
-          {
-            bestD = d;
-            best = { editRowIndex: rowIdx, formulaPos: pos };
-          }
-        }
-        continue;
-      }
 
       for (let col = 0; col < td.pipeIdx.length - 1; col++)
       {
@@ -3787,7 +3748,6 @@ this.mikamiPath = function(from, to, modifiers)
   this.tableCursorIsOnDivider = function()
   {
     if (!tableDrag) return false;
-    if (this.tableIsFormulaZone(tableDrag)) return false;
     const b = this.tableBodyCellBounds(tableDrag.bodyCol);
     if (!b) return false;
     return tableDrag.bodyPos === b.width;
@@ -3796,7 +3756,6 @@ this.mikamiPath = function(from, to, modifiers)
   this.tableCursorIsOnRightExtend = function()
   {
     if (!tableDrag) return false;
-    if (this.tableIsFormulaZone(tableDrag)) return false;
     const lastCol = (tableDrag.pipeIdx?.length ?? 0) - 2;
     if (tableDrag.bodyCol !== lastCol) return false;
     const b = this.tableBodyCellBounds(tableDrag.bodyCol);
@@ -3864,9 +3823,6 @@ this.mikamiPath = function(from, to, modifiers)
     {
       if (r === this.tableSeparatorRow(td)) continue;
 
-      if (r === td.formulaRow && (absCol === rect.c0 || absCol === rect.c1))
-        return false;
-
       const ch =
         (overrideCell && overrideCell.r === r && overrideCell.c === absCol)
           ? " "
@@ -3884,7 +3840,10 @@ this.mikamiPath = function(from, to, modifiers)
     for (let i = 0; i < width; i++)
     {
       const ch = ascii?.[r]?.[c0 + i] ?? " ";
-      const expected = pipeIdx.indexOf(i) >= 0 ? "+" : "-";
+      const pIdx = pipeIdx.indexOf(i);
+      const expected = pIdx >= 0
+        ? ((pIdx === 0 || pIdx === pipeIdx.length - 1) ? "|" : "+")
+        : "-";
       if (ch !== expected) return false;
     }
     return true;
@@ -3898,14 +3857,6 @@ this.mikamiPath = function(from, to, modifiers)
       const absC = c0 + pipeIdx[i];
       if ((ascii?.[r]?.[absC] ?? " ") !== "|") return false;
     }
-    return true;
-  }
-
-  this.tableFormulaMatches = function(r, c0, width)
-  {
-    if (r < 0 || r >= ROWS) return false;
-    if ((ascii?.[r]?.[c0] ?? " ") !== "[") return false;
-    if ((ascii?.[r]?.[c0 + width - 1] ?? " ") !== "]") return false;
     return true;
   }
 
@@ -3931,22 +3882,18 @@ this.mikamiPath = function(from, to, modifiers)
 
       let rr = hr + 2;
       let rowCount = 0;
-      let formulaRow = -1;
+      let bodyEndRow = -1;
 
       while (rr < ROWS)
       {
-        if (this.tableFormulaMatches(rr, left, width))
-        {
-          formulaRow = rr;
-          break;
-        }
         if (!this.tableBodyRowMatches(rr, left, pipeIdx, width)) break;
         rowCount++;
+        bodyEndRow = rr;
         rr++;
       }
 
-      if (formulaRow < 0 || rowCount < 1) continue;
-      if (cell.r < hr || cell.r > formulaRow) continue;
+      if (rowCount < 1) continue;
+      if (cell.r < hr || cell.r > bodyEndRow) continue;
 
       return {
         phase: "body",
@@ -3961,9 +3908,7 @@ this.mikamiPath = function(from, to, modifiers)
         bodyRow: 0,
         bodyCol: 0,
         bodyPos: 0,
-        formulaPos: 0,
         bodyStartRow: hr + 2,
-        formulaRow,
         syncRevision: this.boardRevision | 0,
         dirtyRows: new Set(Array.from({ length: rowCount }, (_, i) => i))
       };
@@ -3990,8 +3935,8 @@ this.mikamiPath = function(from, to, modifiers)
     // Header row: old right pipe stays as the new inner divider, append a new outer pipe.
     this.tablePushStrokeCell(stroke, this.tableHeaderRow(tableDrag), newRightAbs, "|");
 
-    // Separator row: append a new outer '+' while the old one becomes the inner divider.
-    this.tablePushStrokeCell(stroke, this.tableSeparatorRow(tableDrag), newRightAbs, "+");
+    // Separator row: append a new outer '|' while the old one becomes an inner divider.
+    this.tablePushStrokeCell(stroke, this.tableSeparatorRow(tableDrag), newRightAbs, "|");
 
     // Every body row gets a new outer right pipe.
     for (let bodyRow = 0; bodyRow < tableDrag.rowCount; bodyRow++)
@@ -3999,10 +3944,6 @@ this.mikamiPath = function(from, to, modifiers)
       const rr = tableDrag.bodyStartRow + bodyRow;
       this.tablePushStrokeCell(stroke, rr, newRightAbs, "|");
     }
-
-    // Formula row grows by one cell: move ']' one step right and leave a blank behind.
-    this.tablePushStrokeCell(stroke, tableDrag.formulaRow, oldRightAbs, " ");
-    this.tablePushStrokeCell(stroke, tableDrag.formulaRow, newRightAbs, "]");
 
     this.tableApplyStroke(stroke);
 
@@ -4083,9 +4024,7 @@ this.mikamiPath = function(from, to, modifiers)
           bodyRow: 0,
           bodyCol: 0,
           bodyPos: 0,
-          formulaPos: 0,
           bodyStartRow: cell.r + 2,
-          formulaRow: cell.r + 3,
           dirtyRows: new Set()
         };
   }
@@ -4239,7 +4178,11 @@ this.mikamiPath = function(from, to, modifiers)
     for (let i = 0; i < pipeIdx.length; i++)
     {
       const p = pipeIdx[i];
-      if (p >= 0 && p < width) arr[p] = "+";
+      if (p >= 0 && p < width)
+      {
+        const isEdge = (i === 0 || i === pipeIdx.length - 1);
+        arr[p] = isEdge ? "|" : "+";
+      }
     }
     return arr.join("");
   }
@@ -4253,12 +4196,6 @@ this.mikamiPath = function(from, to, modifiers)
       if (p >= 0 && p < width) arr[p] = "|";
     }
     return arr.join("");
-  }
-
-  this.tableBuildFormulaText = function(width)
-  {
-    if (width <= 1) return "[]";
-    return "[" + " ".repeat(Math.max(0, width - 2)) + "]";
   }
 
   this.tableCollectLineStroke = function(r, c0, text, stroke)
@@ -4294,13 +4231,11 @@ this.mikamiPath = function(from, to, modifiers)
     const c0 = tableDrag.anchor.c;
     const sep = this.tableBuildSeparatorText(parsed.pipeIdx, width);
     const row = this.tableBuildBodyText(parsed.pipeIdx, width);
-    const frm = this.tableBuildFormulaText(width);
 
     const stroke = [];
     this.tableCollectLineStroke(r0,     c0, parsed.text, stroke);
     this.tableCollectLineStroke(r0 + 1, c0, sep,         stroke);
     this.tableCollectLineStroke(r0 + 2, c0, row,         stroke);
-    this.tableCollectLineStroke(r0 + 3, c0, frm,         stroke);
     this.tableApplyStroke(stroke);
 
 
@@ -4312,9 +4247,7 @@ this.mikamiPath = function(from, to, modifiers)
     tableDrag.bodyRow = 0;
     tableDrag.bodyCol = 0;
     tableDrag.bodyPos = 0;
-    tableDrag.formulaPos = 0;
     tableDrag.bodyStartRow = r0 + 2;
-    tableDrag.formulaRow = r0 + 3;
     tableDrag.syncRevision = this.boardRevision | 0;
   }
 
@@ -4335,13 +4268,6 @@ this.mikamiPath = function(from, to, modifiers)
   this.tableBodyAbsCell = function()
   {
     if (!tableDrag) return null;
-    if (this.tableIsFormulaZone(tableDrag))
-    {
-      const fw = this.tableFormulaEditableWidth(tableDrag);
-      if (fw <= 0) return null;
-      const pos = Math.max(0, Math.min(fw - 1, tableDrag.formulaPos | 0));
-      return { r: tableDrag.formulaRow, c: tableDrag.anchor.c + 1 + pos };
-    }
     const b = this.tableBodyCellBounds(tableDrag.bodyCol);
     if (!b) return null;
     const rr = this.tableEditAbsRow(tableDrag);
@@ -4358,7 +4284,6 @@ this.mikamiPath = function(from, to, modifiers)
   {
     td = td || tableDrag;
     if (!td) return 0;
-    if (rowIdx === this.tableMaxEditRowIndex(td)) return td.anchor.c + 1;
     const b = this.tableBodyCellBounds(0);
     return td.anchor.c + (b ? b.textStart : 1);
   }
@@ -4367,9 +4292,6 @@ this.mikamiPath = function(from, to, modifiers)
   {
     td = td || tableDrag;
     if (!td) return 0;
-
-    if (rowIdx === this.tableMaxEditRowIndex(td))
-      return td.anchor.c + Math.max(1, this.tableFormulaEditableWidth(td));
 
     const lastCol = Math.max(0, td.pipeIdx.length - 2);
     const b = this.tableBodyCellBounds(lastCol);
@@ -4385,7 +4307,7 @@ this.mikamiPath = function(from, to, modifiers)
   {
     td = td || tableDrag;
     const maxIdx = this.tableMaxEditRowIndex(td);
-    if (rowIdx === 0) return maxIdx; // header wraps to formula zone
+    if (rowIdx === 0) return maxIdx; // header wraps to last body row
     if (rowIdx === 1) return 0;      // first body row wraps to header zone
     return rowIdx - 1;
   }
@@ -4402,32 +4324,6 @@ this.mikamiPath = function(from, to, modifiers)
     if (!tableDrag) return false;
 
     const rowIdx = tableDrag.editRowIndex ?? 1;
-
-    if (this.tableIsFormulaZone(tableDrag))
-    {
-      const fw = this.tableFormulaEditableWidth(tableDrag);
-      if (fw <= 0) return false;
-
-      if (dir < 0 && (tableDrag.formulaPos | 0) > 0)
-      {
-        tableDrag.formulaPos--;
-        return true;
-      }
-      if (dir > 0 && (tableDrag.formulaPos | 0) < fw - 1)
-      {
-        tableDrag.formulaPos++;
-        return true;
-      }
-
-      const targetRow = dir < 0
-        ? this.tableWrapPrevRowIndex(tableDrag, rowIdx)
-        : this.tableWrapNextRowIndex(tableDrag, rowIdx);
-      const targetAbs = dir < 0
-        ? this.tableRowMaxAbsCol(tableDrag, targetRow)
-        : this.tableRowMinAbsCol(tableDrag, targetRow);
-      this.tableSetCursorForRowAbsCol(tableDrag, targetRow, targetAbs);
-      return true;
-    }
 
     const lastCol = Math.max(0, tableDrag.pipeIdx.length - 2);
     const maxPos = this.tableCellMaxPos(tableDrag, tableDrag.bodyCol, rowIdx);
@@ -4458,13 +4354,6 @@ this.mikamiPath = function(from, to, modifiers)
   this.tableMoveHoriz = function(dir)
   {
     if (!tableDrag) return;
-    if (this.tableIsFormulaZone(tableDrag))
-    {
-      const fw = this.tableFormulaEditableWidth(tableDrag);
-      if (fw <= 0) { tableDrag.formulaPos = 0; return; }
-      tableDrag.formulaPos = Math.max(0, Math.min(fw - 1, (tableDrag.formulaPos | 0) + dir));
-      return;
-    }
 
     const b = this.tableBodyCellBounds(tableDrag.bodyCol);
     if (!b) return;
@@ -4512,8 +4401,7 @@ this.mikamiPath = function(from, to, modifiers)
     return {
       editRowIndex: tableDrag.editRowIndex,
       bodyCol: tableDrag.bodyCol,
-      bodyPos: tableDrag.bodyPos,
-      formulaPos: tableDrag.formulaPos
+      bodyPos: tableDrag.bodyPos
     };
   }
 
@@ -4522,8 +4410,7 @@ this.mikamiPath = function(from, to, modifiers)
     if (!a || !b) return false;
     return a.editRowIndex === b.editRowIndex
         && a.bodyCol === b.bodyCol
-        && a.bodyPos === b.bodyPos
-        && a.formulaPos === b.formulaPos;
+        && a.bodyPos === b.bodyPos;
   }
 
   this.tableStateToAbsCol = function(td, state)
@@ -4533,9 +4420,6 @@ this.mikamiPath = function(from, to, modifiers)
 
     const maxIdx = this.tableMaxEditRowIndex(td);
     const rowIdx = Math.max(0, Math.min(maxIdx, state.editRowIndex ?? 1));
-
-    if (rowIdx === maxIdx)
-      return td.anchor.c + 1 + (state.formulaPos ?? 0);
 
     const col = Math.max(0, Math.min(Math.max(0, td.pipeIdx.length - 2), state.bodyCol ?? 0));
     const b = this.tableBodyCellBounds(col);
@@ -4562,16 +4446,6 @@ this.mikamiPath = function(from, to, modifiers)
 
     const maxIdx = this.tableMaxEditRowIndex(td);
     const rowIdx = Math.max(0, Math.min(maxIdx, editRowIndex ?? 1));
-
-    if (rowIdx === maxIdx)
-    {
-      const fw = this.tableFormulaEditableWidth(td);
-      this.tableSetCursor({
-        editRowIndex: rowIdx,
-        formulaPos: Math.max(0, Math.min(Math.max(0, fw - 1), (absCol - td.anchor.c - 1)))
-      });
-      return true;
-    }
 
     const mapped = this.tableFieldFromAbsCol(td, absCol);
     if (mapped)
@@ -4666,34 +4540,23 @@ this.mikamiPath = function(from, to, modifiers)
     const keepRows = Math.max(minKeepRows, lastNonEmpty + 1);
     if (keepRows >= tableDrag.rowCount) return false;
 
-    const width = tableDrag.pipeIdx[tableDrag.pipeIdx.length - 1] + 1;
-    const oldFormulaAbs = tableDrag.formulaRow;
-    const newFormulaAbs = tableDrag.bodyStartRow + keepRows;
-
-    const formulaChars = [];
-    for (let i = 0; i < width; i++)
-    {
-      const c = tableDrag.anchor.c + i;
-      formulaChars.push((ascii?.[oldFormulaAbs]?.[c] ?? " "));
-    }
-
     const stroke = [];
-    this.tableCollectLineStroke(newFormulaAbs, tableDrag.anchor.c, formulaChars.join(""), stroke);
-
-    for (let r = newFormulaAbs + 1; r <= oldFormulaAbs; r++)
+    const width = tableDrag.pipeIdx[tableDrag.pipeIdx.length - 1] + 1;
+    const oldLastBodyAbs = tableDrag.bodyStartRow + tableDrag.rowCount - 1;
+    const newLastBodyAbs = tableDrag.bodyStartRow + keepRows - 1;
+    for (let r = newLastBodyAbs + 1; r <= oldLastBodyAbs; r++)
       this.tableCollectLineStroke(r, tableDrag.anchor.c, " ".repeat(width), stroke);
 
     this.tableApplyStroke(stroke);
 
     tableDrag.rowCount     = keepRows;
-    tableDrag.formulaRow   = newFormulaAbs;
     tableDrag.syncRevision = this.boardRevision | 0;
     tableDrag.dirtyRows    = new Set(Array.from(tableDrag.dirtyRows).filter(i => i < keepRows));
     this.tableSetCursorForRowAbsCol(tableDrag, keepState?.editRowIndex ?? 1, keepAbsCol);
     return true;
   }
 
-  this.tableDeleteBodyRow = function(bodyRow, preserveFormulaZone)
+  this.tableDeleteBodyRow = function(bodyRow)
   {
     if (!tableDrag) return false;
     if (bodyRow < 0 || bodyRow >= tableDrag.rowCount) return false;
@@ -4702,10 +4565,10 @@ this.mikamiPath = function(from, to, modifiers)
 
     const width = this.tableWidth(tableDrag);
     const delAbs = tableDrag.bodyStartRow + bodyRow;
-    const oldFormulaAbs = tableDrag.formulaRow;
+    const oldLastBodyAbs = tableDrag.bodyStartRow + tableDrag.rowCount - 1;
     const stroke = [];
 
-    for (let r = delAbs; r < oldFormulaAbs; r++)
+    for (let r = delAbs; r < oldLastBodyAbs; r++)
     {
       const nextLine = [];
       for (let i = 0; i < width; i++)
@@ -4716,11 +4579,10 @@ this.mikamiPath = function(from, to, modifiers)
       this.tableCollectLineStroke(r, tableDrag.anchor.c, nextLine.join(""), stroke);
     }
 
-    this.tableCollectLineStroke(oldFormulaAbs, tableDrag.anchor.c, " ".repeat(width), stroke);
+    this.tableCollectLineStroke(oldLastBodyAbs, tableDrag.anchor.c, " ".repeat(width), stroke);
     this.tableApplyStroke(stroke);
 
     tableDrag.rowCount -= 1;
-    tableDrag.formulaRow -= 1;
     tableDrag.syncRevision = this.boardRevision | 0;
 
     const nextDirty = new Set();
@@ -4731,9 +4593,7 @@ this.mikamiPath = function(from, to, modifiers)
     });
     tableDrag.dirtyRows = nextDirty;
 
-    const targetEditRowIndex = preserveFormulaZone
-      ? this.tableMaxEditRowIndex(tableDrag)
-      : Math.max(1, Math.min(bodyRow + 1, tableDrag.rowCount));
+    const targetEditRowIndex = Math.max(1, Math.min(bodyRow + 1, tableDrag.rowCount));
 
     this.tableSetCursorForRowAbsCol(tableDrag, targetEditRowIndex, keepAbsCol);
     return true;
@@ -4748,18 +4608,17 @@ this.mikamiPath = function(from, to, modifiers)
     const leftAbs = tableDrag.anchor.c;
     const rightAbs = leftAbs + width - 1;
     const insertAbs = tableDrag.bodyStartRow + insertBodyRow;
-    const oldFormulaAbs = tableDrag.formulaRow;
+    const oldLastBodyAbs = tableDrag.bodyStartRow + tableDrag.rowCount - 1;
     const rowText = this.tableBuildBodyText(tableDrag.pipeIdx, width);
 
-    if (oldFormulaAbs + 1 >= ROWS) return false;
+    if (oldLastBodyAbs + 1 >= ROWS) return false;
 
     const stroke = [];
-    this.collectMoveStroke(leftAbs, insertAbs, rightAbs, oldFormulaAbs, { dir: this.S, len: 1 }, stroke);
+    this.collectMoveStroke(leftAbs, insertAbs, rightAbs, oldLastBodyAbs, { dir: this.S, len: 1 }, stroke);
     this.tableCollectLineStroke(insertAbs, leftAbs, rowText, stroke);
     this.tableApplyStroke(stroke);
 
     tableDrag.rowCount += 1;
-    tableDrag.formulaRow += 1;
     tableDrag.syncRevision = this.boardRevision | 0;
 
     const nextDirty = new Set();
@@ -4777,9 +4636,6 @@ this.mikamiPath = function(from, to, modifiers)
   {
     td = td || tableDrag;
     if (!td) return false;
-
-    if (this.tableIsFormulaZone(td))
-      return (td.formulaPos | 0) >= Math.max(0, this.tableFormulaEditableWidth(td) - 1);
 
     const lastCol = Math.max(0, td.pipeIdx.length - 2);
     return td.bodyCol === lastCol &&
@@ -4800,13 +4656,8 @@ this.mikamiPath = function(from, to, modifiers)
 
     if (dir > 0)
     {
-      if (tableDrag.editRowIndex === maxIdx)
-      {
-        this.tableAutoAppendRow();
-        this.tableSetCursorForRowAbsCol(tableDrag, this.tableMaxEditRowIndex(tableDrag), keepAbsCol);
-        return;
-      }
-      this.tableSetCursorForRowAbsCol(tableDrag, tableDrag.editRowIndex + 1, keepAbsCol);
+      if (tableDrag.editRowIndex === maxIdx) this.tableAutoAppendRow();
+      this.tableSetCursorForRowAbsCol(tableDrag, Math.min(tableDrag.editRowIndex + 1, this.tableMaxEditRowIndex(tableDrag)), keepAbsCol);
       return;
     }
 
@@ -4815,12 +4666,12 @@ this.mikamiPath = function(from, to, modifiers)
       if (tableDrag.editRowIndex > 0)
       {
         if (
-          tableDrag.editRowIndex === maxIdx &&
+          tableDrag.editRowIndex === this.tableMaxEditRowIndex(tableDrag) &&
           !tableDrag.dirtyRows.has(tableDrag.rowCount - 1) &&
           this.tableRowIsEmpty(tableDrag.rowCount - 1)
         )
         {
-          this.tableDeleteBodyRow(tableDrag.rowCount - 1, true);
+          this.tableDeleteBodyRow(tableDrag.rowCount - 1);
           return;
         }
         this.tableSetCursorForRowAbsCol(tableDrag, tableDrag.editRowIndex - 1, keepAbsCol);
@@ -4832,16 +4683,6 @@ this.mikamiPath = function(from, to, modifiers)
   this.tableWriteBodyChar = function(ch)
   {
     if (!tableDrag) return;
-
-    if (this.tableIsFormulaZone(tableDrag))
-    {
-      const abs = this.tableBodyAbsCell();
-      if (!abs) return;
-      const stroke = [];
-      this.tablePushStrokeCell(stroke, abs.r, abs.c, ch);
-      this.tableApplyStroke(stroke);
-      return;
-    }
 
     const abs = this.tableBodyAbsCell();
     if (!abs) return;
@@ -4879,7 +4720,7 @@ this.mikamiPath = function(from, to, modifiers)
     const abs = this.tableBodyAbsCell();
     if (!abs) return;
 
-    if (!this.tableIsFormulaZone(tableDrag) && (this.tableCursorIsOnDivider() || this.tableCursorIsOnRightExtend()))
+    if (this.tableCursorIsOnDivider() || this.tableCursorIsOnRightExtend())
       return;    
 
     const stroke = [];
@@ -4887,7 +4728,7 @@ this.mikamiPath = function(from, to, modifiers)
     this.tablePushStrokeCell(stroke, abs.r, abs.c, " ");
     this.tableApplyStroke(stroke);
 
-    if (!this.tableIsFormulaZone(tableDrag) && (tableDrag.editRowIndex ?? 0) > 0)
+    if ((tableDrag.editRowIndex ?? 0) > 0)
       tableDrag.dirtyRows.add(tableDrag.editRowIndex - 1);
   }
 
@@ -4933,18 +4774,6 @@ this.mikamiPath = function(from, to, modifiers)
 
     const abs = this.tableBodyAbsCell();
     if (!abs) return false;
-
-    if (this.tableIsFormulaZone(tableDrag))
-    {
-      const row = tableDrag.formulaRow;
-      const endC = tableDrag.anchor.c + this.tableWidth(tableDrag) - 2;
-      const stroke = [];
-      this.tablePushStrokeCell(stroke, row, abs.c, " ");
-      if (abs.c < endC)
-        this.collectMoveStroke(abs.c + 1, row, endC, row, { dir: this.W, len: 1 }, stroke);
-      this.tableApplyStroke(stroke);
-      return true;
-    }
 
     if (this.tableCursorIsOnRightExtend()) return false;
     if (this.tableCursorIsOnDivider()) return this.tableDeleteColumnAhead(tableDrag.bodyCol);
@@ -5063,9 +4892,7 @@ this.mikamiPath = function(from, to, modifiers)
 
         if (this.tableCursorIsAtUtterRight(tableDrag))
         {
-          const insertBodyRow = this.tableIsFormulaZone(tableDrag)
-            ? tableDrag.rowCount
-            : Math.min(tableDrag.rowCount, tableDrag.editRowIndex);
+          const insertBodyRow = Math.min(tableDrag.rowCount, tableDrag.editRowIndex);
 
           if (this.tableInsertBodyRow(insertBodyRow))
           {
@@ -5087,13 +4914,12 @@ this.mikamiPath = function(from, to, modifiers)
         // At the left edge of the first column in the body zone, Backspace
         // removes the current body row and lifts the trailing part upward.
         if (
-          !this.tableIsFormulaZone(tableDrag) &&
           tableDrag.bodyCol === 0 &&
           tableDrag.bodyPos === 0 &&
           tableDrag.rowCount > 1
         )
         {
-          this.tableDeleteBodyRow((tableDrag.editRowIndex ?? 1) - 1, false);
+          this.tableDeleteBodyRow((tableDrag.editRowIndex ?? 1) - 1);
           this.draw("table.body.backspace");
           return;
         }
@@ -7242,5 +7068,3 @@ this.startPasteWithText = function(text)
   }
 }
 var oASC = new ASC();
-
-
