@@ -223,13 +223,13 @@ The first row is the header row and is entered as a pipe-delimited line, for exa
 
 ### Separator row
 
-When the header is committed, a separator row is generated directly below it. The separator uses `+` at column boundaries and spans the full width of the table.
+When the header is committed, a separator row is generated directly below it. The separator uses `|` on the left/right perimeter and `+` on internal column boundaries.
 
 Example:
 
 ```text
 | n | n^2 | n^3 |
-+---+-----+-----+
+|---+-----+-----|
 ```
 
 ### Body rows
@@ -241,17 +241,10 @@ Body rows reuse the same pipe positions as the header:
 | 2 |  4  |  8  |
 ```
 
-### Formula row
+### Formula storage
 
-A single formula row is reserved directly below the last body row. It uses `[` and `]` and has exactly the same width as the table.
-
-Example:
-
-```text
-[                     ]
-```
-
-At this stage the formula row is only a reserved editing area.
+Table mode now focuses only on header/body editing.
+Formula definitions such as Org-style `#+TBLFM:` are intended to be edited outside Table mode, so there is no dedicated formula landing row in the table perimeter.
 
 ## Interaction model
 
@@ -296,8 +289,7 @@ When the user presses `Return` in header-editing phase:
 2. column boundaries are parsed from the header row
 3. a separator row is generated directly below it
 4. the first empty body row is generated below the separator
-5. the formula row is generated below the first body row
-6. the logical cursor moves to the first field of the first body row
+5. the logical cursor moves to the first field of the first body row
 
 ## Body editing and navigation
 
@@ -330,8 +322,7 @@ The vertical pipe positions remain fixed once the table structure has been deriv
 If the user moves down while already positioned on the last existing body row, the editor shall:
 
 1. create a new empty body row with the same pipe positions
-2. move the formula row down by one line so it remains directly below the last body row
-3. move the cursor into the newly created body row
+2. move the cursor into the newly created body row
 
 ### Auto-remove trailing empty row
 
@@ -359,23 +350,14 @@ That width governs:
 
 - the separator row
 - every body row
-- the formula row
 
 ### Body row emptiness
 
 A body row is considered empty when all editable positions between its pipes contain only spaces.
 
-### Formula row placement
-
-The formula row is always positioned:
-
-- directly below the last body row
-- at the same left column as the table anchor
-- at exactly the same width as the table
-
 ## Future spreadsheet layer
 
-The spreadsheet layer is not yet implemented, but the formula row is intended to support a later syntax for:
+The spreadsheet layer is not yet implemented in Table mode. Formula definitions are expected to live outside the table perimeter, while still supporting:
 
 - field formulas
 - row formulas
@@ -391,7 +373,7 @@ The following items remain intentionally open for later design:
 - formula syntax and parser design
 - whether `Tab` and `Return` should have field-only or row-creation side effects
 - how strictly malformed header rows should be normalised
-- whether the formula row is a free-form line, a per-cell formula editor, or a compact mini-language
+- how external formula metadata should be edited and bound to specific tables
 
 ## Reference inspiration
 
@@ -576,7 +558,7 @@ TODO
 | **Lines (modeSLine / TLine / DLine)**         | Mouse                 | left-down set start → move preview → release commit                     | `canvas.mousedown` → `oASC.beginLine(cell, kind)` → `canvas.mousemove` → `oASC.moveLine(cell)` → `window.mouseup` → `oASC.commitLineWithOptionalMerge(lineDrag.merge, lineDrag.kind)`                       | `Shift` and `o` affect preview+commit (live) | `Shift` toggles “flip” behavior and `o` toggles merge/override; updates during drag on keydown/keyup                         |
 | **Boxes (modeSBox / TBox / DBox)**            | Mouse                 | left-down set start → move preview → release commit                     | `canvas.mousedown` → `oASC.beginBox(cell, kind)` → `canvas.mousemove` → `oASC.moveBox(cell)` → `window.mouseup` → `oASC.commitBox()`                                                                        | —                                            | Commit builds box path and writes chars as a stroke (undoable)                                                               |
 | **Free text preview (modeFreetext)**          | Mouse + keyboard      | click to set anchor → type → Enter commit / Esc cancel                  | `canvas.mousedown` → `oASC.beginFreetext(cell)`; then `window.keydown` intercepts while `textDrag` active                                                                                                   | Enter / Escape / Backspace                   | While `textDrag` active: keys are consumed; Enter commits, Esc cancels, Backspace edits; printable chars append to preview   |
-| **Table mode (modeTable)**                    | Mouse + keyboard      | move anchor preview → click top-left → type header → Enter → edit body | `canvas.mousemove` → `oASC.moveTable(cell)` for travelling anchor; `canvas.mousedown` → `oASC.beginTable(cell)`; `window.keydown` → `oASC.handleTableKeydown(e)` while `tableDrag` is active              | Arrow keys / Enter / Escape / Backspace      | Header row is edited first. Enter generates separator row, first body row, and formula row. Body navigation may auto-create or auto-remove trailing empty rows. |
+| **Table mode (modeTable)**                    | Mouse + keyboard      | move anchor preview → click top-left → type header → Enter → edit body | `canvas.mousemove` → `oASC.moveTable(cell)` for travelling anchor; `canvas.mousedown` → `oASC.beginTable(cell)`; `window.keydown` → `oASC.handleTableKeydown(e)` while `tableDrag` is active              | Arrow keys / Enter / Escape / Backspace      | Header row is edited first. Enter generates separator row and first body row. Body navigation may auto-create or auto-remove trailing empty rows. |
 | **Clipboard paste into grid (paste preview)** | Keyboard (Cmd/Ctrl+V) | paste → preview follows mouse → click to place                          | `window.paste` (only if not in sidebar + not editing text) → `oASC.startPasteWithText(text)`; then `canvas.mousemove` updates `pasteDrag.anchor`; `canvas.mousedown` commits via `oASC.commitPasteAt(cell)` | —                                            | Paste is **context-dependent**: if focus is in sidebars, paste is NOT hijacked                                               |
 | **Catalog item paste (preview + rotate)**     | Mouse + keyboard      | pick catalog item → preview in grid → optional rotate (r) → click place | catalog item click calls `startPasteWithText(...)`; during paste preview `keydown` “r” rotates by swapping `text_data[...]` and restarting paste; click commits same as normal paste                        | `r` rotates                                  | Rotation keeps anchor stable across rotations                                                                                |
 | **Undo / Redo**                               | Keyboard              | Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z                                           | `window.keydown` always allows undo/redo (even when typing)                                                                                                                                                 | Cmd/Ctrl                                     | `Z` undo, `Shift+Z` redo                                                                                                     |
