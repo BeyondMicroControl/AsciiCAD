@@ -4614,7 +4614,12 @@ this.mikamiPath = function(from, to, modifiers)
     if (oldLastBodyAbs + 1 >= ROWS) return false;
 
     const stroke = [];
-    this.collectMoveStroke(leftAbs, insertAbs, rightAbs, oldLastBodyAbs, { dir: this.S, len: 1 }, stroke);
+    // Only shift existing body rows when we are inserting *inside* the body.
+    // When appending below the last row, there is nothing to move: just write
+    // a fresh body-row template with its pipe glyphs.
+    if (insertAbs <= oldLastBodyAbs)
+      this.collectMoveStroke(leftAbs, insertAbs, rightAbs, oldLastBodyAbs, { dir: this.S, len: 1 }, stroke);
+
     this.tableCollectLineStroke(insertAbs, leftAbs, rowText, stroke);
     this.tableApplyStroke(stroke);
 
