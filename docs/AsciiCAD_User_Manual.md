@@ -205,7 +205,7 @@ The initial goal is to support:
 - editing a pipe-delimited header row
 - generating a separator row and body rows automatically
 - navigating between body fields with keyboard control
-- reserving a formula line directly below the table for later spreadsheet features
+- keeping formulas outside the table perimeter (for example via `#+TBLFM:` metadata)
 
 This chapter describes the currently discussed functional specification. The formula parser and evaluator are explicitly left for a later phase.
 
