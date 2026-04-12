@@ -351,6 +351,21 @@ let oDown = false;
 let pickerTab = "Box";
 let catalogTab = "All";
 
+// Catalog specials
+if(CATALOG===undefined) CATALOG = [];
+CATALOG.push(
+{
+  name: 'TABLE',
+  type: 'Special',
+  description: '',
+  MFR: 'Org-table',
+  pin_data: null,
+  text_data:['#+TBLFM:'],
+  image_data:
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABAAgMAAADXB5lNAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAAxQTFRFBgYGqqqqAAAA////lh1xdgAAAAR0Uk5T+f4I/xJ8BOgAAABqSURBVHicY1iFBhioItDAgASYVjEsYEABXAwNqAJMmAIMoqFIIAQoFooCBrMANQDQz8z//39h////A/////QUYARi1tDQAFZy/YJhxgD5hRpggJwuihyEwMTfgOoqLPllBaqAFnUyMiEBANwndARfxoQwAAAAAElFTkSuQmCC'
+});
+
+
 //    ██   ██ ███████ ██      ██████  ███████ ██████  ███████ 
 //    ██   ██ ██      ██      ██   ██ ██      ██   ██ ██      
 //    ███████ █████   ██      ██████  █████   ██████  ███████ 
