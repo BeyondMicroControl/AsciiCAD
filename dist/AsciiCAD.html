@@ -5043,8 +5043,10 @@ this.mikamiPath = function(from, to, modifiers)
   this.tableRowAllowsRightExtend = function(td, rowIdx)
   {
     td = td || tableDrag;
-    const idx = rowIdx ?? (td?.editRowIndex ?? 1);
-    return !!td && idx !== this.tableMaxEditRowIndex(td);
+    // The outer-right extension cell belongs to the whole table perimeter,
+    // including the bottom body row. This is the true utter-right landing
+    // position used for Enter and ArrowRight wrap behavior.
+    return !!td;
   }
 
   this.tableCellMaxPos = function(td, colIdx, rowIdx)
@@ -6182,10 +6184,11 @@ this.mikamiPath = function(from, to, modifiers)
     // a fresh body-row template with its pipe glyphs.
     if (insertAbs <= oldLastBodyAbs)
       this.collectMoveStroke(leftAbs, insertAbs, rightAbs, oldLastBodyAbs, { dir: this.S, len: 1 }, stroke);
-    // Always stamp structural pipes explicitly for the new row.
-    this.tableStampBodyRowPipes(insertAbs, tableDrag, stroke);
     this.tableCollectLineStroke(insertAbs, leftAbs, rowText, stroke);
-    
+    // Always stamp structural pipes explicitly for the new row after writing
+    // the row template, so the inserted row is guaranteed to end up with all
+    // divider glyphs in place.
+    this.tableStampBodyRowPipes(insertAbs, tableDrag, stroke);
     
     this.tableApplyStroke(stroke);
 
