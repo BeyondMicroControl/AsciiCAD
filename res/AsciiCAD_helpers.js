@@ -4691,6 +4691,10 @@ this.mikamiPath = function(from, to, modifiers)
       this.collectMoveStroke(leftAbs, insertAbs, rightAbs, oldLastBodyAbs, { dir: this.S, len: 1 }, stroke);
 
     this.tableCollectLineStroke(insertAbs, leftAbs, rowText, stroke);
+    // Stamp divider pipes explicitly as structure, so the inserted row is always
+    // a valid table row even when insertion happens from the body right extension.
+    for (let i = 0; i < tableDrag.pipeIdx.length; i++)
+      this.tablePushStrokeCell(stroke, insertAbs, leftAbs + tableDrag.pipeIdx[i], "|");
     this.tableApplyStroke(stroke);
 
     tableDrag.rowCount += 1;
@@ -4999,8 +5003,8 @@ this.mikamiPath = function(from, to, modifiers)
           return;
         }
 
-        this.tableDeleteAtCursor();
-        this.tableMoveInline(-1);
+        if (this.tableMoveToBackspaceTarget())
+          this.tableDeleteAtCursor();
         this.draw("table.body.backspace");
         return;
       }
