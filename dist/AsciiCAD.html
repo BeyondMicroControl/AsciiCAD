@@ -5677,6 +5677,17 @@ this.mikamiPath = function(from, to, modifiers)
     return arr.join("");
   }
 
+  this.tableStampBodyRowPipes = function(rAbs, td, stroke)
+  {
+    td = td || tableDrag;
+    if (!td) return;
+    for (let i = 0; i < td.pipeIdx.length; i++)
+    {
+      const cAbs = td.anchor.c + td.pipeIdx[i];
+      this.tablePushStrokeCell(stroke, rAbs, cAbs, "|");
+    }
+  }
+
   this.tableCollectLineStroke = function(r, c0, text, stroke)
   {
     for (let i = 0; i < text.length; i++)
@@ -6171,12 +6182,11 @@ this.mikamiPath = function(from, to, modifiers)
     // a fresh body-row template with its pipe glyphs.
     if (insertAbs <= oldLastBodyAbs)
       this.collectMoveStroke(leftAbs, insertAbs, rightAbs, oldLastBodyAbs, { dir: this.S, len: 1 }, stroke);
-
+    // Always stamp structural pipes explicitly for the new row.
+    this.tableStampBodyRowPipes(insertAbs, tableDrag, stroke);
     this.tableCollectLineStroke(insertAbs, leftAbs, rowText, stroke);
-    // Stamp divider pipes explicitly as structure, so the inserted row is always
-    // a valid table row even when insertion happens from the body right extension.
-    for (let i = 0; i < tableDrag.pipeIdx.length; i++)
-      this.tablePushStrokeCell(stroke, insertAbs, leftAbs + tableDrag.pipeIdx[i], "|");
+    
+    
     this.tableApplyStroke(stroke);
 
     tableDrag.rowCount += 1;
@@ -6453,11 +6463,18 @@ this.mikamiPath = function(from, to, modifiers)
 
         if (this.tableCursorIsAtUtterRight(tableDrag))
         {
-          const insertBodyRow = Math.min(tableDrag.rowCount, tableDrag.editRowIndex);
-
+          // Insert a new empty body row directly below the cursor row.
+          // Header utter-right inserts the first body row; body utter-right
+          // inserts below the current body row.
+          const insertBodyRow = Math.max(0, Math.min(tableDrag.rowCount, tableDrag.editRowIndex));
+ 
           if (this.tableInsertBodyRow(insertBodyRow))
           {
-            this.tableSetCursor({ editRowIndex: insertBodyRow + 1, bodyCol: 0, bodyPos: 0 });
+            this.tableSetCursorForRowAbsCol(
+              tableDrag,
+              insertBodyRow + 1,
+              this.tableRowMinAbsCol(tableDrag, insertBodyRow + 1)
+            );
             this.draw("table.body.enter");
             return;
           }
