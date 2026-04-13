@@ -4880,20 +4880,16 @@ this.mikamiPath = function(from, to, modifiers)
     if (this.tableCursorIsOnRightExtend()) return false;
     if (this.tableCursorIsOnDivider()) return this.tableDeleteColumnAhead(tableDrag.bodyCol);
 
-    const b = this.tableBodyCellBounds(tableDrag.bodyCol);
-    if (!b) return false;
+    const r0 = this.tableHeaderRow(tableDrag);
+    const r1 = this.tableBodyEndRow(tableDrag);
+    const rightAbs = tableDrag.anchor.c + this.tableWidth(tableDrag) - 1;
 
-    const row = this.tableEditAbsRow(tableDrag);
-    const endC = tableDrag.anchor.c + b.textEnd;
-    const stroke = [];
+    // Ctrl-D/Delete inside a table cell is now a structural table operation:
+    // move the whole table-perimeter slice on the right side of the cursor
+    // one cell left, across header, separator, body, and column glyphs.
+    if (abs.c < rightAbs)
+      this.move(abs.c + 1, r0, rightAbs, r1, { dir: this.W, len: 1 });
 
-    this.tablePushStrokeCell(stroke, row, abs.c, " ");
-    if (abs.c < endC)
-      this.collectMoveStroke(abs.c + 1, row, endC, row, { dir: this.W, len: 1 }, stroke);
-    this.tableApplyStroke(stroke);
-
-    if ((tableDrag.editRowIndex ?? 0) > 0)
-      tableDrag.dirtyRows.add(tableDrag.editRowIndex - 1);
     return true;
   }
 
@@ -5322,6 +5318,42 @@ this.mikamiPath = function(from, to, modifiers)
     for (let i = 0; i < stroke.length; i++)
       ascii[stroke[i].r][stroke[i].c] = stroke[i].next;
     this.pushStrokeIfNonEmpty(stroke);
+  }
+  this.move.help =
+  {
+    type: "CADScript_FN",
+    syntax: "move(<c0>,<r0>,<c1>,<r1>,[modifiers])",
+    summary: "Move the contents of a rectangular region by a direction and distance. The source rectangle is cleared and the moved contents are clipped to the grid.",
+    returns: {
+      type: "void"
+    },
+    output: {
+      channel: "canvas",
+      format: "ASCII grid",
+      description: "Moves the selected rectangle on the grid as a single undoable stroke."
+    },
+    effects: [
+      "Reads the source rectangle from the current grid.",
+      "Clears the source rectangle before placing moved content.",
+      "Pushes one undo history stroke if at least one cell changes.",
+      "Invalidates derived board caches through the history path."
+    ],
+    parameters: [
+      { name: "<c0>", description: "First rectangle column." },
+      { name: "<r0>", description: "First rectangle row." },
+      { name: "<c1>", description: "Opposite rectangle column." },
+      { name: "<r1>", description: "Opposite rectangle row." },
+      { name: "[modifiers]", description: "Optional move modifiers: dir is a direction mask (default E), len is the number of cells to move (default 0)." }
+    ],
+    remarks: [
+      "The rectangle bounds are normalized internally, so c0/c1 and r0/r1 may be given in any order.",
+      "Supported directions are N, E, S, and W.",
+      "Cells moved outside the grid are clipped."
+    ],
+    examples: [
+      "oASC.move(10, 4, 20, 8, { dir:oASC.W, len:1 })",
+      "oASC.move(0, 0, 4, 0, { dir:oASC.S, len:2 })"
+    ]
   }
 
   this.commitPasteAt = function(cell) 
