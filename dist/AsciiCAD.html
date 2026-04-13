@@ -5417,7 +5417,8 @@ this.mikamiPath = function(from, to, modifiers)
     // Header row: old right pipe stays as the new inner divider, append a new outer pipe.
     this.tablePushStrokeCell(stroke, this.tableHeaderRow(tableDrag), newRightAbs, "|");
 
-    // Separator row: append a new outer '|' while the old one becomes an inner divider.
+    // Separator row: old outer edge becomes an internal '+', new outer edge stays '|'.
+    this.tablePushStrokeCell(stroke, this.tableSeparatorRow(tableDrag), oldRightAbs, "+");
     this.tablePushStrokeCell(stroke, this.tableSeparatorRow(tableDrag), newRightAbs, "|");
 
     // Every body row gets a new outer right pipe.
@@ -5473,17 +5474,13 @@ this.mikamiPath = function(from, to, modifiers)
   {
     if (!tableDrag || tableDrag.phase !== "body") return false;
 
-    // One-cell extension beyond the current right edge of the table:
-    // only a trailing pipe is allowed there, because without it the table
-    // perimeter would become ambiguous.
-    if (this.tableCursorIsOnRightExtend())    
+
+    // A typed '|' is always a structural divider insertion inside the editable
+    // table perimeter. In the right-extension cell this becomes a trailing append.
+    if (ch === "|")    
     {
-      if (ch === "|")
-      {
-        this.tableAppendTrailingPipe();
-        return true;
-      }
-      return false;
+      const abs = this.tableBodyAbsCell();
+      return !!(abs && this.tableInsertDividerAt(abs.c));   
     }
 
     this.tableWriteBodyChar(ch);
@@ -5702,6 +5699,79 @@ this.mikamiPath = function(from, to, modifiers)
       ascii[s.r][s.c] = s.next;
     }
     this.pushStrokeIfNonEmpty(stroke);
+  }
+
+  this.tableCollectDividerColumnStroke = function(td, absCol, stroke, isOuterEdge)
+  {
+    td = td || tableDrag;
+    if (!td) return;
+
+    const r0 = this.tableHeaderRow(td);
+    const r1 = this.tableBodyEndRow(td);
+
+    for (let r = r0; r <= r1; r++)
+    {
+      const ch = (r === this.tableSeparatorRow(td))
+        ? (isOuterEdge ? "|" : "+")
+        : "|";
+      this.tablePushStrokeCell(stroke, r, absCol, ch);
+    }
+  }
+
+  this.tableInsertDividerAt = function(absCol)
+  {
+    if (!tableDrag || tableDrag.phase !== "body") return false;
+
+    const leftAbs = tableDrag.anchor.c;
+    const width = this.tableWidth(tableDrag);
+    const oldRightAbs = leftAbs + width - 1;
+
+    // never allow inserting on/left of the outer-left edge
+    if (absCol <= leftAbs) return false;
+
+    // one cell beyond outer-right edge = append new trailing divider
+    if (absCol === oldRightAbs + 1) return this.tableAppendTrailingPipe();
+    if (absCol > oldRightAbs + 1) return false;
+
+    const rel = absCol - leftAbs;
+    const stroke = [];
+
+    // Shift everything from the insertion point to the right by one cell,
+    // then stamp a fresh divider column through header, separator, and body.
+    this.collectMoveStroke(
+      absCol,
+      this.tableHeaderRow(tableDrag),
+      oldRightAbs,
+      this.tableBodyEndRow(tableDrag),
+      { dir: this.E, len: 1 },
+      stroke
+    );
+    this.tableCollectDividerColumnStroke(tableDrag, absCol, stroke, false);
+    this.tableApplyStroke(stroke);
+
+    const nextPipeIdx = [];
+    let inserted = false;
+
+    for (let i = 0; i < tableDrag.pipeIdx.length; i++)
+    {
+      const p = tableDrag.pipeIdx[i];
+      if (!inserted && p >= rel)
+      {
+        nextPipeIdx.push(rel);
+        inserted = true;
+      }
+      nextPipeIdx.push(p >= rel ? (p + 1) : p);
+    }
+
+    if (!inserted) nextPipeIdx.push(rel);
+
+    tableDrag.pipeIdx = nextPipeIdx;
+    tableDrag.width = width + 1;
+    tableDrag.syncRevision = this.boardRevision | 0;
+
+    // Keep the cursor at the newly inserted divider location.
+    this.tableSetCursorForRowAbsCol(tableDrag, tableDrag.editRowIndex, absCol);
+    return true;
   }
 
   this.tableRewriteStructure = function(parsed)
