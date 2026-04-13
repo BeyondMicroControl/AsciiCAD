@@ -5247,6 +5247,13 @@ this.mikamiPath = function(from, to, modifiers)
     return tableDrag.bodyPos === (b.width + 1);
   }
 
+  this.tableHeaderCursorIsOnRightExtend = function()
+  {
+    if (!tableDrag || tableDrag.phase !== "header") return false;
+    const txt = this.tableHeaderNormalize(tableDrag.headerText);
+    return (tableDrag.headerCursor | 0) === txt.length;
+  }
+
   this.tablePendingCellValue = function(stroke, r, c)
   {
     if (stroke)
@@ -5489,6 +5496,11 @@ this.mikamiPath = function(from, to, modifiers)
   {
     if (!tableDrag || tableDrag.phase !== "body") return false;
 
+    // The utter-right extension cell is structural only: it exists to allow
+    // appending a trailing column divider on the right side of the table.
+    // No ordinary cell content is accepted there.
+    if (this.tableCursorIsOnRightExtend() && ch !== "|")
+      return false;
 
     // A typed '|' is always a structural divider insertion inside the editable
     // table perimeter. In the right-extension cell this becomes a trailing append.
@@ -6522,6 +6534,7 @@ this.mikamiPath = function(from, to, modifiers)
         (e.ctrlKey && !e.metaKey && String(e.key).toLowerCase() === "d")
       )
       {
+        if (this.tableCursorIsOnRightExtend()) return;
         e.preventDefault();
         this.tableDeleteForward();
         this.draw("table.body.delete");
@@ -6531,6 +6544,11 @@ this.mikamiPath = function(from, to, modifiers)
       if (!e.ctrlKey && !e.metaKey && e.key && e.key.length === 1)
       {
         e.preventDefault();
+
+        // The header right-extension cell is structural only.
+        // Only a trailing pipe may be typed there.
+        if (this.tableHeaderCursorIsOnRightExtend() && e.key !== "|")
+          return;
         this.tableHandlePrintableKey(e.key);
         this.draw("table.body.print");
         return;
