@@ -6547,15 +6547,9 @@ this.startPasteWithText = function(text)
             ascii[stroke[i].r][stroke[i].c] = stroke[i].prev;
           redoStack.push(stroke);
 
-   
-
-
-
-          highlightCache = null;             // Invalidate overlays after undo
-          matchCache     = null;
-          netlistCache   = null;
-          hoverNetIndex  = -1;
-
+          // Only invalidate board-derived state here.
+          // Any active table perimeter refresh must happen later in draw().
+          this.invalidateBoardDerivedCaches();
           updateUI();
         }
         this.draw("stack."+command); 
@@ -6566,11 +6560,9 @@ this.startPasteWithText = function(text)
         for (let i = 0; i < stroke.length; i++) ascii[stroke[i].r][stroke[i].c] = stroke[i].next;
         undoStack.push(stroke);
 
-        // Invalidate overlays after redo
-        highlightCache = null;
-        matchCache = null;
-        netlistCache = null;
-        hoverNetIndex = -1;
+        // Only invalidate board-derived state here.
+        // Any active table perimeter refresh must happen later in draw().
+        this.invalidateBoardDerivedCaches();
 
         updateUI();
         this.draw("stack."+command); 
