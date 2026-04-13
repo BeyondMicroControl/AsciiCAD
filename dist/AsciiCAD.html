@@ -5247,11 +5247,24 @@ this.mikamiPath = function(from, to, modifiers)
     return tableDrag.bodyPos === (b.width + 1);
   }
 
+  this.tablePendingCellValue = function(stroke, r, c)
+  {
+    if (stroke)
+    {
+      for (let i = stroke.length - 1; i >= 0; i--)
+      {
+        const s = stroke[i];
+        if (s.r === r && s.c === c) return s.next;
+      }
+    }
+    return ascii?.[r]?.[c] ?? " ";
+  }
+
   this.tablePushStrokeCell = function(stroke, r, c, next)
   {
     if (!stroke) return;
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
-    const prev = ascii[r][c];
+    const prev = this.tablePendingCellValue(stroke, r, c);
     if (prev === next) return;
     stroke.push({ r, c, prev, next });
   }
@@ -5696,10 +5709,7 @@ this.mikamiPath = function(from, to, modifiers)
     {
       const c = c0 + i;
       if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
-      const prev = ascii[r][c];
-      const next = text[i];
-      if (prev === next) continue;
-      stroke.push({ r, c, prev, next });
+      this.tablePushStrokeCell(stroke, r, c, text[i]);
     }
   }
 
