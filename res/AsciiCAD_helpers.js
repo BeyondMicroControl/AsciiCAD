@@ -3939,6 +3939,44 @@ this.mikamiPath = function(from, to, modifiers)
     return null;
   }
 
+  this.collectTableRects = function()
+  {
+    const rects = [];
+
+    for (let hr = 0; hr <= ROWS - 3; hr++)
+    {
+      const pipesAbs = [];
+      for (let c = 0; c < COLS; c++)
+        if ((ascii?.[hr]?.[c] ?? " ") === "|") pipesAbs.push(c);
+
+      if (pipesAbs.length < 2) continue;
+
+      const left = pipesAbs[0];
+      const right = pipesAbs[pipesAbs.length - 1];
+      const width = right - left + 1;
+      if (width < 2) continue;
+
+      const pipeIdx = pipesAbs.map(c => c - left);
+      if (!this.tableSeparatorMatches(hr + 1, left, pipeIdx, width)) continue;
+
+      let rr = hr + 2;
+      let rowCount = 0;
+      let bodyEndRow = -1;
+
+      while (rr < ROWS)
+      {
+        if (!this.tableBodyRowMatches(rr, left, pipeIdx, width)) break;
+        rowCount++;
+        bodyEndRow = rr;
+        rr++;
+      }
+
+      if (rowCount < 1) continue;
+      rects.push(hr, left, bodyEndRow, right);
+    }
+
+    return rects;
+  }  
 
   this.tableAppendTrailingPipe = function()
   {
@@ -5885,11 +5923,12 @@ this.startPasteWithText = function(text)
   };
   */
 
-  this.computeHighlightOverlayMaskCPUFromRects = function(rects)
+  this.computeHighlightOverlayMaskCPUFromRects = function(rects, tableRects)
   {
     const OVERLAY_NONE = (typeof oGASC !== "undefined" && oGASC) ? oGASC.OVERLAY_NONE : 0;
     const OVERLAY_RED  = (typeof oGASC !== "undefined" && oGASC) ? oGASC.OVERLAY_RED  : 1;
     const OVERLAY_BLUE = (typeof oGASC !== "undefined" && oGASC) ? oGASC.OVERLAY_BLUE : 2;
+    const OVERLAY_PURPLE = (typeof oGASC !== "undefined" && oGASC && oGASC.OVERLAY_PURPLE !== undefined) ? oGASC.OVERLAY_PURPLE : 3;
 
     const mask2D = Array.from({ length: ROWS }, () => Array(COLS).fill(OVERLAY_NONE));
 
@@ -5921,6 +5960,27 @@ this.startPasteWithText = function(text)
       }
     }
 
+    for (let i = 0; i < (tableRects?.length ?? 0); i += 4)
+    {
+      const r0 = tableRects[i + 0];
+      const c0 = tableRects[i + 1];
+      const r1 = tableRects[i + 2];
+      const c1 = tableRects[i + 3];
+
+      for (let c = c0; c <= c1; c++)
+      {
+        mask2D[r0][c] = OVERLAY_PURPLE;
+        mask2D[r1][c] = OVERLAY_PURPLE;
+      }
+
+      for (let r = r0; r <= r1; r++)
+      {
+        mask2D[r][c0] = OVERLAY_PURPLE;
+        mask2D[r][c1] = OVERLAY_PURPLE;
+      }
+    }
+
+
     return mask2D;
   };
 
@@ -5928,9 +5988,11 @@ this.startPasteWithText = function(text)
   {
     const OVERLAY_RED  = (typeof oGASC !== "undefined" && oGASC) ? oGASC.OVERLAY_RED  : 1;
     const OVERLAY_BLUE = (typeof oGASC !== "undefined" && oGASC) ? oGASC.OVERLAY_BLUE : 2;
+    const OVERLAY_PURPLE = (typeof oGASC !== "undefined" && oGASC && oGASC.OVERLAY_PURPLE !== undefined) ? oGASC.OVERLAY_PURPLE : 3;
 
     const redSet = new Set();
     const blueSet = new Set();
+    const purpleSet = new Set();
 
     for (let r = 0; r < ROWS; r++)
     {
@@ -5940,10 +6002,11 @@ this.startPasteWithText = function(text)
 
         if (v === OVERLAY_RED) redSet.add(r + "," + c);
         else if (v === OVERLAY_BLUE) blueSet.add(r + "," + c);
+        else if (v === OVERLAY_PURPLE) purpleSet.add(r + "," + c);
       }
     }
 
-    return { redSet, blueSet };
+    return { redSet, blueSet, purpleSet };
   };
 
   this.computeHighlightOverlay = function()
@@ -5961,11 +6024,12 @@ this.startPasteWithText = function(text)
     if (!mask)
     {
       const rects = this.collectDoubleBoxRects16();
-      mask = this.computeHighlightOverlayMaskCPUFromRects(rects);
+      const tableRects = this.collectTableRects();
+      mask = this.computeHighlightOverlayMaskCPUFromRects(rects, tableRects);
     }
 
     const sets = this.buildHighlightOverlaySets(mask);
-    return { mask, redSet: sets.redSet, blueSet: sets.blueSet };
+    return { mask, redSet: sets.redSet, blueSet: sets.blueSet, purpleSet: sets.purpleSet };
   };
 
 
@@ -6359,9 +6423,10 @@ this.startPasteWithText = function(text)
     const banned = new Set();
 
     // 1) Exclude double-line boxes (frame + interior)
-    const hl = hlIn ?? (this.computeHighlightOverlay?.() ?? { redSet: new Set(), blueSet: new Set() });
+    const hl = hlIn ?? (this.computeHighlightOverlay?.() ?? { redSet: new Set(), blueSet: new Set(), purpleSet: new Set() });
     hl.redSet?.forEach(k => banned.add(k));
     hl.blueSet?.forEach(k => banned.add(k));
+    hl.purpleSet?.forEach(k => banned.add(k));
 
     // 2) Exclude matched catalog components (pattern cells only; skip spaces + '§')
     const mo = moIn ?? (this.computeMatchOverlay?.() ?? { solidSet: new Set(), greenSet: new Set() });
@@ -6983,6 +7048,7 @@ this.startPasteWithText = function(text)
     const overlayMask = highlightCache ? highlightCache.mask : null;
     const redSet = highlightCache ? highlightCache.redSet : null;
     const blueSet = highlightCache ? highlightCache.blueSet : null;
+    const purpleSet = highlightCache ? highlightCache.purpleSet : null;
 
     const activeNetHeatMask = (Number(netHeatMask) || 0) & (N|E|S|W);
     if (activeNetHeatMask)
@@ -6995,6 +7061,7 @@ this.startPasteWithText = function(text)
     const BLACK = "rgba(0,0,0,1)";
     const BLUE = "rgba(59,130,246,0.9)";
     const RED  = "rgba(239,68,68,0.9)";
+    const PURPLE = "rgba(168,85,247,0.95)";
     const GREEN = "rgba(34,197,94,0.95)";
 
     if (schemaMatchOn && !matchCache) matchCache = this.computeMatchOverlay();
@@ -7040,10 +7107,14 @@ this.startPasteWithText = function(text)
            const k = overlayState ? null : keyRC(r, c);
            const inside = overlayState === 2 || (!!blueSet && blueSet.has(k));
            const isRedFrame = overlayState === 1 || (!!redSet && redSet.has(k));
+           const isPurpleFrame = overlayState === 3 || (!!purpleSet && purpleSet.has(k));
 
-          // 1) Red: only double-line frame cells of enclosed rectangles
-          // 2) Blue: single-line glyphs + crossings, but NOT inside double rectangles
-          if (isRedFrame && (this.hasDoubleH(chx) || this.hasDoubleV(chx) || chx==="╔"||chx==="╗"||chx==="╚"||chx==="╝"))
+          // 1) Purple: detected table perimeters
+          // 2) Red: only double-line frame cells of enclosed rectangles
+          // 3) Blue: single-line glyphs + crossings, but NOT inside double rectangles
+          if (isPurpleFrame)
+            color = PURPLE;
+          else if (isRedFrame && (this.hasDoubleH(chx) || this.hasDoubleV(chx) || chx==="╔"||chx==="╗"||chx==="╚"||chx==="╝"))
             color = RED;
           else if (!inside) // single-line wires are: wire glyphs that are neither double nor fat
           {
