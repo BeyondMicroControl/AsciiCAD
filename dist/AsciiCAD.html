@@ -5458,7 +5458,54 @@ this.mikamiPath = function(from, to, modifiers)
     }
 
     return rects;
-  }  
+  }
+
+  this.rectContainsRect = function(outer, inner)
+  {
+    if (!outer || !inner) return false;
+    return inner.r0 >= outer.r0 &&
+           inner.c0 >= outer.c0 &&
+           inner.r1 <= outer.r1 &&
+           inner.c1 <= outer.c1;
+  }
+
+  this.filterTableRectsOutsideBoxes = function(tableRects, boxRects)
+  {
+    const out = [];
+
+    for (let i = 0; i < (tableRects?.length ?? 0); i += 4)
+    {
+      const t =
+      {
+        r0: tableRects[i + 0],
+        c0: tableRects[i + 1],
+        r1: tableRects[i + 2],
+        c1: tableRects[i + 3]
+      };
+
+      let enclosed = false;
+      for (let j = 0; j < (boxRects?.length ?? 0); j += 4)
+      {
+        const b =
+        {
+          r0: boxRects[j + 0],
+          c0: boxRects[j + 1],
+          r1: boxRects[j + 2],
+          c1: boxRects[j + 3]
+        };
+
+        if (this.rectContainsRect(b, t))
+        {
+          enclosed = true;
+          break;
+        }
+      }
+
+      if (!enclosed) out.push(t.r0, t.c0, t.r1, t.c1);
+    }
+
+    return out;
+  }
 
   this.tableAppendTrailingPipe = function()
   {
@@ -7449,16 +7496,10 @@ this.startPasteWithText = function(text)
       const r1 = tableRects[i + 2];
       const c1 = tableRects[i + 3];
 
-      for (let c = c0; c <= c1; c++)
-      {
-        mask2D[r0][c] = OVERLAY_PURPLE;
-        mask2D[r1][c] = OVERLAY_PURPLE;
-      }
-
       for (let r = r0; r <= r1; r++)
       {
-        mask2D[r][c0] = OVERLAY_PURPLE;
-        mask2D[r][c1] = OVERLAY_PURPLE;
+        for (let c = c0; c <= c1; c++)
+          mask2D[r][c] = OVERLAY_PURPLE;
       }
     }
 
@@ -7507,7 +7548,7 @@ this.startPasteWithText = function(text)
     if (!mask)
     {
       const rects = this.collectDoubleBoxRects16();
-      tableRects = this.collectTableRects();
+      tableRects = this.filterTableRectsOutsideBoxes(this.collectTableRects(), rects);
       mask = this.computeHighlightOverlayMaskCPUFromRects(rects, tableRects);
     }
 
@@ -8546,30 +8587,6 @@ this.startPasteWithText = function(text)
       const heat = this.computeNetHeatField(activeNetHeatMask);
       this.drawNetHeatOverlay(ctx, cw, ch, snap, heat, activeNetHeatMask);
     }
-
-  // Trace overlay for detected tables:
-    // draw a translucent rectangular area, not only purple glyphs on the border.
-    if (schemaHighlightOn && Array.isArray(tableRects) && tableRects.length)
-    {
-      ctx.save();
-      ctx.fillStyle = "rgba(168,85,247,0.16)";
-      for (let i = 0; i < tableRects.length; i += 4)
-      {
-        const r0 = tableRects[i + 0];
-        const c0 = tableRects[i + 1];
-        const r1 = tableRects[i + 2];
-        const c1 = tableRects[i + 3];
-
-        ctx.fillRect(
-          snap(c0 * cw),
-          snap(r0 * ch),
-          (c1 - c0 + 1) * cw,
-          (r1 - r0 + 1) * ch
-        );
-      }
-      ctx.restore();
-    }
-
 
     const BLACK = "rgba(0,0,0,1)";
     const BLUE = "rgba(59,130,246,0.9)";
