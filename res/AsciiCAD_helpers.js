@@ -6012,6 +6012,7 @@ this.startPasteWithText = function(text)
   this.computeHighlightOverlay = function()
   {
     let mask = null;
+    let tableRects = [];
 
 /*
     if (typeof oGASC !== "undefined" && oGASC &&
@@ -6024,12 +6025,18 @@ this.startPasteWithText = function(text)
     if (!mask)
     {
       const rects = this.collectDoubleBoxRects16();
-      const tableRects = this.collectTableRects();
+      tableRects = this.collectTableRects();
       mask = this.computeHighlightOverlayMaskCPUFromRects(rects, tableRects);
     }
 
     const sets = this.buildHighlightOverlaySets(mask);
-    return { mask, redSet: sets.redSet, blueSet: sets.blueSet, purpleSet: sets.purpleSet };
+    return {
+      mask,
+      redSet: sets.redSet,
+      blueSet: sets.blueSet,
+      purpleSet: sets.purpleSet,
+      tableRects
+    };
   };
 
 
@@ -7049,12 +7056,36 @@ this.startPasteWithText = function(text)
     const redSet = highlightCache ? highlightCache.redSet : null;
     const blueSet = highlightCache ? highlightCache.blueSet : null;
     const purpleSet = highlightCache ? highlightCache.purpleSet : null;
+    const tableRects = highlightCache ? highlightCache.tableRects : null;
 
     const activeNetHeatMask = (Number(netHeatMask) || 0) & (N|E|S|W);
     if (activeNetHeatMask)
     {
       const heat = this.computeNetHeatField(activeNetHeatMask);
       this.drawNetHeatOverlay(ctx, cw, ch, snap, heat, activeNetHeatMask);
+    }
+
+  // Trace overlay for detected tables:
+    // draw a translucent rectangular area, not only purple glyphs on the border.
+    if (schemaHighlightOn && Array.isArray(tableRects) && tableRects.length)
+    {
+      ctx.save();
+      ctx.fillStyle = "rgba(168,85,247,0.16)";
+      for (let i = 0; i < tableRects.length; i += 4)
+      {
+        const r0 = tableRects[i + 0];
+        const c0 = tableRects[i + 1];
+        const r1 = tableRects[i + 2];
+        const c1 = tableRects[i + 3];
+
+        ctx.fillRect(
+          snap(c0 * cw),
+          snap(r0 * ch),
+          (c1 - c0 + 1) * cw,
+          (r1 - r0 + 1) * ch
+        );
+      }
+      ctx.restore();
     }
 
 
