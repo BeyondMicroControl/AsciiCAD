@@ -84,7 +84,7 @@ this.interpolateColors = function(col_arr, rangeLen)
   return out;
 }
 
-  this.base64ToArrayBuffer = function(base64)
+  this.base64ToArray = function(base64)
   {
       try{ var binary_string = window.atob(base64); } catch(e) { return null }
       var len = binary_string.length;
