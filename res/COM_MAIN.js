@@ -95,6 +95,17 @@ this.interpolateColors = function(col_arr, rangeLen)
       return bytes;
   }
 
+  this.base64ToArrayBuffer = function(base64)
+  {
+    const bytes = this.base64ToArray(base64);
+    if (bytes == null) return null;
+
+    return bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength
+    );
+  }
+
   this.ArrayBufferTobase64 = function(buffer) 
   {
       var binary = '';
