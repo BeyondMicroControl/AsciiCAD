@@ -80,7 +80,7 @@ Last but not least (we haven't yet reached that point), the Terminal CLI will be
 - One agent in charge of electronic design, which makes the agent a Senior User (PRINCE2) having the ability to do business with the tool (electronic design) and understand business needs that can help to express new requirements.
 - A second agent specialised in software design, a Product Delivery Manager as it were, with the ability to create and extend the tool itself and explain to the Senior User how to use the new features implemented as required.
 
-This emulates a necessary **adversarial 'tension' between operational demand and feature supply** that has been the succes formula of the <a href="https://www.youtube.com/watch?v=6v8e7dUwq_Q">modern enterprise</a>, since sliced bread :-D
+This emulates a necessary **adversarial 'tension' between operational demand and feature supply** that has been the best succes formula of the <a href="https://www.youtube.com/watch?v=6v8e7dUwq_Q">modern enterprise</a>, since sliced bread.
 
 ---
 
