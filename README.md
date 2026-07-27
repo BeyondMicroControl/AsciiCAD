@@ -76,11 +76,11 @@ Read more about the [design goals](#design-goals), or without further due:
 
 ## Design goals
 
-Last but not least (we haven't yet reached that point), the Terminal CLI will be used to expand the tools capability from a UI-driven tool to an AI-driven tool.  Wouldn't it be satisfying to see a schematic built in real-time by interacting with an LLM trained in electronic design?  Likely, but here's the thing: the end goal would be to demonstrate one can design an app that conceptially embraces 2 types of agents.  
-- One agent in charge of electronic design, which makes the agent a Senior User (PRINCE2) having the ability to do business with the tool (electronic design) and understand business needs that can help to express new requirements.
-- A second agent specialised in software design, a Product Delivery Manager as it were, with the ability to create and extend the tool itself and explain to the Senior User how to use the new features implemented as required.
+Last but not least (we haven't yet reached that point), the Terminal Command Line Interface will be used to expand the tools capability from a UI-driven tool to an AI-driven tool.  Wouldn't it be satisfying to see a schematic built in real-time by interacting with an LLM trained in electronic design?  Likely, but here's the thing: the end goal would be to demonstrate one can design an app that conceptially embraces 2 types of agents.  
+- One agent in charge of electronic design, which makes the agent a **Senior User** having the ability to do business with the tool (electronic design) and understand business needs that can help to express new requirements.
+- A second agent specialised in software design, a **Product Delivery Manager** as it were, with the ability to create and extend the tool itself and explain to the Senior User how to use the new features implemented as required.
 
-This emulates a necessary **adversarial 'tension' between operational demand and feature supply** that has been the best succes formula of the <a href="https://www.youtube.com/watch?v=6v8e7dUwq_Q">modern enterprise</a>, since sliced bread.
+This emulates a necessary **adversarial 'tension' between operational demand and feature supply** that has been the best succes formula of the <a href="https://www.youtube.com/watch?v=6v8e7dUwq_Q">modern enterprise</a>, since sliced bread, is it not?
 
 ---
 
