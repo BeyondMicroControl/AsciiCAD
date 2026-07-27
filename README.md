@@ -5,7 +5,7 @@
 
 # Presentation
 
-This is a browser-based app built from one of the simplest digital building blocks ever elevated to an art form: **ASCII**. The project was conceived primarily as an essay in accelerating complexity by strategically embracing bare-bones simplicity at the outset, then letting [policy](docs/design.md) do much of the heavy lifting.
+This is a browser-based app built from one of the simplest digital building blocks, and shortly after its inception elevated to an art form, which we will exploit today in a special manner: **ASCII**. The project was conceived primarily as an essay in accelerating complexity by strategically embracing bare-bones simplicity at the outset, then letting [policy](docs/design.md) do much of the heavy lifting.
 
 At the heart of the project lies a central thesis: **2D semantics**. While LLMs excel at interpreting plain text when it is presented as a one-dimensional stream of words or tokens, they remain remarkably unprepared for two-dimensional semantics. Humans, by contrast, developed language in a fundamentally multimodal way. Images, speech, music, poetry, and ASCII art. Even considering the lightweight aspect of ASCII tables, schemas, and diagrams compared to typically much denser datasets found in other modalities, differently arranged ASCII data remains [surprisingly difficult for LLMs to decode](https://www.youtube.com/watch?v=rWtMkoRhm-M). That is precisely the challenge this project explores and eventually, helps solve.
 
