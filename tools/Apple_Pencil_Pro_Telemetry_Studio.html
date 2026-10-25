@@ -76,6 +76,16 @@ h1 { font-size:clamp(19px,3vw,25px); letter-spacing:-.6px; margin:0 0 4px; }
 .debug { font-size:11px; padding:10px 15px; border-top:1px solid var(--line); background:#f6f8fc; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#61718a; }
 .footnote { margin:14px 2px 0; max-width:950px; font-size:12px; color:#5f7089; line-height:1.6; }
 .warning-banner { display:none; background:#fff8e9; color:#946618; padding:10px 13px; border:1px solid #edd6a0; border-radius:11px; margin:0 0 13px; font-size:12px; }
+
+.dtw-panel { margin-bottom:13px; }
+.dtw-body { padding:12px 14px; display:grid; gap:10px; }
+.dtw-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.dtw-controls input[type="text"] { min-width:180px; width:min(260px,100%); border:1px solid var(--line); border-radius:9px; padding:10px 11px; min-height:40px; color:var(--ink); background:#fff; }
+.dtw-result { border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:#f7faff; color:#365071; font-size:12px; line-height:1.5; overflow-wrap:anywhere; }
+.dtw-result strong { color:var(--ink); }
+.dtw-summary { color:var(--muted); font-size:11px; line-height:1.5; }
+@media(max-width:600px) { .dtw-controls input[type="text"] { flex:1 1 100%; width:100%; } .dtw-controls button { flex:1 1 auto; } }
+
 @media(max-width:900px) { .layout { grid-template-columns:minmax(0,1fr); } .right { grid-template-columns:1fr 1fr; align-items:start; } .drawing-area { height:50vh; min-height:370px; } }
 @media(max-width:600px) { header { align-items:center; } .status { padding:7px 9px; } .right { grid-template-columns:1fr; } .drawing-area { min-height:340px; height:48vh; } .toolbar .separator { display:none; } .toolbar { gap:6px; } .toolbar button { padding:8px 10px; } .paper-hint { font-size:11px; } }
 </style>
@@ -100,6 +110,25 @@ h1 { font-size:clamp(19px,3vw,25px); letter-spacing:-.6px; margin:0 0 4px; }
   <button id="clearButton" title="Clear drawing, retain recorded telemetry">Clear ink</button>
   <button id="newButton" class="danger" title="Remove strokes and telemetry">New session</button>
 </div>
+<section class="panel dtw-panel" aria-label="Gesture learning with Dynamic Time Warping">
+  <div class="panel-heading"><h2>Gesture learning · DTW nearest neighbour</h2><span class="small">Local templates · no network</span></div>
+  <div class="dtw-body">
+    <div class="dtw-controls">
+      <label class="label" for="gestureLabel">Gesture label</label>
+      <input id="gestureLabel" type="text" maxlength="40" placeholder="e.g. rotate-and-return" autocomplete="off">
+      <button id="learnGestureButton" class="primary">Learn last stroke</button>
+      <button id="recognizeGestureButton">Recognise last stroke</button>
+    </div>
+    <div class="dtw-controls">
+      <button id="exportTemplatesButton">Export templates</button>
+      <button id="importTemplatesButton">Import templates</button>
+      <input id="importTemplatesFile" type="file" accept="application/json,.json" hidden>
+      <button id="clearTemplatesButton" class="danger">Clear model</button>
+    </div>
+    <div id="dtwResult" class="dtw-result" role="status" aria-live="polite">Draw one complete stroke, enter a label, then choose “Learn last stroke”. Add several examples per label for better matching.</div>
+    <div id="dtwSummary" class="dtw-summary">0 labelled examples. Each example is one stroke; movement and available sensor sequences are compared using DTW.</div>
+  </div>
+</section>
 <div class="layout">
   <section class="panel">
     <div class="panel-heading"><h2>Writing surface</h2><span class="small">Stroke rendering uses recorded pressure</span></div>
@@ -316,7 +345,7 @@ h1 { font-size:clamp(19px,3vw,25px); letter-spacing:-.6px; margin:0 0 4px; }
     const prev=a.length?a[a.length-1]:null;
     if(prev && pt.eventTimeStampMs!==null && prev.eventTimeStampMs!==null && pt.eventTimeStampMs < prev.eventTimeStampMs)return;
     if(prev && Math.abs(prev.x-pt.x)<.001 && Math.abs(prev.y-pt.y)<.001 && prev.eventTimeStampMs===pt.eventTimeStampMs)return;
-    if(prev && prev.nx===pt.nx && prev.ny===pt.ny && prev.pressure===pt.pressure)return;
+    if(prev && prev.nx===pt.nx && prev.ny===pt.ny && prev.pressure===pt.pressure && prev.twist===pt.twist && prev.tiltX===pt.tiltX && prev.tiltY===pt.tiltY && prev.altitudeAngle===pt.altitudeAngle && prev.azimuthAngle===pt.azimuthAngle)return;
     a.push(pt); if(prev)renderSegment(currentStroke,prev,pt);else drawDot(currentStroke,pt);
   }
   function startStroke(e,s){
@@ -486,6 +515,228 @@ h1 { font-size:clamp(19px,3vw,25px); letter-spacing:-.6px; margin:0 0 4px; }
   $('doubleTapButton').addEventListener('click',()=>logAction('manual-gesture-marker',{gesture:'double-tap-attempt',detectedByWebAPI:false}));
   function showWarning(message){const b=$('warningBanner');b.textContent=message;b.style.display='block';}
 
+  // DTW 1-nearest-neighbour model. All data remains in this page/browser.
+  const DTW_STORAGE_KEY = 'apple-pencil-pro-dtw-templates-v1';
+  const DTW_SEQUENCE_LENGTH = 64;
+  let dtwTemplates = loadDtwTemplates();
+
+  function setDtwResult(message, isError=false){
+    const el=$('dtwResult');
+    el.textContent=message;
+    el.style.borderColor=isError?'#e7b5be':'var(--line)';
+    el.style.background=isError?'#fff5f6':'#f7faff';
+  }
+
+  function loadDtwTemplates(){
+    try{
+      const raw=localStorage.getItem(DTW_STORAGE_KEY);
+      if(!raw)return [];
+      const parsed=JSON.parse(raw);
+      return validateDtwTemplateData(parsed);
+    }catch(_){return [];}
+  }
+
+  function persistDtwTemplates(){
+    try{
+      localStorage.setItem(DTW_STORAGE_KEY,JSON.stringify({format:'apple-pencil-dtw-templates',version:1,templates:dtwTemplates}));
+      return true;
+    }catch(err){
+      setDtwResult('Templates are available for this session but could not be persisted in browser storage. Export a JSON backup. ('+String(err)+')',true);
+      return false;
+    }
+  }
+
+  function validateDtwTemplateData(data){
+    if(!data || data.format!=='apple-pencil-dtw-templates' || !Array.isArray(data.templates))throw new Error('Not a DTW template file.');
+    if(data.templates.length>2000)throw new Error('Template file exceeds the 2,000-example safety limit.');
+    const out=[];
+    for(const t of data.templates){
+      if(!t || typeof t.label!=='string' || !t.label.trim() || !Array.isArray(t.sequence) || t.sequence.length<2 || t.sequence.length>256)continue;
+      const sequence=[];
+      for(const f of t.sequence){
+        if(!f || !Number.isFinite(f.x) || !Number.isFinite(f.y))continue;
+        const clean={x:f.x,y:f.y};
+        for(const k of ['pressure','tiltX','tiltY','altitudeAngle','azimuthAngle','twist'])clean[k]=Number.isFinite(f[k])?f[k]:null;
+        sequence.push(clean);
+      }
+      if(sequence.length>=2)out.push({id:String(t.id||('import-'+out.length)),label:t.label.trim().slice(0,40),createdAt:typeof t.createdAt==='string'?t.createdAt:new Date().toISOString(),sequence:sequence.slice(0,DTW_SEQUENCE_LENGTH)});
+    }
+    return out;
+  }
+
+  function angleInterpolate(a,b,t,period){
+    if(a===null||b===null)return a===null?b:a;
+    let d=((b-a+period/2)%period+period)%period-period/2;
+    return a+d*t;
+  }
+
+  function rawStrokeFrames(points){
+    const raw=points.map(p=>({
+      x:Number.isFinite(p.x)?p.x:(Number.isFinite(p.nx)?p.nx:0),
+      y:Number.isFinite(p.y)?p.y:(Number.isFinite(p.ny)?p.ny:0),
+      time:Number.isFinite(p.eventTimeStampMs)?p.eventTimeStampMs:(Number.isFinite(p.tMs)?p.tMs:null),
+      pressure:Number.isFinite(p.pressure)?p.pressure:null,
+      tiltX:Number.isFinite(p.tiltX)?p.tiltX:null,
+      tiltY:Number.isFinite(p.tiltY)?p.tiltY:null,
+      altitudeAngle:Number.isFinite(p.altitudeAngle)?p.altitudeAngle:null,
+      azimuthAngle:Number.isFinite(p.azimuthAngle)?p.azimuthAngle:null,
+      twist:Number.isFinite(p.twist)?p.twist:null
+    }));
+    if(raw.length<2)return [];
+    // Use event time when it is meaningful so rotations during a pause can be retained.
+    const validTimes=raw.every(p=>Number.isFinite(p.time));
+    const useTime=validTimes && raw[raw.length-1].time>raw[0].time;
+    const positions=raw.map((p,i)=>useTime?(p.time-raw[0].time)/(raw[raw.length-1].time-raw[0].time):(raw.length<=1?0:i/(raw.length-1)));
+    const out=[]; let j=0;
+    for(let i=0;i<DTW_SEQUENCE_LENGTH;i++){
+      const target=i/(DTW_SEQUENCE_LENGTH-1);
+      while(j<positions.length-2 && positions[j+1]<target)j++;
+      const a=raw[j],b=raw[Math.min(j+1,raw.length-1)];
+      const span=positions[Math.min(j+1,positions.length-1)]-positions[j];
+      const f=span>0?Math.max(0,Math.min(1,(target-positions[j])/span)):0;
+      const mix=(k)=>a[k]===null?b[k]:(b[k]===null?a[k]:a[k]+(b[k]-a[k])*f);
+      out.push({
+        x:mix('x'),y:mix('y'),pressure:mix('pressure'),tiltX:mix('tiltX'),tiltY:mix('tiltY'),
+        altitudeAngle:mix('altitudeAngle'),azimuthAngle:angleInterpolate(a.azimuthAngle,b.azimuthAngle,f,Math.PI*2),
+        twist:angleInterpolate(a.twist,b.twist,f,360)
+      });
+    }
+    // Translation- and scale-invariant trajectory, preserving aspect ratio and direction.
+    const minX=Math.min(...out.map(p=>p.x)),maxX=Math.max(...out.map(p=>p.x));
+    const minY=Math.min(...out.map(p=>p.y)),maxY=Math.max(...out.map(p=>p.y));
+    const scale=Math.max(maxX-minX,maxY-minY,1e-6),cx=(minX+maxX)/2,cy=(minY+maxY)/2;
+    for(const p of out){p.x=(p.x-cx)/scale;p.y=(p.y-cy)/scale;}
+    return out;
+  }
+
+  function circularDelta(a,b,period){
+    const d=Math.abs(a-b)%period;
+    return Math.min(d,period-d);
+  }
+
+  function frameDistance(a,b){
+    let total=0,weight=0;
+    const add=(x,y,w,scale=1,period=0)=>{
+      if(!Number.isFinite(x)||!Number.isFinite(y))return;
+      const d=period?circularDelta(x,y,period)/scale:(x-y)/scale;
+      total+=w*d*d;weight+=w;
+    };
+    add(a.x,b.x,1,1); add(a.y,b.y,1,1);
+    add(a.pressure,b.pressure,.15,1);
+    add(a.tiltX,b.tiltX,.40,90); add(a.tiltY,b.tiltY,.40,90);
+    add(a.altitudeAngle,b.altitudeAngle,.35,Math.PI/2);
+    add(a.azimuthAngle,b.azimuthAngle,.25,Math.PI*2/2,Math.PI*2);
+    add(a.twist,b.twist,.75,360/2,360);
+    return weight?Math.sqrt(total/weight):Infinity;
+  }
+
+  function dtwDistance(a,b){
+    if(!a.length||!b.length)return Infinity;
+    // Rolling rows keep memory O(sequence length), rather than allocating a full matrix.
+    let prev=new Float64Array(b.length+1),curr=new Float64Array(b.length+1);
+    let prevLen=new Uint16Array(b.length+1),currLen=new Uint16Array(b.length+1);
+    prev.fill(Infinity);prev[0]=0;
+    for(let i=1;i<=a.length;i++){
+      curr.fill(Infinity);curr[0]=Infinity;currLen.fill(0);
+      for(let j=1;j<=b.length;j++){
+        const up=prev[j],left=curr[j-1],diag=prev[j-1];
+        let best=diag,len=prevLen[j-1];
+        if(up<best){best=up;len=prevLen[j];}
+        if(left<best){best=left;len=currLen[j-1];}
+        const local=frameDistance(a[i-1],b[j-1]);
+        curr[j]=best+local;currLen[j]=len+1;
+      }
+      [prev,curr]=[curr,prev];[prevLen,currLen]=[currLen,prevLen];
+    }
+    const pathLength=prevLen[b.length]||Math.max(a.length,b.length);
+    return prev[b.length]/pathLength;
+  }
+
+  function latestCompletedStroke(){
+    if(currentStroke)return null;
+    for(let i=strokes.length-1;i>=0;i--){if(strokes[i].points && strokes[i].points.length>=2)return strokes[i];}
+    return null;
+  }
+
+  function refreshDtwSummary(){
+    const byLabel={};for(const t of dtwTemplates)byLabel[t.label]=(byLabel[t.label]||0)+1;
+    const labels=Object.keys(byLabel).sort((a,b)=>a.localeCompare(b));
+    $('dtwSummary').textContent=dtwTemplates.length+' labelled example'+(dtwTemplates.length===1?'':'s')+' across '+labels.length+' gesture label'+(labels.length===1?'':'s')+'. '+(labels.length?labels.map(k=>k+' × '+byLabel[k]).join(' · '):'No model trained yet.')+' Templates stay in this browser; export JSON for backup or transfer.';
+    $('recognizeGestureButton').disabled=dtwTemplates.length===0;
+    $('exportTemplatesButton').disabled=dtwTemplates.length===0;
+  }
+
+  function learnLastStroke(){
+    const label=$('gestureLabel').value.trim();
+    if(!label){setDtwResult('Enter a gesture label before learning an example.',true);$('gestureLabel').focus();return;}
+    const stroke=latestCompletedStroke();
+    if(!stroke){setDtwResult('Draw and finish a stroke with at least two points first.',true);return;}
+    const sequence=rawStrokeFrames(stroke.points);
+    if(sequence.length<2){setDtwResult('This stroke does not contain enough usable points.',true);return;}
+    dtwTemplates.push({id:'dtw-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8),label:label.slice(0,40),createdAt:new Date().toISOString(),sequence});
+    const saved=persistDtwTemplates();refreshDtwSummary();
+    setDtwResult('Learned example '+dtwTemplates.length+' for “'+label.slice(0,40)+'” from '+stroke.points.length+' recorded points. '+(saved?'Saved locally.':'Kept in memory; export a backup if needed.'));
+  }
+
+  function recognizeLastStroke(){
+    const stroke=latestCompletedStroke();
+    if(!stroke){setDtwResult('Draw and finish a stroke with at least two points before recognition.',true);return;}
+    if(!dtwTemplates.length){setDtwResult('The model has no examples yet. Label and learn at least one stroke.',true);return;}
+    const sequence=rawStrokeFrames(stroke.points);
+    if(sequence.length<2){setDtwResult('This stroke does not contain enough usable points.',true);return;}
+    let best=null;const byLabel={};
+    for(const t of dtwTemplates){
+      const distance=dtwDistance(sequence,t.sequence);
+      if(!Number.isFinite(distance))continue;
+      if(!byLabel[t.label]||distance<byLabel[t.label].distance)byLabel[t.label]={label:t.label,distance};
+      if(!best||distance<best.distance)best={label:t.label,distance};
+    }
+    if(!best){setDtwResult('Could not compare this stroke with the current templates.',true);return;}
+    const ranked=Object.values(byLabel).sort((a,b)=>a.distance-b.distance).slice(0,3);
+    setDtwResult('Closest match: “'+best.label+'” · DTW distance '+best.distance.toFixed(4)+'. '+(ranked.length>1?'Other matches: '+ranked.slice(1).map(x=>'“'+x.label+'” ('+x.distance.toFixed(4)+')').join(', ')+'. ':'')+'Lower distance means a closer match; the distance is not a calibrated probability.');
+  }
+
+  function exportDtwTemplates(){
+    if(!dtwTemplates.length){setDtwResult('There are no templates to export.',true);return;}
+    const payload={format:'apple-pencil-dtw-templates',version:1,exportedAtISO:new Date().toISOString(),algorithm:'DTW 1-nearest-neighbour; fixed 64-frame sequences',templates:dtwTemplates};
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    deliver(blob,'apple-pencil-dtw-templates-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json','application/json').catch(err=>setDtwResult('Template export failed: '+String(err),true));
+  }
+
+  function importDtwTemplates(file){
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const data=JSON.parse(String(reader.result||''));
+        const imported=validateDtwTemplateData(data);
+        if(!imported.length)throw new Error('No valid gesture examples were found in the file.');
+        const replace=confirm('Import '+imported.length+' gesture example(s)? Choose OK to replace the current model, or Cancel to append them.');
+        if(replace)dtwTemplates=imported;else dtwTemplates=dtwTemplates.concat(imported);
+        if(dtwTemplates.length>2000)throw new Error('Import would exceed the 2,000-example limit.');
+        const saved=persistDtwTemplates();refreshDtwSummary();
+        setDtwResult('Imported '+imported.length+' example(s). '+(replace?'Replaced the previous model.':'Added to the existing model. ')+(saved?'Saved locally.':'Kept in memory; export a backup if needed.'));
+      }catch(err){setDtwResult('Could not import templates: '+String(err.message||err),true);}
+      $('importTemplatesFile').value='';
+    };
+    reader.onerror=()=>{setDtwResult('Could not read that template file.',true);$('importTemplatesFile').value='';};
+    reader.readAsText(file);
+  }
+
+  $('learnGestureButton').addEventListener('click',learnLastStroke);
+  $('recognizeGestureButton').addEventListener('click',recognizeLastStroke);
+  $('exportTemplatesButton').addEventListener('click',exportDtwTemplates);
+  $('importTemplatesButton').addEventListener('click',()=>$('importTemplatesFile').click());
+  $('importTemplatesFile').addEventListener('change',e=>importDtwTemplates(e.target.files&&e.target.files[0]));
+  $('clearTemplatesButton').addEventListener('click',()=>{
+    if(!dtwTemplates.length){setDtwResult('The model is already empty.');return;}
+    if(!confirm('Clear all locally stored gesture templates? Export a backup first if you need them.'))return;
+    dtwTemplates=[];
+    try{localStorage.removeItem(DTW_STORAGE_KEY);}catch(_){}
+    refreshDtwSummary();setDtwResult('All gesture templates have been cleared.');
+  });
+  refreshDtwSummary();
+
   function statState(key){
     if(key==='squeeze')return ['Native-only', 'warning'];
     if(!availability[key])return ['API unavailable','warning'];
@@ -578,6 +829,7 @@ h1 { font-size:clamp(19px,3vw,25px); letter-spacing:-.6px; margin:0 0 4px; }
         counters:{...counts,recordedPointerEvents:pointerEvents.length,recordedTouchEvents:touchEvents.length,
           recordedSnapshots:snapshots.length,recordedActions:actions.length,strokeCount:strokes.length}},
       streams:{pointerEvents,touchEvents,snapshots100ms:snapshots,actions},
+      gestureModel:{format:'apple-pencil-dtw-templates',version:1,algorithm:'DTW 1-nearest-neighbour; fixed 64-frame sequences',templates:dtwTemplates},
       handwriting:{coordinateSystem:'normalized nx/ny relative to canvas plus source canvas x/y',
         brushModel:'Variable width = brush size * (0.25 + 0.95 * pressure)',
         strokes,strokeHistory:strokeHistory.map(s=>({...s,currentlyVisible:strokes.includes(s)}))}
