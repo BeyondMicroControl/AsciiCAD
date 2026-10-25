@@ -121,6 +121,8 @@ h1 { font-size:clamp(19px,3vw,25px); letter-spacing:-.6px; margin:0 0 4px; }
         <div class="metric"><div class="name">Device</div><div id="mDevice" class="value smallvalue">—</div></div>
         <div class="metric"><div class="name">State</div><div id="mState" class="value smallvalue">Idle</div></div>
         <div class="metric"><div class="name">Pressure</div><div id="mPressure" class="value">—</div><div class="meter"><div class="meter-fill" id="pressureMeter"></div></div></div>
+        <div class="metric"><div class="name">Last contact pressure</div><div id="mContactPressure" class="value">—</div></div>
+        <div class="metric"><div class="name">Contact by altitude</div><div id="mAnglePressure" class="small">—</div></div>
         <div class="metric"><div class="name">Barrel twist (°)</div><div id="mTwist" class="value">—</div><div class="small" id="twistNote">Not observed</div></div>
         <div class="metric"><div class="name">Altitude (°)</div><div id="mAltitude" class="value">—</div></div>
         <div class="metric"><div class="name">Azimuth (°)</div><div id="mAzimuth" class="value">—</div></div>
@@ -187,7 +189,8 @@ h1 { font-size:clamp(19px,3vw,25px); letter-spacing:-.6px; margin:0 0 4px; }
   let nextStrokeId=1;
   let recording = false, recordingSince = null, totalRecordedMs = 0;
   let activePointerId = null, currentStroke = null, lastPen = null, lastAny = null, lastInputPerf = null;
-  let recentInputs = [], pressureTrace = [], hoverSample = null, lastCursorPerf = 0;
+  let recentInputs = [], pressureTrace = [], hoverSample = null, lastCursorPerf = 0, lastContactPen = null;
+  let anglePressure = {upright:{count:0,min:null,max:null},tilted:{count:0,min:null,max:null},unknown:{count:0,min:null,max:null}};
   let mode = 'pen', surfaceW=1, surfaceH=1;
   let counts = {pointer:0,coalesced:0,predicted:0,touch:0};
   let exportWarningShown = false;
@@ -250,6 +253,16 @@ h1 { font-size:clamp(19px,3vw,25px); letter-spacing:-.6px; margin:0 0 4px; }
     if(eventType==='pointerdown')observed.penDown++;
     if((eventType==='pointermove'||eventType==='pointerrawupdate') && s.buttons===0)observed.hoverEvents++;
     observeValue('pressureMin','pressureMax',s.pressure);
+    if(s.buttons !== null && (s.buttons & 1) !== 0){
+      lastContactPen={...s,eventType,receivedPerf:performance.now()};
+      if(s.pressure!==null){
+        const deg=s.altitudeAngle===null?null:s.altitudeAngle*180/Math.PI;
+        const bucket=anglePressure[deg===null?'unknown':deg<60?'tilted':'upright'];
+        bucket.count++;
+        bucket.min=bucket.min===null?s.pressure:Math.min(bucket.min,s.pressure);
+        bucket.max=bucket.max===null?s.pressure:Math.max(bucket.max,s.pressure);
+      }
+    }
     observeValue('twistMin','twistMax',s.twist);
     observeValue('tiltMin','tiltMax',s.tiltX);
     observeValue('tiltMin','tiltMax',s.tiltY);
@@ -418,7 +431,7 @@ h1 { font-size:clamp(19px,3vw,25px); letter-spacing:-.6px; margin:0 0 4px; }
   function resetSession(){
     pointerEvents=[];touchEvents=[];snapshots=[];actions=[];strokes=[];strokeHistory=[];nextStrokeId=1;
     currentStroke=null;activePointerId=null;lastPen=null;lastAny=null;lastInputPerf=null;
-    hoverSample=null;pressureTrace=[];recentInputs=[];observed=newObserved();exportWarningShown=false;
+    hoverSample=null;pressureTrace=[];recentInputs=[];observed=newObserved();lastContactPen=null;anglePressure={upright:{count:0,min:null,max:null},tilted:{count:0,min:null,max:null},unknown:{count:0,min:null,max:null}};exportWarningShown=false;
     counts={pointer:0,coalesced:0,predicted:0,touch:0};
     sessionStartISO=new Date().toISOString();sessionStartPerf=performance.now();
     totalRecordedMs=0;recordingSince=null;recording=false;
@@ -517,6 +530,9 @@ h1 { font-size:clamp(19px,3vw,25px); letter-spacing:-.6px; margin:0 0 4px; }
     show('mState',chosen?(chosen.buttons?'Contact':'Hover / idle'):'Idle');
     show('mPressure',chosen?numeric(chosen.pressure,3):'—');
     $('pressureMeter').style.width=(chosen&&chosen.pressure!==null?Math.max(0,Math.min(1,chosen.pressure))*100:0)+'%';
+    show('mContactPressure',lastContactPen?numeric(lastContactPen.pressure,3):'—');
+    const fmt=k=>{const b=anglePressure[k];return b.count?b.count+' samples · '+numeric(b.min,3)+'–'+numeric(b.max,3):'none';};
+    show('mAnglePressure','Tilted <60°: '+fmt('tilted')+' | Upright ≥60°: '+fmt('upright'));
     show('mTwist',chosen?numeric(chosen.twist,1):'—');
     show('twistNote',observed.twistMin===null?'No Pencil roll observed':
       (Math.abs(observed.twistMax-observed.twistMin)>.001?'Variable values seen':'Constant; not proof of support'));
@@ -553,12 +569,12 @@ h1 { font-size:clamp(19px,3vw,25px); letter-spacing:-.6px; margin:0 0 4px; }
     const t=performance.now();
     const duration=totalRecordedMs+(recording?t-recordingSince:0);
     return {
-      format:'apple-pencil-pro-web-telemetry',schemaVersion:'1.0',
+      format:'apple-pencil-pro-web-telemetry',schemaVersion:'1.1',
       description:'Raw browser input, detailed coalesced/predicted samples, 100 ms display snapshots, and handwriting strokes. No native sensor access.',
       session:{startedAtISO:sessionStartISO,exportedAtISO:new Date().toISOString(),recordingActive:recording,
         totalActiveRecordingMs:round(duration,1),elapsedSessionMs:nowMs(),device:baseMeta(),
         paperSizeCSSPx:{width:round(surfaceW),height:round(surfaceH)},
-        observed:{...observed},
+        observed:{...observed},pressureByAngle:{...anglePressure},lastContactSample:lastContactPen?{...lastContactPen,receivedPerf:undefined}:null,
         counters:{...counts,recordedPointerEvents:pointerEvents.length,recordedTouchEvents:touchEvents.length,
           recordedSnapshots:snapshots.length,recordedActions:actions.length,strokeCount:strokes.length}},
       streams:{pointerEvents,touchEvents,snapshots100ms:snapshots,actions},
