@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Apple Pencil Pro — Handwriting & Telemetry Studio</title>
+<style>
+:root { --ink:#17253e; --muted:#6d7c93; --line:#dae3f0; --primary:#3667eb; --primary-dark:#234dc3; --green:#13866d; --red:#b84457; --card:#fff; --bg:#eef3fa; --pill:#e9efff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); }
+* { box-sizing:border-box; }
+html,body { margin:0; min-height:100%; background:var(--bg); }
+body { padding: max(15px, env(safe-area-inset-top)) max(13px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(13px, env(safe-area-inset-left)); }
+button,select,input { font:inherit; }
+button { border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); padding:9px 13px; min-height:40px; cursor:pointer; font-size:13px; font-weight:650; white-space:nowrap; touch-action:manipulation; }
+button:active { transform:translateY(1px); }
+button:disabled { opacity:.42; cursor:not-allowed; }
+button.primary { background:var(--primary); color:white; border-color:var(--primary); }
+button.primary:hover { background:var(--primary-dark); }
+button.danger { color:var(--red); }
+button.active { background:#e7f0ff; border-color:#aac3ff; color:#234dc3; }
+header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:14px; }
+.brand { display:flex; gap:12px; align-items:center; }
+.brandmark { display:grid; place-items:center; background:linear-gradient(145deg,#3f75ff,#7868e8); width:45px; height:45px; flex:0 0 auto; border-radius:14px; color:white; font-size:25px; font-weight:500; box-shadow:0 5px 15px #335af02c; }
+h1 { font-size:clamp(19px,3vw,25px); letter-spacing:-.6px; margin:0 0 4px; }
+.subtitle { font-size:12px; color:var(--muted); }
+.status { display:inline-flex; align-items:center; gap:8px; font-size:12px; font-weight:700; border-radius:99px; border:1px solid var(--line); background:#fff; padding:9px 12px; white-space:nowrap; }
+.status .dot { border-radius:100%; width:8px; height:8px; background:#a1abc0; }
+.status.live .dot { background:#ef515c; box-shadow:0 0 0 4px #ef515c26; }
+.toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:11px; background:var(--card); border:1px solid var(--line); border-radius:15px; margin-bottom:13px; box-shadow:0 5px 24px #26396008; }
+.toolbar .separator { width:1px; height:26px; background:var(--line); margin:0 4px; }
+.label { font-size:12px; font-weight:700; color:var(--muted); }
+.color-control { display:flex; align-items:center; gap:7px; }
+#inkColor { width:37px; height:35px; background:transparent; border:0; padding:0; cursor:pointer; }
+#brushSize { width:83px; accent-color:var(--primary); }
+#sizeOutput { font-size:12px; width:27px; color:#47617f; font-variant-numeric:tabular-nums; }
+.layout { display:grid; grid-template-columns:minmax(0,1fr) 315px; gap:13px; align-items:start; }
+.panel { background:white; border:1px solid var(--line); border-radius:15px; overflow:hidden; box-shadow:0 4px 22px #26396008; }
+.panel-heading { padding:13px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.panel-heading h2 { font-size:14px; margin:0; }
+.small { font-size:11px; color:var(--muted); }
+.drawing-area { position:relative; height: min(65vh,690px); min-height:380px; overflow:hidden; background-color:#fff; background-image:linear-gradient(to bottom,transparent calc(100% - 1px),#e9eef8 calc(100% - 1px)); background-size:100% 35px; background-position:0 9px; }
+.drawing-area:before { content:""; position:absolute; left:46px; top:0; bottom:0; width:1px; background:#ffd6d8; z-index:0; pointer-events:none; }
+#inkCanvas, #hoverCanvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+#inkCanvas { z-index:1; touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; cursor:crosshair; }
+#hoverCanvas { z-index:2; pointer-events:none; }
+.paper-hint { position:absolute; left:58px; top:16px; z-index:0; pointer-events:none; color:#b5c1d2; letter-spacing:.2px; font-size:13px; }
+.canvas-footer { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 13px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); flex-wrap:wrap; }
+.right { display:grid; gap:13px; }
+.live-header { background:#f7faff; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--line); }
+.live-header strong { font-size:14px; }
+.pill { font-size:10px; color:#3157a6; background:#e7efff; border-radius:99px; padding:5px 8px; font-weight:700; }
+.telemetry { padding:12px 14px 9px; display:grid; grid-template-columns:1fr 1fr; column-gap:14px; row-gap:12px; }
+.metric .name { font-size:11px; color:var(--muted); }
+.metric .value { font-size:18px; font-weight:750; font-variant-numeric:tabular-nums; letter-spacing:-.3px; margin-top:2px; }
+.metric .value.smallvalue { font-size:14px; }
+.meter { height:5px; border-radius:50px; background:#e9eff7; margin-top:7px; overflow:hidden; }
+.meter-fill { width:0; background:linear-gradient(90deg,#72adef,#315eea); height:100%; border-radius:50px; }
+#pressureGraph { width:100%; height:64px; display:block; border-radius:9px; background:#f7faff; }
+.chart-wrap { padding:8px 14px 12px; }
+.chart-caption { color:var(--muted); font-size:10px; margin-top:5px; }
+.counters { display:grid; grid-template-columns:repeat(3,1fr); padding:10px 14px 13px; gap:7px; border-top:1px solid var(--line); }
+.counter { text-align:center; background:#f5f8fe; border-radius:9px; padding:8px 3px; }
+.counter b { display:block; font-size:16px; font-variant-numeric:tabular-nums; }
+.counter span { font-size:10px; color:var(--muted); }
+.capabilities { padding:12px 14px; }
+.feature { display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid #eef2f9; gap:8px; }
+.feature:last-child { border:0; }
+.feature .feature-name { font-size:12px; }
+.feature .feature-state { font-size:10px; font-weight:700; text-align:right; color:var(--muted); }
+.feature .feature-state.good { color:var(--green); }
+.feature .feature-state.warning { color:#bf8122; }
+.note { padding:11px 13px; background:#f9fbfe; border-top:1px solid var(--line); font-size:11px; color:#65758b; line-height:1.55; }
+.settings { display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:#465875; align-items:center; }
+.settings label { display:flex; align-items:center; gap:6px; cursor:pointer; }
+.settings input { accent-color:var(--primary); }
+.debug { font-size:11px; padding:10px 15px; border-top:1px solid var(--line); background:#f6f8fc; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#61718a; }
+.footnote { margin:14px 2px 0; max-width:950px; font-size:12px; color:#5f7089; line-height:1.6; }
+.warning-banner { display:none; background:#fff8e9; color:#946618; padding:10px 13px; border:1px solid #edd6a0; border-radius:11px; margin:0 0 13px; font-size:12px; }
+@media(max-width:900px) { .layout { grid-template-columns:minmax(0,1fr); } .right { grid-template-columns:1fr 1fr; align-items:start; } .drawing-area { height:50vh; min-height:370px; } }
+@media(max-width:600px) { header { align-items:center; } .status { padding:7px 9px; } .right { grid-template-columns:1fr; } .drawing-area { min-height:340px; height:48vh; } .toolbar .separator { display:none; } .toolbar { gap:6px; } .toolbar button { padding:8px 10px; } .paper-hint { font-size:11px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="brandmark">✎</div><div><h1>Apple Pencil Pro Studio</h1><div class="subtitle">Handwriting · sensor diagnostics · event-level JSON telemetry · offline</div></div></div>
+  <div id="recordStatus" class="status"><span class="dot"></span><span id="recordStatusText">Not recording</span></div>
+</header>
+<div id="warningBanner" class="warning-banner"></div>
+<div class="toolbar" role="toolbar" aria-label="Handwriting controls">
+  <button id="recordButton" class="primary">● Start recording</button>
+  <button id="saveButton" disabled>Export JSON</button>
+  <button id="pngButton">Export PNG</button>
+  <span class="separator"></span>
+  <button id="penButton" class="active">✎ Pen</button>
+  <button id="eraserButton">◯ Eraser</button>
+  <label class="color-control" title="Ink colour"><span class="label">Ink</span><input type="color" id="inkColor" value="#253954" aria-label="Ink colour"></label>
+  <label class="color-control" title="Brush size"><span class="label">Size</span><input type="range" id="brushSize" min="1" max="24" value="4" aria-label="Brush size"><span id="sizeOutput">4</span></label>
+  <span class="separator"></span>
+  <button id="undoButton" title="Undo most recent stroke">Undo</button>
+  <button id="clearButton" title="Clear drawing, retain recorded telemetry">Clear ink</button>
+  <button id="newButton" class="danger" title="Remove strokes and telemetry">New session</button>
+</div>
+<div class="layout">
+  <section class="panel">
+    <div class="panel-heading"><h2>Writing surface</h2><span class="small">Stroke rendering uses recorded pressure</span></div>
+    <div class="drawing-area" id="drawingArea">
+      <div class="paper-hint" id="paperHint">Write or draw here with Apple Pencil…</div>
+      <canvas id="inkCanvas" aria-label="Drawing surface"></canvas>
+      <canvas id="hoverCanvas" aria-hidden="true"></canvas>
+    </div>
+    <div class="canvas-footer">
+      <div class="settings"><label><input type="checkbox" id="penOnly" checked> Pen-only drawing</label><label><input type="checkbox" id="hoverCursor" checked> Hover cursor</label></div>
+      <span id="canvasInfo">No strokes yet · Web input only</span>
+    </div>
+    <div class="debug" id="lastEvent">Waiting for pointer input…</div>
+  </section>
+  <aside class="right">
+    <section class="panel">
+      <div class="live-header"><strong>Live telemetry</strong><span class="pill">REFRESH 100 ms</span></div>
+      <div class="telemetry">
+        <div class="metric"><div class="name">Device</div><div id="mDevice" class="value smallvalue">—</div></div>
+        <div class="metric"><div class="name">State</div><div id="mState" class="value smallvalue">Idle</div></div>
+        <div class="metric"><div class="name">Pressure</div><div id="mPressure" class="value">—</div><div class="meter"><div class="meter-fill" id="pressureMeter"></div></div></div>
+        <div class="metric"><div class="name">Barrel twist (°)</div><div id="mTwist" class="value">—</div><div class="small" id="twistNote">Not observed</div></div>
+        <div class="metric"><div class="name">Altitude (°)</div><div id="mAltitude" class="value">—</div></div>
+        <div class="metric"><div class="name">Azimuth (°)</div><div id="mAzimuth" class="value">—</div></div>
+        <div class="metric"><div class="name">Tilt X (°)</div><div id="mTiltX" class="value">—</div></div>
+        <div class="metric"><div class="name">Tilt Y (°)</div><div id="mTiltY" class="value">—</div></div>
+        <div class="metric"><div class="name">Position (px)</div><div id="mPosition" class="value smallvalue">—</div></div>
+        <div class="metric"><div class="name">Contact / buttons</div><div id="mButtons" class="value smallvalue">—</div></div>
+        <div class="metric"><div class="name">Tangential pressure</div><div id="mTangential" class="value smallvalue">—</div></div>
+        <div class="metric"><div class="name">Latest input age</div><div id="mAge" class="value smallvalue">—</div></div>
+      </div>
+      <div class="chart-wrap"><canvas id="pressureGraph" aria-label="Recent pressure history"></canvas><div class="chart-caption">Most recent pressure inputs · graph is not the raw recording</div></div>
+      <div class="counters"><div class="counter"><b id="cEvents">0</b><span>pointer events</span></div><div class="counter"><b id="cCoalesced">0</b><span>coalesced</span></div><div class="counter"><b id="cPredicted">0</b><span>predicted</span></div><div class="counter"><b id="cStrokes">0</b><span>strokes</span></div><div class="counter"><b id="cTouch">0</b><span>touch events</span></div><div class="counter"><b id="cRate">0</b><span>inputs / sec</span></div></div>
+    </section>
+    <section class="panel">
+      <div class="panel-heading"><h2>Capability observations</h2><span class="small">Availability ≠ sensor output</span></div>
+      <div class="capabilities" id="featureList"></div>
+      <div class="note">Squeeze, double-tap and haptics are not available as dedicated web APIs. You can mark the moment you attempt a gesture in your JSON session.</div>
+      <div class="toolbar" style="margin:0;border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;">
+        <button id="squeezeButton" title="Insert a manual test marker" disabled>Mark squeeze attempt</button>
+        <button id="doubleTapButton" title="Insert a manual test marker" disabled>Mark double-tap attempt</button>
+      </div>
+    </section>
+  </aside>
+</div>
+<p class="footnote">The browser provides Pointer Events and, on compatible devices, additional Touch Events; this is <strong>not</strong> a native Apple Pencil diagnostic. All measurements and files stay on your device. A constant <code>twist: 0</code> does <strong>not</strong> establish that barrel-roll sensing works, nor that the Pencil lacks it. For the fullest coalesced data, use a recent iPadOS Safari version; some APIs require a secure context.</p>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const ink = $('inkCanvas'), hover = $('hoverCanvas'), area = $('drawingArea');
+  const ctx = ink.getContext('2d'), overlay = hover.getContext('2d');
+  const pressureCtx = $('pressureGraph').getContext('2d');
+  const featureNames = [
+    ['pointer','Pointer Events API'], ['pressure','Pressure stream'], ['tilt','Tilt X / Y'],
+    ['angles','Altitude / azimuth'], ['twist','Barrel twist'], ['hover','Pencil hover'],
+    ['coalesced','Coalesced inputs'], ['predicted','Predicted inputs'], ['raw','Raw pointer updates'],
+    ['squeeze','Squeeze / double-tap']
+  ];
+  const ptProto = typeof PointerEvent !== 'undefined' ? PointerEvent.prototype : null;
+  const hasProp = prop => !!ptProto && prop in ptProto;
+  const availability = {
+    pointer:!!ptProto, pressure:hasProp('pressure'), tilt:hasProp('tiltX') && hasProp('tiltY'),
+    angles:hasProp('altitudeAngle') && hasProp('azimuthAngle'), twist:hasProp('twist'),
+    hover:!!ptProto, coalesced:!!ptProto && typeof ptProto.getCoalescedEvents === 'function',
+    predicted:!!ptProto && typeof ptProto.getPredictedEvents === 'function',
+    raw:!!ptProto && ('onpointerrawupdate' in window), squeeze:false
+  };
+  const baseMeta = () => ({
+    userAgent:navigator.userAgent, platform:navigator.platform || null,
+    language:navigator.language, screen:{width:screen.width,height:screen.height},
+    viewport:{width:innerWidth,height:innerHeight}, devicePixelRatio:devicePixelRatio || 1,
+    secureContext:!!window.isSecureContext, pageProtocol:location.protocol,
+    pointerApiPresent:availability.pointer, hasTouchEvents:typeof TouchEvent !== 'undefined',
+    webApiPresence:{...availability},
+    limitations:['Only browser-dispatched events are captured; internal Pencil firmware/hardware data is not accessible.',
+      'A property being present does not guarantee nonzero or changing hardware measurements.',
+      'Predicted samples are estimates and are not actual historical measurements.',
+      'Squeeze, double-tap and Pencil haptic feedback have no dedicated standard browser input/control API.']
+  });
+  const newObserved = () => ({penEvents:0,penDown:0,hoverEvents:0,pressureMin:null,pressureMax:null,twistMin:null,twistMax:null,tiltMin:null,tiltMax:null,angleMin:null,angleMax:null,rawEvents:0,coalescedTotal:0,predictedTotal:0});
+  let observed = newObserved();
+  let sessionStartISO = new Date().toISOString(), sessionStartPerf = performance.now();
+  let pointerEvents = [], touchEvents = [], snapshots = [], actions = [], strokes = [], strokeHistory = [];
+  let nextStrokeId=1;
+  let recording = false, recordingSince = null, totalRecordedMs = 0;
+  let activePointerId = null, currentStroke = null, lastPen = null, lastAny = null, lastInputPerf = null;
+  let recentInputs = [], pressureTrace = [], hoverSample = null, lastCursorPerf = 0;
+  let mode = 'pen', surfaceW=1, surfaceH=1;
+  let counts = {pointer:0,coalesced:0,predicted:0,touch:0};
+  let exportWarningShown = false;
+
+  function nowMs(){ return +(performance.now()-sessionStartPerf).toFixed(3); }
+  function finite(v){ return typeof v === 'number' && Number.isFinite(v) ? v : null; }
+  function round(v,n=2){ return v === null || v === undefined ? null : +v.toFixed(n); }
+  function field(evt,key){ try { return finite(evt[key]); } catch(_){return null;} }
+  function stringField(evt,key){ try {return typeof evt[key]==='string' ? evt[key] : null;} catch(_){return null;} }
+  function relative(x,y){const rect=ink.getBoundingClientRect();return {x:x-rect.left,y:y-rect.top};}
+
+  // Full fidelity of browser-exposed pointer fields, retaining genuine zero values.
+  function pointerSample(e){
+    const p = relative(e.clientX,e.clientY);
+    return {
+      eventTimeStampMs:field(e,'timeStamp'),
+      pointerId:field(e,'pointerId'), persistentDeviceId:field(e,'persistentDeviceId'),
+      pointerType:stringField(e,'pointerType'), isPrimary:typeof e.isPrimary==='boolean'?e.isPrimary:null,
+      clientX:field(e,'clientX'),clientY:field(e,'clientY'),pageX:field(e,'pageX'),pageY:field(e,'pageY'),
+      screenX:field(e,'screenX'),screenY:field(e,'screenY'),canvasX:round(p.x,3),canvasY:round(p.y,3),
+      canvasWidth:round(surfaceW,2),canvasHeight:round(surfaceH,2),
+      pressure:field(e,'pressure'), tangentialPressure:field(e,'tangentialPressure'),
+      tiltX:field(e,'tiltX'),tiltY:field(e,'tiltY'),twist:field(e,'twist'),
+      altitudeAngle:field(e,'altitudeAngle'),azimuthAngle:field(e,'azimuthAngle'),
+      width:field(e,'width'),height:field(e,'height'),
+      button:field(e,'button'),buttons:field(e,'buttons'),
+      movementX:field(e,'movementX'),movementY:field(e,'movementY'),
+      ctrlKey:!!e.ctrlKey,altKey:!!e.altKey,metaKey:!!e.metaKey,shiftKey:!!e.shiftKey,
+      detail:field(e,'detail'),isTrusted:!!e.isTrusted
+    };
+  }
+  function safeExtra(e,method){
+    if(typeof e[method]!=='function')return {items:[],error:null};
+    try {const a=e[method]();return {items:Array.from(a||[],pointerSample),error:null};}
+    catch(err){return {items:[],error:String(err)};}
+  }
+  function touchSample(t){
+    const p=relative(t.clientX,t.clientY);
+    return {
+      identifier:field(t,'identifier'),touchType:stringField(t,'touchType'),
+      clientX:field(t,'clientX'),clientY:field(t,'clientY'),pageX:field(t,'pageX'),pageY:field(t,'pageY'),
+      screenX:field(t,'screenX'),screenY:field(t,'screenY'),canvasX:round(p.x,3),canvasY:round(p.y,3),
+      force:field(t,'force'),radiusX:field(t,'radiusX'),radiusY:field(t,'radiusY'),
+      rotationAngle:field(t,'rotationAngle'), // Touch contact ellipse; NOT Apple Pencil barrel roll.
+      altitudeAngle:field(t,'altitudeAngle'),azimuthAngle:field(t,'azimuthAngle'),
+      webkitForce:field(t,'webkitForce')
+    };
+  }
+  function logAction(action,details={}){
+    if(recording) actions.push({tMs:nowMs(),receivedAtISO:new Date().toISOString(),action,...details});
+  }
+  function observeValue(minKey,maxKey,v){
+    if(v===null)return;
+    observed[minKey]=observed[minKey]===null ? v : Math.min(observed[minKey],v);
+    observed[maxKey]=observed[maxKey]===null ? v : Math.max(observed[maxKey],v);
+  }
+  function observePen(s,eventType){
+    if(s.pointerType!=='pen')return;
+    observed.penEvents++;
+    if(eventType==='pointerdown')observed.penDown++;
+    if((eventType==='pointermove'||eventType==='pointerrawupdate') && s.buttons===0)observed.hoverEvents++;
+    observeValue('pressureMin','pressureMax',s.pressure);
+    observeValue('twistMin','twistMax',s.twist);
+    observeValue('tiltMin','tiltMax',s.tiltX);
+    observeValue('tiltMin','tiltMax',s.tiltY);
+    observeValue('angleMin','angleMax',s.altitudeAngle);
+    observeValue('angleMin','angleMax',s.azimuthAngle);
+  }
+  function setLatest(s,eventType){
+    lastAny={...s,eventType,receivedPerf:performance.now()};
+    if(s.pointerType==='pen' || !lastPen){
+      if(s.pointerType==='pen')lastPen={...s,eventType,receivedPerf:performance.now()};
+      lastInputPerf=performance.now();
+    }
+    const chosen=lastPen || lastAny;
+    if(s.pointerType==='pen'){
+      if(s.pressure!==null){pressureTrace.push(s.pressure); if(pressureTrace.length>110)pressureTrace.shift();}
+      hoverSample=s;
+      if(performance.now()-lastCursorPerf>8) drawHover();
+    }
+    $('lastEvent').textContent=`${eventType} · ${s.pointerType ?? '?'} · (${round(s.canvasX,1)}, ${round(s.canvasY,1)}) · p=${s.pressure ?? '—'} · twist=${s.twist ?? '—'}° · t=${round(s.eventTimeStampMs,1)} ms`;
+    recentInputs.push(performance.now());
+    if(recentInputs.length>1000)recentInputs.splice(0,recentInputs.length-1000);
+    if(chosen && chosen.pointerType!=='pen' && !$('penOnly').checked){hoverSample=s;drawHover();}
+  }
+  function shouldDraw(e){return !$('penOnly').checked || e.pointerType==='pen';}
+  function pointFromSample(s){return {
+    x:round(s.canvasX,3),y:round(s.canvasY,3),nx:s.canvasX/surfaceW,ny:s.canvasY/surfaceH,
+    pressure:s.pressure,tMs:nowMs(),eventTimeStampMs:s.eventTimeStampMs,
+    twist:s.twist,tiltX:s.tiltX,tiltY:s.tiltY,altitudeAngle:s.altitudeAngle,azimuthAngle:s.azimuthAngle
+  };}
+  function thickness(stroke,p){return stroke.size * (0.25+0.95*(p.pressure === null ? .5 : Math.max(0,Math.min(1,p.pressure))));}
+  function pos(p){return {x:p.nx*surfaceW,y:p.ny*surfaceH};}
+  function renderSegment(stroke,a,b){
+    const pa=pos(a), pb=pos(b), w1=thickness(stroke,a),w2=thickness(stroke,b);
+    ctx.save();
+    ctx.globalCompositeOperation=stroke.tool==='eraser'?'destination-out':'source-over';
+    ctx.strokeStyle=stroke.tool==='eraser'?'#000':stroke.color;
+    ctx.fillStyle=ctx.strokeStyle; ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.beginPath();ctx.lineWidth=(w1+w2)/2;ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
+    ctx.beginPath();ctx.arc(pb.x,pb.y,Math.max(.1,w2/2),0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+  function drawDot(stroke,p){
+    const a=pos(p);
+    ctx.save();ctx.globalCompositeOperation=stroke.tool==='eraser'?'destination-out':'source-over';
+    ctx.fillStyle=stroke.tool==='eraser'?'#000':stroke.color;
+    ctx.beginPath();ctx.arc(a.x,a.y,Math.max(.4,thickness(stroke,p)/2),0,Math.PI*2);ctx.fill();ctx.restore();
+  }
+  function addPoint(s){
+    if(!currentStroke)return;
+    const pt=pointFromSample(s), a=currentStroke.points;
+    const prev=a.length?a[a.length-1]:null;
+    if(prev && pt.eventTimeStampMs!==null && prev.eventTimeStampMs!==null && pt.eventTimeStampMs < prev.eventTimeStampMs)return;
+    if(prev && Math.abs(prev.x-pt.x)<.001 && Math.abs(prev.y-pt.y)<.001 && prev.eventTimeStampMs===pt.eventTimeStampMs)return;
+    if(prev && prev.nx===pt.nx && prev.ny===pt.ny && prev.pressure===pt.pressure)return;
+    a.push(pt); if(prev)renderSegment(currentStroke,prev,pt);else drawDot(currentStroke,pt);
+  }
+  function startStroke(e,s){
+    if(activePointerId!==null || !shouldDraw(e))return;
+    activePointerId=e.pointerId;
+    currentStroke={id:nextStrokeId++,tool:mode,color:$('inkColor').value,size:+$('brushSize').value,
+      pointerType:e.pointerType,startedAtMs:nowMs(),points:[]};
+    strokes.push(currentStroke);strokeHistory.push(currentStroke);addPoint(s);
+    if(recording)logAction('stroke-start',{strokeId:currentStroke.id});
+    try{ink.setPointerCapture(e.pointerId);}catch(_){}
+    $('paperHint').style.display='none';
+  }
+  function endStroke(s,reason){
+    if(!currentStroke)return;
+    if(s && reason==='pointerup')addPoint(s);
+    currentStroke.endedAtMs=nowMs();currentStroke.endReason=reason;
+    if(recording)logAction('stroke-end',{strokeId:currentStroke.id,reason,points:currentStroke.points.length});
+    activePointerId=null;currentStroke=null;
+  }
+  function applyPointer(e){
+    if(e.cancelable && (e.type==='pointerdown'||e.type==='pointermove'||e.type==='pointerrawupdate')) e.preventDefault();
+    const t=performance.now(), s=pointerSample(e), type=e.type;
+    const isMovement=type==='pointermove'||type==='pointerrawupdate';
+    const coal=isMovement?safeExtra(e,'getCoalescedEvents'):{items:[],error:null};
+    const pred=isMovement?safeExtra(e,'getPredictedEvents'):{items:[],error:null};
+    counts.pointer++;
+    counts.coalesced+=coal.items.length;
+    counts.predicted+=pred.items.length;
+    observed.coalescedTotal+=coal.items.length;
+    observed.predictedTotal+=pred.items.length;
+    if(type==='pointerrawupdate')observed.rawEvents++;
+    if(recording){
+      pointerEvents.push({tMs:nowMs(),receivedAtEpochMs:Date.now(),type,sample:s,
+        coalesced:coal.items,predicted:pred.items,
+        ...(coal.error?{coalescedError:coal.error}:{}),...(pred.error?{predictedError:pred.error}:{})});
+      if(pointerEvents.length>30000&&!exportWarningShown){exportWarningShown=true;showWarning('Large recording: export the JSON periodically and start a new session to manage memory. No incoming events are intentionally discarded.');}
+    }
+    observePen(s,type);
+    if(type==='pointerdown')startStroke(e,s);
+    if(isMovement && currentStroke && activePointerId===e.pointerId){
+      // Coalesced samples are the detailed history behind this dispatched event.
+      // The parent sample is used only if the detailed list is unavailable/empty.
+      const actual=coal.items.length?coal.items:[s];
+      for(const a of actual)addPoint(a);
+      // Some engines omit the final dispatched coordinate from coalesced samples.
+      if(actual.length && (actual[actual.length-1].canvasX!==s.canvasX||actual[actual.length-1].canvasY!==s.canvasY))addPoint(s);
+    }
+    if(type==='pointerup'||type==='pointercancel'){
+      if(activePointerId===e.pointerId)endStroke(s,type);
+      if(type==='pointercancel'||type==='pointerup')hoverSample=null;
+    }
+    if(type==='pointerleave'||type==='pointerout'){
+      if(activePointerId===null)hoverSample=null;
+    }
+    if(type==='lostpointercapture' && activePointerId===e.pointerId)endStroke(null,type);
+    const last=coal.items.length?coal.items[coal.items.length-1]:s;
+    setLatest(last,type);
+    if(type==='pointerleave'||type==='pointerout'||type==='pointerup'||type==='pointercancel'){
+      if(!currentStroke)hoverSample=null;
+    }
+    // Counts for UI are refreshed separately every 100ms.
+  }
+  const pointerTypes=['pointerdown','pointermove','pointerup','pointercancel','pointerenter','pointerleave','pointerover','pointerout','pointerrawupdate','gotpointercapture','lostpointercapture'];
+  for(const type of pointerTypes)ink.addEventListener(type,applyPointer,{passive:false});
+  for(const type of ['touchstart','touchmove','touchend','touchcancel']){
+    ink.addEventListener(type,e=>{
+      if(e.cancelable)e.preventDefault();
+      counts.touch++;
+      if(recording)touchEvents.push({tMs:nowMs(),receivedAtEpochMs:Date.now(),type,
+        eventTimeStampMs:field(e,'timeStamp'),changedTouches:Array.from(e.changedTouches,touchSample),
+        touchesCount:e.touches.length,targetTouchesCount:e.targetTouches.length,isTrusted:e.isTrusted});
+    },{passive:false});
+  }
+  ink.addEventListener('contextmenu',e=>e.preventDefault());
+  window.addEventListener('blur',()=>{if(activePointerId!==null)endStroke(null,'window-blur');hoverSample=null;});
+
+  function resizeCanvas(canvas,context,w,h){
+    const dpr=Math.max(1,Math.min(3,devicePixelRatio||1));
+    canvas.width=Math.max(1,Math.round(w*dpr));canvas.height=Math.max(1,Math.round(h*dpr));
+    context.setTransform(dpr,0,0,dpr,0,0);
+  }
+  function replay(){
+    ctx.clearRect(0,0,surfaceW,surfaceH);
+    for(const stroke of strokes){
+      if(!stroke.points.length)continue;
+      drawDot(stroke,stroke.points[0]);
+      for(let i=1;i<stroke.points.length;i++)renderSegment(stroke,stroke.points[i-1],stroke.points[i]);
+    }
+  }
+  function layoutCanvas(){
+    const r=area.getBoundingClientRect();surfaceW=Math.max(1,r.width);surfaceH=Math.max(1,r.height);
+    resizeCanvas(ink,ctx,surfaceW,surfaceH);resizeCanvas(hover,overlay,surfaceW,surfaceH);
+    replay();drawHover();
+  }
+  if(typeof ResizeObserver!=='undefined')new ResizeObserver(layoutCanvas).observe(area);
+  else window.addEventListener('resize',layoutCanvas);
+  layoutCanvas();
+  function drawHover(){
+    lastCursorPerf=performance.now();overlay.clearRect(0,0,surfaceW,surfaceH);
+    if(!$('hoverCursor').checked||!hoverSample)return;
+    const s=hoverSample,x=s.canvasX,y=s.canvasY;
+    if(x<0||x>surfaceW||y<0||y>surfaceH)return;
+    overlay.save();overlay.translate(x,y);
+    const roll=((s.twist||0)*Math.PI/180),rad=14;
+    overlay.beginPath();overlay.arc(0,0,rad,0,Math.PI*2);overlay.lineWidth=1.5;
+    overlay.strokeStyle='rgba(47,96,228,.7)';overlay.stroke();
+    overlay.rotate(roll);
+    overlay.beginPath();overlay.moveTo(0,-rad-5);overlay.lineTo(0,rad+5);overlay.strokeStyle='#eb6273';overlay.lineWidth=2;overlay.stroke();
+    overlay.beginPath();overlay.moveTo(-4,0);overlay.lineTo(4,0);overlay.strokeStyle='#3363ea';overlay.stroke();
+    overlay.restore();
+  }
+  function resetSession(){
+    pointerEvents=[];touchEvents=[];snapshots=[];actions=[];strokes=[];strokeHistory=[];nextStrokeId=1;
+    currentStroke=null;activePointerId=null;lastPen=null;lastAny=null;lastInputPerf=null;
+    hoverSample=null;pressureTrace=[];recentInputs=[];observed=newObserved();exportWarningShown=false;
+    counts={pointer:0,coalesced:0,predicted:0,touch:0};
+    sessionStartISO=new Date().toISOString();sessionStartPerf=performance.now();
+    totalRecordedMs=0;recordingSince=null;recording=false;
+    $('warningBanner').style.display='none';$('paperHint').style.display='';
+    $('lastEvent').textContent='Waiting for pointer input…';replay();drawHover();updateRecordUI();refresh();
+  }
+  function toggleRecord(){
+    const t=performance.now();
+    if(recording){totalRecordedMs+=t-recordingSince;logAction('recording-paused');recording=false;recordingSince=null;}
+    else{recording=true;recordingSince=t;logAction('recording-started');}
+    updateRecordUI();
+  }
+  function updateRecordUI(){
+    $('recordButton').textContent=recording?'■ Pause recording':'● Start recording';
+    $('recordButton').classList.toggle('primary',!recording);
+    $('recordStatus').classList.toggle('live',recording);
+    $('recordStatusText').textContent=recording?'Recording live':'Not recording';
+    $('saveButton').disabled=pointerEvents.length===0&&touchEvents.length===0&&actions.length===0;
+    $('squeezeButton').disabled=!recording;$('doubleTapButton').disabled=!recording;
+  }
+  function clearInk(){
+    if(currentStroke)endStroke(null,'clear-ink');
+    for(const stroke of strokes){stroke.removedBy='clear-ink';stroke.removedAtMs=nowMs();}
+    strokes=[];logAction('clear-ink');replay();$('paperHint').style.display='';refresh();
+  }
+  function undo(){
+    if(currentStroke)endStroke(null,'undo');
+    const removed=strokes.pop();if(!removed)return;
+    removed.removedBy='undo';removed.removedAtMs=nowMs();
+    logAction('undo-stroke',{strokeId:removed.id});
+    replay();if(!strokes.length)$('paperHint').style.display='';refresh();
+  }
+  function tool(name){
+    if(currentStroke)endStroke(null,'tool-changed');
+    mode=name;
+    $('penButton').classList.toggle('active',mode==='pen');
+    $('eraserButton').classList.toggle('active',mode==='eraser');
+    logAction('tool-changed',{tool:mode});
+  }
+  $('recordButton').addEventListener('click',toggleRecord);
+  $('penButton').addEventListener('click',()=>tool('pen'));
+  $('eraserButton').addEventListener('click',()=>tool('eraser'));
+  $('clearButton').addEventListener('click',clearInk);
+  $('undoButton').addEventListener('click',undo);
+  $('newButton').addEventListener('click',()=>{if(confirm('Delete all ink and this session’s recorded telemetry?'))resetSession();});
+  $('brushSize').addEventListener('input',()=>{$('sizeOutput').textContent=$('brushSize').value;});
+  $('brushSize').addEventListener('change',()=>logAction('brush-size',{value:+$('brushSize').value}));
+  $('inkColor').addEventListener('change',()=>logAction('ink-color',{value:$('inkColor').value}));
+  $('penOnly').addEventListener('change',()=>logAction('pen-only-drawing',{value:$('penOnly').checked}));
+  $('hoverCursor').addEventListener('change',()=>{drawHover();logAction('hover-cursor',{value:$('hoverCursor').checked});});
+  $('squeezeButton').addEventListener('click',()=>logAction('manual-gesture-marker',{gesture:'squeeze-attempt',detectedByWebAPI:false}));
+  $('doubleTapButton').addEventListener('click',()=>logAction('manual-gesture-marker',{gesture:'double-tap-attempt',detectedByWebAPI:false}));
+  function showWarning(message){const b=$('warningBanner');b.textContent=message;b.style.display='block';}
+
+  function statState(key){
+    if(key==='squeeze')return ['Native-only', 'warning'];
+    if(!availability[key])return ['API unavailable','warning'];
+    if(key==='pointer')return counts.pointer?['Events received','good']:['API available',''];
+    if(key==='hover')return observed.hoverEvents?['Pen hover observed','good']:['No pen hover yet',''];
+    if(key==='raw')return observed.rawEvents?['Events received','good']:['No raw events yet',''];
+    if(key==='coalesced')return observed.coalescedTotal?['Samples received','good']:['No samples yet',''];
+    if(key==='predicted')return observed.predictedTotal?['Samples received','good']:['No samples yet',''];
+    if(!observed.penEvents)return ['No pen samples yet',''];
+    const range={pressure:['pressureMin','pressureMax'],twist:['twistMin','twistMax'],tilt:['tiltMin','tiltMax'],angles:['angleMin','angleMax']}[key];
+    if(range&&observed[range[0]]!==null&&observed[range[1]]!==null){
+      if(Math.abs(observed[range[1]]-observed[range[0]])>0.0001)return ['Values vary','good'];
+      return ['Constant value','warning'];
+    }
+    return ['API available',''];
+  }
+  const featureRows={};
+  for(const [key,name] of featureNames){
+    const el=document.createElement('div');el.className='feature';
+    const a=document.createElement('span');a.className='feature-name';a.textContent=name;
+    const b=document.createElement('span');b.className='feature-state';
+    el.append(a,b);$('featureList').append(el);featureRows[key]=b;
+  }
+  function drawPressureGraph(){
+    const c=$('pressureGraph'),r=c.getBoundingClientRect();
+    const dpr=Math.max(1,Math.min(3,devicePixelRatio||1)),w=Math.max(1,r.width),h=Math.max(1,r.height);
+    const cw=Math.round(w*dpr),ch=Math.round(h*dpr);
+    if(c.width!==cw||c.height!==ch){c.width=cw;c.height=ch;}
+    pressureCtx.setTransform(dpr,0,0,dpr,0,0);pressureCtx.clearRect(0,0,w,h);
+    pressureCtx.strokeStyle='#dde6f4';pressureCtx.lineWidth=1;
+    for(let i=1;i<4;i++){const y=h*i/4;pressureCtx.beginPath();pressureCtx.moveTo(0,y);pressureCtx.lineTo(w,y);pressureCtx.stroke();}
+    if(pressureTrace.length<2)return;
+    pressureCtx.beginPath();pressureCtx.strokeStyle='#386af0';pressureCtx.lineWidth=2;pressureCtx.lineJoin='round';
+    pressureTrace.forEach((v,i)=>{const x=5+(w-10)*i/Math.max(1,pressureTrace.length-1);const y=h-5-Math.max(0,Math.min(1,v))*(h-10); if(i===0)pressureCtx.moveTo(x,y);else pressureCtx.lineTo(x,y);});
+    pressureCtx.stroke();
+  }
+  function show(el,txt){$(el).textContent=txt;}
+  function numeric(v,decimals=1){return v===null||v===undefined?'—':Number(v).toFixed(decimals);}
+  function refresh(){
+    const chosen=lastPen || lastAny;
+    show('mDevice',chosen?chosen.pointerType || 'unknown':'—');
+    show('mState',chosen?(chosen.buttons?'Contact':'Hover / idle'):'Idle');
+    show('mPressure',chosen?numeric(chosen.pressure,3):'—');
+    $('pressureMeter').style.width=(chosen&&chosen.pressure!==null?Math.max(0,Math.min(1,chosen.pressure))*100:0)+'%';
+    show('mTwist',chosen?numeric(chosen.twist,1):'—');
+    show('twistNote',observed.twistMin===null?'No Pencil roll observed':
+      (Math.abs(observed.twistMax-observed.twistMin)>.001?'Variable values seen':'Constant; not proof of support'));
+    show('mAltitude',chosen&&chosen.altitudeAngle!==null?numeric(chosen.altitudeAngle*180/Math.PI):'—');
+    show('mAzimuth',chosen&&chosen.azimuthAngle!==null?numeric(chosen.azimuthAngle*180/Math.PI):'—');
+    show('mTiltX',chosen?numeric(chosen.tiltX):'—');show('mTiltY',chosen?numeric(chosen.tiltY):'—');
+    show('mPosition',chosen?`${numeric(chosen.canvasX,0)}, ${numeric(chosen.canvasY,0)}`:'—');
+    show('mButtons',chosen?`${chosen.buttons ?? '—'} / ${chosen.button ?? '—'}`:'—');
+    show('mTangential',chosen?numeric(chosen.tangentialPressure,3):'—');
+    show('mAge',chosen?`${Math.round(Math.max(0,performance.now()-chosen.receivedPerf))} ms`:'—');
+    show('cEvents',counts.pointer.toLocaleString());show('cCoalesced',counts.coalesced.toLocaleString());
+    show('cPredicted',counts.predicted.toLocaleString());show('cTouch',counts.touch.toLocaleString());
+    show('cStrokes',strokes.length.toLocaleString());
+    const t=performance.now();while(recentInputs.length&&t-recentInputs[0]>1000)recentInputs.shift();
+    show('cRate',recentInputs.length.toLocaleString());
+    show('canvasInfo',`${strokes.length} strokes · ${Math.round(surfaceW)} × ${Math.round(surfaceH)} CSS px · ${recording?'recording':'not recording'}`);
+    for(const [key] of featureNames){const [label,css]=statState(key);featureRows[key].textContent=label;featureRows[key].className='feature-state '+css;}
+    $('saveButton').disabled=pointerEvents.length===0&&touchEvents.length===0&&actions.length===0;
+    drawPressureGraph();
+  }
+  setInterval(()=>{
+    if(recording){
+      const current=lastPen||lastAny;
+      snapshots.push({tMs:nowMs(),receivedAtEpochMs:Date.now(),
+        latestInputAgeMs:current?round(performance.now()-current.receivedPerf,1):null,
+        sample:current?{...current,receivedPerf:undefined}:null,
+        pointerEventsCaptured:pointerEvents.length,coalescedCaptured:counts.coalesced,
+        predictedCaptured:counts.predicted,touchEventsCaptured:touchEvents.length});
+    }
+    refresh();
+  },100);
+
+  function buildExport(){
+    const t=performance.now();
+    const duration=totalRecordedMs+(recording?t-recordingSince:0);
+    return {
+      format:'apple-pencil-pro-web-telemetry',schemaVersion:'1.0',
+      description:'Raw browser input, detailed coalesced/predicted samples, 100 ms display snapshots, and handwriting strokes. No native sensor access.',
+      session:{startedAtISO:sessionStartISO,exportedAtISO:new Date().toISOString(),recordingActive:recording,
+        totalActiveRecordingMs:round(duration,1),elapsedSessionMs:nowMs(),device:baseMeta(),
+        paperSizeCSSPx:{width:round(surfaceW),height:round(surfaceH)},
+        observed:{...observed},
+        counters:{...counts,recordedPointerEvents:pointerEvents.length,recordedTouchEvents:touchEvents.length,
+          recordedSnapshots:snapshots.length,recordedActions:actions.length,strokeCount:strokes.length}},
+      streams:{pointerEvents,touchEvents,snapshots100ms:snapshots,actions},
+      handwriting:{coordinateSystem:'normalized nx/ny relative to canvas plus source canvas x/y',
+        brushModel:'Variable width = brush size * (0.25 + 0.95 * pressure)',
+        strokes,strokeHistory:strokeHistory.map(s=>({...s,currentlyVisible:strokes.includes(s)}))}
+    };
+  }
+  function filename(ext){return `apple-pencil-telemetry-${new Date().toISOString().replace(/[:.]/g,'-')}.${ext}`;}
+  async function deliver(blob,name,type){
+    const file=new File([blob],name,{type});
+    const isAppleMobile=/iPad|iPhone|iPod/.test(navigator.userAgent)|| (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+    if(isAppleMobile && navigator.canShare && navigator.share){
+      let can=false;try{can=navigator.canShare({files:[file]});}catch(_){}
+      if(can){
+        try{await navigator.share({files:[file],title:'Apple Pencil telemetry'});return;}
+        catch(err){if(err&&err.name==='AbortError')return;}
+      }
+    }
+    // URL is generated from local, application-owned bytes, never from user-supplied markup.
+    const url=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url;a.download=name;a.style.display='none';document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }
+  $('saveButton').addEventListener('click',async()=>{
+    try{
+      const data=buildExport();
+      const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      await deliver(blob,filename('json'),'application/json');
+    }catch(err){showWarning('JSON export failed: '+String(err));}
+  });
+  $('pngButton').addEventListener('click',async()=>{
+    try{
+      const output=document.createElement('canvas');output.width=ink.width;output.height=ink.height;
+      const out=output.getContext('2d');out.fillStyle='#ffffff';out.fillRect(0,0,output.width,output.height);
+      out.drawImage(ink,0,0);
+      const blob=await new Promise(resolve=>output.toBlob(resolve,'image/png'));
+      if(!blob)throw new Error('Unable to create PNG.');
+      await deliver(blob,filename('png'),'image/png');
+    }catch(err){showWarning('PNG export failed: '+String(err));}
+  });
+  if(!availability.pointer)showWarning('Pointer Events are missing in this browser. Please use a recent version of Safari on iPadOS.');
+  else if(!window.isSecureContext)showWarning('This page is not in a secure context. Coalesced input APIs can be unavailable; try Safari over HTTPS or a trusted local file.');
+  updateRecordUI();refresh();
+})();
+</script>
+</body>
+</html>
